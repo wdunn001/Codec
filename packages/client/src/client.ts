@@ -17,14 +17,14 @@ export interface CodecStats {
 }
 
 /**
- * Client for a Codec-enabled TGI server.
+ * Client for a vLLM server with the Codec binary transport protocol.
  *
- * Sends `parameters.codec: true` on every stream request, which tells TGI to:
- *   1. Skip detokenization on the model server
- *   2. Return token IDs as binary MessagePack frames instead of JSON/SSE
+ * POST /v1/completions        — JSON body, add stream_format:"msgpack"|"protobuf"
+ * POST /v1/completions/codec  — binary body (msgpack or protobuf prompt IDs in)
+ * GET  /codec/schema          — proto schema for CodecFrame / CodecRequest
  *
  * Usage:
- *   const client = new CodecClient('http://localhost:3000');
+ *   const client = new CodecClient('http://localhost:8000');
  *   for await (const frame of client.stream('Explain entropy.')) {
  *     console.log(frame.ids);
  *   }
@@ -32,33 +32,37 @@ export interface CodecStats {
 export class CodecClient {
   constructor(
     private readonly baseUrl: string,
-    private readonly options: { apiKey?: string } = {}
+    private readonly options: { apiKey?: string; model?: string } = {}
   ) {}
 
+  private get authHeaders(): Record<string, string> {
+    return this.options.apiKey
+      ? { authorization: `Bearer ${this.options.apiKey}` }
+      : {};
+  }
+
   /**
-   * Stream token IDs from the model.
-   * Yields one CodecFrame per chunk — typically one token ID per frame,
-   * though TGI may batch during speculative decoding.
+   * Stream token IDs from the model using the vLLM completions endpoint.
+   * Sends stream_format:"msgpack" to receive binary MessagePack frames.
    */
   async *stream(prompt: string, opts: StreamOptions = {}): AsyncIterable<CodecFrame> {
-    const response = await fetch(`${this.baseUrl}/generate_stream`, {
+    const model = this.options.model ?? 'default';
+    const response = await fetch(`${this.baseUrl}/v1/completions`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        ...(this.options.apiKey
-          ? { authorization: `Bearer ${this.options.apiKey}` }
-          : {}),
+        ...this.authHeaders,
       },
       body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          codec: true,
-          max_new_tokens: opts.maxNewTokens ?? 512,
-          ...(opts.temperature !== undefined && { temperature: opts.temperature }),
-          ...(opts.topP !== undefined && { top_p: opts.topP }),
-          ...(opts.seed !== undefined && { seed: opts.seed }),
-          ...(opts.stop?.length && { stop: opts.stop }),
-        },
+        model,
+        prompt,
+        stream: true,
+        stream_format: 'msgpack',
+        max_tokens: opts.maxNewTokens ?? 512,
+        ...(opts.temperature !== undefined && { temperature: opts.temperature }),
+        ...(opts.topP !== undefined && { top_p: opts.topP }),
+        ...(opts.seed !== undefined && { seed: opts.seed }),
+        ...(opts.stop?.length && { stop: opts.stop }),
       }),
     });
 
@@ -75,8 +79,34 @@ export class CodecClient {
   }
 
   /**
+   * Bidirectional codec: send prompt as token ID array, receive token IDs.
+   * No text ever crosses the boundary — zero detokenize/retokenize round-trips.
+   */
+  async *streamFromIds(promptIds: number[], opts: StreamOptions = {}): AsyncIterable<CodecFrame> {
+    const body = this._encodeMsgpackRequest(promptIds, opts);
+    const response = await fetch(`${this.baseUrl}/v1/completions/codec`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-msgpack',
+        ...this.authHeaders,
+      },
+      body,
+    });
+
+    if (!response.ok || !response.body) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`Codec stream error ${response.status}: ${text}`);
+    }
+
+    for await (const value of decodeMultiStream(response.body as ReadableStream<Uint8Array>)) {
+      const frame = value as CodecFrame;
+      yield frame;
+      if (frame.done) break;
+    }
+  }
+
+  /**
    * Collect all token IDs from a prompt, returning them with stats.
-   * Convenience wrapper over stream() for non-streaming callers.
    */
   async generate(prompt: string, opts: StreamOptions = {}): Promise<{
     ids: number[];
@@ -88,7 +118,7 @@ export class CodecClient {
 
     for await (const frame of this.stream(prompt, opts)) {
       ids.push(...frame.ids);
-      byteCount += frame.ids.length * 4; // 4 bytes per uint32
+      byteCount += frame.ids.length * 4;
       if (frame.finish_reason) finishReason = frame.finish_reason;
     }
 
@@ -104,11 +134,9 @@ export class CodecClient {
   }
 
   /**
-   * Pass token IDs from one model call directly into the next —
-   * the core agent-to-agent use case: no text ever crosses the boundary.
-   *
-   * agentA and agentB are prompts; agentA's output token IDs are
-   * returned alongside agentB's output so callers can measure both.
+   * Pass token IDs from one model call directly into the next.
+   * Agent A generates → IDs passed directly to Agent B as binary input.
+   * No text conversion at any point.
    */
   async agentHandoff(
     agentAPrompt: string,
@@ -119,8 +147,43 @@ export class CodecClient {
     agentB: { ids: number[]; stats: CodecStats };
   }> {
     const agentA = await this.generate(agentAPrompt, opts);
-    // agentA.ids are passed directly — no text conversion
-    const agentB = await this.generate(agentBPrompt(agentA.ids), opts);
+
+    // Pure token handoff: agentA.ids → agentB input, no text ever produced
+    const agentBIds: number[] = [];
+    let agentBByteCount = 0;
+    let agentBFinishReason: string | undefined;
+
+    for await (const frame of this.streamFromIds(agentA.ids, opts)) {
+      agentBIds.push(...frame.ids);
+      agentBByteCount += frame.ids.length * 4;
+      if (frame.finish_reason) agentBFinishReason = frame.finish_reason;
+    }
+
+    const agentB = {
+      ids: agentBIds,
+      stats: {
+        tokenCount: agentBIds.length,
+        byteCount: agentBByteCount,
+        bytesPerToken: agentBIds.length > 0 ? agentBByteCount / agentBIds.length : 0,
+        finishReason: agentBFinishReason,
+      },
+    };
+
     return { agentA, agentB };
+  }
+
+  /** Encode a binary codec request body as msgpack. */
+  private _encodeMsgpackRequest(promptIds: number[], opts: StreamOptions): Uint8Array {
+    // Hand-encode a minimal msgpack map: {prompt_ids, max_tokens, ...}
+    // We use the encode-from-JS approach via @msgpack/msgpack
+    const { encode } = require('@msgpack/msgpack');
+    const obj: Record<string, unknown> = {
+      prompt_ids: promptIds,
+      max_tokens: opts.maxNewTokens ?? 512,
+      stream_format: 'msgpack',
+    };
+    if (opts.temperature !== undefined) obj.temperature = opts.temperature;
+    if (opts.stop?.length) obj.stop = opts.stop;
+    return encode(obj);
   }
 }
