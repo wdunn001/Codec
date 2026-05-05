@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://codec.ai/schemas/tokenizer-map/v0.1",
+  "title": "Codec Tokenizer Map",
+  "description": "Client-side decode table for a single model's token vocabulary. Given a token ID, returns the string fragment it represents.",
+  "type": "object",
+  "required": ["id", "version", "vocab_size", "tokens"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable, globally unique tokenizer identifier (e.g. 'claude-sonnet-4-6-v1'). Matches the tokenizer_id in the READY frame."
+    },
+    "version": {
+      "type": "string",
+      "description": "Semver map version. Incremented when the vocabulary changes without a model rename."
+    },
+    "vocab_size": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total number of token IDs in the vocabulary. Valid IDs are 0 … vocab_size-1."
+    },
+    "tokens": {
+      "type": "object",
+      "description": "Map of token_id (string) → decoded fragment (string). String keys because JSON objects require string keys.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "special_tokens": {
+      "type": "object",
+      "description": "Named special token IDs (e.g. 'end_of_turn', 'pad', 'bos', 'eos'). Clients should not render special tokens as text.",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "byte_fallback_start": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "First token ID in the byte-fallback range (inclusive). IDs in [byte_fallback_start, byte_fallback_end] represent single UTF-8 bytes."
+    },
+    "byte_fallback_end": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Last token ID in the byte-fallback range (inclusive)."
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this map was published. Informational only."
+    }
+  },
+  "if": {
+    "required": ["byte_fallback_start"]
+  },
+  "then": {
+    "required": ["byte_fallback_end"]
+  },
+  "examples": [
+    {
+      "id": "claude-sonnet-4-6-v1",
+      "version": "1.0.0",
+      "vocab_size": 100277,
+      "tokens": {
+        "0": "!",
+        "1": "\"",
+        "220": " ",
+        "1820": " the",
+        "290": " of"
+      },
+      "special_tokens": {
+        "end_of_turn": 100264,
+        "bos": 100265,
+        "eos": 100266
+      },
+      "byte_fallback_start": 100000,
+      "byte_fallback_end": 100255,
+      "published_at": "2025-05-05T00:00:00Z"
+    }
+  ]
+}

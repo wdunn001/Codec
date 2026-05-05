@@ -1,0 +1,19 @@
+{
+  "name": "codec",
+  "version": "0.1.0",
+  "description": "Token-native binary transport protocol for AI APIs",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "demo": "tsx packages/demo/src/benchmark.ts",
+    "demo:agent": "tsx packages/demo/src/agent.ts",
+    "demo:tgi": "tsx packages/demo/src/tgi.ts",
+    "build": "tsc -b packages/core"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

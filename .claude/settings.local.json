@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "WebFetch(domain:claude.ai)",
+      "Bash(node --input-type=module)",
+      "Bash(npx tsx --eval ' *)",
+      "Bash(npx tsx *)",
+      "Bash(xargs grep *)",
+      "Bash(grep -rn \"pb::generate::\\\\|proto::Generation\\\\|generation\\\\\\\\.tokens\\\\|generation\\\\\\\\.texts\" /h/dev/text-generation-inference/router/src --include=\"*.rs\")",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(TGI_URL=http://localhost:3000 npx tsx packages/demo/src/tgi.ts)",
+      "Bash(docker --version)",
+      "Bash(docker info *)",
+      "Bash(nvidia-smi)",
+      "Bash(rustc --version)",
+      "Bash(pip --version)",
+      "Bash(pip3 --version)",
+      "PowerShell(python --version)",
+      "PowerShell(rustc --version)",
+      "PowerShell(cargo --version)",
+      "Bash(podman --version)",
+      "Bash(podman info *)",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\RedHat\\\\Podman\\\\\" -ErrorAction SilentlyContinue; Get-ChildItem \"${env:ProgramFiles}\\\\RedHat\\\\\" -ErrorAction SilentlyContinue)"
+    ]
+  }
+}

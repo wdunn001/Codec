@@ -1,0 +1,16 @@
+{
+  "name": "@codec/demo",
+  "version": "0.1.0",
+  "description": "Live benchmark and agent-to-agent demo for the Codec protocol",
+  "type": "module",
+  "scripts": {
+    "benchmark": "tsx src/benchmark.ts",
+    "agent": "tsx src/agent.ts",
+    "tgi": "tsx src/tgi.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@codec/core": "*",
+    "@codec/client": "*"
+  }
+}
