@@ -52,6 +52,8 @@ Each layer references up. An implementation points to its contract. A contract p
 
 ## The examples
 
+### C# — the payment processor
+
 The interface defines the contract once:
 
 ```csharp
@@ -108,7 +110,78 @@ public class StripePaymentProcessor : IPaymentProcessor
 
 When the AI opens the implementation to make a change, it sees the `Contract:` pointer immediately. If the change touches the contract's rules, it has the path. If the change is purely about Stripe mechanics, the implementation file already tells it what it needs to know. The metadata overload is a Stripe-specific extension that doesn't belong on the interface, every other implementation would have to ignore it. It belongs here, with a `Do Not` clarifying that it shouldn't leak into ledger logic.
 
-The pattern is the same in TypeScript, Python, or any language with structured documentation. The format is whatever the language and tooling already support. The discipline is what matters.
+### TypeScript + Python — the Codec protocol
+
+The pattern generalizes cleanly across languages and across the client/server boundary. Here is a real example from [Codec](https://github.com/wdunn001/Codec), an open protocol for token-native binary transport between AI models.
+
+The TypeScript interface in `packages/core/src/protocol.ts` is the contract. It is the only place the wire format rules live:
+
+```typescript
+/**
+ * The Codec binary wire frame — the protocol contract.
+ *
+ * Global Rules: CLAUDE.md, AGENTS.md
+ *
+ * Contract Rules:
+ * - `ids` contains raw model token IDs (uint32). No text ever crosses this boundary.
+ * - `done` signals end of stream. No further frames follow after it.
+ * - `finish_reason` is only set on the final frame (when done=true).
+ * - Frames are MessagePack-encoded, one per HTTP chunk. Wire cost: ~4 bytes/token.
+ *
+ * Implementations:
+ * - packages/client/src/client.ts       TypeScript decoder (client)
+ * - vllm/entrypoints/codec_frame.py     Python encoder/decoder (server)
+ *
+ * Do Not:
+ * - Add text fields. Eliminating text on the wire is the entire point.
+ * - Buffer frames before yielding. Streaming latency is a first-class concern.
+ */
+export interface CodecFrame {
+  ids: number[];
+  done: boolean;
+  finish_reason?: string;
+}
+```
+
+The TypeScript client implementation in `packages/client/src/client.ts` points back to the contract and documents only what belongs to it:
+
+```typescript
+/**
+ * Contract: packages/core/src/protocol.ts (CodecFrame)
+ *
+ * Implementation Notes:
+ * - stream() targets vLLM /v1/completions with stream_format:"msgpack"
+ * - streamFromIds() targets /v1/completions/codec for zero-text agent handoff
+ * - Frames decoded via @msgpack/msgpack decodeMultiStream over the response body
+ *
+ * Do Not:
+ * - Convert ids to text here. That is the caller's job, not this layer's.
+ * - Accumulate frames. Yield each immediately.
+ */
+export class CodecClient { ... }
+```
+
+The Python server implementation in `vllm/entrypoints/codec_frame.py` points to the same contract — across the language boundary:
+
+```python
+"""
+Contract: packages/core/src/protocol.ts (CodecFrame)
+
+Implementation Notes:
+- encode_msgpack() / encode_protobuf() produce frames matching the CodecFrame contract
+- decode_protobuf_request() / decode_msgpack() handle binary input (bidirectional)
+
+Do Not:
+- Include text in any frame field.
+- Change the field names or types without updating the contract first.
+"""
+```
+
+Three implementations across two languages and a network boundary, all pointing at the same contract file. When the model needs to add a field to `CodecFrame`, it has one place to read and two lists to check. When it generates the Python encoder, it knows exactly what the TypeScript decoder expects. No retrieval system found the Python file. The contract told the model it existed.
+
+The same rules that govern the payment processor in C# govern a binary protocol in TypeScript and Python. The format is different. The discipline is identical.
+
+See the implementation: [github.com/wdunn001/Codec](https://github.com/wdunn001/Codec) and the vLLM server PR: [vllm-project/vllm#41765](https://github.com/vllm-project/vllm/pull/41765).
 
 ## The CLAUDE.md and AGENTS.md additions
 

@@ -2,16 +2,30 @@
 export const CODEC_VERSION = '0.1';
 
 /**
- * A single frame as emitted by a Codec-enabled TGI server.
- * Wire format: MessagePack-encoded, one object per HTTP chunk.
- * Produced by TGI when `parameters.codec = true` in the request.
+ * The Codec binary wire frame — the protocol contract.
+ *
+ * Global Rules: CLAUDE.md, AGENTS.md
+ *
+ * Contract Rules:
+ * - `ids` contains raw model token IDs (uint32). No text ever crosses this boundary.
+ * - `done` signals end of stream. No further frames follow after it.
+ * - `finish_reason` is only set on the final frame (when done=true).
+ * - Frames are MessagePack-encoded, one per HTTP chunk. Wire cost: ~4 bytes/token.
+ *
+ * Implementations:
+ * - packages/client/src/client.ts       TypeScript decoder (client)
+ * - vllm/entrypoints/codec_frame.py     Python encoder/decoder (server)
+ *
+ * Do Not:
+ * - Add text fields. Eliminating text on the wire is the entire point.
+ * - Buffer frames before yielding. Streaming latency is a first-class concern.
  */
 export interface CodecFrame {
   /** Token IDs emitted by the model in this chunk. */
   ids: number[];
   /** True on the final frame — no more frames will follow. */
   done: boolean;
-  /** Set on the final frame. Values: "Length" | "EosToken" | "StopSequence" */
+  /** Set on the final frame. Values: "length" | "eos_token" | "stop_sequence" */
   finish_reason?: string;
 }
 
