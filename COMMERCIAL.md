@@ -47,7 +47,7 @@ need. There is no published price list. We aim to be reasonable.
 To request a commercial license, ask about pricing, or discuss anything
 license-related, email:
 
-**william.dunn@quasarke.com**
+**licensing@quasarke.com**
 
 Please include:
 
