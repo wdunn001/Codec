@@ -1,0 +1,245 @@
+/**
+ * Pre-tokenizer program tests.
+ *
+ * Two layers:
+ *   1. Direct interpreter unit tests on synthetic inputs, asserting the
+ *      op set behaves as documented in spec/PRETOKENIZER_PROGRAM.md.
+ *   2. **Equivalence with the regex** on real maps — for any input
+ *      string, running the compiled program must produce the same
+ *      sequence of pieces as compiling and running the corresponding
+ *      `pre_tokenizer_pattern`. This is the core spec property.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+
+import { runPreTokProgram, type PreTokProgram } from '../src/pretok-program.ts';
+import {
+  compilePreTokenizerRegex,
+  metaspaceProgram,
+} from '../../maps-cli/src/compile-pretok.ts';
+
+// ── Direct interpreter unit tests ───────────────────────────────────────────
+
+const QWEN_LIKE: PreTokProgram = {
+  version: 1,
+  ops: [
+    { op: 'literals_ci', patterns: ["'s","'t","'re","'ve","'m","'ll","'d"] },
+    { op: 'letters', lead_other: true },
+    { op: 'numbers' },
+    { op: 'punct_run', lead_space: true, trailing_newlines: true },
+    { op: 'newline_block' },
+    { op: 'trailing_ws' },
+    { op: 'ws_run' },
+  ],
+};
+
+test('pretok program: simple ASCII sentence', () => {
+  // Llama-3-style: leading space attaches to the next letter run via
+  // `[^\r\n\p{L}\p{N}]?\p{L}+`. So "Hello world!" splits into
+  // ["Hello", " world", "!"] — note the space attached to "world".
+  const out = runPreTokProgram(QWEN_LIKE, 'Hello world!');
+  assert.deepEqual(out, ['Hello', ' world', '!']);
+});
+
+test('pretok program: contractions are case-insensitive', () => {
+  assert.deepEqual(
+    runPreTokProgram(QWEN_LIKE, "It's"),
+    ['It', "'s"]);
+  assert.deepEqual(
+    runPreTokProgram(QWEN_LIKE, "It'S"),
+    ['It', "'S"]);  // CI match keeps the original casing
+});
+
+test('pretok program: digits run (Qwen-style: 1 digit per piece)', () => {
+  // Qwen-2 regex is `\p{N}` (no quantifier) — one digit per regex
+  // iteration, so digit runs come out one digit at a time. Match the
+  // canonical regex behavior precisely.
+  const qwen: PreTokProgram = {
+    version: 1,
+    ops: [
+      ...QWEN_LIKE.ops.slice(0, 2),
+      { op: 'numbers', max_run: 1 },
+      ...QWEN_LIKE.ops.slice(3),
+    ],
+  };
+  assert.deepEqual(
+    runPreTokProgram(qwen, 'abc12345'),
+    ['abc', '1', '2', '3', '4', '5']);
+});
+
+test('pretok program: digits bounded (Llama-3 style)', () => {
+  const llama: PreTokProgram = {
+    version: 1,
+    ops: [
+      ...QWEN_LIKE.ops.slice(0, 2),
+      { op: 'numbers', max_run: 3 },
+      ...QWEN_LIKE.ops.slice(3),
+    ],
+  };
+  // "12345" → ["123", "45"] under max_run: 3
+  assert.deepEqual(
+    runPreTokProgram(llama, '12345'),
+    ['123', '45']);
+});
+
+test('pretok program: punctuation run with trailing newline', () => {
+  // " !!!\n\n" → punct_run takes " !!!\n\n" as one piece
+  // (lead_space + [^\s\p{L}\p{N}]+ + [\r\n]*)
+  // Then nothing left.
+  const out = runPreTokProgram(QWEN_LIKE, 'hi !!!\n');
+  assert.deepEqual(out, ['hi', ' !!!\n']);
+});
+
+test('pretok program: trailing whitespace at EOI matches trailing_ws', () => {
+  // "hi   " → ["hi", "   "] where "   " comes from trailing_ws
+  const out = runPreTokProgram(QWEN_LIKE, 'hi   ');
+  assert.deepEqual(out, ['hi', '   ']);
+});
+
+test('pretok program: emoji and CJK are letters via \\p{L}', () => {
+  // CJK ideographs are \p{L}o (Letter, other) — should match "letters" op.
+  const out = runPreTokProgram(QWEN_LIKE, '日本語');
+  assert.deepEqual(out, ['日本語']);
+});
+
+test('pretok program: metaspace splits and prefixes ▁', () => {
+  const prog = metaspaceProgram();
+  assert.deepEqual(
+    runPreTokProgram(prog, 'Hello world'),
+    ['▁Hello', '▁world']);
+});
+
+test('pretok program: metaspace prefix_first leaves first piece bare', () => {
+  const prog = metaspaceProgram({ prefix_first: true });
+  assert.deepEqual(
+    runPreTokProgram(prog, 'Hello world'),
+    ['Hello', '▁world']);
+});
+
+// ── Compiler tests ──────────────────────────────────────────────────────────
+
+const QWEN_REGEX =
+  "(?i:'s|'t|'re|'ve|'m|'ll|'d)" +
+  "|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+" +
+  "|\\p{N}" +
+  "| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*" +
+  "|\\s*[\\r\\n]+" +
+  "|\\s+(?!\\S)" +
+  "|\\s+";
+
+const LLAMA_REGEX =
+  "(?i:'s|'t|'re|'ve|'m|'ll|'d)" +
+  "|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+" +
+  "|\\p{N}{1,3}" +
+  "| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*" +
+  "|\\s*[\\r\\n]+" +
+  "|\\s+(?!\\S)" +
+  "|\\s+";
+
+test('compiler: Qwen-2 regex compiles to single-digit numbers op', () => {
+  const prog = compilePreTokenizerRegex(QWEN_REGEX);
+  assert.notEqual(prog, null);
+  assert.equal(prog!.ops.length, 7);
+  assert.equal(prog!.ops[2]!.op, 'numbers');
+  // Bare `\p{N}` (no quantifier) → one digit per piece.
+  assert.equal((prog!.ops[2] as { max_run?: number }).max_run, 1);
+});
+
+test('compiler: Llama-3 regex compiles with max_run=3', () => {
+  const prog = compilePreTokenizerRegex(LLAMA_REGEX);
+  assert.notEqual(prog, null);
+  assert.equal((prog!.ops[2] as { max_run?: number }).max_run, 3);
+});
+
+test('compiler: unknown regex returns null', () => {
+  assert.equal(compilePreTokenizerRegex('[a-z]+|\\d+'), null);
+  assert.equal(compilePreTokenizerRegex(''), null);
+});
+
+// ── Equivalence: program output must equal regex output ─────────────────────
+
+const STRESS_INPUTS = [
+  '',
+  'a',
+  'Hello world',
+  'Hello, world!',
+  "It's a test.",
+  'abc123def456',
+  '   leading spaces',
+  'trailing spaces   ',
+  'multi   spaces',
+  'tab\there',
+  'newline\nhere',
+  'paragraph\n\nbreak',
+  'CRLF\r\nstyle',
+  'punct!!!run???',
+  ' leading punct: foo',
+  'mixed日本語text',
+  '🚀 emoji 🎉',
+  '日本語のテスト',
+  'Numbers 12345 in middle',
+  '  \n\n  whitespace + newline',
+  'a'.repeat(100),
+  '---divider---',
+  'unicode_ⅷ_numerals',
+];
+
+function runRegex(re: string, input: string): string[] {
+  const r = new RegExp(re, 'gu');
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = r.exec(input)) !== null) {
+    if (m[0].length > 0) out.push(m[0]);
+    if (m.index === r.lastIndex) r.lastIndex++;
+  }
+  return out;
+}
+
+test('equivalence: Qwen-2 program ≡ Qwen-2 regex on stress inputs', () => {
+  const prog = compilePreTokenizerRegex(QWEN_REGEX)!;
+  for (const input of STRESS_INPUTS) {
+    const fromProg = runPreTokProgram(prog, input);
+    const fromRe   = runRegex(QWEN_REGEX, input);
+    assert.deepEqual(fromProg, fromRe, `input: ${JSON.stringify(input)}`);
+  }
+});
+
+test('equivalence: Llama-3 program ≡ Llama-3 regex on stress inputs', () => {
+  const prog = compilePreTokenizerRegex(LLAMA_REGEX)!;
+  for (const input of STRESS_INPUTS) {
+    const fromProg = runPreTokProgram(prog, input);
+    const fromRe   = runRegex(LLAMA_REGEX, input);
+    assert.deepEqual(fromProg, fromRe, `input: ${JSON.stringify(input)}`);
+  }
+});
+
+// ── Equivalence on real published map regex ─────────────────────────────────
+
+function findQwen2(): string | null {
+  const candidates = [
+    path.resolve(process.cwd(), '../../../codec-maps/maps/qwen/qwen2.json'),
+    path.resolve(process.cwd(), '../../codec-maps/maps/qwen/qwen2.json'),
+    process.env.CODEC_MAPS_QWEN ?? '',
+  ];
+  for (const c of candidates) if (c && fs.existsSync(c)) return c;
+  return null;
+}
+
+test('equivalence: real Qwen-2 map regex compiles + matches on stress inputs',
+  { skip: !findQwen2() }, () => {
+    const map = JSON.parse(fs.readFileSync(findQwen2()!, 'utf-8'));
+    const re = map.pre_tokenizer_pattern as string;
+    assert.ok(re, 'real qwen2 map should carry pre_tokenizer_pattern');
+
+    const prog = compilePreTokenizerRegex(re);
+    assert.notEqual(prog, null,
+      `compiler should recognise the published Qwen-2 regex: ${re}`);
+
+    for (const input of STRESS_INPUTS) {
+      const fromProg = runPreTokProgram(prog!, input);
+      const fromRe   = runRegex(re, input);
+      assert.deepEqual(fromProg, fromRe, `input: ${JSON.stringify(input)}`);
+    }
+  });

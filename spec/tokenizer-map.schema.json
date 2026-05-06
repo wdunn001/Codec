@@ -42,7 +42,16 @@
     },
     "pre_tokenizer_pattern": {
       "type": "string",
-      "description": "Regex pattern that splits input text into pieces before byte-encoding and BPE merging. Required by BPETokenizer when encoder = 'byte_level'. The pattern uses Unicode property classes (\\p{L}, \\p{N}, …) which all major regex engines support."
+      "description": "Regex pattern that splits input text into pieces before byte-encoding and BPE merging. Required by BPETokenizer when encoder = 'byte_level' AND pre_tokenizer_program is absent. The pattern uses Unicode property classes (\\p{L}, \\p{N}, …) which all major regex engines support."
+    },
+    "pre_tokenizer_program": {
+      "type": "object",
+      "description": "v2.1: compiled pre-tokenizer program — an ordered op list runtimes can execute without a Unicode regex engine. Preferred over pre_tokenizer_pattern when both are present. See spec/PRETOKENIZER_PROGRAM.md for the full op set and equivalence rules.",
+      "properties": {
+        "version": { "type": "integer", "minimum": 1 },
+        "ops": { "type": "array", "items": { "type": "object" } }
+      },
+      "required": ["version", "ops"]
     },
     "byte_fallback_start": {
       "type": "integer",

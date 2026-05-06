@@ -31,6 +31,7 @@
  * Pure JS, no wasm, no native deps. ~200 lines.
  */
 import { encodeByteLevelChars, METASPACE } from './encoder.js';
+import { runPreTokProgram, type PreTokProgram } from './pretok-program.js';
 import type { Tokenizer, TokenizerMap } from './types.js';
 
 export class BPETokenizer implements Tokenizer {
@@ -40,6 +41,7 @@ export class BPETokenizer implements Tokenizer {
   /** "left right" → priority (lower wins). */
   private readonly mergeRanks: ReadonlyMap<string, number>;
   private readonly preTokRegex: RegExp | null;
+  private readonly preTokProgram: PreTokProgram | null;
   private readonly encoder: 'byte_level' | 'metaspace';
   private readonly byteFallbackStart: number;
   private readonly cache = new Map<string, number[]>();
@@ -90,17 +92,27 @@ export class BPETokenizer implements Tokenizer {
     }
     this.mergeRanks = ranks;
 
-    // Pre-tokenizer regex. JS supports Unicode property classes (\p{L} etc.)
-    // via the `u` flag.
+    // Pre-tokenizer: prefer the compiled program when present, otherwise
+    // fall back to the legacy regex. Programs are required for any client
+    // without a Unicode regex engine (libcodec/C); the regex remains
+    // useful for compatibility and as a fallback for unrecognised
+    // tokenizer families that the maps-cli compiler couldn't lower.
     if (this.encoder === 'byte_level') {
-      if (!map.pre_tokenizer_pattern) {
+      if (map.pre_tokenizer_program && map.pre_tokenizer_program.ops?.length) {
+        this.preTokProgram = map.pre_tokenizer_program as unknown as PreTokProgram;
+        this.preTokRegex = null;
+      } else if (map.pre_tokenizer_pattern) {
+        this.preTokRegex = new RegExp(map.pre_tokenizer_pattern, 'gu');
+        this.preTokProgram = null;
+      } else {
         throw new Error(
-          `BPETokenizer: byte_level map "${map.id}" missing pre_tokenizer_pattern.`,
+          `BPETokenizer: byte_level map "${map.id}" missing both ` +
+            `pre_tokenizer_program and pre_tokenizer_pattern.`,
         );
       }
-      this.preTokRegex = new RegExp(map.pre_tokenizer_pattern, 'gu');
     } else {
       this.preTokRegex = null;
+      this.preTokProgram = null;
     }
   }
 
@@ -128,6 +140,9 @@ export class BPETokenizer implements Tokenizer {
 
   private preTokenize(text: string): string[] {
     if (this.encoder === 'byte_level') {
+      if (this.preTokProgram) {
+        return runPreTokProgram(this.preTokProgram, text);
+      }
       // Reset regex state and collect non-empty matches.
       const re = this.preTokRegex!;
       re.lastIndex = 0;

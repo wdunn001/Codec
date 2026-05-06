@@ -91,3 +91,9 @@ export {
   decodeProtobufStream,
   decodeProtobufFrame,
 } from './stream.js';
+
+export {
+  runPreTokProgram,
+  type PreTokOp,
+  type PreTokProgram,
+} from './pretok-program.js';
