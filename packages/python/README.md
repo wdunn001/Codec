@@ -1,0 +1,144 @@
+# codecai
+
+**Python client for the [Codec](https://github.com/wdunn001/Codec) binary transport protocol.**
+
+The Python twin of [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) (browser/Node) and [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) (.NET). Decodes streaming token IDs from Codec-compliant servers (vLLM, SGLang) and encodes text into IDs for the bidirectional path. Pure Python, no native dependencies beyond `msgspec` and `httpx`.
+
+## Why this exists
+
+Real measurements from `Codec/packages/bench` (live Ollama qwen2.5):
+
+| Configuration                              | B/token | vs JSON-SSE |
+|--------------------------------------------|--------:|------------:|
+| JSON-SSE (live Ollama)                     |   186.4 |        1.0× |
+| Codec msgpack                              |    16.0 |        9.6× |
+| Codec protobuf                             |    10.9 |   **14.2×** |
+| Codec msgpack + `Content-Encoding: br`     |    2.79 |   **55.2×** |
+
+Agent-to-agent handoffs: **3.6× faster** end-to-end at 1024 tokens, because both the wire shrinks and detokenize+tokenize gets eliminated.
+
+## Install
+
+```bash
+pip install codecai
+```
+
+Requires Python 3.9+.
+
+## Quick start — decode a stream
+
+```python
+import asyncio
+import httpx
+
+from codecai import Detokenizer, decode_msgpack_stream, load_map
+
+
+async def main() -> None:
+    # 1. Load and pin the dialect map by sha256.
+    m = await load_map(
+        url="https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/qwen/qwen2.json",
+        hash="sha256:c73972f7a580…",
+    )
+
+    # 2. Stream from a Codec-compliant server.
+    async with httpx.AsyncClient() as client:
+        async with client.stream(
+            "POST",
+            "http://localhost:8000/v1/completions",
+            json={
+                "model": "Qwen/Qwen2.5-7B-Instruct",
+                "prompt": "Explain entropy.",
+                "stream_format": "msgpack",
+                "max_tokens": 256,
+            },
+            timeout=None,
+        ) as resp:
+            # 3. Detokenize lazily — only when rendering for a human.
+            detok = Detokenizer(m)
+            async for frame in decode_msgpack_stream(resp.aiter_raw()):
+                print(
+                    detok.render(frame.ids, partial=not frame.done),
+                    end="",
+                    flush=True,
+                )
+
+
+asyncio.run(main())
+```
+
+## Quick start — encode text (bidirectional path)
+
+When you want **zero text on the wire in either direction** — agent A's output IDs feeding straight into agent B's input — encode text to IDs locally before sending:
+
+```python
+from codecai import BPETokenizer
+
+tok = BPETokenizer(m)
+prompt_ids = tok.encode("Explain entropy.")  # pure-Python BPE, exact
+
+# Send IDs as a normal OpenAI prompt: list[int] (no special endpoint needed).
+async with httpx.AsyncClient() as client:
+    async with client.stream(
+        "POST",
+        "http://localhost:8000/v1/completions",
+        json={
+            "prompt": prompt_ids,
+            "stream_format": "msgpack",
+            "max_tokens": 256,
+        },
+    ) as resp:
+        ...
+```
+
+For huge prompts (>50K tokens, e.g. RAG with long context), `/v1/completions/codec` accepts a binary msgpack request body with the same effect. See [PROTOCOL.md](https://github.com/wdunn001/Codec/blob/main/spec/PROTOCOL.md) for both paths.
+
+## API
+
+| Symbol | Purpose |
+|---|---|
+| `load_map(url=..., hash=...)` | Fetch + sha256-verify + cache a dialect map (async) |
+| `MemoryMapCache` | Default in-memory `MapCache`. Subclass for Redis / disk |
+| `TokenizerMap.from_json(...)` | Parse + schema check |
+| `Detokenizer` | Stateful detokenizer: byte_level + metaspace + byte fallback + partial UTF-8 |
+| `detokenize(map, ids)` | One-shot for non-streaming use |
+| `BPETokenizer` | Pure-Python BPE: byte_level + metaspace |
+| `LongestMatchTokenizer` | Vocab-only fallback for canonical-IR maps |
+| `pick_tokenizer(map)` | Build the right tokenizer for the loaded map |
+| `tokenize(map, text)` | One-shot helper |
+| `decode_msgpack_stream(body)` | `AsyncIterable[bytes]` → `AsyncIterator[CodecFrame]` |
+| `decode_protobuf_stream(body)` | Same for length-prefixed protobuf |
+| `decode_protobuf_frame(payload)` | One-shot frame decoder (no length prefix) |
+
+## Correctness
+
+- **Byte-level decode**: every vocab token is a sequence of GPT-2-encoded bytes. The Detokenizer reverses the byte→unicode table and accumulates bytes across tokens until a complete UTF-8 sequence forms. Tested with 3-byte (`€`) and 4-byte (`🚀`) sequences.
+- **Metaspace decode**: `▁` becomes space; SentencePiece byte-fallback IDs (`<0x00>`–`<0xFF>`) decoded through the same UTF-8 buffer.
+- **Partial sequences across frames**: `Detokenizer` is stateful — call `render(ids, partial=True)` while frames stream, then `partial=False` (default) on the last frame so the buffer flushes. `reset()` between conversations.
+- **BPE merge ordering**: greedy by priority, not left-to-right. Matches HuggingFace `tokenizers` reference behavior. Test fixture verifies this explicitly.
+- **HuggingFace round-trip**: real Qwen-2 (152K vocab, byte_level) round-trips ASCII, code, emoji, multi-script CJK / Latin diacritics. Bit-identical with HF's Rust `tokenizers` library (verified by `tests/test_bpe.py::test_qwen_matches_hf_reference`).
+- **Hash verification** uses `hashlib.sha256`. Mismatch raises `TokenizerMapHashMismatchError`.
+
+## Map sources
+
+`load_map` accepts any URL — the sha256 hash is what matters. Curated maps:
+
+```
+https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/<family>.json
+```
+
+14 families covering 70+ aliases — see [`codec-maps`](https://github.com/wdunn001/codec-maps) for the index.
+
+To generate a map from a HuggingFace `tokenizer.json`:
+
+```bash
+npx @codecai/maps-cli build my-org/my-model --id=my-org/my-model
+```
+
+## Compression
+
+`load_map` uses `httpx`, which transparently decompresses `gzip` and `brotli` `Content-Encoding`. jsDelivr serves brotli automatically (3.4× smaller transfers). For Codec streaming responses, the server negotiates `Content-Encoding` based on the request's `Accept-Encoding`.
+
+## License
+
+MIT. See [LICENSE](https://github.com/wdunn001/Codec/blob/main/LICENSE).

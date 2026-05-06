@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "codecai"
+version = "0.1.0"
+description = "Tokenizer + detokenizer for the Codec binary transport protocol — decode streaming token IDs from vLLM/SGLang, encode text into IDs for the bidirectional path. The Python twin of @codecai/web and Codec.Net."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "wdunn001 and contributors" }]
+keywords = ["codec", "llm", "tokenizer", "detokenizer", "binary", "msgpack", "protobuf", "streaming", "ai", "vllm", "sglang"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Internet :: WWW/HTTP",
+]
+
+# msgspec covers msgpack encoding + json validation; httpx covers async HTTP.
+# Both are widely available in vLLM/SGLang/LLM tooling environments.
+dependencies = [
+    "msgspec>=0.18.0",
+    "httpx>=0.25.0",
+    # Pre-tokenizer regex for byte_level BPE uses \p{L} and \p{N} Unicode
+    # property classes, which Python's stdlib `re` doesn't support.
+    "regex>=2023.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/wdunn001/Codec"
+Repository = "https://github.com/wdunn001/Codec"
+Issues = "https://github.com/wdunn001/Codec/issues"
+Documentation = "https://github.com/wdunn001/Codec/blob/main/spec/PROTOCOL.md"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "tokenizers>=0.20",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/codecai"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/codecai",
+    "tests",
+    "README.md",
+    "pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
