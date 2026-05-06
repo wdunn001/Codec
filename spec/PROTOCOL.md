@@ -11,9 +11,10 @@ another model.
 
 Current AI APIs convert model-internal token IDs to UTF-8, wrap them in JSON,
 and ship them over HTTP. The model emits a ~17-bit integer; the wire carries
-50–100 bytes per token. For agent-to-agent calls the receiving model
-immediately re-tokenises the text back into IDs. The round-trip through UTF-8
-serves nobody.
+~150–190 bytes per token (measured: 154 B/token in synthetic JSON-SSE,
+186 B/token from a live Ollama stream). For agent-to-agent calls the receiving
+model immediately re-tokenises the text back into IDs. The round-trip through
+UTF-8 serves nobody.
 
 Codec separates the layers:
 
@@ -81,8 +82,11 @@ The receiver decodes using a streaming MessagePack unpacker (e.g.
 `decodeMultiStream` in `@msgpack/msgpack`, `msgspec.msgpack.Decoder` in
 Python).
 
-**Bytes per token:** ~2.5 (vs ~80 for JSON SSE). Compression (see below)
-brings this to ~1.8 bytes/token.
+**Bytes per token (synthetic, 1 token/chunk):** ~16 for msgpack, ~10.9 for
+protobuf, vs ~154 for JSON-SSE — a 10–14× wire reduction before compression.
+With 8-token chunks both Codec modes drop to ~4–5 B/token, near the raw
+uint32 floor. See *Wire impact (measured)* below for the full table including
+gzip/zstd overlay.
 
 ### Mode B — Protobuf (`application/x-protobuf`)
 
@@ -280,14 +284,64 @@ streaming nature means total size isn't known upfront; gzip/zstd overhead
 bytes minimum); and token IDs are uniformly distributed integers, so
 compression always achieves some gain.
 
-### Wire impact (Qwen-2 measurements)
+### Wire impact (measured)
 
-| Configuration                          | Bytes/token |
-|----------------------------------------|-------------|
-| JSON SSE (baseline)                    | ~80         |
-| Codec msgpack/protobuf, identity       | ~2.5        |
-| + `Content-Encoding: zstd`             | ~1.8        |
-| + Pre-trained zstd dictionary (future) | ~1.2        |
+These are real numbers from `packages/bench`. The baselines change with
+chunk size — LLM streams that emit a single token per chunk pay more
+framing overhead, while batched chunks amortize it.
+
+**1 token per chunk** (worst case for framing — typical for token-by-token streaming):
+
+| Configuration              | Bytes/token | vs JSON-SSE |
+|----------------------------|-------------|-------------|
+| JSON-SSE (identity)        |       154.0 |        1.0× |
+| Codec msgpack (identity)   |        16.0 |        9.6× |
+| Codec protobuf (identity)  |        10.9 |       14.2× |
+| Codec msgpack + `zstd`     |         3.4 |       45.0× |
+| Codec protobuf + `zstd`    |         3.6 |       43.1× |
+| Codec msgpack + `gzip`     |         3.5 |       44.4× |
+| Codec protobuf + `gzip`    |         3.4 |       45.1× |
+| (theoretical floor: raw uint32) | 4.0    |       38.5× |
+
+**8 tokens per chunk** (batched output — closer to peak streaming throughput):
+
+| Configuration                | Bytes/token | vs JSON-SSE |
+|------------------------------|-------------|-------------|
+| JSON-SSE (identity)          |        22.8 |        1.0× |
+| Codec msgpack (identity)     |         5.5 |        4.2× |
+| Codec protobuf (identity)    |         3.9 |        5.9× |
+
+**Live measurement (Ollama qwen2.5, 320-token completion):**
+
+| Encoder                   | Wire bytes | Bytes/token |
+|---------------------------|------------|-------------|
+| JSON-SSE (measured)       |   58.3 KB  |       186.4 |
+| Codec msgpack (projected) |    4.7 KB  |        15.1 |
+| Codec protobuf (projected)|    3.4 KB  |        11.0 |
+
+The live JSON-SSE baseline is ~186 B/token because real model output
+contains the detokenized text strings, which are larger than the
+synthetic placeholder text the microbench uses (154 B/token there). The
+gap with Codec is bigger in the wild.
+
+Notes:
+
+- **Compression's biggest win is at small chunk sizes.** With 1-token
+  chunks, gzip/zstd brings Codec from 11–16 B/token down to ~3.4 B/token —
+  near the 4-byte raw uint32 floor. With 8-token chunks the uncompressed
+  numbers (~4–5 B/token) already approach that floor, so compression
+  saves less.
+- **gzip and zstd are within noise of each other on Codec streams.** The
+  Codec wire formats have low structural redundancy (varint-packed
+  uint32s, short field tags) so the compressor can't find much to
+  exploit. Both bring you to ~3.4 B/token. zstd's bigger ratio shows up
+  when there's structural redundancy to crush — like JSON-SSE, which it
+  flattens to <1 B/token in synthetic streams (this is misleading — real
+  JSON-SSE contains detokenized text which doesn't compress as well).
+- **Pre-trained ZSTD dictionaries (future) push Codec further.** Training
+  a dictionary on typical token sequences for a model captures bigrams,
+  instruction templates, and code structure before the first byte. Not
+  yet benchmarked.
 
 ### Future: pre-trained ZSTD dictionaries
 
