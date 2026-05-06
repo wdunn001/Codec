@@ -63,9 +63,21 @@ export interface TokenizerMap {
 
   /**
    * Regex pattern that splits input text into pieces before byte-encoding
-   * and BPE merging. Required by `BPETokenizer` when `encoder === "byte_level"`.
+   * and BPE merging. Required by `BPETokenizer` when `encoder === "byte_level"`
+   * unless `pre_tokenizer_program` is present (program is preferred).
    */
   readonly pre_tokenizer_pattern?: string;
+
+  /**
+   * Compiled pre-tokenizer program. Preferred over `pre_tokenizer_pattern`
+   * when both are present. The program is a small ordered op list that
+   * runtimes can execute without a Unicode regex engine — see
+   * `spec/PRETOKENIZER_PROGRAM.md` for the schema and op set.
+   */
+  readonly pre_tokenizer_program?: {
+    readonly version: number;
+    readonly ops: ReadonlyArray<Readonly<Record<string, unknown>>>;
+  };
 
   /** First ID in the byte-fallback range (inclusive). SentencePiece only. */
   readonly byte_fallback_start?: number;

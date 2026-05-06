@@ -15,6 +15,7 @@
  */
 
 import type { TokenizerMap } from '@codecai/web';
+import { compilePreTokenizerRegex, metaspaceProgram } from './compile-pretok.js';
 
 // ── HuggingFace tokenizer.json shape ────────────────────────────────────────
 
@@ -155,6 +156,20 @@ export function convertHFTokenizer(
   if (pre_tokenizer_pattern)
     (result as { pre_tokenizer_pattern?: string }).pre_tokenizer_pattern =
       pre_tokenizer_pattern;
+
+  // Compile the regex into a v2.1 pre_tokenizer_program when the regex
+  // is one we recognise. Old clients ignore the field; new clients
+  // (and the C runtime once it lands) skip the regex engine entirely.
+  // For metaspace encoders, emit the metaspace_split shortcut directly.
+  if (encoder === 'byte_level' && pre_tokenizer_pattern) {
+    const prog = compilePreTokenizerRegex(pre_tokenizer_pattern);
+    if (prog) {
+      (result as { pre_tokenizer_program?: typeof prog }).pre_tokenizer_program = prog;
+    }
+  } else if (encoder === 'metaspace') {
+    const prog = metaspaceProgram();
+    (result as { pre_tokenizer_program?: typeof prog }).pre_tokenizer_program = prog;
+  }
   if (byte_fallback_start !== undefined) {
     (result as { byte_fallback_start?: number }).byte_fallback_start = byte_fallback_start;
     (result as { byte_fallback_end?: number }).byte_fallback_end = byte_fallback_end;
