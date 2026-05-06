@@ -173,6 +173,22 @@ static codec_status_t set_entry(codec_tokenizer_map_t *m, uint32_t id,
     return CODEC_OK;
 }
 
+static void free_pretok_program(codec_pretok_program_t *prog) {
+    if (!prog) return;
+    if (prog->ops) {
+        for (size_t i = 0; i < prog->op_count; i++) {
+            codec_pretok_op_t *op = &prog->ops[i];
+            if (op->kind == CODEC_PRETOK_LITERALS_CI && op->u.literals_ci.patterns) {
+                for (size_t k = 0; k < op->u.literals_ci.count; k++)
+                    free(op->u.literals_ci.patterns[k]);
+                free(op->u.literals_ci.patterns);
+            }
+        }
+        free(prog->ops);
+    }
+    free(prog);
+}
+
 void codec_map_free(codec_tokenizer_map_t *map) {
     if (!map) return;
     free(map->id);
@@ -185,6 +201,15 @@ void codec_map_free(codec_tokenizer_map_t *map) {
         for (size_t i = 0; i < map->special_count; i++) free(map->specials[i].name);
         free(map->specials);
     }
+    if (map->bpe_vocab) {
+        for (size_t i = 0; i < map->bpe_vocab_count; i++) free(map->bpe_vocab[i].raw_key);
+        free(map->bpe_vocab);
+    }
+    if (map->bpe_merges) {
+        for (size_t i = 0; i < map->bpe_merges_count; i++) free(map->bpe_merges[i].pair);
+        free(map->bpe_merges);
+    }
+    free_pretok_program(map->pretok_program);
     free(map);
 }
 
@@ -215,6 +240,239 @@ static size_t skip_subtree(const jsmntok_t *toks, size_t idx) {
     return i;
 }
 
+/* ── BPE vocab + merges helpers ──────────────────────────────────────────── */
+
+static int cmp_bpe_vocab(const void *a, const void *b) {
+    const codec_bpe_vocab_entry_t *ea = a;
+    const codec_bpe_vocab_entry_t *eb = b;
+    return strcmp(ea->raw_key, eb->raw_key);
+}
+
+static int cmp_bpe_merge(const void *a, const void *b) {
+    const codec_bpe_merge_entry_t *ea = a;
+    const codec_bpe_merge_entry_t *eb = b;
+    return strcmp(ea->pair, eb->pair);
+}
+
+/* Append a (raw_key, id) pair to bpe_vocab. Takes ownership of raw_key
+ * (must be malloc'd and unique — caller stops using it). */
+static codec_status_t bpe_vocab_push(codec_tokenizer_map_t *m,
+                                     char *raw_key, uint32_t id) {
+    /* Geometric growth in steps of 2. Allocate count+1 capacity tracked
+     * implicitly: we round up to next power of 2 in the realloc path. */
+    static const size_t CHUNK = 1024;
+    if ((m->bpe_vocab_count % CHUNK) == 0) {
+        size_t new_cap = m->bpe_vocab_count + CHUNK;
+        codec_bpe_vocab_entry_t *grow = (codec_bpe_vocab_entry_t *)realloc(
+            m->bpe_vocab, new_cap * sizeof(codec_bpe_vocab_entry_t));
+        if (!grow) return CODEC_ERR_OUT_OF_MEMORY;
+        m->bpe_vocab = grow;
+    }
+    m->bpe_vocab[m->bpe_vocab_count].raw_key = raw_key;
+    m->bpe_vocab[m->bpe_vocab_count].id      = id;
+    m->bpe_vocab_count++;
+    return CODEC_OK;
+}
+
+/* Sorted-array bsearch: raw_key -> id. Returns 1 on hit, 0 on miss. */
+int codec_bpe_vocab_lookup(const codec_tokenizer_map_t *m,
+                           const char *raw_key, uint32_t *out_id) {
+    if (!m || !m->bpe_vocab || !raw_key || !out_id) return 0;
+    codec_bpe_vocab_entry_t key = { (char *)raw_key, 0 };
+    codec_bpe_vocab_entry_t *hit = (codec_bpe_vocab_entry_t *)bsearch(
+        &key, m->bpe_vocab, m->bpe_vocab_count,
+        sizeof(*m->bpe_vocab), cmp_bpe_vocab);
+    if (!hit) return 0;
+    *out_id = hit->id;
+    return 1;
+}
+
+/* Sorted-array bsearch: "left right" -> rank. Returns 1 on hit. */
+int codec_bpe_merge_rank(const codec_tokenizer_map_t *m,
+                         const char *pair, uint32_t *out_rank) {
+    if (!m || !m->bpe_merges || !pair || !out_rank) return 0;
+    codec_bpe_merge_entry_t key = { (char *)pair, 0 };
+    codec_bpe_merge_entry_t *hit = (codec_bpe_merge_entry_t *)bsearch(
+        &key, m->bpe_merges, m->bpe_merges_count,
+        sizeof(*m->bpe_merges), cmp_bpe_merge);
+    if (!hit) return 0;
+    *out_rank = hit->rank;
+    return 1;
+}
+
+const codec_pretok_program_t *codec_map_pretok_program(
+    const codec_tokenizer_map_t *m) {
+    return m ? m->pretok_program : NULL;
+}
+
+/* ── Parse pre_tokenizer_program ─────────────────────────────────────────── */
+
+static int tok_str_eq(const char *json, const jsmntok_t *t, const char *s) {
+    return tok_eq(json, t, s);
+}
+
+static int parse_bool_token(const char *json, const jsmntok_t *t, int *out) {
+    /* JSMN_PRIMITIVE covers true/false/null/numbers; check the start char. */
+    char c = json[t->start];
+    if (c == 't') { *out = 1; return 1; }
+    if (c == 'f') { *out = 0; return 1; }
+    return 0;
+}
+
+static codec_status_t parse_one_pretok_op(
+    codec_pretok_op_t *out_op,
+    const char *json,
+    const jsmntok_t *toks, size_t op_idx)
+{
+    const jsmntok_t *obj = &toks[op_idx];
+    if (obj->type != JSMN_OBJECT) return CODEC_ERR_PARSE;
+    /* Two passes: first locate "op" so we know which kind, then read
+     * the kind-specific fields. */
+    const char *kind_str = NULL;
+    size_t kind_len = 0;
+    size_t pos = op_idx + 1;
+    for (int j = 0; j < obj->size; j++) {
+        const jsmntok_t *key = &toks[pos];
+        const jsmntok_t *val = &toks[pos + 1];
+        if (tok_str_eq(json, key, "op") && val->type == JSMN_STRING) {
+            kind_str = json + val->start;
+            kind_len = (size_t)(val->end - val->start);
+        }
+        pos = skip_subtree(toks, pos + 1);
+    }
+    if (!kind_str) return CODEC_ERR_PARSE;
+
+    /* Dispatch on op kind. */
+    memset(out_op, 0, sizeof(*out_op));
+    if (kind_len == 11 && strncmp(kind_str, "literals_ci", 11) == 0) {
+        out_op->kind = CODEC_PRETOK_LITERALS_CI;
+    } else if (kind_len == 7 && strncmp(kind_str, "letters", 7) == 0) {
+        out_op->kind = CODEC_PRETOK_LETTERS;
+    } else if (kind_len == 7 && strncmp(kind_str, "numbers", 7) == 0) {
+        out_op->kind = CODEC_PRETOK_NUMBERS;
+    } else if (kind_len == 9 && strncmp(kind_str, "punct_run", 9) == 0) {
+        out_op->kind = CODEC_PRETOK_PUNCT_RUN;
+    } else if (kind_len == 13 && strncmp(kind_str, "newline_block", 13) == 0) {
+        out_op->kind = CODEC_PRETOK_NEWLINE_BLOCK;
+    } else if (kind_len == 11 && strncmp(kind_str, "trailing_ws", 11) == 0) {
+        out_op->kind = CODEC_PRETOK_TRAILING_WS;
+    } else if (kind_len == 6 && strncmp(kind_str, "ws_run", 6) == 0) {
+        out_op->kind = CODEC_PRETOK_WS_RUN;
+    } else if (kind_len == 15 && strncmp(kind_str, "metaspace_split", 15) == 0) {
+        out_op->kind = CODEC_PRETOK_METASPACE_SPLIT;
+    } else {
+        return CODEC_ERR_PARSE;
+    }
+
+    /* Second pass: read kind-specific fields. */
+    pos = op_idx + 1;
+    for (int j = 0; j < obj->size; j++) {
+        const jsmntok_t *key = &toks[pos];
+        const jsmntok_t *val = &toks[pos + 1];
+        size_t next_pos = skip_subtree(toks, pos + 1);
+
+        if (out_op->kind == CODEC_PRETOK_LITERALS_CI
+            && tok_str_eq(json, key, "patterns")
+            && val->type == JSMN_ARRAY) {
+            out_op->u.literals_ci.patterns =
+                (char **)calloc((size_t)val->size, sizeof(char *));
+            if (!out_op->u.literals_ci.patterns) return CODEC_ERR_OUT_OF_MEMORY;
+            out_op->u.literals_ci.count = (size_t)val->size;
+            size_t arr_pos = pos + 2;
+            for (int k = 0; k < val->size; k++) {
+                const jsmntok_t *str = &toks[arr_pos];
+                if (str->type != JSMN_STRING) return CODEC_ERR_PARSE;
+                size_t L = (size_t)(str->end - str->start), uL;
+                char *p = json_unescape(json + str->start, L, &uL);
+                if (!p) return CODEC_ERR_OUT_OF_MEMORY;
+                out_op->u.literals_ci.patterns[k] = p;
+                arr_pos++;
+            }
+        } else if (out_op->kind == CODEC_PRETOK_LETTERS
+                   && tok_str_eq(json, key, "lead_other")
+                   && val->type == JSMN_PRIMITIVE) {
+            int b;
+            if (parse_bool_token(json, val, &b)) out_op->u.letters.lead_other = b;
+        } else if (out_op->kind == CODEC_PRETOK_NUMBERS
+                   && tok_str_eq(json, key, "max_run")
+                   && val->type == JSMN_PRIMITIVE) {
+            long v;
+            if (parse_int(json + val->start,
+                          (size_t)(val->end - val->start), &v) && v >= 0) {
+                out_op->u.numbers.max_run = (uint32_t)v;
+            }
+        } else if (out_op->kind == CODEC_PRETOK_PUNCT_RUN
+                   && val->type == JSMN_PRIMITIVE) {
+            int b;
+            if (tok_str_eq(json, key, "lead_space")
+                && parse_bool_token(json, val, &b))
+                out_op->u.punct_run.lead_space = b;
+            else if (tok_str_eq(json, key, "trailing_newlines")
+                     && parse_bool_token(json, val, &b))
+                out_op->u.punct_run.trailing_newlines = b;
+        } else if (out_op->kind == CODEC_PRETOK_METASPACE_SPLIT
+                   && tok_str_eq(json, key, "prefix_first")
+                   && val->type == JSMN_PRIMITIVE) {
+            int b;
+            if (parse_bool_token(json, val, &b))
+                out_op->u.metaspace_split.prefix_first = b;
+        }
+        pos = next_pos;
+    }
+    return CODEC_OK;
+}
+
+static codec_status_t parse_pretok_program(
+    codec_tokenizer_map_t *m,
+    const char *json,
+    const jsmntok_t *toks, size_t prog_idx)
+{
+    const jsmntok_t *obj = &toks[prog_idx];
+    if (obj->type != JSMN_OBJECT) return CODEC_ERR_PARSE;
+
+    /* Locate "version" (optional) and "ops" (required). */
+    int version = 1;
+    size_t ops_idx = 0;
+    size_t pos = prog_idx + 1;
+    for (int j = 0; j < obj->size; j++) {
+        const jsmntok_t *key = &toks[pos];
+        const jsmntok_t *val = &toks[pos + 1];
+        size_t next_pos = skip_subtree(toks, pos + 1);
+        if (tok_str_eq(json, key, "version") && val->type == JSMN_PRIMITIVE) {
+            long v;
+            if (parse_int(json + val->start,
+                          (size_t)(val->end - val->start), &v) && v >= 0) {
+                version = (int)v;
+            }
+        } else if (tok_str_eq(json, key, "ops") && val->type == JSMN_ARRAY) {
+            ops_idx = pos + 1;
+        }
+        pos = next_pos;
+    }
+    if (ops_idx == 0) return CODEC_ERR_PARSE;
+
+    const jsmntok_t *ops = &toks[ops_idx];
+    codec_pretok_program_t *prog = (codec_pretok_program_t *)calloc(1, sizeof(*prog));
+    if (!prog) return CODEC_ERR_OUT_OF_MEMORY;
+    prog->version  = version;
+    prog->op_count = (size_t)ops->size;
+    prog->ops = (codec_pretok_op_t *)calloc(prog->op_count, sizeof(*prog->ops));
+    if (!prog->ops) { free(prog); return CODEC_ERR_OUT_OF_MEMORY; }
+
+    size_t op_pos = ops_idx + 1;
+    for (int j = 0; j < ops->size; j++) {
+        codec_status_t st = parse_one_pretok_op(&prog->ops[j], json, toks, op_pos);
+        if (st != CODEC_OK) {
+            free_pretok_program(prog);
+            return st;
+        }
+        op_pos = skip_subtree(toks, op_pos);
+    }
+
+    m->pretok_program = prog;
+    return CODEC_OK;
+}
+
 /* ── Process one vocab entry into the id→bytes table ────────────────────── */
 
 static codec_status_t install_entry(codec_tokenizer_map_t *m,
@@ -239,6 +497,18 @@ static codec_status_t install_entry(codec_tokenizer_map_t *m,
     size_t key_unesc_len;
     char *key_unesc = json_unescape(key_raw, key_len, &key_unesc_len);
     if (!key_unesc) return CODEC_ERR_PARSE;
+
+    /* Capture the raw (still-encoded) form for BPE vocab lookup before
+     * we decode it. BPE merge ranks operate on the raw vocab keys, so
+     * we need to keep them around — they're distinct from the decoded
+     * `entries` bytes the detokenizer uses. We strdup so subsequent
+     * encoding doesn't touch our copy. */
+    char *raw_dup = (char *)malloc(key_unesc_len + 1);
+    if (!raw_dup) { free(key_unesc); return CODEC_ERR_OUT_OF_MEMORY; }
+    memcpy(raw_dup, key_unesc, key_unesc_len);
+    raw_dup[key_unesc_len] = '\0';
+    codec_status_t bpe_st = bpe_vocab_push(m, raw_dup, id);
+    if (bpe_st != CODEC_OK) { free(raw_dup); free(key_unesc); return bpe_st; }
 
     codec_status_t st;
     if (m->encoder == CODEC_ENCODER_BYTE_LEVEL) {
@@ -310,6 +580,7 @@ codec_status_t codec_map_from_json(const char *json, size_t len,
     size_t i = 1;
     /* Save indices of the deferred fields. */
     size_t idx_vocab = 0, idx_tokens = 0, idx_added = 0, idx_specials = 0;
+    size_t idx_merges = 0, idx_pretok_program = 0;
 
     for (int field = 0; field < root_size; field++) {
         if (i >= (size_t)n) { codec_map_free(m); free(toks); return CODEC_ERR_PARSE; }
@@ -349,8 +620,13 @@ codec_status_t codec_map_from_json(const char *json, size_t len,
             idx_tokens = val_idx;
         } else if (tok_eq(json, key, "special_tokens") && val->type == JSMN_OBJECT) {
             idx_specials = val_idx;
+        } else if (tok_eq(json, key, "merges") && val->type == JSMN_ARRAY) {
+            idx_merges = val_idx;
+        } else if (tok_eq(json, key, "pre_tokenizer_program")
+                   && val->type == JSMN_OBJECT) {
+            idx_pretok_program = val_idx;
         } else {
-            (void)idx_added; /* reserved for future BPE additions */
+            (void)idx_added; /* reserved for future fields */
         }
     }
 
@@ -414,6 +690,42 @@ codec_status_t codec_map_from_json(const char *json, size_t len,
             m->specials[j].id   = (uint32_t)v;
             pos += 2;
         }
+    }
+
+    /* ── Process merges (BPE) ───────────────────────────────────────────── */
+    if (idx_merges != 0) {
+        const jsmntok_t *arr = &toks[idx_merges];
+        m->bpe_merges = (codec_bpe_merge_entry_t *)calloc(
+            (size_t)arr->size, sizeof(*m->bpe_merges));
+        if (!m->bpe_merges) { codec_map_free(m); free(toks); return CODEC_ERR_OUT_OF_MEMORY; }
+        size_t pos = idx_merges + 1;
+        for (int j = 0; j < arr->size; j++) {
+            const jsmntok_t *str = &toks[pos];
+            if (str->type != JSMN_STRING) {
+                codec_map_free(m); free(toks); return CODEC_ERR_PARSE;
+            }
+            size_t L = (size_t)(str->end - str->start), uL;
+            char *pair = json_unescape(json + str->start, L, &uL);
+            if (!pair) { codec_map_free(m); free(toks); return CODEC_ERR_PARSE; }
+            m->bpe_merges[j].pair = pair;
+            m->bpe_merges[j].rank = (uint32_t)j;
+            pos++;
+        }
+        m->bpe_merges_count = (size_t)arr->size;
+        qsort(m->bpe_merges, m->bpe_merges_count,
+              sizeof(*m->bpe_merges), cmp_bpe_merge);
+    }
+
+    /* Sort BPE vocab for bsearch lookups. */
+    if (m->bpe_vocab && m->bpe_vocab_count > 1) {
+        qsort(m->bpe_vocab, m->bpe_vocab_count,
+              sizeof(*m->bpe_vocab), cmp_bpe_vocab);
+    }
+
+    /* ── Process pre_tokenizer_program (v2.1) ──────────────────────────── */
+    if (idx_pretok_program != 0) {
+        codec_status_t pst = parse_pretok_program(m, json, toks, idx_pretok_program);
+        if (pst != CODEC_OK) { codec_map_free(m); free(toks); return pst; }
     }
 
     free(toks);

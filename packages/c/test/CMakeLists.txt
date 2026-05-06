@@ -13,6 +13,7 @@ set(CODEC_TESTS
     test_stream
     test_tool_watcher
     test_pretok_program
+    test_bpe
 )
 
 foreach(t ${CODEC_TESTS})

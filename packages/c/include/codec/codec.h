@@ -367,6 +367,40 @@ codec_status_t codec_pretok_run_metaspace(
 
 void codec_pretok_free_metaspace_pieces(char **pieces, size_t count);
 
+/* ── BPE encoder ────────────────────────────────────────────────────────── */
+/*
+ * codec_bpe_encoder is a stateless handle over a tokenizer map. It
+ * encodes UTF-8 text into a sequence of token IDs using the map's
+ * pre-tokenizer program, BPE merges, and vocab. Bit-identical to the
+ * other Codec clients (TS / Python / .NET) and to HuggingFace's
+ * reference Rust tokenizer.
+ *
+ * Usage:
+ *   codec_bpe_encoder_t *enc; codec_bpe_encoder_new(map, &enc);
+ *   uint32_t *ids; size_t n;
+ *   codec_bpe_encode(enc, text, text_len, &ids, &n);
+ *   ... use ids ...
+ *   free(ids);
+ *   codec_bpe_encoder_free(enc);
+ *
+ * Construction fails (CODEC_ERR_VALIDATION) if the map lacks a
+ * pre_tokenizer_program or doesn't carry a byte_level / metaspace
+ * encoder. v1 maps and canonical-IR vocab-only maps aren't supported
+ * by BPE — the LongestMatchTokenizer path is for those, and is not yet
+ * exposed in the C client.
+ */
+typedef struct codec_bpe_encoder codec_bpe_encoder_t;
+
+codec_status_t codec_bpe_encoder_new(const codec_tokenizer_map_t *map,
+                                     codec_bpe_encoder_t **out);
+void           codec_bpe_encoder_free(codec_bpe_encoder_t *enc);
+
+/* Encode UTF-8 text to token IDs. Output array is caller-owned;
+ * free with free(). */
+codec_status_t codec_bpe_encode(codec_bpe_encoder_t *enc,
+                                const char *text, size_t text_len,
+                                uint32_t **out_ids, size_t *out_count);
+
 #ifdef __cplusplus
 }
 #endif

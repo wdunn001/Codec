@@ -24,6 +24,22 @@ typedef struct codec_id_entry {
     size_t   len;
 } codec_id_entry_t;
 
+/* Raw vocab entry — stores the *encoded* form (Ġworld, ▁world) for
+ * BPE lookup. Distinct from the decoded `entries` table the detokenizer
+ * uses. Sorted lexically by raw_key so BPE can bsearch piece -> id. */
+typedef struct codec_bpe_vocab_entry {
+    char    *raw_key;
+    uint32_t id;
+} codec_bpe_vocab_entry_t;
+
+/* Merge entry — "left right" plus its priority rank (rank 0 = highest
+ * priority). Sorted lexically by `pair` so BPE's inner loop can bsearch
+ * "is this pair mergeable?" in O(log N). */
+typedef struct codec_bpe_merge_entry {
+    char    *pair;
+    uint32_t rank;
+} codec_bpe_merge_entry_t;
+
 struct codec_tokenizer_map {
     char            *id;
     char            *version;
@@ -44,11 +60,27 @@ struct codec_tokenizer_map {
         uint32_t id;
     } *specials;
     size_t       special_count;
+
+    /* BPE: present only when the JSON map carries v2 vocab + merges.
+     * NULL/zero on v1-only or canonical-IR maps. */
+    codec_bpe_vocab_entry_t *bpe_vocab;       /* sorted by raw_key */
+    size_t                   bpe_vocab_count;
+
+    codec_bpe_merge_entry_t *bpe_merges;      /* sorted by pair */
+    size_t                   bpe_merges_count;
+
+    /* Pre-tokenizer program (v2.1, optional). Owned by the map; the
+     * BPE encoder runs it via codec_pretok_run_program. NULL when the
+     * map only carries pre_tokenizer_pattern (legacy regex form),
+     * which libcodec doesn't support — BPE construction fails on
+     * such maps. */
+    codec_pretok_program_t  *pretok_program;
 };
 
-/* GPT-2 byte ↔ unicode helpers used by both map.c and any future BPE. */
+/* GPT-2 byte ↔ unicode helpers used by both map.c and BPE. */
 void  codec_byte_unicode_init(void);
 char *codec_decode_byte_level_token(const char *raw, size_t raw_len, size_t *out_len);
+char *codec_encode_byte_level(const uint8_t *bytes, size_t bytes_len, size_t *out_len);
 
 /* UTF-8 strict decode for a single sequence; returns 0 if invalid. */
 int   codec_utf8_seq_len(uint8_t lead);
@@ -69,5 +101,13 @@ int32_t                 codec_map_byte_fallback_end(const codec_tokenizer_map_t 
 bool codec_unicode_is_letter(uint32_t cp);
 bool codec_unicode_is_number(uint32_t cp);
 bool codec_unicode_is_ws(uint32_t cp);
+
+/* BPE-side accessors (used by bpe.c). */
+int  codec_bpe_vocab_lookup(const codec_tokenizer_map_t *m,
+                            const char *raw_key, uint32_t *out_id);
+int  codec_bpe_merge_rank(const codec_tokenizer_map_t *m,
+                          const char *pair, uint32_t *out_rank);
+const codec_pretok_program_t *codec_map_pretok_program(
+    const codec_tokenizer_map_t *m);
 
 #endif /* CODEC_INTERNAL_H */
