@@ -10,20 +10,27 @@
  * stream of CodecFrames and an upstream compressor builds one context
  * across the whole stream.
  */
-import { gzipSync } from 'node:zlib';
+import { gzipSync, brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 import { CODECS } from './lib/encoders.ts';
 import type { Chunk } from './lib/encoders.ts';
 
-// Optional: zstd via the `zstd-napi` package. Skipped gracefully if absent.
+// Optional: zstd via Node 23+'s native zlib.zstdCompressSync.
 let zstdCompressSync: ((input: Buffer) => Buffer) | null = null;
 try {
-  // Try Node 23+'s native zstd support first.
   const zlib = await import('node:zlib');
   if ((zlib as { zstdCompressSync?: (b: Buffer) => Buffer }).zstdCompressSync) {
     zstdCompressSync = (zlib as { zstdCompressSync: (b: Buffer) => Buffer }).zstdCompressSync;
   }
 } catch {
   /* not available */
+}
+
+// Brotli at quality 4 — matches what the server uses for streaming
+// (default 11 is 10-50x slower for streams).
+function brotli4(buf: Buffer): Buffer {
+  return brotliCompressSync(buf, {
+    params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 4 },
+  });
 }
 
 // ── Sample stream (matches wire.ts: 1024 tokens, 1 per chunk) ───────────────
@@ -89,43 +96,58 @@ if (!zstdCompressSync) {
 const NUM_TOKENS = 1024;
 const stream = makeStream(NUM_TOKENS, 1);
 
-const rows: { encoder: string; identity: number; gzip: number; zstd: number | null }[] = [];
+interface Row {
+  encoder: string;
+  identity: number;
+  gzip: number;
+  br: number;
+  zstd: number | null;
+}
+
+const rows: Row[] = [];
 
 for (const name of ['json-sse', 'msgpack', 'protobuf'] as const) {
   const encoded = encodeStream(name, stream);
   const buf = Buffer.from(encoded);
-  const identity = buf.length;
-  const gzip = gzipSync(buf, { level: 6 }).length;
-  const zstd = zstdCompressSync ? zstdCompressSync(buf).length : null;
-  rows.push({ encoder: name, identity, gzip, zstd });
+  rows.push({
+    encoder: name,
+    identity: buf.length,
+    gzip: gzipSync(buf, { level: 6 }).length,
+    br: brotli4(buf).length,
+    zstd: zstdCompressSync ? zstdCompressSync(buf).length : null,
+  });
 }
 
-console.log('| encoder  | identity     | + gzip       | + zstd       | identity B/tok | gzip B/tok | zstd B/tok |');
-console.log('|----------|--------------|--------------|--------------|----------------|------------|------------|');
+console.log('| encoder  | identity   | + gzip     | + br       | + zstd     |');
+console.log('|----------|------------|------------|------------|------------|');
 for (const r of rows) {
-  const idB = (r.identity / NUM_TOKENS).toFixed(2);
-  const gzB = (r.gzip / NUM_TOKENS).toFixed(2);
-  const zsB = r.zstd !== null ? (r.zstd / NUM_TOKENS).toFixed(2) : 'n/a';
   console.log(
-    `| ${r.encoder.padEnd(8)} | ${fmt(r.identity).padEnd(12)} | ${fmt(r.gzip).padEnd(12)} | ${(r.zstd !== null ? fmt(r.zstd) : 'n/a').padEnd(12)} | ${idB.padStart(14)} | ${gzB.padStart(10)} | ${zsB.padStart(10)} |`,
+    `| ${r.encoder.padEnd(8)} | ${fmt(r.identity).padEnd(10)} | ${fmt(r.gzip).padEnd(10)} | ${fmt(r.br).padEnd(10)} | ${(r.zstd !== null ? fmt(r.zstd) : 'n/a').padEnd(10)} |`,
   );
+}
+
+console.log('\nBytes/token:\n');
+console.log('| encoder  | identity | + gzip | +  br  | + zstd |');
+console.log('|----------|---------:|-------:|-------:|-------:|');
+for (const r of rows) {
+  const f = (n: number | null) => (n === null ? '   n/a' : (n / NUM_TOKENS).toFixed(2).padStart(6));
+  console.log(`| ${r.encoder.padEnd(8)} | ${f(r.identity).padStart(8)} | ${f(r.gzip)} | ${f(r.br)} | ${f(r.zstd)} |`);
 }
 
 console.log('\nReduction summary (vs JSON-SSE identity):\n');
 const baseline = rows.find((r) => r.encoder === 'json-sse')!.identity;
 console.log('| configuration            | bytes/token | vs json-sse |');
-console.log('|--------------------------|-------------|-------------|');
+console.log('|--------------------------|------------:|------------:|');
 for (const r of rows) {
-  const idB = (r.identity / NUM_TOKENS).toFixed(2);
-  const gzB = (r.gzip / NUM_TOKENS).toFixed(2);
-  const idR = (baseline / r.identity).toFixed(1);
-  const gzR = (baseline / r.gzip).toFixed(1);
-  console.log(`| ${r.encoder.padEnd(24)} | ${idB.padStart(11)} | ${(idR + '\xd7').padStart(11)} |`);
-  console.log(`| ${(r.encoder + ' + gzip').padEnd(24)} | ${gzB.padStart(11)} | ${(gzR + '\xd7').padStart(11)} |`);
-  if (r.zstd !== null) {
-    const zsB = (r.zstd / NUM_TOKENS).toFixed(2);
-    const zsR = (baseline / r.zstd).toFixed(1);
-    console.log(`| ${(r.encoder + ' + zstd').padEnd(24)} | ${zsB.padStart(11)} | ${(zsR + '\xd7').padStart(11)} |`);
+  for (const [suffix, bytes] of [
+    ['', r.identity] as [string, number],
+    [' + gzip', r.gzip],
+    [' + br', r.br],
+    ...(r.zstd !== null ? [[' + zstd', r.zstd] as [string, number]] : []),
+  ]) {
+    const bpt = (bytes / NUM_TOKENS).toFixed(2);
+    const ratio = (baseline / bytes).toFixed(1);
+    console.log(`| ${(r.encoder + suffix).padEnd(24)} | ${bpt.padStart(11)} | ${(ratio + '\xd7').padStart(11)} |`);
   }
 }
 

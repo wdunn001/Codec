@@ -252,9 +252,9 @@ unaffected.
 
 ```
 Client request:
-  Accept-Encoding: zstd, gzip
+  Accept-Encoding: zstd, br, gzip
 
-Server response (preference order: zstd > gzip > identity):
+Server response (preference order: zstd > br > gzip > identity):
   Content-Encoding: zstd       ← if zstd supported on both sides
   Vary: Accept-Encoding
 ```
@@ -265,7 +265,8 @@ Server response (preference order: zstd > gzip > identity):
 |------------|--------|--------|------------------------------------------------|
 | `identity` | MUST   | MUST   | The fallback. Always works.                    |
 | `gzip`     | SHOULD | SHOULD | Stdlib in every language. Universal browser support. |
-| `zstd`     | MAY    | MAY    | Best ratio + speed. Browsers: Chrome 123+, Firefox 126+. |
+| `br`       | SHOULD | SHOULD | Brotli. Universal browser support (Chrome 50+, Firefox 44+, Safari 11+, Edge 79+). Slightly better ratio than gzip on Codec streams (measured: 2.79 vs 3.47 B/token for msgpack). |
+| `zstd`     | MAY    | MAY    | Best ratio + speed for non-streaming. Browsers: Chrome 123+, Firefox 126+. |
 
 Browsers handle `Content-Encoding` decompression transparently in `fetch()`,
 so `@codecai/web` and other browser clients need no extra code to consume
@@ -293,15 +294,22 @@ framing overhead, while batched chunks amortize it.
 **1 token per chunk** (worst case for framing — typical for token-by-token streaming):
 
 | Configuration              | Bytes/token | vs JSON-SSE |
-|----------------------------|-------------|-------------|
+|----------------------------|------------:|------------:|
 | JSON-SSE (identity)        |       154.0 |        1.0× |
 | Codec msgpack (identity)   |        16.0 |        9.6× |
 | Codec protobuf (identity)  |        10.9 |       14.2× |
-| Codec msgpack + `zstd`     |         3.4 |       45.0× |
-| Codec protobuf + `zstd`    |         3.6 |       43.1× |
 | Codec msgpack + `gzip`     |         3.5 |       44.4× |
+| Codec msgpack + `br`       |    **2.79** |   **55.2×** |
+| Codec msgpack + `zstd`     |         3.4 |       44.9× |
 | Codec protobuf + `gzip`    |         3.4 |       45.1× |
+| Codec protobuf + `br`      |         3.4 |       45.5× |
+| Codec protobuf + `zstd`    |         3.6 |       43.1× |
 | (theoretical floor: raw uint32) | 4.0    |       38.5× |
+
+**Brotli wins on msgpack streams** because Brotli's static dictionary
+captures structural patterns even in numeric data. On protobuf streams
+the three compressors converge — there's not much structural redundancy
+left to crush at that point.
 
 **8 tokens per chunk** (batched output — closer to peak streaming throughput):
 
