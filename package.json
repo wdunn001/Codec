@@ -10,7 +10,11 @@
     "demo": "tsx packages/demo/src/benchmark.ts",
     "demo:agent": "tsx packages/demo/src/agent.ts",
     "demo:tgi": "tsx packages/demo/src/tgi.ts",
-    "build": "tsc -b packages/core"
+    "build": "tsc -b packages/core",
+    "bench": "tsx packages/bench/src/index.ts",
+    "bench:wire": "tsx packages/bench/src/wire.ts",
+    "bench:handoff": "tsx packages/bench/src/handoff.ts",
+    "bench:live": "tsx packages/bench/src/live.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

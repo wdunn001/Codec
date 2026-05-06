@@ -1,0 +1,17 @@
+{
+  "name": "@codec/bench",
+  "version": "0.1.0",
+  "description": "No-bullshit benchmarks for the Codec binary transport protocol",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "wire": "tsx src/wire.ts",
+    "handoff": "tsx src/handoff.ts",
+    "live": "tsx src/live.ts",
+    "all": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@codec/core": "*",
+    "@msgpack/msgpack": "^3.0.0"
+  }
+}
