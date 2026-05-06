@@ -60,6 +60,13 @@ export {
 } from './tokenize.js';
 
 export {
+  Translator,
+  translate,
+  staticTranslationTable,
+  type TranslateOptions,
+} from './translate.js';
+
+export {
   BPETokenizer,
   bpeEncode,
 } from './bpe.js';
