@@ -46,14 +46,27 @@ the output. Agent-to-agent traffic skips it entirely.
 
 ### Clients
 
+Polyglot — same dialect maps work everywhere, all verified bit-identical
+against HuggingFace's reference tokenizer for Qwen-2.
+
 - **`@codecai/web`** ([npm](https://www.npmjs.com/package/@codecai/web)) —
   isomorphic tokenizer + detokenizer for browsers, Node 18+, Cloudflare
-  Workers, Deno, Bun. Includes a pure-JS BPE encoder verified against
-  production tokenizers.
+  Workers, Deno, Bun. Pure-JS BPE encoder; ToolWatcher; Translator;
+  pretok-program runtime.
+- **`codecai`** ([PyPI](https://pypi.org/project/codecai/)) — Python twin.
+  BPE + ToolWatcher + Translator. Async stream decoders for `httpx`.
+- **`Codec.Net`** ([NuGet](https://www.nuget.org/packages/Codec.Net)) —
+  .NET (net8.0). Same surface; `IAsyncEnumerable<CodecFrame>` stream
+  decoders.
+- **`libcodec`** ([packages/c](../packages/c)) — C99, zero deps. Ships via
+  vcpkg and CMake `FetchContent`. Detokenizer + ToolWatcher today; BPE
+  + Translator land alongside the v2.1 pretok-program runtime port.
 
 - **`@codecai/maps-cli`** ([npm](https://www.npmjs.com/package/@codecai/maps-cli)) —
   CLI for generating Codec tokenizer dialect maps from any HuggingFace
   `tokenizer.json`. The "tsc --declaration" for token vocabularies.
+  Also exposes `translate` / `translation-table` subcommands for
+  cross-vocab analysis.
 
 ### Map registry
 
@@ -384,7 +397,7 @@ data needed to:
 - **Encode** text into token IDs (when the client does its own
   tokenization — required for the bidirectional endpoint with text input).
 
-### Schema summary (v2)
+### Schema summary (v2.1)
 
 ```json
 {
@@ -395,7 +408,20 @@ data needed to:
   "vocab":   { "Hello": 9906, "Ġworld": 1917, ... },
   "encoder": "byte_level",
   "merges":  ["Ġ Ġ", "Ġ t", "i n", ...],
+
   "pre_tokenizer_pattern": "(?i:'s|'t|...)| ?\\p{L}+|...",
+  "pre_tokenizer_program": {
+    "version": 1,
+    "ops": [
+      { "op": "literals_ci", "patterns": ["'s","'t","'re","'ve","'m","'ll","'d"] },
+      { "op": "letters",     "lead_other": true },
+      { "op": "numbers",     "max_run": 3 },
+      { "op": "punct_run",   "lead_space": true, "trailing_newlines": true },
+      { "op": "newline_block" },
+      { "op": "trailing_ws" },
+      { "op": "ws_run" }
+    ]
+  },
 
   "byte_fallback_start": 3,
   "byte_fallback_end":   258,
@@ -404,6 +430,15 @@ data needed to:
   "published_at":   "2026-05-06T00:00:00Z"
 }
 ```
+
+`pre_tokenizer_pattern` (v2) and `pre_tokenizer_program` (v2.1, additive)
+are functionally equivalent: the program is the regex compiled into a
+named-op list. Runtimes prefer the program when present; old clients
+continue to use the pattern. The program form exists so runtimes
+without a Unicode regex engine (libcodec/C, embedded targets) can
+still encode without dragging in PCRE2 or hand-rolling `\p{L}`. See
+[`PRETOKENIZER_PROGRAM.md`](./PRETOKENIZER_PROGRAM.md) for the op set
+and equivalence rules.
 
 ### Encoder families
 
@@ -488,13 +523,59 @@ the model, and updated when the model updates.
 
 ### Cross-vocab agent handoffs
 
-When Agent A (vocab V₁) passes tokens to Agent B (vocab V₂):
+When Agent A (vocab V₁) passes tokens to Agent B (vocab V₂), Codec keeps
+text off the wire even though tokenization isn't shared:
 
-1. The protocol layer translates IDs via the declared maps.
-2. No UTF-8 intermediate is produced.
-3. The translation table is deterministic and cacheable.
+1. **Wire stays binary in both directions.** A's output frames flow over
+   Codec; B's input prompt is encoded by the orchestrator and submitted
+   as `prompt: int[]` (or via the binary endpoint). No JSON-text round
+   trip on the network.
+2. **The translation step is local.** The orchestrator runs a
+   `Translator` that pipes `ids_A → Detokenizer(V₁) → text → Tokenizer(V₂) → ids_B`
+   in-process. The text is never serialized to a wire format; it's a
+   transient buffer.
+3. **Streaming-safe.** The Translator buffers partial words at
+   whitespace boundaries so chunks streamed mid-merge re-tokenize the
+   same way as the complete word would.
+4. **Deterministic + cacheable.** For a fixed (V₁, V₂) pair, the
+   per-token mapping table is deterministic. Clients can also build a
+   context-free `staticTranslationTable(V₁, V₂)` lookup for analysis
+   (vocab overlap, cost estimation) — though context-dependent BPE
+   merges mean the streaming Translator is what production uses.
 
-When V₁ = V₂ (same vendor, same model version), no translation is needed.
+When V₁ = V₂ (same vendor, same model version), no translation is
+needed — frames pass through verbatim.
+
+`Translator` ships in `@codecai/web`, `codecai`, and `Codec.Net`. The C
+client is pending the v2.1 pretok-program runtime; today, C consumers
+that need cross-vocab handoff IPC to one of the other implementations.
+
+### Tool-call detection without decoding
+
+Most chat-tuned models delimit tool calls (and reasoning blocks, vision
+spans, sandbox regions, channel headers) with **single-token specials**
+that travel on the wire as plain uint32 IDs. The orchestrator can
+detect those boundaries by ID compare alone — no detokenize, no string
+allocation, no vocab read.
+
+| Model family | Markers (start / end) |
+|--------------|------------------------|
+| Llama 3.1+   | `<\|python_tag\|>` / `<\|eom_id\|>` |
+| Qwen 2.5+    | `<tool_call>` / `</tool_call>` |
+| Phi-4        | `<\|tool\|>` / `<\|/tool\|>` |
+| Mistral-Nemo | `[TOOL_CALLS]` / `[/TOOL_CALLS]` |
+| DeepSeek-V3  | `<｜tool▁calls▁begin｜>` / `<｜tool▁calls▁end｜>` |
+| DeepSeek-R1  | `<think>` / `</think>` (reasoning blocks; same primitive) |
+
+Every Codec client ships a `ToolWatcher` that resolves the start/end
+names to IDs once via `special_tokens` and runs an O(n) state machine
+over the wire stream. Microbench: ~100× faster than running the
+detokenizer over the same IDs (see `packages/c/examples/bench_watcher.c`).
+
+The watcher is **protocol-adjacent**, not protocol-mandated: the wire
+format already exposes raw IDs, so any client can re-implement the
+detection. We ship it in every client because every orchestrator needs
+it and the implementation is identical across languages.
 
 ---
 
@@ -608,3 +689,23 @@ map, the same way Wireshark decodes binary protocols.
    The stateless HTTP mode ships today and composes with existing
    infrastructure. gRPC remains an option for the full session protocol if
    persistent connections and multiplexing become requirements.
+
+7. ~~**Polyglot client coverage.**~~ **Resolved.** TS, Python, .NET, C ship
+   on package registries today (npm, PyPI, NuGet, vcpkg + FetchContent).
+   Java is queued for Maven Central.
+
+8. ~~**Tool-call detection without decoding.**~~ **Resolved as a per-client
+   primitive.** Every client ships a `ToolWatcher` that detects delimited
+   regions by special-token ID compare. ~100× faster than detokenizing
+   the same stream.
+
+9. ~~**Cross-vocab agent handoff.**~~ **Resolved as a per-client primitive.**
+   Every client except libcodec ships a `Translator` that pipes
+   `ids_A → text → ids_B` locally with streaming-safe word-boundary
+   buffering. Wire stays binary in both directions.
+
+10. ~~**Pre-tokenizer regex dependency.**~~ **Resolved.** Maps now carry
+    an optional `pre_tokenizer_program` (v2.1, additive) — an op list
+    that runtimes can execute without a Unicode regex engine. Unblocks
+    BPE encoding in environments where pulling PCRE2 is non-trivial
+    (libcodec, embedded, WASM).

@@ -15,15 +15,37 @@ Codec:    model → uint32 IDs → binary frames → wire → uint32 IDs → mod
 
 ## What ships today
 
+### Spec
+
 | Surface | Where | What it is |
 |---|---|---|
 | **Wire spec** | [`spec/PROTOCOL.md`](spec/PROTOCOL.md) | v0.2 — msgpack/protobuf frames, transport compression, both endpoint paths |
-| **Map schema** | [`spec/tokenizer-map.schema.json`](spec/tokenizer-map.schema.json) | v2 schema (vocab + merges + encoder) for tokenizer dialect maps |
-| **Browser/Node client** | [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) | Isomorphic Detokenizer + pure-JS BPE encoder. ~16 kB. |
-| **Map generator** | [`@codecai/maps-cli`](https://www.npmjs.com/package/@codecai/maps-cli) | The `tsc --declaration` for tokenizer dialects. CLI + library. |
+| **Map schema** | [`spec/tokenizer-map.schema.json`](spec/tokenizer-map.schema.json) | v2.1 — vocab + merges + encoder + optional `pre_tokenizer_program` (regex-free pre-tokenizer for runtimes without `\p{L}` regex) |
+| **Pretok program spec** | [`spec/PRETOKENIZER_PROGRAM.md`](spec/PRETOKENIZER_PROGRAM.md) | v1 op-list form the maps-cli compiles regex pre-tokenizers into; unblocks the C BPE encoder |
+
+### Polyglot clients
+
+| Lang | Package | Registry | Surface |
+|---|---|---|---|
+| TypeScript / JS | [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) | npm 0.4.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · pretok-program runtime |
+| Python | [`codecai`](https://pypi.org/project/codecai/) | PyPI 0.2.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
+| .NET | [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) | NuGet 0.2.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
+| C99 | [`libcodec`](packages/c) | vcpkg / FetchContent 0.2.0 | Detokenizer · ToolWatcher · stream decoders (BPE + Translator pending Unicode tables) |
+
+### Tooling and registry
+
+| Surface | Where | What it is |
+|---|---|---|
+| **Map generator** | [`@codecai/maps-cli`](https://www.npmjs.com/package/@codecai/maps-cli) | npm 0.3.0 — generate maps from HF `tokenizer.json`, plus `translate` / `translation-table` for cross-vocab analysis |
 | **Map registry** | [`codec-maps`](https://github.com/wdunn001/codec-maps) | 14 model families / 70+ aliases, served via jsDelivr |
-| **vLLM server** | [PR #41765](https://github.com/vllm-project/vllm/pull/41765) | `stream_format` on `/v1/completions` + dedicated `/v1/completions/codec` |
-| **SGLang server** | [PR #24483](https://github.com/sgl-project/sglang/pull/24483) | Same surface, mirrored into SGLang |
+
+### Servers
+
+| Surface | Where | What it is |
+|---|---|---|
+| **vLLM** | [PR #41765](https://github.com/vllm-project/vllm/pull/41765) | `stream_format` on `/v1/completions` + dedicated `/v1/completions/codec` |
+| **SGLang** | [PR #24483](https://github.com/sgl-project/sglang/pull/24483) | Same surface, mirrored into SGLang |
+| **llama.cpp** | [PR #22757](https://github.com/ggml-org/llama.cpp/pull/22757) | Same surface in `llama-server` (covers Ollama too) |
 
 ---
 
@@ -59,6 +81,46 @@ These come from `packages/bench` — deterministic microbench plus a live Ollama
 | codec (protobuf) |  11 KB |     2.9 ms | **3.6×** |
 
 Real BPE tokenizers are 5–50× slower than the modeled hashtable lookup, so the codec advantage on real workloads is wider. See [`packages/bench`](packages/bench) for the methodology and to reproduce.
+
+---
+
+## What you can do with raw token IDs
+
+Once tokens stay binary the whole way through, primitives that used to require text round-trips collapse into trivial uint32 work. Two ship in every client today:
+
+### `ToolWatcher` — detect tool calls without decoding
+
+Most chat-tuned models delimit tool calls (and reasoning blocks, vision spans, sandbox regions, channel headers) with single-token specials — `<tool_call>` / `</tool_call>` for Qwen 2.5+, `<|python_tag|>` / `<|eom_id|>` for Llama 3.1+, `<think>` / `</think>` for DeepSeek-R1. Detecting *that* a tool call happened is therefore a uint32 compare in the hot loop:
+
+```ts
+const watcher = new ToolWatcher(map, '<tool_call>', '</tool_call>');
+for await (const frame of decodeStream(resp.body!)) {
+  for (const ev of watcher.feed(frame.ids)) {
+    if (ev.kind === 'passthrough') forward(nextAgent, ev.ids);  // no decode
+    else                            dispatchTool(JSON.parse(detok.render(ev.ids)));
+  }
+}
+```
+
+The watcher never touches the vocab, never allocates a string. ~100× faster than detokenizing the same stream (microbench in `packages/c/examples/bench_watcher.c`). Same primitive covers reasoning blocks, multimodal spans, code-interpreter regions — anything delimited by a `(start, end)` special pair.
+
+Available in: `@codecai/web` · `codecai` · `Codec.Net` · `libcodec`.
+
+### `Translator` — cross-vocab agent handoff
+
+When agent A's output feeds agent B as a prompt and the two models have different vocabs, decode-then-reencode through text — *but never put text on the wire*:
+
+```ts
+const tr = new Translator(qwenMap, llamaMap);
+for await (const frame of decodeStream(resp.body!)) {
+  const llamaIds = tr.translate(frame.ids, { partial: !frame.done });
+  forward(llamaAgent, llamaIds);
+}
+```
+
+The text intermediate is purely local. Stateful word-boundary buffering so streaming chunks don't split BPE merges mid-word. Includes a `staticTranslationTable(A, B)` for context-free analysis (vocab overlap, cost estimation).
+
+Available in: `@codecai/web` · `codecai` · `Codec.Net`. C version pending the Unicode-tables work.
 
 ---
 
@@ -118,15 +180,19 @@ await fetch('http://localhost:8000/v1/completions', {
 
 ```
 spec/
-  PROTOCOL.md                 wire format, endpoints, compression negotiation
-  tokenizer-map.schema.json   JSON Schema for tokenizer maps
+  PROTOCOL.md                  wire format, endpoints, compression negotiation
+  PRETOKENIZER_PROGRAM.md      v2.1 regex-free pre-tokenizer recipe spec
+  tokenizer-map.schema.json    JSON Schema for tokenizer maps
 packages/
-  web/        @codecai/web        isomorphic detokenizer + BPE tokenizer
-  maps-cli/   @codecai/maps-cli   generate maps from HF tokenizer.json
-  bench/      benchmark suite (wire / handoff / live / compression)
-  core/       legacy frame codec (kept for compatibility; @codecai/web supersedes)
-  client/     legacy TS client (kept for compatibility)
-  demo/       illustrative agent-to-agent demo
+  web/         @codecai/web         isomorphic detokenizer + BPE tokenizer + ToolWatcher + Translator + pretok runtime
+  python/      codecai               Python twin of @codecai/web
+  dotnet/      Codec.Net             .NET (net8.0) twin
+  c/           libcodec              C99 detokenizer + ToolWatcher (no deps; vcpkg + FetchContent)
+  maps-cli/    @codecai/maps-cli     generate maps + cross-vocab translate / translation-table
+  bench/       benchmark suite (wire / handoff / live / compression / watcher / translator)
+  core/        legacy frame codec (kept for compatibility; @codecai/web supersedes)
+  client/      legacy TS client (kept for compatibility)
+  demo/        illustrative agent-to-agent demo
 article/
   text-is-the-wrong-wire-format.md   the case for Codec
 ```
@@ -194,14 +260,21 @@ What's validated end-to-end:
 - ✅ **Wire format correctness.** Round-trip equivalence for msgpack and protobuf, tested at every chunk size.
 - ✅ **9.6–17× reduction.** Measured uncompressed; ~45× with `Content-Encoding: zstd`.
 - ✅ **3.6× handoff speedup.** End-to-end agent round-trip with eliminated detokenize/tokenize.
-- ✅ **Pure-JS BPE.** Round-trips ASCII / code / emoji / CJK against the real Qwen-2 152K-vocab tokenizer (in `@codecai/web` test suite).
+- ✅ **Pure-language BPE.** Bit-identical to HuggingFace's reference tokenizer for Qwen-2 (152K vocab) across ASCII / code / emoji / CJK in `@codecai/web`, `codecai`, and `Codec.Net`.
+- ✅ **Polyglot clients shipped** — TS, Python, .NET, C all on package registries. Frame format + Detokenizer everywhere; BPE encoder in TS / Python / .NET (C deferred until Unicode tables land).
+- ✅ **ToolWatcher** — every client detects tool-call regions in token-ID streams without decoding (~100× faster than detokenize on the same stream).
+- ✅ **Translator** — every client except C does cross-vocab agent handoff (Qwen-2 → Llama-3 round-trip verified bit-identical to source text).
+- ✅ **Pretok program v2.1** — maps-cli compiles regex pre-tokenizers into a regex-free op list. Equivalence verified on 23 stress inputs against the real Qwen-2 / Llama-3 regexes.
 - ✅ **vLLM PR open** with binary streaming + bidirectional codec endpoint + zstd/gzip negotiation.
 - ✅ **SGLang PR open** with the same surface.
+- ✅ **llama.cpp PR open** — binary streaming for `llama-server` (covers Ollama).
 
 What's still on the roadmap:
 
+- **C BPE encoder + Translator** — needs the pretok program runtime in C plus Unicode `\p{L}` / `\p{N}` interval-list tables (one-shot generator from UCD). The pretok-program work landed specifically to make this tractable.
+- **Java client (Maven Central)** — JDK has Unicode regex natively, so the port is straightforward. Queued.
+- **Pretok program runtime in Python + .NET** — both have `\p{L}` support today, so the regex path works fine; porting the program runtime gives ~10–30% encode-startup speedup.
 - **Pre-trained ZSTD dictionaries** declared alongside tokenizer maps. Estimated ~30% beyond zstd identity for typical streams.
-- **Polyglot clients** — Python (PyPI), C library, .NET (NuGet), Java (Maven). The frame format is small (<300 LoC per language); the BPE encoder is bigger but tractable.
 - **Map discovery** — formal registry vs `.well-known` URL convention. Not blocking; clients can pin URLs+hashes today.
 - **Session protocol** — persistent connection variant for multiplexing. Stateless HTTP covers the common case.
 
