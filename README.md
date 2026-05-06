@@ -112,3 +112,5 @@ Steps 2–5 exist for an audience of zero. In Codec, Agent A ships token IDs dir
 MVP / proof of concept. The demo is real — it makes live Anthropic API calls and measures actual wire bytes. The Codec binary encoding is implemented and correct. What doesn't exist yet: a server that natively emits token IDs (today we re-tokenise the text response client-side to simulate it), and the HTTP/2 transport layer.
 
 The next step is a Codec-native server endpoint on a real inference backend.
+
+[Pull Request for vLLM support](https://github.com/vllm-project/vllm/pull/41765)
