@@ -163,24 +163,64 @@ carries no choice index — multiple sequences would be undemultiplexable.
 
 ### Bidirectional (token IDs in → token IDs out)
 
-For agent-to-agent calls where the prompt is itself a token sequence:
+There are two equivalent ways to express "no text on the wire in either
+direction." Pick whichever fits your client.
+
+**Path A — `/v1/completions` with `prompt: int[]`.** OpenAI's `prompt`
+field already accepts `int[]`, so no new endpoint is required. Best for
+typical prompts (<10K tokens) where the JSON `[1,2,3,...]` array is fine.
+
+```
+POST /v1/completions
+Content-Type: application/json
+Accept-Encoding: zstd, gzip
+Content-Encoding: gzip            ← optional request-body compression
+
+{
+  "model": "...",
+  "prompt": [1, 2, 3, 4567, ...],
+  "stream_format": "msgpack",
+  "max_tokens": 256
+}
+
+→ 200 OK
+   Content-Type: application/x-msgpack
+   Content-Encoding: zstd
+
+   <msgpack frame> {ids:[8901], done:false}
+   ...
+   <msgpack frame> {ids:[3456], done:true, finish_reason:"length"}
+```
+
+**Path B — `/v1/completions/codec` with binary request body.** Same wire
+output, but the request body is itself msgpack/protobuf instead of JSON.
+This saves 2–3× bandwidth for very large prompts where a JSON
+`[int, int, ...]` array balloons relative to the equivalent packed varint
+encoding. Recommended for >50K-token contexts (e.g. RAG with long
+documents). Also useful for proxies/observers that want the binary
+contract explicit in the routing table rather than inferred from
+`Content-Type` of the response.
 
 ```
 POST /v1/completions/codec
-Content-Type: application/x-msgpack
+Content-Type: application/x-msgpack       ← or application/x-protobuf
+Accept-Encoding: zstd, gzip
 
 <msgpack> {prompt_ids:[1,2,3,...], max_tokens:256, stream_format:"msgpack"}
 
 → 200 OK
    Content-Type: application/x-msgpack
+   Content-Encoding: zstd
 
-   <msgpack frame> {ids:[4567], done:false}
+   <msgpack frame> {ids:[8901], done:false}
    ...
-   <msgpack frame> {ids:[8901], done:true, finish_reason:"length"}
 ```
 
-No text is produced or consumed at any point in this path. Agent A's output
-token IDs become Agent B's input token IDs over the wire.
+Both paths produce identical streaming output and identical "zero text on
+the wire" guarantees. Servers MUST implement Path A (it's just OpenAI's
+existing `prompt: int[]` plus `stream_format`). Servers SHOULD implement
+Path B for the bandwidth case but MAY omit it; clients should fall back to
+Path A if a `/v1/completions/codec` request returns 404.
 
 ### Schema endpoint
 
@@ -466,10 +506,11 @@ All multi-byte integers are **big-endian**.
 Text APIs and Codec coexist the way HTTP/1.1 and HTTP/2 coexist.
 
 ```
-POST /v1/completions                  ← existing JSON/SSE path (unchanged)
-POST /v1/completions  + stream_format ← opt-in binary output, text input
-POST /v1/completions/codec            ← binary input + binary output
-GET  /codec/schema                    ← proto schema for client codegen
+POST /v1/completions                              ← existing JSON/SSE path (unchanged)
+POST /v1/completions  + stream_format             ← opt-in binary output
+POST /v1/completions  + prompt:int[] + stream_format  ← bidirectional via JSON request
+POST /v1/completions/codec                        ← bidirectional via binary request (huge prompts)
+GET  /codec/schema                                ← proto schema for client codegen
 ```
 
 Clients that want efficiency opt in. Clients that want simplicity stay on
