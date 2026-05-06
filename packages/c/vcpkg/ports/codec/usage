@@ -1,0 +1,8 @@
+codec provides CMake targets:
+
+    find_package(codec CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE codec::codec)
+
+The header is `<codec/codec.h>`. See https://github.com/wdunn001/Codec for
+protocol documentation, sister-language clients (TypeScript, .NET, Python),
+and the curated tokenizer dialect map registry at codec-maps.

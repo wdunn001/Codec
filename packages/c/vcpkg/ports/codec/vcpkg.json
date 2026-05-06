@@ -1,0 +1,27 @@
+{
+  "name": "codec",
+  "version": "0.1.0",
+  "description": "Token-native binary transport protocol for AI APIs (C library). Decodes streaming token IDs from Codec-compliant servers (vLLM, SGLang, llama.cpp) into text, and provides the wire-format primitives for embedding Codec in any C/C++ project.",
+  "homepage": "https://github.com/wdunn001/Codec",
+  "license": "MIT",
+  "supports": "!uwp",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ],
+  "default-features": [],
+  "features": {
+    "shared": {
+      "description": "Build the shared library (default: on for top-level, off when consumed via vcpkg)"
+    },
+    "tests": {
+      "description": "Build the unit test suite"
+    }
+  }
+}

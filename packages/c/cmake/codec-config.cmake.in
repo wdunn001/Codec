@@ -1,0 +1,13 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/codec-targets.cmake")
+
+# Convenience alias: `find_package(codec)` → `codec::codec` regardless of
+# whether the install built the shared or static target.
+if(NOT TARGET codec::codec)
+    if(TARGET codec::codec_static)
+        add_library(codec::codec ALIAS codec::codec_static)
+    endif()
+endif()
+
+check_required_components(codec)
