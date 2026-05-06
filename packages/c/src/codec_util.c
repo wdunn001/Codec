@@ -227,6 +227,33 @@ char *codec_decode_byte_level_token(const char *raw, size_t raw_len, size_t *out
     return (char *)buf;
 }
 
+/* Inverse of codec_decode_byte_level_token: take raw input bytes (UTF-8
+ * text), map each byte through the GPT-2 byte→unicode table, and emit
+ * the resulting codepoints as UTF-8. The output is the form used for
+ * BPE vocab keys (Ġworld, etc.).
+ *
+ * Each input byte produces a 1-3 byte UTF-8 sequence (codepoints are
+ * ≤ U+0142). Worst-case output size is 3 * input_len + 1.
+ *
+ * Returns malloc'd buffer or NULL.
+ */
+char *codec_encode_byte_level(const uint8_t *bytes, size_t bytes_len, size_t *out_len) {
+    if (!s_byte_unicode_inited) codec_byte_unicode_init();
+
+    uint8_t *buf = (uint8_t *)malloc(bytes_len * 3 + 1);
+    if (!buf) { *out_len = 0; return NULL; }
+    size_t buf_len = 0;
+    for (size_t i = 0; i < bytes_len; i++) {
+        uint32_t cp = (uint32_t)s_byte_to_cp[bytes[i]];
+        uint8_t tmp[4];
+        size_t tn = utf8_encode_codepoint(cp, tmp);
+        for (size_t k = 0; k < tn; k++) buf[buf_len++] = tmp[k];
+    }
+    buf[buf_len] = 0;
+    *out_len = buf_len;
+    return (char *)buf;
+}
+
 /* ── Hex helpers for SHA-256 ────────────────────────────────────────────── */
 
 int codec_hex_to_byte(char hi, char lo) {

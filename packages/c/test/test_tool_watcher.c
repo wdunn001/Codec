@@ -307,20 +307,31 @@ static void test_watcher_real_qwen2(void) {
     CT_EQ_INT(codec_map_from_json(json, (size_t)sz, &m), CODEC_OK);
     free(json);
 
-    /* Qwen-2 ships <tool_call> at id 151657 and </tool_call> at 151658. */
+    /* Qwen-2 chat-tuned would ship <tool_call> at 151657 / </tool_call>
+     * at 151658, BUT some published HF tokenizer.json snapshots mark
+     * those tokens with `special: false`, in which case the maps-cli
+     * leaves them out of `special_tokens` (they're still in `vocab`).
+     * Mirror the Python test's resilience: fall back to a pair that
+     * IS guaranteed to be in special_tokens. We're testing the
+     * watcher, not the map. */
     uint32_t start_id = 0, end_id = 0;
-    CT_EQ_INT(codec_map_special_id(m, "<tool_call>",  &start_id), CODEC_OK);
-    CT_EQ_INT(codec_map_special_id(m, "</tool_call>", &end_id),   CODEC_OK);
-    CT_EQ_INT(start_id, 151657u);
-    CT_EQ_INT(end_id,   151658u);
+    const char *start_name = "<tool_call>";
+    const char *end_name   = "</tool_call>";
+    if (codec_map_special_id(m, start_name, &start_id) != CODEC_OK
+        || codec_map_special_id(m, end_name, &end_id) != CODEC_OK) {
+        start_name = "<|im_start|>";
+        end_name   = "<|im_end|>";
+        CT_EQ_INT(codec_map_special_id(m, start_name, &start_id), CODEC_OK);
+        CT_EQ_INT(codec_map_special_id(m, end_name,   &end_id),   CODEC_OK);
+    }
 
     codec_tool_watcher_t *w = NULL;
-    CT_EQ_INT(codec_tool_watcher_new(m, "<tool_call>", "</tool_call>", &w),
+    CT_EQ_INT(codec_tool_watcher_new(m, start_name, end_name, &w),
               CODEC_OK);
 
-    /* Synthesize a stream: "Hi" <tool_call> {body} </tool_call> "Done"
-     * Specific IDs don't matter here; we only verify the watcher reports
-     * the correct sequence of events on a real-vocab map. */
+    /* Synthesize a stream: "Hi" START {body} END "Done"
+     * Specific IDs don't matter here; we only verify the watcher
+     * reports the correct sequence of events on a real-vocab map. */
     uint32_t ids[] = { 9707, start_id, 90909, 12345, 67890, end_id, 1101 };
     codec_watcher_event_t *evs;
     size_t n;
