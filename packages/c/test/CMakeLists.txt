@@ -14,6 +14,7 @@ set(CODEC_TESTS
     test_tool_watcher
     test_pretok_program
     test_bpe
+    test_translator
 )
 
 foreach(t ${CODEC_TESTS})

@@ -61,6 +61,7 @@ set(CODEC_SOURCES
     src/codec_unicode_tables.c
     src/pretok_program.c
     src/bpe.c
+    src/translator.c
 )
 set(CODEC_HEADERS
     include/codec/codec.h

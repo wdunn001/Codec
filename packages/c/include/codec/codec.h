@@ -401,6 +401,61 @@ codec_status_t codec_bpe_encode(codec_bpe_encoder_t *enc,
                                 const char *text, size_t text_len,
                                 uint32_t **out_ids, size_t *out_count);
 
+/* ── Translator ─────────────────────────────────────────────────────────── */
+/*
+ * Cross-vocab agent-handoff pipe. Take Agent A's token IDs in vocab V_A,
+ * produce Agent B's token IDs in vocab V_B, with no text ever leaving
+ * the process. Internally:
+ *
+ *     ids_A → Detokenizer(V_A) → utf8 → BPETokenizer(V_B) → ids_B
+ *
+ * The text intermediate is purely local; agent-to-agent traffic still
+ * carries only token IDs on the wire. Mirrors the @codecai/web Translator,
+ * codecai's Translator, and Codec.Net's Translator — same word-boundary
+ * buffering rules.
+ *
+ * Streaming caveat: BPE merges depend on context, so re-tokenizing
+ * partial words mid-stream produces different IDs than re-tokenizing
+ * the complete word. The translator buffers text until a safe boundary
+ * (whitespace) before flushing through BPE. Pass partial=1 for streaming
+ * chunks and partial=0 (or call codec_translator_finish) on the last
+ * chunk so the buffer drains.
+ *
+ * Usage:
+ *   codec_translator_t *tr;
+ *   codec_translator_new(qwen_map, llama_map, &tr);
+ *   uint32_t *llama_ids; size_t n;
+ *   codec_translator_translate(tr, qwen_ids, qwen_n, 0, &llama_ids, &n);
+ *   ... use llama_ids ...
+ *   free(llama_ids);
+ *   codec_translator_free(tr);
+ */
+typedef struct codec_translator codec_translator_t;
+
+codec_status_t codec_translator_new(const codec_tokenizer_map_t *from_map,
+                                    const codec_tokenizer_map_t *to_map,
+                                    codec_translator_t **out);
+void           codec_translator_free(codec_translator_t *tr);
+
+/* Translate a chunk of source-vocab IDs to target-vocab IDs.
+ *   partial=1: streaming — a trailing partial word stays buffered
+ *   partial=0: final chunk — buffer drains
+ * Output array is caller-owned; free with free(). out_ids may be NULL
+ * (with out_count=0) if the streaming buffer hasn't reached a safe
+ * boundary yet. */
+codec_status_t codec_translator_translate(
+    codec_translator_t *tr,
+    const uint32_t *ids, size_t ids_count,
+    int partial,
+    uint32_t **out_ids, size_t *out_count);
+
+/* End-of-stream flush. Equivalent to translate(empty, partial=0). */
+codec_status_t codec_translator_finish(codec_translator_t *tr,
+                                       uint32_t **out_ids, size_t *out_count);
+
+/* Drop all internal state. Call between conversations. */
+void           codec_translator_reset(codec_translator_t *tr);
+
 #ifdef __cplusplus
 }
 #endif
