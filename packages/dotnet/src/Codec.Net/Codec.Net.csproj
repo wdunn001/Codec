@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <PackageId>Codec.Net</PackageId>
+    <AssemblyName>Codec.Net</AssemblyName>
+    <RootNamespace>Codec</RootNamespace>
+    <Version>0.1.0</Version>
+    <Authors>wdunn001 and contributors</Authors>
+    <Description>Isomorphic tokenizer + detokenizer for the Codec binary transport protocol. Decodes streaming token IDs from Codec-compliant servers (vLLM, SGLang) and encodes text into IDs for the bidirectional path.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/wdunn001/Codec</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/wdunn001/Codec</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>codec;llm;tokenizer;detokenizer;binary;msgpack;protobuf;streaming;ai</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MessagePack" Version="2.5.187" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

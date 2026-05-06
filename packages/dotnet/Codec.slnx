@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Codec.Net/Codec.Net.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Codec.Net.Tests/Codec.Net.Tests.csproj" />
+  </Folder>
+</Solution>
