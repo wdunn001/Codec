@@ -181,7 +181,10 @@ void codec_map_free(codec_tokenizer_map_t *map) {
         for (size_t i = 0; i < map->entries_cap; i++) free(map->entries[i].bytes);
         free(map->entries);
     }
-    free(map->special_ids);
+    if (map->specials) {
+        for (size_t i = 0; i < map->special_count; i++) free(map->specials[i].name);
+        free(map->specials);
+    }
     free(map);
 }
 
@@ -390,17 +393,25 @@ codec_status_t codec_map_from_json(const char *json, size_t len,
     if (idx_specials != 0) {
         const jsmntok_t *spec = &toks[idx_specials];
         m->special_count = (size_t)spec->size;
-        m->special_ids = (uint32_t *)calloc(m->special_count, sizeof(uint32_t));
-        if (!m->special_ids) { codec_map_free(m); free(toks); return CODEC_ERR_OUT_OF_MEMORY; }
+        m->specials = calloc(m->special_count, sizeof(*m->specials));
+        if (!m->specials) { codec_map_free(m); free(toks); return CODEC_ERR_OUT_OF_MEMORY; }
         size_t pos = idx_specials + 1;
         for (int j = 0; j < spec->size; j++) {
-            const jsmntok_t *id_tok = &toks[pos + 1];
+            const jsmntok_t *name_tok = &toks[pos];
+            const jsmntok_t *id_tok   = &toks[pos + 1];
             long v;
             if (!parse_int(json + id_tok->start,
                            (size_t)(id_tok->end - id_tok->start), &v) || v < 0) {
                 codec_map_free(m); free(toks); return CODEC_ERR_PARSE;
             }
-            m->special_ids[j] = (uint32_t)v;
+            size_t name_len_unesc;
+            char *name = json_unescape(
+                json + name_tok->start,
+                (size_t)(name_tok->end - name_tok->start),
+                &name_len_unesc);
+            if (!name) { codec_map_free(m); free(toks); return CODEC_ERR_PARSE; }
+            m->specials[j].name = name;
+            m->specials[j].id   = (uint32_t)v;
             pos += 2;
         }
     }
@@ -447,10 +458,24 @@ const codec_id_entry_t *codec_map_entry(const codec_tokenizer_map_t *m, uint32_t
 }
 
 int codec_map_is_special(const codec_tokenizer_map_t *m, uint32_t id) {
-    if (!m || !m->special_ids) return 0;
+    if (!m || !m->specials) return 0;
     for (size_t i = 0; i < m->special_count; i++)
-        if (m->special_ids[i] == id) return 1;
+        if (m->specials[i].id == id) return 1;
     return 0;
+}
+
+codec_status_t codec_map_special_id(const codec_tokenizer_map_t *m,
+                                    const char *name,
+                                    uint32_t *out_id) {
+    if (!m || !name || !out_id) return CODEC_ERR_INVALID_ARG;
+    if (!m->specials) return CODEC_ERR_NOT_FOUND;
+    for (size_t i = 0; i < m->special_count; i++) {
+        if (strcmp(m->specials[i].name, name) == 0) {
+            *out_id = m->specials[i].id;
+            return CODEC_OK;
+        }
+    }
+    return CODEC_ERR_NOT_FOUND;
 }
 
 int32_t codec_map_byte_fallback_start(const codec_tokenizer_map_t *m) {

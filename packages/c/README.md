@@ -115,6 +115,63 @@ int main(void) {
 
 See [`examples/stream_decode.c`](examples/stream_decode.c) for the working end-to-end example (loads a real codec-maps file, encodes a synthetic stream, decodes it back).
 
+## Detect tool calls without decoding
+
+Most current chat-tuned models delimit tool calls with **special tokens** —
+single token IDs that mark the start and end of a structured region:
+
+| Model           | Markers (start / end)                        |
+|-----------------|----------------------------------------------|
+| Llama 3.1+      | `<\|python_tag\|>` / `<\|eom_id\|>`          |
+| Qwen 2.5+       | `<tool_call>` / `</tool_call>`               |
+| Phi-4           | `<\|tool\|>` / `<\|/tool\|>`                 |
+| Mistral-Nemo    | `[TOOL_CALLS]` / `[/TOOL_CALLS]`             |
+| DeepSeek-V3     | `<｜tool▁calls▁begin｜>` / `<｜tool▁calls▁end｜>` |
+
+Detecting *that* a tool call happened is therefore a uint32 compare in the
+hot loop — no detokenization, no string allocation. `codec_tool_watcher`
+maintains the state machine for you and emits two kinds of events: the
+captured region's IDs (when start..end completes) and passthrough runs
+(everything outside any region). An orchestrator can forward passthrough
+IDs straight to the next agent and only decode the body of a tool call
+when it actually needs the JSON arguments:
+
+```c
+#include <codec/codec.h>
+
+codec_tool_watcher_t *watcher = NULL;
+codec_tool_watcher_new(map, "<tool_call>", "</tool_call>", &watcher);
+
+/* Inside your stream loop, per frame: */
+codec_watcher_event_t *events; size_t n_events;
+codec_tool_watcher_feed(watcher, frame.ids, frame.ids_len, &events, &n_events);
+
+for (size_t i = 0; i < n_events; i++) {
+    if (events[i].kind == CODEC_WATCH_PASSTHROUGH) {
+        /* Forward as-is to the next agent. No decode cost. */
+        forward_codec_frame(next_agent, events[i].ids, events[i].ids_len);
+    } else /* CODEC_WATCH_REGION_END */ {
+        /* This is the body of a tool call. Decode only if you need
+         * the JSON arguments — otherwise just route by tool-call presence. */
+        char *json = NULL; size_t json_len = 0;
+        codec_detokenize_opts_t o = { /*partial=*/false, /*render_special=*/false };
+        codec_detokenizer_render(detok, events[i].ids, events[i].ids_len, o, &json, &json_len);
+        dispatch_tool(json);
+        free(json);
+    }
+}
+```
+
+The watcher is stateful across feeds — partial tool calls split between
+network frames are buffered until the end marker arrives. `inside()`
+reports whether a region is currently in flight.
+
+If your model uses *plain text* markers instead of special tokens (older
+Mistral, GPT-2-era models), name lookup returns `CODEC_ERR_NOT_FOUND`
+and you'll need to detect the marker after detokenization. The map's
+`special_tokens` field is the source of truth — if `<tool_call>` is in
+there, you can scan for it in binary.
+
 ## API surface (full list)
 
 | Symbol                                | Purpose                                                              |
@@ -126,6 +183,8 @@ See [`examples/stream_decode.c`](examples/stream_decode.c) for the working end-t
 | `codec_map_free(map)`                 |                                                                      |
 | `codec_map_verify_sha256(...)`        | Pin map bytes against an expected hash (constant-time compare).      |
 | `codec_map_id` / `_version` / `_vocab_size` / `_encoder` | Read-only accessors.                              |
+| `codec_map_special_id(map, name, ...)` | Resolve a special-token name (e.g. `"<tool_call>"`) to its uint32 ID. |
+| `codec_tool_watcher_new` / `_free` / `_feed` / `_reset` / `_inside` | Detect delimited regions (tool calls, reasoning blocks, etc.) without decoding. |
 | `codec_frame_init` / `_destroy`       | Init/free a `codec_frame_t`.                                         |
 | `codec_encode_msgpack` / `_protobuf`  | Encode a frame to a fresh buffer.                                    |
 | `codec_decode_msgpack(...)`           | Decode a single complete msgpack frame; reports bytes consumed.      |

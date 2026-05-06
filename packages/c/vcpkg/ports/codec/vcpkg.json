@@ -1,6 +1,6 @@
 {
   "name": "codec",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Token-native binary transport protocol for AI APIs (C library). Decodes streaming token IDs from Codec-compliant servers (vLLM, SGLang, llama.cpp) into text, and provides the wire-format primitives for embedding Codec in any C/C++ project.",
   "homepage": "https://github.com/wdunn001/Codec",
   "license": "MIT",

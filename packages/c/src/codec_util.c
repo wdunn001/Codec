@@ -10,7 +10,7 @@
 
 /* ── Version / status strings ───────────────────────────────────────────── */
 
-const char *codec_version(void) { return "0.1.0"; }
+const char *codec_version(void) { return "0.2.0"; }
 
 const char *codec_status_str(codec_status_t s) {
     switch (s) {

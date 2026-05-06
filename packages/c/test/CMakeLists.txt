@@ -11,6 +11,7 @@ set(CODEC_TESTS
     test_detokenize
     test_map
     test_stream
+    test_tool_watcher
 )
 
 foreach(t ${CODEC_TESTS})
@@ -20,8 +21,8 @@ foreach(t ${CODEC_TESTS})
     add_test(NAME ${t} COMMAND ${t})
 endforeach()
 
-# Make codec-maps path discoverable to test_map (real Qwen-2 round trip).
+# Make codec-maps path discoverable to tests that exercise the real Qwen-2 map.
 if(EXISTS "${CMAKE_SOURCE_DIR}/../../codec-maps/maps/qwen/qwen2.json")
-    set_tests_properties(test_map PROPERTIES
+    set_tests_properties(test_map test_tool_watcher PROPERTIES
         ENVIRONMENT "CODEC_MAPS_QWEN=${CMAKE_SOURCE_DIR}/../../codec-maps/maps/qwen/qwen2.json")
 endif()

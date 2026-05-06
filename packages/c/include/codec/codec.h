@@ -19,7 +19,7 @@ extern "C" {
 /* ── Versioning ─────────────────────────────────────────────────────────── */
 
 #define CODEC_VERSION_MAJOR 0
-#define CODEC_VERSION_MINOR 1
+#define CODEC_VERSION_MINOR 2
 #define CODEC_VERSION_PATCH 0
 
 const char *codec_version(void);
@@ -92,6 +92,23 @@ codec_encoder_t codec_map_encoder(const codec_tokenizer_map_t *map);
 codec_status_t codec_map_verify_sha256(const char *json, size_t len,
                                        const char *expected_hex);
 
+/*
+ * Resolve a special-token name to its uint32 ID.
+ *
+ * Names are the keys from the map's `special_tokens` object — typical
+ * examples: `"<|endoftext|>"`, `"<tool_call>"`, `"</tool_call>"`,
+ * `"<|python_tag|>"`, `"<|im_start|>"`.
+ *
+ * Returns CODEC_OK + writes *out_id on hit, CODEC_ERR_NOT_FOUND on miss.
+ *
+ * This is the preferred way to bind structural markers (tool calls, role
+ * boundaries, EOS tokens) before scanning a stream — resolve names to IDs
+ * once at startup, then compare uint32s in the hot loop.
+ */
+codec_status_t codec_map_special_id(const codec_tokenizer_map_t *map,
+                                    const char *name,
+                                    uint32_t *out_id);
+
 /* ── Codec frames ───────────────────────────────────────────────────────── */
 
 typedef struct codec_frame {
@@ -163,6 +180,84 @@ codec_status_t codec_detokenizer_render(codec_detokenizer_t *detok,
                                         const uint32_t *ids, size_t ids_len,
                                         codec_detokenize_opts_t opts,
                                         char **out, size_t *out_len);
+
+/* ── Tool-call / region watcher ─────────────────────────────────────────── */
+/*
+ * codec_tool_watcher scans a token-ID stream for a delimited region (start
+ * marker → end marker) without ever decoding the bytes to text. Most modern
+ * chat-tuned models emit tool calls between special tokens — Qwen 2.5+ uses
+ * <tool_call>/</tool_call>, Llama 3.1+ uses <|python_tag|>/<|eom_id|>,
+ * Phi-4 uses <|tool|>/<|/tool|>, etc. — so an orchestrator can detect a
+ * tool call by integer compare in the hot loop and only invoke the
+ * detokenizer on the buffered span when it actually needs the JSON
+ * arguments.
+ *
+ * The watcher is stateful across feed() calls — partial regions split
+ * across frame boundaries are accumulated until the end marker arrives.
+ *
+ *   codec_tool_watcher_new(map, "<tool_call>", "</tool_call>", &w);
+ *   codec_watcher_event_t *evs; size_t n;
+ *   codec_tool_watcher_feed(w, frame.ids, frame.ids_len, &evs, &n);
+ *   for (size_t i = 0; i < n; i++) {
+ *       if (evs[i].kind == CODEC_WATCH_PASSTHROUGH) {
+ *           // Forward evs[i].ids straight to the next agent — no decode.
+ *       } else {
+ *           // Tool call captured. Decode evs[i].ids only if you need the
+ *           // arguments JSON; otherwise just route by tool-call presence.
+ *       }
+ *   }
+ *
+ * Lifetimes: the events array and any PASSTHROUGH `ids` pointers reference
+ * the input buffer / watcher's internal storage and stay valid until the
+ * next codec_tool_watcher_feed call (or until codec_tool_watcher_free).
+ * Copy them out if you need them across feeds.
+ */
+
+typedef enum codec_watcher_event_kind {
+    CODEC_WATCH_PASSTHROUGH = 0, /* IDs outside any watched region */
+    CODEC_WATCH_REGION_END  = 1  /* a complete start..end region was captured */
+} codec_watcher_event_kind_t;
+
+typedef struct codec_watcher_event {
+    codec_watcher_event_kind_t kind;
+    const uint32_t            *ids;
+    size_t                     ids_len;
+} codec_watcher_event_t;
+
+typedef struct codec_tool_watcher codec_tool_watcher_t;
+
+/*
+ * Create a watcher bound to a (start_name, end_name) pair of special-token
+ * names that exist in the map's `special_tokens` table. Returns
+ * CODEC_ERR_NOT_FOUND if either name isn't a registered special token —
+ * the model may use plain text markers (older Mistral, GPT-2 era), in
+ * which case scanning has to happen post-detokenize.
+ */
+codec_status_t codec_tool_watcher_new(const codec_tokenizer_map_t *map,
+                                      const char *start_name,
+                                      const char *end_name,
+                                      codec_tool_watcher_t **out);
+
+/* Free the watcher. Safe to pass NULL. */
+void codec_tool_watcher_free(codec_tool_watcher_t *w);
+
+/* Drop any in-flight buffered region (e.g. between conversations). */
+void codec_tool_watcher_reset(codec_tool_watcher_t *w);
+
+/*
+ * Feed N token IDs. *out_events is set to a watcher-owned events array of
+ * length *out_len. Pass NULL/0 to flush state inspection without new bytes.
+ * The caller does NOT free *out_events — the watcher owns it.
+ */
+codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
+                                       const uint32_t *ids, size_t n,
+                                       codec_watcher_event_t **out_events,
+                                       size_t *out_len);
+
+/* Returns true iff the watcher is currently inside a region (start seen,
+ * end not yet seen). Useful for "should I keep buffering text instead of
+ * forwarding it" decisions outside the watcher's own buffer. */
+bool codec_tool_watcher_inside(const codec_tool_watcher_t *w);
 
 /* ── Stream decoders ────────────────────────────────────────────────────── */
 

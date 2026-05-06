@@ -35,8 +35,14 @@ struct codec_tokenizer_map {
     int32_t  byte_fallback_start;    /* -1 if absent */
     int32_t  byte_fallback_end;      /* -1 if absent */
 
-    uint32_t *special_ids;
-    size_t    special_count;
+    /* Special tokens with their names retained, so callers can resolve
+     * a name like "<tool_call>" to its ID without round-tripping through
+     * the detokenizer. The names are shallow-copied during JSON parse. */
+    struct codec_special_entry {
+        char    *name;
+        uint32_t id;
+    } *specials;
+    size_t       special_count;
 };
 
 /* GPT-2 byte ↔ unicode helpers used by both map.c and any future BPE. */
@@ -50,7 +56,7 @@ int   codec_utf8_seq_len(uint8_t lead);
 int   codec_hex_to_byte(char hi, char lo);
 void  codec_bytes_to_hex(const uint8_t *bytes, size_t len, char *hex_out);
 
-/* Internal map accessors shared with detokenize.c. */
+/* Internal map accessors shared with detokenize.c, tool_watcher.c, etc. */
 const codec_id_entry_t *codec_map_entry(const codec_tokenizer_map_t *m, uint32_t id);
 int                     codec_map_is_special(const codec_tokenizer_map_t *m, uint32_t id);
 int32_t                 codec_map_byte_fallback_start(const codec_tokenizer_map_t *m);
