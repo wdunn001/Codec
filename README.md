@@ -17,11 +17,13 @@ Codec:    model → uint32 IDs → binary frames → wire → uint32 IDs → mod
 
 ```
 packages/
-  core/       @codec/core — binary frame encoder/decoder
-  demo/       live benchmark + agent-to-agent demo
+  core/       @codec/core    — binary frame encoder/decoder
+  client/     @codec/client  — TypeScript client for vLLM Codec endpoints
+  bench/      @codec/bench   — wire / handoff / live benchmarks
+  demo/       @codec/demo    — illustrative agent-to-agent demo
 spec/
-  PROTOCOL.md             wire format specification
-  tokenizer-map.schema.json  JSON Schema for tokenizer map contract
+  PROTOCOL.md                    wire format specification
+  tokenizer-map.schema.json      JSON Schema for tokenizer map contract
 ```
 
 ---
@@ -30,27 +32,70 @@ spec/
 
 ```bash
 npm install
-ANTHROPIC_API_KEY=sk-... npm run demo
 ```
 
-**Agent-to-agent demo** (two Claude models passing context):
+### Run the benchmarks (no API keys, no server required)
+
+```bash
+npm run bench:wire      # encoder microbench (deterministic, ~5s)
+npm run bench:handoff   # agent round-trip cost (deterministic, ~5s)
+```
+
+These produce the numbers below from pure code — no network, no model.
+
+### Benchmark against a live model server
+
+The live bench works against any OpenAI-compatible streaming endpoint. Two servers we've tested with:
+
+```bash
+# Ollama (baseline JSON-SSE measurement — unmodified server)
+BENCH_URL=http://192.168.1.88:11434 BENCH_MODEL=qwen2.5:latest npm run bench:live
+
+# vLLM with the Codec patch applied (true binary path)
+# See: https://github.com/vllm-project/vllm/pull/41765
+BENCH_URL=http://localhost:8000 BENCH_MODEL=meta-llama/Llama-3.1-8B npm run bench:live
+```
+
+Against Ollama (or any OpenAI-compat server), the live bench measures the real JSON-SSE wire cost and projects what Codec would cost using the actual token count.
+
+### Run the illustrative agent demo (Anthropic API)
 
 ```bash
 ANTHROPIC_API_KEY=sk-... npm run demo:agent
 ```
 
+This streams from the live Anthropic API and shows what the same response would have cost over Codec frames. Kept for narrative clarity — for hard numbers, use `npm run bench`.
+
 ---
 
 ## What the benchmark shows
 
-A typical Sonnet streaming response (≈120 tokens):
+Wire microbench, 4,096 tokens, 1 token per chunk:
 
-| Mode  | Wire bytes | Bytes/token |
-|-------|-----------|-------------|
-| Text  | ~6,000    | ~50         |
-| Codec | ~490      | ~4.1        |
+| Encoder  | Wire bytes | Bytes/token | vs JSON-SSE | Decode/chunk |
+|----------|------------|-------------|-------------|--------------|
+| json-sse | 616 KB     | 154.0       | 1.0×        | 2.7 µs       |
+| msgpack  | 64 KB      | 16.0        | **9.6×**    | 0.8 µs       |
+| protobuf | 43 KB      | 10.9        | **14.2×**   | 0.3 µs       |
+| raw      | 16 KB      | 4.0         | 38.5×       | 0.2 µs       |
 
-**~90% wire reduction.** For agent-to-agent calls the text detokenise/re-tokenise loop is eliminated entirely.
+Live bench against Ollama `qwen2.5:7b`, 315 tokens generated:
+
+| Encoder           | Wire bytes | Bytes/token | vs JSON-SSE |
+|-------------------|------------|-------------|-------------|
+| JSON-SSE measured | 58.5 KB    | 190.2       | 1.0×        |
+| msgpack projected | 4.6 KB     | 15.1        | **12.6×**   |
+| protobuf projected| 3.4 KB     | 11.0        | **17.3×**   |
+
+Agent round-trip, 1,024 tokens, including detokenize+tokenize:
+
+| Path             | Wire bytes | Total time | vs text |
+|------------------|------------|------------|---------|
+| text (JSON-SSE)  | 115 KB     | 11.1 ms    | 1.0×    |
+| codec (msgpack)  | 16 KB      | 4.7 ms     | **2.4× faster** |
+| codec (protobuf) | 11 KB      | 2.0 ms     | **5.5× faster** |
+
+Decode CPU is also lower for binary formats: protobuf decodes in ~0.3 µs/chunk vs ~2.7 µs/chunk for JSON-SSE — a 9× reduction. See [packages/bench/README.md](packages/bench/README.md) for the full methodology.
 
 ---
 
@@ -109,8 +154,20 @@ Steps 2–5 exist for an audience of zero. In Codec, Agent A ships token IDs dir
 
 ## Status
 
-MVP / proof of concept. The demo is real — it makes live Anthropic API calls and measures actual wire bytes. The Codec binary encoding is implemented and correct. What doesn't exist yet: a server that natively emits token IDs (today we re-tokenise the text response client-side to simulate it), and the HTTP/2 transport layer.
+The wire format, encoders, and benchmarks are real and runnable today. A reference server implementation exists as an open pull request against vLLM:
 
-The next step is a Codec-native server endpoint on a real inference backend.
+- **vLLM server** — [vllm-project/vllm#41765](https://github.com/vllm-project/vllm/pull/41765). Adds `stream_format: "msgpack"|"protobuf"` to `/v1/completions` and a dedicated bidirectional `/v1/completions/codec` endpoint. Implementation lives in `vllm/entrypoints/codec_frame.py`.
+- **TypeScript client** — `@codec/client` in this repo. `stream()`, `streamFromIds()`, `agentHandoff()`. Decodes binary frames via `@msgpack/msgpack`.
+- **Benchmark suite** — `@codec/bench` in this repo. Three independent measurements (wire / handoff / live), all deterministic, all reproducible.
 
-[Pull Request for vLLM support](https://github.com/vllm-project/vllm/pull/41765)
+What's been validated:
+
+- ✅ Wire-format correctness — round-trip semantic equivalence for msgpack and protobuf, verified by the bench.
+- ✅ Bytes-per-token claim — 9–17× reduction vs JSON-SSE, measured against both synthetic streams and a live Ollama server.
+- ✅ Agent-handoff CPU win — 2–5× faster round-trip vs JSON-SSE even with a hash-table tokenizer (real BPE widens the gap further).
+
+What's still on the roadmap:
+
+- HTTP/2 multiplexing and persistent gRPC sessions.
+- Stateful context block references (cross-call prompt reuse without re-shipping).
+- A canonical-IR transpilation layer that lets the same wire payload route to multiple model backends.
