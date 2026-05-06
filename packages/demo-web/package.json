@@ -1,0 +1,25 @@
+{
+  "name": "@codec/demo-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Browser bench app for Codec — runs the same prompt across JSON-SSE and Codec wire formats with every compression encoding, shows the wire-size grid live.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --port 5173"
+  },
+  "dependencies": {
+    "@codecai/web": "*",
+    "@msgpack/msgpack": "^3.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
+  }
+}

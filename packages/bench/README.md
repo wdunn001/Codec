@@ -2,6 +2,8 @@
 
 No-bullshit benchmarks for the Codec binary transport protocol.
 
+📊 **Latest aggregated results: [`RESULTS.md`](RESULTS.md)** — full A/B numbers from a live sglang server with Codec PRs #24483 + #24557, polyglot interop across 4 client implementations, end-to-end agent loops with SearXNG and MetaMCP.
+
 Three independent measurements, each runnable in isolation:
 
 | Bench | What it measures | Needs network? |
@@ -9,6 +11,8 @@ Three independent measurements, each runnable in isolation:
 | `wire` | Pure encode/decode cost per token across JSON-SSE, msgpack, protobuf, raw | No |
 | `handoff` | Agent-to-agent round-trip: text path vs Codec path | No |
 | `live` | Real wire bytes against a streaming OpenAI-compatible endpoint | Yes |
+
+Plus full agent-loop benches (prompt → tool call → dispatch → final answer) live under `packages/demo-python` — see [`RESULTS.md`](RESULTS.md) §4–§6 for numbers.
 
 ## Run
 

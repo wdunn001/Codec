@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "codec-demo-python"
+version = "0.1.0"
+description = "CLI bench for Codec — runs the same prompt across JSON-SSE and Codec wire formats with every compression encoding, prints the wire-size table."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "wdunn001 and contributors" }]
+dependencies = [
+    "codecai",
+    "httpx>=0.27",
+    "msgpack>=1.0",
+    "zstandard>=0.22; python_version >= '3.10'",
+    "brotli>=1.1",
+]
+
+[project.scripts]
+codec-bench = "codec_demo:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/codec_demo"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
