@@ -202,14 +202,15 @@ event IDs and the pointer-aliasing checks on `PASSTHROUGH` events.
 
 ### Failure modes
 
-| Situation                                              | Behavior                                                      |
-|--------------------------------------------------------|---------------------------------------------------------------|
-| Stray end marker (no preceding start)                  | Passes through as a regular ID                                |
-| Nested start marker inside an active region            | Inner start ignored; outer end closes the region              |
-| Region split across feeds                              | Body buffered; `REGION_END` emitted when end marker arrives   |
-| Stream ends mid-region (start seen, end never arrives) | Buffered IDs are currently dropped on `_free`. A `_finish()` API that surfaces them as a `CODEC_WATCH_TRUNCATED` event is on the v0.2.1 roadmap. |
-| Malformed JSON inside markers                          | Watcher emits `REGION_END` normally — semantic validation is the caller's responsibility |
-| Special-token name not in the map                      | `_new` returns `CODEC_ERR_NOT_FOUND`; no watcher allocated   |
+| # | Scenario | What the watcher does | What the caller must do |
+|---|----------|-----------------------|-------------------------|
+| 1 | Malformed JSON inside the markers | Emits `REGION_END` with the buffered IDs as if everything's fine — the watcher doesn't know about JSON | Decode the IDs, attempt `JSON.parse`, return error to the model |
+| 2 | Tool name doesn't exist in your registry | Same — watcher's job ends at the bytes | Caller looks up the name and returns "function not found" to the model |
+| 3 | Tool execution fails | Watcher already done | Caller's normal error handling |
+| 4 | Stray end marker (no preceding start) | Passes through as a regular ID — orchestrator forwards it as-is. Tested. | Probably nothing — most clients won't notice. If you want to detect server bugs, log when an end-marker ID appears outside an active region. |
+| 5 | Nested start (`<tool_call>…<tool_call>…`) | Inner `<tool_call>` ignored; everything until first `</tool_call>` is the body. Subsequent `</tool_call>` becomes a stray end (case 4). | If your model genuinely emits nested calls, you'd want a stack-based watcher. Most don't. |
+| 6 | Start marker but `done=true` arrives before end marker — truncated mid-region | Currently silently buffers, then frees the buffer when the watcher is freed. **This is the bad one.** | Today: nothing helpful. The bytes are gone. A `_finish()` API surfacing them as `CODEC_WATCH_TRUNCATED` is on the v0.2.1 roadmap. |
+| 7 | Multiple regions back-to-back | Each gets its own `REGION_END` event, in order | Process them sequentially |
 
 ## API surface (full list)
 
