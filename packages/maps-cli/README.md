@@ -73,6 +73,42 @@ codecai-maps preview ./qwen_qwen2.json --text="Explain entropy."
 # exact match:   YES
 ```
 
+### `translate` — cross-vocab token stream conversion
+
+Pipe one tokenizer's IDs through another's vocab with streaming-safe
+word-boundary buffering. Useful for previewing what an agent-to-agent
+handoff actually emits at the token level.
+
+```bash
+codecai-maps translate --from=qwen2.json --to=llama-3.json \
+  --text="The quick brown fox."
+
+# from:    qwen/qwen2
+# to:      meta-llama/llama-3
+# input:   "The quick brown fox."
+# src ids: [785, 4937, 13876, 38835, 13]   (5 tokens, qwen-2)
+# dst ids: [791, 4062, 14198, 39935, 13]   (5 tokens, llama-3)
+# decoded: "The quick brown fox."          (round-trip via llama-3 detok)
+```
+
+Or with raw IDs:
+
+```bash
+codecai-maps translate --from=qwen2.json --to=llama-3.json --ids=785,4937
+```
+
+### `translation-table` — context-free V_A → V_B[] lookup
+
+```bash
+codecai-maps translation-table --from=qwen2.json --to=llama-3.json \
+  --out=qwen-to-llama.json
+```
+
+Emits a JSON file mapping every non-special source ID to the sequence
+of target IDs its rendered text encodes to. Context-free (BPE merges
+depend on context), so prefer the streaming `translate` for runtime
+use; the static table is for analysis (vocab overlap, cost estimation).
+
 ## Programmatic API
 
 ```ts
@@ -93,7 +129,7 @@ const hash = await hashMap(map);
 
 ## What gets generated
 
-The output is a JSON file matching the `TokenizerMap` schema from `@codecai/web`:
+The output is a JSON file matching the `TokenizerMap` schema from `@codecai/web` (v2.1):
 
 ```json
 {
@@ -104,6 +140,18 @@ The output is a JSON file matching the `TokenizerMap` schema from `@codecai/web`
   "encoder": "byte_level",
   "merges": ["Ġ Ġ", "ĠĠ ĠĠ", "i n", "..."],
   "pre_tokenizer_pattern": "(?i:'s|'t|'re|...)| ?\\p{L}+|...",
+  "pre_tokenizer_program": {
+    "version": 1,
+    "ops": [
+      { "op": "literals_ci", "patterns": ["'s","'t","'re","'ve","'m","'ll","'d"] },
+      { "op": "letters",     "lead_other": true },
+      { "op": "numbers",     "max_run": 1 },
+      { "op": "punct_run",   "lead_space": true, "trailing_newlines": true },
+      { "op": "newline_block" },
+      { "op": "trailing_ws" },
+      { "op": "ws_run" }
+    ]
+  },
   "special_tokens": {
     "<|endoftext|>": 151643,
     "<|im_start|>": 151644
@@ -117,6 +165,21 @@ The schema covers three tokenizer families that span ~95% of open models:
 - **`byte_level`** — GPT-2 byte→unicode BPE (Llama-3, Qwen, Phi-3, Mistral-Nemo, DeepSeek-V3, …).
 - **`metaspace`** — `▁`-prefix BPE with byte fallback (Llama-2, Mistral-v3, Mixtral, Gemma).
 - **identity** — vocab-only tokenizers without merges (canonical-IR / closed vocabs).
+
+### Pre-tokenizer program (v2.1, additive)
+
+Both `pre_tokenizer_pattern` and `pre_tokenizer_program` describe the
+same splitter. The program is the regex compiled into a named-op list;
+runtimes prefer it when present so they can encode without a Unicode
+regex engine. The CLI emits it automatically for any pre-tokenizer
+regex it recognises (currently the GPT-2-family canonical form used by
+Llama-3, Qwen, Phi-3, DeepSeek-V3, Mistral-Nemo, Falcon, SmolLM2,
+Codestral byte_level). Maps with unrecognised regexes still build
+normally — `pre_tokenizer_program` is just omitted, and runtimes fall
+back to the regex string.
+
+See [`spec/PRETOKENIZER_PROGRAM.md`](https://github.com/wdunn001/Codec/blob/main/spec/PRETOKENIZER_PROGRAM.md)
+for the full op set and equivalence rules.
 
 ## Hosting your map
 
