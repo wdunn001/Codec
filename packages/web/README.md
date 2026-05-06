@@ -135,6 +135,34 @@ const ids = tok.encode(text);
 | `decodeStream(body, fmt)`   | `ReadableStream<Uint8Array>` → `AsyncIterable<CodecFrame>`    |
 | `decodeMsgpackStream`       | msgpack-specific decoder                                      |
 | `decodeProtobufStream`      | protobuf-specific decoder                                     |
+| `ToolWatcher`               | Detect delimited regions (tool calls, reasoning blocks, vision spans) in a token-ID stream without decoding |
+| `Translator`                | Cross-vocab agent handoff: `ids_A → text → ids_B` with streaming-safe word-boundary buffering |
+
+## Detect tool calls without decoding
+
+Most chat-tuned models delimit tool calls with single-token specials (`<tool_call>` / `</tool_call>` for Qwen 2.5+, `<|python_tag|>` / `<|eom_id|>` for Llama 3.1+, `<think>` / `</think>` for DeepSeek-R1, etc.). Detecting *that* one happened is a uint32 compare — no detokenize, no string allocation.
+
+```ts
+import { ToolWatcher } from '@codecai/web';
+
+const watcher = new ToolWatcher(map, '<tool_call>', '</tool_call>');
+
+for await (const frame of decodeStream(resp.body!)) {
+  for (const ev of watcher.feed(frame.ids)) {
+    if (ev.kind === 'passthrough') {
+      // Forward to the next agent verbatim. No decode.
+      forwardCodecFrame(nextAgent, ev.ids);
+    } else /* 'region' */ {
+      // Body of the tool call, markers excluded. Decode only when you
+      // actually need the JSON arguments.
+      const json = detok.render(ev.ids);
+      dispatchTool(JSON.parse(json));
+    }
+  }
+}
+```
+
+The watcher is stateful: regions split between network frames buffer until the end marker arrives. `watcher.inside` reports whether one is currently in flight. The same primitive works for reasoning blocks, multimodal spans, code-interpreter regions — anything delimited by a (start, end) special pair.
 
 ## Correctness notes
 

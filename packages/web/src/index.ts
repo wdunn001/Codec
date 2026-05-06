@@ -67,6 +67,12 @@ export {
 } from './translate.js';
 
 export {
+  ToolWatcher,
+  ToolWatcherError,
+  type WatcherEvent,
+} from './tool-watcher.js';
+
+export {
   BPETokenizer,
   bpeEncode,
 } from './bpe.js';
