@@ -4,6 +4,7 @@
 
 #include "codec/codec.h"
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -61,5 +62,12 @@ const codec_id_entry_t *codec_map_entry(const codec_tokenizer_map_t *m, uint32_t
 int                     codec_map_is_special(const codec_tokenizer_map_t *m, uint32_t id);
 int32_t                 codec_map_byte_fallback_start(const codec_tokenizer_map_t *m);
 int32_t                 codec_map_byte_fallback_end(const codec_tokenizer_map_t *m);
+
+/* Unicode property tables (generated — see scripts/gen-unicode-tables.py).
+ * Used by the pre-tokenizer program runtime to query character classes
+ * without a regex engine. */
+bool codec_unicode_is_letter(uint32_t cp);
+bool codec_unicode_is_number(uint32_t cp);
+bool codec_unicode_is_ws(uint32_t cp);
 
 #endif /* CODEC_INTERNAL_H */
