@@ -172,6 +172,157 @@ and you'll need to detect the marker after detokenization. The map's
 `special_tokens` field is the source of truth — if `<tool_call>` is in
 there, you can scan for it in binary.
 
+### What the watcher does and doesn't touch
+
+The watcher's contract is "uint32 in, uint32 out" — it never invokes
+the detokenizer, never allocates a string, never looks at the vocab.
+The only fields of the map it reads are the two `special_tokens`
+entries you name in `_new`.
+
+Concretely:
+
+| Behavior                                                | Watcher    |
+|---------------------------------------------------------|------------|
+| Reads `map.vocab`                                       | No         |
+| Reads `map.merges` / encoder config                     | No         |
+| Calls `codec_detokenize*`                               | No         |
+| Allocates strings                                       | No         |
+| Allocates buffers                                       | Only the captured region body, reused across feeds |
+| Modifies the input `ids` array                          | No         |
+| Returned `PASSTHROUGH` ids pointer                      | Aliases the caller's input buffer (zero-copy) |
+| Returned `REGION_END` ids pointer                       | Owned by the watcher; valid until next `feed()` or `free()` |
+
+This is enforced by `test_watcher_does_not_decode_tokens` in
+[`test/test_tool_watcher.c`](test/test_tool_watcher.c), which feeds the
+watcher with a map whose `vocab` is empty and `vocab_size` is `4`,
+using token IDs at `0xFFFFFF00`, `0xDEADBEEF`, `0xCAFEBABE`, etc. Any
+implementation that decoded — or even narrowed through a string
+round-trip — would fail the bit-for-bit equality checks on the emitted
+event IDs and the pointer-aliasing checks on `PASSTHROUGH` events.
+
+### Failure modes
+
+| # | Scenario | What the watcher does | What the caller must do |
+|---|----------|-----------------------|-------------------------|
+| 1 | Malformed JSON inside the markers | Emits `REGION_END` with the buffered IDs as if everything's fine — the watcher doesn't know about JSON | Decode the IDs, attempt `JSON.parse`, return error to the model |
+| 2 | Tool name doesn't exist in your registry | Same — watcher's job ends at the bytes | Caller looks up the name and returns "function not found" to the model |
+| 3 | Tool execution fails | Watcher already done | Caller's normal error handling |
+| 4 | Stray end marker (no preceding start) | Passes through as a regular ID — orchestrator forwards it as-is. Tested. | Probably nothing — most clients won't notice. If you want to detect server bugs, log when an end-marker ID appears outside an active region. |
+| 5 | Nested start (`<tool_call>…<tool_call>…`) | Inner `<tool_call>` ignored; everything until first `</tool_call>` is the body. Subsequent `</tool_call>` becomes a stray end (case 4). | If your model genuinely emits nested calls, you'd want a stack-based watcher. Most don't. |
+| 6 | Start marker but `done=true` arrives before end marker — truncated mid-region | Currently silently buffers, then frees the buffer when the watcher is freed. **This is the bad one.** | Today: nothing helpful. The bytes are gone. A `_finish()` API surfacing them as `CODEC_WATCH_TRUNCATED` is on the v0.2.1 roadmap. |
+| 7 | Multiple regions back-to-back | Each gets its own `REGION_END` event, in order | Process them sequentially |
+
+### Performance
+
+The watcher's hot loop is a single `uint32` compare against two cached
+IDs plus an occasional `memcpy` into the region buffer. Detokenize, in
+contrast, does a vocab lookup and UTF-8 string construction per token.
+The gap is large.
+
+Measured on the included `bench_watcher` example (Windows 11, MSVC
+Release, single core, synthetic byte-level map, 1M tokens, 5% inside
+regions, 1024-token chunks):
+
+| Path                               | ns/token | Mtok/s | 1M tokens |
+|------------------------------------|---------:|-------:|----------:|
+| `codec_tool_watcher_feed`          |     0.61 |   1648 |   0.61 ms |
+| `codec_detokenizer_render` (same stream) |    60.4 |     16 |  60.4 ms |
+| **Speedup**                        |          |        | **~100×** |
+
+For an orchestrator routing tokens between two agents at 1M tokens/sec,
+the watcher's detection cost is sub-millisecond per second of stream.
+That's small enough to enable tool-call detection on every frame
+without a measurable hit to throughput.
+
+To reproduce:
+
+```bash
+cmake --build build --config Release --target bench_watcher
+./build/examples/Release/bench_watcher [num_tokens] [region_density] [chunk]
+```
+
+The bench is self-contained (synthetic map embedded in the binary), so
+it runs without any external map file.
+
+### Acting on a detected tool call
+
+The watcher tells you *that* a tool call happened and hands you the
+body IDs. Turning that into an actual function invocation is three
+steps. None of them require Codec primitives — the whole point of the
+watcher is to give you the body once, in one place, so you can plug
+into whatever dispatch infrastructure you already have.
+
+```c
+/* 1. Decode the body into JSON.
+ *    Tool-call bodies in Llama-3 / Qwen-2.5 / Phi-4 / etc. are emitted
+ *    as JSON like: {"name":"get_weather","arguments":{"city":"Tokyo"}}
+ *    A separate detokenizer (constructed once, reused across calls)
+ *    renders the IDs back to UTF-8. */
+codec_detokenize_opts_t o = { /*partial=*/false, /*render_special=*/false };
+char  *json     = NULL;
+size_t json_len = 0;
+codec_detokenizer_render(detok, ev.ids, ev.ids_len, o, &json, &json_len);
+
+/* 2. Parse + dispatch. libcodec already vendors jsmn (used internally
+ *    for map parsing) — you can reuse it, or pull in cJSON / yyjson /
+ *    whatever your project standardizes on. The sketch below uses a
+ *    fictional helpers tool_call_parse() / tool_registry_invoke() that
+ *    wrap whatever JSON library + function table you have. */
+tool_call_t call = {0};
+if (!tool_call_parse(json, json_len, &call)) {
+    /* Failure mode #1: malformed JSON. Send "invalid_arguments" back
+     * to the model and let it retry. */
+    send_tool_error(orch, "invalid_arguments", json);
+    free(json);
+    return;
+}
+
+const tool_t *t = tool_registry_lookup(reg, call.name);
+if (!t) {
+    /* Failure mode #2: function not found. Same idea — model gets the
+     * error and (usually) recovers. */
+    send_tool_error(orch, "unknown_function", call.name);
+} else {
+    char *result = NULL;
+    int rc = t->invoke(t->ctx, call.arguments_json, &result);
+    if (rc != 0) {
+        /* Failure mode #3: tool execution failed. */
+        send_tool_error(orch, "execution_failed", result);
+    } else {
+        /* 3. Feed the result back to the model as a "tool" role
+         *    message. The exact format is model-specific — Llama-3 and
+         *    Qwen-2.5 use slightly different wrapper templates — but
+         *    it's always a small JSON snippet you append to the next
+         *    prompt and re-tokenize on the way in. */
+        orch_append_tool_result(orch, call.name, result);
+        free(result);
+    }
+}
+free(json);
+tool_call_free(&call);
+```
+
+A few things worth knowing while wiring this up:
+
+- **The detokenizer is not the watcher's dependency, it's yours.** You
+  only need `codec_detokenizer_t` if you actually intend to *execute*
+  the call. An orchestrator that just routes tool calls between agents
+  (A's tool call → B as a prompt fragment) can re-encode `ev.ids`
+  through the next agent's tokenizer via cross-vocab translation and
+  skip detokenize entirely.
+- **Construct the detokenizer once.** `codec_detokenizer_new` parses
+  the vocab and builds an `id → bytes` table. Don't rebuild it per
+  region — keep one alongside the watcher for the lifetime of the
+  session.
+- **Keep the body around until you've replied.** `ev.ids` points into
+  the watcher's internal buffer and is invalidated by the next
+  `codec_tool_watcher_feed` call. If your dispatch is async, copy the
+  IDs out of `ev.ids` before returning to the read loop, or render to
+  JSON synchronously and let your async layer own the string.
+- **Multiple tool calls per turn happen.** A single `feed()` can return
+  multiple `REGION_END` events (case 7 in the failure-modes table).
+  Process them in order; each is independent.
+
 ## API surface (full list)
 
 | Symbol                                | Purpose                                                              |
