@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output (publishable per-package; not tracked at the monorepo level)
+packages/*/dist/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Codec workspace
+.claude/worktrees/
+
+# Misc temp files
+*.log
+*.tmp
+.env
+.env.local

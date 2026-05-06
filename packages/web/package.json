@@ -1,6 +1,6 @@
 {
   "name": "@codecai/web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Isomorphic edge tokenizer + lazy detokenizer for the Codec binary transport protocol. Works in browsers, Node 18+, and edge runtimes.",
   "license": "MIT",
   "type": "module",

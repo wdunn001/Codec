@@ -1,82 +1,123 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://codec.ai/schemas/tokenizer-map/v0.1",
+  "$id": "https://codec.ai/schemas/tokenizer-map/v2",
   "title": "Codec Tokenizer Map",
-  "description": "Client-side decode table for a single model's token vocabulary. Given a token ID, returns the string fragment it represents.",
+  "description": "A per-model dialect for the Codec binary transport protocol. Carries the data needed to encode text into token IDs (BPETokenizer / LongestMatchTokenizer) and decode IDs back to text (Detokenizer). Maps are content-addressed and immutable — a new model version publishes a new map at a new URL with a new sha256 hash.",
   "type": "object",
-  "required": ["id", "version", "vocab_size", "tokens"],
+  "required": ["id", "version", "vocab_size"],
   "additionalProperties": false,
   "properties": {
     "id": {
       "type": "string",
-      "description": "Stable, globally unique tokenizer identifier (e.g. 'claude-sonnet-4-6-v1'). Matches the tokenizer_id in the READY frame."
+      "description": "Stable, globally unique tokenizer identifier (convention: lowercase 'org/model-family', e.g. 'meta-llama/llama-3'). Same ID + same hash means byte-identical map."
     },
     "version": {
       "type": "string",
-      "description": "Semver map version. Incremented when the vocabulary changes without a model rename."
+      "description": "Schema version. '2' for the current schema (vocab + merges + encoder). '1' for legacy maps that use the 'tokens' field instead of 'vocab'. Implementations SHOULD accept both for backwards compatibility."
     },
     "vocab_size": {
       "type": "integer",
       "minimum": 1,
       "description": "Total number of token IDs in the vocabulary. Valid IDs are 0 … vocab_size-1."
     },
+    "vocab": {
+      "type": "object",
+      "description": "Vocabulary as { raw_token_text: id }. 'Raw' means the form stored in HuggingFace tokenizer.json — for byte_level encoding this contains GPT-2-encoded characters (Ġ, etc.); for metaspace it contains ▁-prefixed strings. The Detokenizer applies the appropriate decoder. Required for v2 maps.",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
     "tokens": {
       "type": "object",
-      "description": "Map of token_id (string) → decoded fragment (string). String keys because JSON objects require string keys.",
-      "additionalProperties": {
-        "type": "string"
-      }
+      "description": "DEPRECATED — legacy v1 vocabulary as { id_string: decoded_text }. Present only on v1 maps. New maps use 'vocab' instead.",
+      "additionalProperties": { "type": "string" }
     },
-    "special_tokens": {
-      "type": "object",
-      "description": "Named special token IDs (e.g. 'end_of_turn', 'pad', 'bos', 'eos'). Clients should not render special tokens as text.",
-      "additionalProperties": {
-        "type": "integer",
-        "minimum": 0
-      }
+    "encoder": {
+      "type": "string",
+      "enum": ["byte_level", "metaspace"],
+      "description": "How vocab tokens are encoded:\n  byte_level — GPT-2 byte→unicode mapping (Llama-3, Qwen, Phi-3, DeepSeek-V3, Mistral-Nemo, Falcon, SmolLM2, Codestral byte_level variants).\n  metaspace  — ▁ as space prefix, SentencePiece-style (Llama-2, Mistral-v3, Mixtral, Gemma).\nOmitted on identity / vocab-only maps where tokens are already decoded text."
+    },
+    "merges": {
+      "type": "array",
+      "description": "BPE merges in priority order (lower index = higher priority). Each entry is two tokens separated by a single space, e.g. 'Ġ a'. Required by BPETokenizer for client-side encoding. Absent for vocab-only / canonical-IR maps that use only LongestMatchTokenizer.",
+      "items": { "type": "string" }
+    },
+    "pre_tokenizer_pattern": {
+      "type": "string",
+      "description": "Regex pattern that splits input text into pieces before byte-encoding and BPE merging. Required by BPETokenizer when encoder = 'byte_level'. The pattern uses Unicode property classes (\\p{L}, \\p{N}, …) which all major regex engines support."
     },
     "byte_fallback_start": {
       "type": "integer",
       "minimum": 0,
-      "description": "First token ID in the byte-fallback range (inclusive). IDs in [byte_fallback_start, byte_fallback_end] represent single UTF-8 bytes."
+      "description": "First token ID in the byte-fallback range (inclusive). IDs in [byte_fallback_start, byte_fallback_end] represent raw UTF-8 bytes 0x00–0xFF and are accumulated by the Detokenizer until they form a valid UTF-8 sequence. SentencePiece-derived tokenizers only."
     },
     "byte_fallback_end": {
       "type": "integer",
       "minimum": 0,
       "description": "Last token ID in the byte-fallback range (inclusive)."
     },
+    "special_tokens": {
+      "type": "object",
+      "description": "Named special token IDs (e.g. '<|endoftext|>', '<|im_start|>'). Skipped during text rendering by default; opt in via Detokenizer renderSpecial option.",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
     "published_at": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 timestamp when this map was published. Informational only."
+      "description": "ISO 8601 timestamp when this map was published. Informational only — content addressing is via sha256 hash, not timestamp."
     }
   },
-  "if": {
-    "required": ["byte_fallback_start"]
-  },
-  "then": {
-    "required": ["byte_fallback_end"]
-  },
+  "anyOf": [
+    { "required": ["vocab"] },
+    { "required": ["tokens"] }
+  ],
+  "if": { "required": ["byte_fallback_start"] },
+  "then": { "required": ["byte_fallback_end"] },
   "examples": [
     {
-      "id": "claude-sonnet-4-6-v1",
-      "version": "1.0.0",
-      "vocab_size": 100277,
-      "tokens": {
-        "0": "!",
-        "1": "\"",
-        "220": " ",
-        "1820": " the",
-        "290": " of"
+      "id": "qwen/qwen2",
+      "version": "2",
+      "vocab_size": 151665,
+      "vocab": {
+        "Hello": 9707,
+        "Ġworld": 1879,
+        "Ġ": 220,
+        "ĠĠ": 256
       },
+      "encoder": "byte_level",
+      "merges": [
+        "Ġ Ġ",
+        "ĠĠ ĠĠ",
+        "i n",
+        "Ġ t"
+      ],
+      "pre_tokenizer_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
       "special_tokens": {
-        "end_of_turn": 100264,
-        "bos": 100265,
-        "eos": 100266
+        "<|endoftext|>": 151643,
+        "<|im_start|>": 151644,
+        "<|im_end|>": 151645
       },
-      "byte_fallback_start": 100000,
-      "byte_fallback_end": 100255,
-      "published_at": "2025-05-05T00:00:00Z"
+      "published_at": "2026-05-06T00:00:00Z"
+    },
+    {
+      "id": "meta-llama/llama-2",
+      "version": "2",
+      "vocab_size": 32000,
+      "vocab": {
+        "<unk>": 0,
+        "<s>": 1,
+        "</s>": 2,
+        "<0x00>": 3,
+        "<0xFF>": 258,
+        "▁the": 278
+      },
+      "encoder": "metaspace",
+      "merges": ["▁ t", "▁t h", "▁th e"],
+      "byte_fallback_start": 3,
+      "byte_fallback_end": 258,
+      "special_tokens": {
+        "<unk>": 0,
+        "<s>": 1,
+        "</s>": 2
+      }
     }
   ]
 }

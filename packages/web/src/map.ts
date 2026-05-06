@@ -47,8 +47,20 @@ export function validateMap(value: unknown): asserts value is TokenizerMap {
     throw new TokenizerMapValidationError('version must be a string');
   if (typeof m.vocab_size !== 'number' || m.vocab_size < 1)
     throw new TokenizerMapValidationError('vocab_size must be a positive integer');
-  if (typeof m.tokens !== 'object' || m.tokens === null)
-    throw new TokenizerMapValidationError('tokens must be an object');
+  // v2 maps have `vocab`; v1 maps have `tokens`. At least one is required.
+  const hasVocab = typeof m.vocab === 'object' && m.vocab !== null;
+  const hasTokens = typeof m.tokens === 'object' && m.tokens !== null;
+  if (!hasVocab && !hasTokens) {
+    throw new TokenizerMapValidationError('one of `vocab` (v2) or `tokens` (v1) is required');
+  }
+  if (m.encoder !== undefined && m.encoder !== 'byte_level' && m.encoder !== 'metaspace') {
+    throw new TokenizerMapValidationError(
+      `encoder must be "byte_level" or "metaspace" if present, got ${JSON.stringify(m.encoder)}`,
+    );
+  }
+  if (m.merges !== undefined && !Array.isArray(m.merges)) {
+    throw new TokenizerMapValidationError('merges must be an array of strings');
+  }
   if (
     m.byte_fallback_start !== undefined &&
     (typeof m.byte_fallback_start !== 'number' || m.byte_fallback_start < 0)

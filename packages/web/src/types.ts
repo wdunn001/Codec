@@ -1,46 +1,90 @@
 /**
- * Public types for @codec/web. Mirrors spec/tokenizer-map.schema.json so a map
- * fetched from any Codec-compliant server can be validated against this shape.
+ * Public types for @codecai/web.
+ *
+ * A `TokenizerMap` is a per-model dialect — the data needed to encode text
+ * into token IDs (for input) and decode IDs back to text (for output). Maps
+ * are immutable once published; a new model version publishes a new map at a
+ * new URL with a new sha256 hash.
+ *
+ * Schema version 2 (breaking change from v1):
+ *   - `tokens` is replaced by `vocab` (raw form, used by the BPE tokenizer)
+ *   - `encoder` describes how raw vocab tokens map to bytes/chars
+ *   - `merges` and `pre_tokenizer_pattern` enable client-side BPE encoding
  */
 
 /**
- * Per-model decode table. Given a token ID, returns the string fragment it
- * represents. Loaded lazily by the client and cached by (id, hash).
- *
- * Maps are immutable once published — a new model version publishes a new map
- * at a new URL with a new ID. This is the same invariant as a JS package
- * version: same ID + same hash means byte-identical map.
+ * A tokenizer dialect for one model (or one model family that shares a
+ * tokenizer). Loaded lazily by the client and cached by (id, hash).
  */
 export interface TokenizerMap {
-  /** Stable, globally unique tokenizer identifier. */
+  /** Stable, globally unique tokenizer identifier (e.g. `meta-llama/llama-3`). */
   readonly id: string;
-  /** Semver map version. */
+
+  /**
+   * Schema version of this map file. Currently `"2"`. Maps with `version="1"`
+   * use the legacy `tokens` field and are accepted by the Detokenizer for
+   * backwards compatibility but cannot be used by the BPE tokenizer.
+   */
   readonly version: string;
+
   /** Total number of token IDs in the vocabulary. */
   readonly vocab_size: number;
-  /** token_id (string key) → decoded string fragment. */
-  readonly tokens: Readonly<Record<string, string>>;
-  /** Named special tokens (e.g. `eos`, `bos`). Should not be rendered as text. */
-  readonly special_tokens?: Readonly<Record<string, number>>;
-  /** First ID in the byte-fallback range (inclusive). */
+
+  /**
+   * Vocabulary as `{ raw_token_text: id }`. "Raw" means the form stored in
+   * HuggingFace `tokenizer.json` — for `byte_level` encoding this contains
+   * GPT-2 byte-encoded characters (`Ġ`, etc.); for `metaspace` it contains
+   * `▁`-prefixed strings. The Detokenizer applies the appropriate decoder
+   * to recover human-readable text.
+   */
+  readonly vocab?: Readonly<Record<string, number>>;
+
+  /**
+   * Legacy v1 vocabulary as `{ decoded_text: id_string }`. Present only on
+   * v1 maps. New maps use `vocab` instead.
+   */
+  readonly tokens?: Readonly<Record<string, string>>;
+
+  /**
+   * How vocab tokens are encoded:
+   *   - `"byte_level"` — GPT-2 byte→unicode mapping (Llama-3, Qwen, Phi-3, …).
+   *   - `"metaspace"`  — `▁` represents a space prefix (SentencePiece-style:
+   *                      Llama-2, Mistral-v3, Mixtral, Gemma).
+   *   - omitted        — identity (vocab is already decoded text; used by
+   *                      simple/test maps and v1 maps).
+   */
+  readonly encoder?: 'byte_level' | 'metaspace';
+
+  /**
+   * BPE merges in priority order. Each entry is two tokens separated by a
+   * single space, e.g. `"Ġ a"`. Required by `BPETokenizer`.
+   */
+  readonly merges?: readonly string[];
+
+  /**
+   * Regex pattern that splits input text into pieces before byte-encoding
+   * and BPE merging. Required by `BPETokenizer` when `encoder === "byte_level"`.
+   */
+  readonly pre_tokenizer_pattern?: string;
+
+  /** First ID in the byte-fallback range (inclusive). SentencePiece only. */
   readonly byte_fallback_start?: number;
-  /** Last ID in the byte-fallback range (inclusive). */
+  /** Last ID in the byte-fallback range (inclusive). SentencePiece only. */
   readonly byte_fallback_end?: number;
+
+  /** Named special tokens. Skipped during text rendering by default. */
+  readonly special_tokens?: Readonly<Record<string, number>>;
+
   readonly published_at?: string;
 }
 
 /**
  * Wire frame produced by a Codec-compliant server. Identical shape across
  * MessagePack and Protobuf modes — only the serialization differs.
- *
- * Mirrors @codec/core's CodecFrame so this package stays decoupled from it.
  */
 export interface CodecFrame {
-  /** Token IDs emitted by the model in this chunk. */
   readonly ids: readonly number[];
-  /** True on the final frame — no more frames will follow. */
   readonly done: boolean;
-  /** Set on the final frame. e.g. `"length"`, `"stop"`, `"eos_token"`, `"error"`. */
   readonly finish_reason?: string;
 }
 
@@ -51,4 +95,13 @@ export interface CodecFrame {
 export interface MapCache {
   get(key: string): Promise<TokenizerMap | undefined>;
   set(key: string, map: TokenizerMap): Promise<void>;
+}
+
+/**
+ * Common interface every tokenizer implementation satisfies. `BPETokenizer`,
+ * `LongestMatchTokenizer`, and any wasm/native adapter all implement this.
+ */
+export interface Tokenizer {
+  readonly id: string;
+  encode(text: string): number[];
 }
