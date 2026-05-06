@@ -3,3 +3,6 @@ target_link_libraries(stream_decode PRIVATE codec::codec)
 
 add_executable(bench_decode bench_decode.c)
 target_link_libraries(bench_decode PRIVATE codec::codec)
+
+add_executable(bench_watcher bench_watcher.c)
+target_link_libraries(bench_watcher PRIVATE codec::codec)
