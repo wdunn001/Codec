@@ -172,6 +172,45 @@ and you'll need to detect the marker after detokenization. The map's
 `special_tokens` field is the source of truth — if `<tool_call>` is in
 there, you can scan for it in binary.
 
+### What the watcher does and doesn't touch
+
+The watcher's contract is "uint32 in, uint32 out" — it never invokes
+the detokenizer, never allocates a string, never looks at the vocab.
+The only fields of the map it reads are the two `special_tokens`
+entries you name in `_new`.
+
+Concretely:
+
+| Behavior                                                | Watcher    |
+|---------------------------------------------------------|------------|
+| Reads `map.vocab`                                       | No         |
+| Reads `map.merges` / encoder config                     | No         |
+| Calls `codec_detokenize*`                               | No         |
+| Allocates strings                                       | No         |
+| Allocates buffers                                       | Only the captured region body, reused across feeds |
+| Modifies the input `ids` array                          | No         |
+| Returned `PASSTHROUGH` ids pointer                      | Aliases the caller's input buffer (zero-copy) |
+| Returned `REGION_END` ids pointer                       | Owned by the watcher; valid until next `feed()` or `free()` |
+
+This is enforced by `test_watcher_does_not_decode_tokens` in
+[`test/test_tool_watcher.c`](test/test_tool_watcher.c), which feeds the
+watcher with a map whose `vocab` is empty and `vocab_size` is `4`,
+using token IDs at `0xFFFFFF00`, `0xDEADBEEF`, `0xCAFEBABE`, etc. Any
+implementation that decoded — or even narrowed through a string
+round-trip — would fail the bit-for-bit equality checks on the emitted
+event IDs and the pointer-aliasing checks on `PASSTHROUGH` events.
+
+### Failure modes
+
+| Situation                                              | Behavior                                                      |
+|--------------------------------------------------------|---------------------------------------------------------------|
+| Stray end marker (no preceding start)                  | Passes through as a regular ID                                |
+| Nested start marker inside an active region            | Inner start ignored; outer end closes the region              |
+| Region split across feeds                              | Body buffered; `REGION_END` emitted when end marker arrives   |
+| Stream ends mid-region (start seen, end never arrives) | Buffered IDs are currently dropped on `_free`. A `_finish()` API that surfaces them as a `CODEC_WATCH_TRUNCATED` event is on the v0.2.1 roadmap. |
+| Malformed JSON inside markers                          | Watcher emits `REGION_END` normally — semantic validation is the caller's responsibility |
+| Special-token name not in the map                      | `_new` returns `CODEC_ERR_NOT_FOUND`; no watcher allocated   |
+
 ## API surface (full list)
 
 | Symbol                                | Purpose                                                              |

@@ -187,6 +187,100 @@ static void test_watcher_missing_name_is_not_found(void) {
     codec_map_free(m);
 }
 
+/* ── Watcher operates on raw IDs only — never decodes ─────────────────── */
+/*
+ * This test exists to lock in the contract that codec_tool_watcher does
+ * NOT route token IDs through the detokenizer. The watcher is meant to be
+ * usable on a map that contains ONLY the start/end specials — no vocab,
+ * no merges, no decoder config. If the watcher ever grew an accidental
+ * dependency on the vocab (e.g. via codec_map_is_special falling back to
+ * a vocab lookup), this test would fail.
+ *
+ * We construct a map whose `vocab` is empty and whose `vocab_size` is a
+ * deliberately small number, then feed the watcher token IDs that are
+ * BOTH outside the vocab and above the declared vocab_size. The watcher
+ * must still emit the events verbatim — including those bogus IDs — and
+ * the captured region body must contain the exact uint32 values we fed,
+ * not anything derived from a string round-trip.
+ */
+static const char NO_VOCAB_MAP[] =
+"{"
+"  \"id\": \"test/no-vocab\","
+"  \"version\": \"2\","
+"  \"vocab_size\": 4,"
+"  \"vocab\": {},"
+"  \"encoder\": \"byte_level\","
+"  \"special_tokens\": {"
+"    \"<tool_call>\":  90,"
+"    \"</tool_call>\": 91"
+"  }"
+"}";
+
+static void test_watcher_does_not_decode_tokens(void) {
+    codec_tokenizer_map_t *m = NULL;
+    CT_EQ_INT(codec_map_from_json(NO_VOCAB_MAP, sizeof(NO_VOCAB_MAP) - 1, &m),
+              CODEC_OK);
+
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new(m, "<tool_call>", "</tool_call>", &w),
+              CODEC_OK);
+
+    /* IDs deliberately chosen to be:
+     *  - outside the (empty) vocab
+     *  - above the declared vocab_size of 4
+     *  - including UINT32_MAX-adjacent values to catch any accidental
+     *    integer-narrowing via a string-decode round-trip
+     * If the watcher were decoding, codec_map_id_to_text on these would
+     * either fail or return empty — either way, the body verification
+     * below would not match. */
+    const uint32_t BIG_A = 0xFFFFFF00u;
+    const uint32_t BIG_B = 0xDEADBEEFu;
+    const uint32_t BIG_C = 0xCAFEBABEu;
+    uint32_t ids[] = {
+        12345u,                /* passthrough — way out of vocab */
+        BIG_A,                 /* passthrough — near uint32 max */
+        START_ID,              /* opens region */
+        BIG_B,                 /* region body — bogus ID */
+        BIG_C,                 /* region body — bogus ID */
+        END_ID,                /* closes region */
+        99999u,                /* passthrough — out of vocab */
+    };
+
+    codec_watcher_event_t *evs;
+    size_t n;
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids, sizeof(ids) / sizeof(ids[0]),
+                                      &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 3);
+
+    /* PASSTHROUGH: verbatim copy of the input slice — same uint32 values,
+     * no string round-trip, no narrowing. */
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_PASSTHROUGH);
+    CT_EQ_SZ(evs[0].ids_len, 2);
+    CT_EQ_INT(evs[0].ids[0], 12345u);
+    CT_EQ_INT(evs[0].ids[1], BIG_A);
+
+    /* REGION_END: body IDs preserved bit-for-bit, markers excluded. The
+     * fact that BIG_B/BIG_C have no vocab entry is irrelevant — the
+     * watcher never asks. */
+    CT_EQ_INT((int)evs[1].kind, (int)CODEC_WATCH_REGION_END);
+    CT_EQ_SZ(evs[1].ids_len, 2);
+    CT_EQ_INT(evs[1].ids[0], BIG_B);
+    CT_EQ_INT(evs[1].ids[1], BIG_C);
+
+    /* PASSTHROUGH: trailing IDs after end marker. */
+    CT_EQ_INT((int)evs[2].kind, (int)CODEC_WATCH_PASSTHROUGH);
+    CT_EQ_SZ(evs[2].ids_len, 1);
+    CT_EQ_INT(evs[2].ids[0], 99999u);
+
+    /* Additionally: PASSTHROUGH events must point INTO the caller's
+     * input buffer (zero-copy contract). Verify the pointer math. */
+    CT_TRUE(evs[0].ids == &ids[0]);
+    CT_TRUE(evs[2].ids == &ids[6]);
+
+    codec_tool_watcher_free(w);
+    codec_map_free(m);
+}
+
 /* ── Real Qwen-2 sanity check (when codec-maps is mounted) ────────────── */
 
 static void test_watcher_real_qwen2(void) {
@@ -249,6 +343,7 @@ int main(void) {
     CT_RUN(test_watcher_multiple_regions);
     CT_RUN(test_watcher_stray_end_passes_through);
     CT_RUN(test_watcher_missing_name_is_not_found);
+    CT_RUN(test_watcher_does_not_decode_tokens);
     CT_RUN(test_watcher_real_qwen2);
     CT_DONE();
 }
