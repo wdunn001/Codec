@@ -84,6 +84,43 @@ For huge prompts (>50K tokens, e.g. RAG with long context), the dedicated `/v1/c
 | `StreamDecoder.DecodeMsgpackStreamAsync(stream)` | `Stream` → `IAsyncEnumerable<CodecFrame>` |
 | `StreamDecoder.DecodeProtobufStreamAsync(stream)` | Same for length-prefixed protobuf |
 | `StreamDecoder.DecodeProtobufFrame(span)` | One-shot frame decoder (no length prefix) |
+| `ToolWatcher` | Detect delimited regions (tool calls, reasoning blocks, vision spans) without decoding |
+| `Translator`, `TranslatorExtensions.Translate(...)`, `TranslatorExtensions.StaticTranslationTable(...)` | Cross-vocab agent handoff: `ids_A → text → ids_B` with streaming-safe word-boundary buffering |
+
+## Detect tool calls without decoding
+
+Most chat-tuned models delimit tool calls with single-token specials (Qwen `<tool_call>`/`</tool_call>`, Llama 3.1+ `<|python_tag|>`/`<|eom_id|>`, DeepSeek-R1 `<think>`/`</think>`, …). Detecting one is a uint compare in the hot loop — no detokenize, no string allocation:
+
+```csharp
+var watcher = new ToolWatcher(map, "<tool_call>", "</tool_call>");
+
+await foreach (var frame in StreamDecoder.DecodeMsgpackStreamAsync(stream)) {
+    foreach (var ev in watcher.Feed(frame.Ids)) {
+        if (ev.Kind == WatcherEventKind.Passthrough)
+            ForwardCodecFrame(nextAgent, ev.Ids);   // no decode
+        else
+            DispatchTool(JsonDocument.Parse(detok.Render(ev.Ids.Cast<int>().ToArray())));
+    }
+}
+```
+
+Stateful — regions split between network frames buffer until the end marker arrives. Same primitive covers reasoning blocks, multimodal spans, code-interpreter regions — anything delimited by a `(start, end)` special pair.
+
+## Cross-vocab agent handoff
+
+When agent A's output feeds agent B as a prompt and the two models have different vocabs, decode-then-reencode through text — without ever putting text on the wire:
+
+```csharp
+var tr = new Translator(qwenMap, llamaMap);
+
+await foreach (var frame in StreamDecoder.DecodeMsgpackStreamAsync(stream)) {
+    var llamaIds = tr.Translate(frame.Ids, partial: !frame.Done);
+    ForwardCodecFrame(llamaAgent, llamaIds);
+}
+// tr.Finish() drains the trailing partial-word buffer.
+```
+
+Pre-tokenizers split at whitespace, so `Translator` buffers partial words until a safe boundary arrives. For analysis-only use, `TranslatorExtensions.StaticTranslationTable(A, B)` gives a context-free `id_A → ids_B` lookup.
 
 ## Correctness
 
