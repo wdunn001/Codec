@@ -298,6 +298,75 @@ codec_status_t codec_protobuf_stream_feed(codec_protobuf_stream_t *dec,
 codec_status_t codec_protobuf_stream_next(codec_protobuf_stream_t *dec,
                                           codec_frame_t *out);
 
+/* ── Pre-tokenizer program ──────────────────────────────────────────────── */
+/*
+ * The pre-tokenizer program (v2.1 map field, see
+ * spec/PRETOKENIZER_PROGRAM.md) is an ordered list of named ops that
+ * splits input text into pieces before BPE merging. It exists so libcodec
+ * can do BPE encoding without a Unicode regex engine — eight ops cover
+ * every GPT-2-family and SentencePiece-metaspace tokenizer in current
+ * use.
+ *
+ * libcodec parses the program out of the JSON map and exposes it to BPE
+ * via the public API below. Most callers won't touch the program
+ * directly; they'll just call codec_bpe_encode(). The interpreter is
+ * exposed for advanced callers building custom encoders or tooling.
+ */
+
+typedef enum codec_pretok_kind {
+    CODEC_PRETOK_LITERALS_CI     = 1,
+    CODEC_PRETOK_LETTERS         = 2,
+    CODEC_PRETOK_NUMBERS         = 3,
+    CODEC_PRETOK_PUNCT_RUN       = 4,
+    CODEC_PRETOK_NEWLINE_BLOCK   = 5,
+    CODEC_PRETOK_TRAILING_WS     = 6,
+    CODEC_PRETOK_WS_RUN          = 7,
+    CODEC_PRETOK_METASPACE_SPLIT = 8,
+} codec_pretok_kind_t;
+
+typedef struct codec_pretok_op {
+    codec_pretok_kind_t kind;
+    union {
+        struct { char **patterns; size_t count; } literals_ci;
+        struct { int   lead_other; }              letters;
+        struct { uint32_t max_run; }              numbers; /* 0 = unbounded */
+        struct { int lead_space, trailing_newlines; } punct_run;
+        struct { int prefix_first; }              metaspace_split;
+    } u;
+} codec_pretok_op_t;
+
+typedef struct codec_pretok_program {
+    int                version;     /* 1 for v1 op set */
+    codec_pretok_op_t *ops;
+    size_t             op_count;
+} codec_pretok_program_t;
+
+/* (offset, length) pair into the caller's input buffer. */
+typedef struct codec_pretok_piece {
+    size_t off;
+    size_t len;
+} codec_pretok_piece_t;
+
+/* Run the program over UTF-8 input. Pieces alias the input buffer.
+ * Free with codec_pretok_free_pieces(). For metaspace single-op
+ * programs, returns CODEC_ERR_INVALID_ARG — use codec_pretok_run_metaspace
+ * instead, which produces freshly-allocated prefixed pieces. */
+codec_status_t codec_pretok_run_program(
+    const codec_pretok_program_t *prog,
+    const uint8_t *input, size_t input_len,
+    codec_pretok_piece_t **out_pieces, size_t *out_count);
+
+void codec_pretok_free_pieces(codec_pretok_piece_t *pieces);
+
+/* Metaspace splitter: fresh ▁-prefixed pieces. Output pieces are
+ * caller-owned; free with codec_pretok_free_metaspace_pieces(). */
+codec_status_t codec_pretok_run_metaspace(
+    const uint8_t *input, size_t input_len,
+    int prefix_first,
+    char ***out_pieces, size_t *out_count);
+
+void codec_pretok_free_metaspace_pieces(char **pieces, size_t count);
+
 #ifdef __cplusplus
 }
 #endif
