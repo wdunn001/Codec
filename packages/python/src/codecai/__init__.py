@@ -51,8 +51,18 @@ from .map_loader import (
     TokenizerMapHashMismatchError,
     load_map,
 )
+from .tool_watcher import (
+    ToolWatcher,
+    ToolWatcherError,
+    WatcherEvent,
+)
+from .translate import (
+    Translator,
+    static_translation_table,
+    translate,
+)
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     # types
@@ -83,5 +93,13 @@ __all__ = [
     "LoadOptions",
     "TokenizerMapHashMismatchError",
     "load_map",
+    # tool watcher
+    "ToolWatcher",
+    "ToolWatcherError",
+    "WatcherEvent",
+    # translate
+    "Translator",
+    "translate",
+    "static_translation_table",
     "__version__",
 ]

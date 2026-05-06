@@ -109,6 +109,44 @@ For huge prompts (>50K tokens, e.g. RAG with long context), `/v1/completions/cod
 | `decode_msgpack_stream(body)` | `AsyncIterable[bytes]` → `AsyncIterator[CodecFrame]` |
 | `decode_protobuf_stream(body)` | Same for length-prefixed protobuf |
 | `decode_protobuf_frame(payload)` | One-shot frame decoder (no length prefix) |
+| `ToolWatcher` | Detect delimited regions (tool calls, reasoning blocks, vision spans) without decoding |
+| `Translator`, `translate(...)`, `static_translation_table(...)` | Cross-vocab agent handoff: `ids_A → text → ids_B` with streaming-safe word-boundary buffering |
+
+## Detect tool calls without decoding
+
+Most chat-tuned models delimit tool calls with single-token specials (Qwen `<tool_call>` / `</tool_call>`, Llama 3.1+ `<|python_tag|>` / `<|eom_id|>`, DeepSeek-R1 `<think>` / `</think>`, etc.). Detecting one is a uint32 compare in the hot loop — no detokenize, no string allocation:
+
+```python
+from codecai import ToolWatcher
+
+watcher = ToolWatcher(map, "<tool_call>", "</tool_call>")
+
+async for frame in decode_msgpack_stream(resp.aiter_raw()):
+    for ev in watcher.feed(frame.ids):
+        if ev.kind == "passthrough":
+            forward_codec_frame(next_agent, ev.ids)   # no decode
+        else:  # "region"
+            json_args = json.loads(detok.render(ev.ids))
+            dispatch_tool(json_args)
+```
+
+Stateful — regions split between network frames buffer until the end marker arrives. The same primitive covers reasoning blocks, multimodal spans, code-interpreter regions — anything delimited by a `(start, end)` special pair.
+
+## Cross-vocab agent handoff
+
+When agent A's output feeds agent B as a prompt and the two models have different vocabs, decode-then-reencode through text — without ever putting text on the wire:
+
+```python
+from codecai import Translator
+
+tr = Translator(qwen_map, llama_map)
+async for frame in decode_msgpack_stream(resp.aiter_raw()):
+    llama_ids = tr.translate(frame.ids, partial=not frame.done)
+    forward_codec_frame(llama_agent, llama_ids)
+# tr.finish() drains the trailing partial-word buffer.
+```
+
+`Translator` is stateful: pre-tokenizers split at whitespace, so it buffers partial words until a safe boundary arrives. For analysis-only use, `static_translation_table(A, B)` gives a context-free `id_A → ids_B` lookup.
 
 ## Correctness
 
