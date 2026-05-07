@@ -55,7 +55,9 @@ There are two regimes — interactive (humans read as it streams) and agent-mode
 
 ### Interactive (default)
 
-Always picks gzip when available. Reason: measured TTFT on Codec streams jumps from ~11 ms (gzip) to ~3,800 ms (zstd) at 2K tokens, because zstd compressors typically buffer the full stream to finalise their dictionary. For chat, code completion, anything a human reads as it streams, **gzip is the only safe choice** — and it still gets you ~225× wire reduction vs uncompressed JSON-SSE.
+Picks streaming encodings only — gzip first, brotli as fallback. Reason: measured TTFT on Codec streams jumps from ~11 ms (gzip or br) to ~3,800 ms (zstd) at 2K tokens, because zstd compressors typically buffer the full stream to finalise their dictionary. gzip and brotli both flush chunk-by-chunk and preserve TTFT.
+
+For chat, code completion, anything a human reads as it streams, **gzip and brotli are both safe choices**; gzip is preferred because it gets ~225× wire reduction (vs ~17× for br on Codec frames at 2K tokens). zstd is never picked in interactive mode unless it's the only encoding the client supports, in which case the picker accepts the regression and surfaces it in `reason`.
 
 ### Agent-mode (`interactive: false`)
 

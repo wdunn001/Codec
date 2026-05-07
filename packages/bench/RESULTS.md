@@ -255,39 +255,60 @@ token (TTFT, what humans feel), total wall-clock time, and CPU time
 spent in serialization on both endpoints. Here's the same matrix from
 above, but with measured time instead of measured bytes.
 
-### The TTFT cliff — zstd buffers, gzip streams
+### The TTFT cliff — zstd buffers, gzip and brotli stream
 
 The single most important time finding: **zstd as currently shipped by
 sglang's `codec_compression.py` buffers the entire response before
-sending the first byte.** Same lab box, same prompt, same model —
-TTFT measured as time from request POST to first received byte:
+sending the first byte.** gzip and brotli, by contrast, both flush
+chunk-by-chunk and preserve TTFT regardless of size. Same lab box,
+same prompt, same model — TTFT measured as time from request POST to
+first received byte:
 
 ![TTFT vs response size](docs/ttft-vs-size.png)
 
-| path · encoding | TTFT @ 64 tok | TTFT @ 512 tok | TTFT @ 2048 tok |
-|---|---:|---:|---:|
-| json-sse · identity | 46 ms | 15 ms | 15 ms |
-| msgpack · identity | 11 ms | 11 ms | 12 ms |
-| msgpack · gzip | `11 ms` | `11 ms` | `11 ms` |
-| msgpack · br | 12 ms | 12 ms | 12 ms |
-| **msgpack · zstd** | **118 ms** | **903 ms** | **3,764 ms** |
-| protobuf · identity | 11 ms | 12 ms | 12 ms |
-| protobuf · gzip | `11 ms` | `11 ms` | `11 ms` |
-| protobuf · br | 11 ms | 11 ms | 12 ms |
-| **protobuf · zstd** | **118 ms** | **902 ms** | **3,768 ms** |
+| path · encoding | TTFT @ 64 tok | TTFT @ 512 tok | TTFT @ 2048 tok | streams? |
+|---|---:|---:|---:|:---:|
+| json-sse · identity | 46 ms | 15 ms | 15 ms | ✓ |
+| json-sse · br | 12 ms | 13 ms | 12 ms | ✓ |
+| msgpack · identity | 11 ms | 11 ms | 12 ms | ✓ |
+| msgpack · gzip | `11 ms` | `11 ms` | `11 ms` | ✓ |
+| msgpack · br | `12 ms` | `12 ms` | `12 ms` | ✓ |
+| **msgpack · zstd** | **118 ms** | **903 ms** | **3,764 ms** | ✗ |
+| protobuf · identity | 11 ms | 12 ms | 12 ms | ✓ |
+| protobuf · gzip | `11 ms` | `11 ms` | `11 ms` | ✓ |
+| protobuf · br | `11 ms` | `11 ms` | `12 ms` | ✓ |
+| **protobuf · zstd** | **118 ms** | **902 ms** | **3,768 ms** | ✗ |
 
 **zstd's TTFT regresses 313× at 2K tokens** (11 ms → 3,768 ms) — first
-byte arrives only when the model finishes generating. gzip preserves
-TTFT at ~11 ms regardless of size.
+byte arrives only when the model finishes generating. **gzip and
+brotli both preserve TTFT** at ~11 ms regardless of size; only zstd
+buffers.
+
+That changes the encoding story: the streaming-vs-buffering split
+isn't gzip-versus-everything-else, it's zstd-versus-everything-else.
+Brotli is a perfectly viable streaming choice — it just doesn't
+compress Codec frames as well as gzip at small sizes (see §1c). At
+the same time it preserves TTFT exactly like gzip, which makes it the
+right pick for clients that have br support but not gzip (or where br
+is the negotiated default for some other reason).
 
 The wire savings are still real (zstd: 228× vs JSON-SSE; gzip: 222×
-vs JSON-SSE at 2K tokens). But for human-facing streams, the TTFT
-cliff makes zstd a non-starter as currently configured. **Use gzip for
-interactive responses**, even when zstd is supported.
+vs JSON-SSE; br: ~17× vs JSON-SSE — at 2K tokens). The trade-offs:
+
+| encoding | wire reduction at 2K | TTFT @ 2K | use when |
+|---|---:|---:|---|
+| gzip | 222× | 11 ms | universal default for streaming |
+| br | ~17× | 12 ms | gzip unavailable client-side (Safari/iOS edge cases) |
+| zstd | 228× | 3,768 ms | non-interactive workloads (agent-to-agent, batch) |
+
+For human-facing streams, the TTFT cliff makes zstd a non-starter as
+currently configured. **Use gzip for interactive responses**, fall
+back to br when gzip isn't supported, and only unlock zstd when the
+consumer is reading the whole response at once.
 
 The `wire-compress` picker enforces this. Its default `interactive: true`
-mode never picks zstd, even when both client and server support it,
-unless gzip is unavailable.
+mode never picks zstd; in that mode the order is gzip > br > zstd
+(zstd only chosen when it's the lone supported encoding).
 
 ### Total wall-clock — Codec adds <1% overhead
 
