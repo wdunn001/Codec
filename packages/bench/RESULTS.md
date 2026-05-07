@@ -157,24 +157,28 @@ Per-format charts: [msgpack](docs/crossover-msgpack.png) ·
 | path · encoding | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | msgpack · identity | 249 | 482 | 944 | 1.8 KB | 3.6 KB | 7.2 KB | 14.4 KB | 27.1 KB |
-| msgpack · **gzip** | **110** | **115** | **126** | **146** | 194 | 268 | 400 | 639 |
+| msgpack · gzip | `110` | `115` | `126` | `146` | 194 | 268 | 400 | 639 |
 | msgpack · br | 303 | 574 | 923 | 1.6 KB | 2.9 KB | 5.5 KB | 10.8 KB | 20.2 KB |
-| msgpack · **zstd** | **107** | **112** | 134 | 152 | **176** | **239** | **273** | **381** |
+| msgpack · zstd | `107` | `112` | 134 | 152 | `176` | `239` | `273` | `381` |
 | protobuf · identity | 164 | 322 | 636 | 1.2 KB | 2.5 KB | 4.9 KB | 9.8 KB | 18.5 KB |
-| protobuf · **gzip** | **98** | **102** | **113** | **133** | 179 | 247 | 367 | 587 |
+| protobuf · gzip | `98` | `102` | `113` | `133` | 179 | 247 | 367 | 587 |
 | protobuf · br | 243 | 408 | 762 | 1.4 KB | 2.7 KB | 5.3 KB | 10.6 KB | 20.0 KB |
-| protobuf · **zstd** | 100 | 104 | 122 | 140 | **164** | **223** | **258** | **368** |
+| protobuf · zstd | 100 | 104 | 122 | 140 | `164` | `223` | `258` | `368` |
 
-**Bold = winner at that size.** JSON-SSE row omitted because the server
-never compresses text streams in this build (identity at all sizes:
-3.8 KB → 457 KB linear).
+`Highlighted` = winner at that size. JSON-SSE row omitted because the
+server never compresses text streams in this build (identity at all
+sizes: 3.8 KB → 457 KB linear).
 
 ### Winner per size
 
 | path | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 |
 |---|---|---|---|---|---|---|---|---|
-| Codec msgpack | zstd | zstd | **gzip** | **gzip** | zstd | zstd | zstd | zstd |
-| Codec protobuf | gzip | gzip | gzip | gzip | **zstd** | **zstd** | **zstd** | **zstd** |
+| Codec msgpack | zstd | zstd | gzip | gzip | zstd | zstd | zstd | zstd |
+| Codec protobuf | gzip | gzip | gzip | gzip | zstd | zstd | zstd | zstd |
+
+Crossover band: msgpack flips zstd→gzip at 64 tokens then back to zstd
+at 256; protobuf flips gzip→zstd between 128 and 256. Both formats
+agree: gzip below ~128 tokens, zstd above ~256 tokens.
 
 ### The threshold rule
 
