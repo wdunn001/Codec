@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: MIT
+//! BPE tokenizer tests — mirrors `BPETests.cs`.
+
+use std::collections::HashMap;
+
+use codec_rs::{
+    encode_byte_level_chars, BPETokenizer, Detokenizer, ITokenizer, TokenizerMap,
+};
+
+fn make_byte_level_fixture() -> TokenizerMap {
+    let space = encode_byte_level_chars(&[0x20]);
+    let mut vocab: HashMap<String, u32> = HashMap::new();
+    vocab.insert("h".into(), 0);
+    vocab.insert("e".into(), 1);
+    vocab.insert("l".into(), 2);
+    vocab.insert("o".into(), 3);
+    vocab.insert("w".into(), 4);
+    vocab.insert("r".into(), 5);
+    vocab.insert("d".into(), 6);
+    vocab.insert(space.clone(), 7);
+    vocab.insert("!".into(), 8);
+    vocab.insert("he".into(), 9);
+    vocab.insert("hel".into(), 10);
+    vocab.insert("hell".into(), 11);
+    vocab.insert("hello".into(), 12);
+    vocab.insert("wo".into(), 13);
+    vocab.insert("wor".into(), 14);
+    vocab.insert("worl".into(), 15);
+    vocab.insert("world".into(), 16);
+    vocab.insert(format!("{space}world"), 17);
+
+    let merges = vec![
+        "h e".to_string(),
+        "he l".to_string(),
+        "hel l".to_string(),
+        "hell o".to_string(),
+        "w o".to_string(),
+        "wo r".to_string(),
+        "wor l".to_string(),
+        "worl d".to_string(),
+        format!("{space} world"),
+    ];
+
+    TokenizerMap {
+        id: "test/byte_level".into(),
+        version: "2".into(),
+        vocab_size: vocab.len() as i64,
+        vocab: Some(vocab),
+        tokens: None,
+        encoder: Some("byte_level".into()),
+        merges: Some(merges),
+        // Llama-3-style simplified pre-tokenizer: word + maybe-leading-space.
+        pre_tokenizer_pattern: Some(" ?[A-Za-z]+| ?[^A-Za-z\\s]+|\\s+".into()),
+        byte_fallback_start: None,
+        byte_fallback_end: None,
+        special_tokens: None,
+        published_at: None,
+    }
+}
+
+#[test]
+fn encodes_hello_world_exactly() {
+    let map = make_byte_level_fixture();
+    let tok = BPETokenizer::new(&map).expect("supports");
+    let ids = ITokenizer::encode(&tok, "hello world!");
+    assert_eq!(ids, vec![12, 17, 8]);
+}
+
+#[test]
+fn round_trips_through_detokenizer() {
+    let map = make_byte_level_fixture();
+    let tok = BPETokenizer::new(&map).expect("supports");
+    let mut detok = Detokenizer::new(&map);
+    let text = "hello world!";
+    let ids = ITokenizer::encode(&tok, text);
+    assert_eq!(detok.render(&ids, Default::default()), text);
+}
+
+#[test]
+fn merges_greedily_by_priority_not_left_to_right() {
+    // Build a fixture where merge priority matters.
+    let mut vocab: HashMap<String, u32> = HashMap::new();
+    vocab.insert("a".into(), 0);
+    vocab.insert("b".into(), 1);
+    vocab.insert("c".into(), 2);
+    vocab.insert("ab".into(), 3);
+    vocab.insert("bc".into(), 4);
+    vocab.insert("abc".into(), 5);
+
+    // "b c" first (lower index = higher priority).
+    // Greedy left-to-right: "ab" + "c" → [3, 2].
+    // Priority-correct: "a" + "bc" → [0, 4].
+    let merges = vec!["b c".to_string(), "a b".to_string()];
+
+    let map = TokenizerMap {
+        id: "test/priority".into(),
+        version: "2".into(),
+        vocab_size: 6,
+        vocab: Some(vocab),
+        tokens: None,
+        encoder: Some("byte_level".into()),
+        merges: Some(merges),
+        pre_tokenizer_pattern: Some("\\S+".into()),
+        byte_fallback_start: None,
+        byte_fallback_end: None,
+        special_tokens: None,
+        published_at: None,
+    };
+
+    let tok = BPETokenizer::new(&map).expect("supports");
+    assert_eq!(ITokenizer::encode(&tok, "abc"), vec![0, 4]);
+}
