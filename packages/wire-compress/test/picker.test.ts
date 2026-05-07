@@ -39,69 +39,67 @@ describe('parseAcceptEncoding', () => {
 
 describe('pick — Codec streaming defaults', () => {
   const ALL_CLIENT = 'zstd, gzip, br';
+  // Most tests run agent-mode (interactive=false) to exercise the size-based
+  // thresholds. The interactive-mode tests are in their own describe block.
+  const A = { acceptEncoding: ALL_CLIENT, interactive: false } as const;
 
   it('< 128 tokens → gzip when client supports it', () => {
-    const r = pick({ acceptEncoding: ALL_CLIENT, estimatedSize: 64 });
+    const r = pick({ ...A, estimatedSize: 64 });
     assert.equal(r.encoding, 'gzip');
   });
 
   it('exactly 128 → still gzip (boundary)', () => {
-    const r = pick({ acceptEncoding: ALL_CLIENT, estimatedSize: 128 });
+    const r = pick({ ...A, estimatedSize: 128 });
     assert.equal(r.encoding, 'gzip');
   });
 
   it('mid-band 200 tokens → zstd (preferred when supported)', () => {
-    const r = pick({ acceptEncoding: ALL_CLIENT, estimatedSize: 200 });
+    const r = pick({ ...A, estimatedSize: 200 });
     assert.equal(r.encoding, 'zstd');
   });
 
   it('>= 256 tokens → zstd', () => {
-    const r = pick({ acceptEncoding: ALL_CLIENT, estimatedSize: 1024 });
+    const r = pick({ ...A, estimatedSize: 1024 });
     assert.equal(r.encoding, 'zstd');
   });
 
   it('>= 256 with no zstd → gzip', () => {
-    const r = pick({ acceptEncoding: 'gzip, br', estimatedSize: 1024 });
+    const r = pick({ acceptEncoding: 'gzip, br', estimatedSize: 1024, interactive: false });
     assert.equal(r.encoding, 'gzip');
   });
 
   it('zstd-only client at small size still gets zstd', () => {
-    // gzip preferred at small size, but zstd is the only thing supported.
-    const r = pick({ acceptEncoding: 'zstd', estimatedSize: 32 });
-    // zstd preferred at small size when gzip isn't available, even though
-    // gzip would be preferred at this size if both were supported.
+    const r = pick({ acceptEncoding: 'zstd', estimatedSize: 32, interactive: false });
     assert.ok(r.encoding === 'gzip' || r.encoding === 'zstd', `got ${r.encoding}`);
   });
 
   it('br-only client → br fallback', () => {
-    const r = pick({ acceptEncoding: 'br', estimatedSize: 1024 });
+    const r = pick({ acceptEncoding: 'br', estimatedSize: 1024, interactive: false });
     assert.equal(r.encoding, 'br');
   });
 
   it('identity-only client → identity', () => {
-    const r = pick({ acceptEncoding: 'identity', estimatedSize: 1024 });
+    const r = pick({ acceptEncoding: 'identity', estimatedSize: 1024, interactive: false });
     assert.equal(r.encoding, 'identity');
   });
 
   it('no Accept-Encoding header → uses identity (RFC fallback)', () => {
-    const r = pick({ acceptEncoding: null, estimatedSize: 1024 });
+    const r = pick({ acceptEncoding: null, estimatedSize: 1024, interactive: false });
     assert.equal(r.encoding, 'identity');
   });
 
   it('server-side capability restriction', () => {
     const r = pick({
-      acceptEncoding: ALL_CLIENT,
+      ...A,
       estimatedSize: 2048,
       serverSupports: ['gzip', 'identity'],
     });
     assert.equal(r.encoding, 'gzip');
   });
 
-  it('br is never chosen when gzip is also supported', () => {
-    // Even though br has wider client support, gzip beats br on streaming
-    // small-frame workloads, so we don't pick br when gzip is available.
+  it('br is never chosen when gzip is also supported (agent mode)', () => {
     for (const size of [16, 64, 128, 256, 512, 2048]) {
-      const r = pick({ acceptEncoding: 'gzip, br', estimatedSize: size });
+      const r = pick({ acceptEncoding: 'gzip, br', estimatedSize: size, interactive: false });
       assert.notEqual(r.encoding, 'br', `size=${size} → ${r.encoding}`);
     }
   });
@@ -110,7 +108,44 @@ describe('pick — Codec streaming defaults', () => {
     const r = pick({
       acceptEncoding: ALL_CLIENT,
       estimatedSize: 16,
+      interactive: false,
       thresholds: { ...DEFAULT_THRESHOLDS, gzipPreferredUpTo: 0, zstdPreferredFrom: 0 },
+    });
+    assert.equal(r.encoding, 'zstd');
+  });
+
+  it('interactive=true (default) → gzip even at large sizes', () => {
+    // Interactive responses must not buffer; zstd has a TTFT cliff.
+    for (const size of [16, 64, 256, 2048, 16384]) {
+      const r = pick({ acceptEncoding: ALL_CLIENT, estimatedSize: size });
+      assert.equal(r.encoding, 'gzip', `size=${size} → ${r.encoding}`);
+    }
+  });
+
+  it('interactive=false → zstd at large sizes (no TTFT cost)', () => {
+    const r = pick({
+      acceptEncoding: ALL_CLIENT,
+      estimatedSize: 1024,
+      interactive: false,
+    });
+    assert.equal(r.encoding, 'zstd');
+  });
+
+  it('interactive=true with no gzip → br fallback', () => {
+    const r = pick({
+      acceptEncoding: 'br, zstd',
+      estimatedSize: 1024,
+      interactive: true,
+    });
+    // br preferred over zstd here because zstd would kill TTFT.
+    assert.equal(r.encoding, 'br');
+  });
+
+  it('interactive=true with only zstd → accept the regression', () => {
+    const r = pick({
+      acceptEncoding: 'zstd',
+      estimatedSize: 1024,
+      interactive: true,
     });
     assert.equal(r.encoding, 'zstd');
   });

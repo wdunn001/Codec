@@ -25,6 +25,7 @@ app.get('/stream', (req, res) => {
   const choice = pick({
     acceptEncoding: req.headers['accept-encoding'],
     estimatedSize: 1024,                // tokens or bytes — your call
+    interactive: true,                  // human reads as it streams (default)
   });
   if (choice.encoding !== 'identity') {
     res.setHeader('Content-Encoding', choice.encoding);
@@ -32,6 +33,8 @@ app.get('/stream', (req, res) => {
   // ... apply the chosen compressor and stream
 });
 ```
+
+For agent-to-agent or batch traffic where TTFT doesn't matter, set `interactive: false` to unlock zstd's larger ratio.
 
 Client side — build the request header:
 
@@ -46,7 +49,15 @@ fetch('/stream', {
 
 ## The thresholds (and why)
 
-Defaults are calibrated against measured streaming binary frames (Codec on sglang, see `packages/bench/RESULTS.md` §1c in the parent repo, or [the chart](#chart)). Override them via `pick({ thresholds })`.
+Defaults are calibrated against measured streaming binary frames (Codec on sglang, see `packages/bench/RESULTS.md` §1c-1d in the parent repo, or [the chart](#chart)). Override them via `pick({ thresholds })`.
+
+There are two regimes — interactive (humans read as it streams) and agent-mode (consumer reads everything at once). The `interactive` flag selects between them.
+
+### Interactive (default)
+
+Always picks gzip when available. Reason: measured TTFT on Codec streams jumps from ~11 ms (gzip) to ~3,800 ms (zstd) at 2K tokens, because zstd compressors typically buffer the full stream to finalise their dictionary. For chat, code completion, anything a human reads as it streams, **gzip is the only safe choice** — and it still gets you ~225× wire reduction vs uncompressed JSON-SSE.
+
+### Agent-mode (`interactive: false`)
 
 | stream length | best encoding | rationale |
 |---|---|---|

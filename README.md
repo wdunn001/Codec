@@ -250,7 +250,9 @@ A fine-grained sweep at 8 sizes (16 → 2,048 tokens, see `RESULTS.md` §1c) giv
 | **128 – 256**     | zstd if available, else gzip | within 10% of each other, both within reach of optimal                |
 | **≥ 256 tokens**  | **zstd**      | Huffman + dictionary keep amortising as the stream grows (562× vs JSON-SSE at 2K) |
 
-A simpler one-rule policy that gets ~95% of the win: **always zstd**. At worst it costs ~10% more bytes than gzip on the smallest payloads (≤32 tokens), and it wins by 1.6× on large payloads. The extra bytes on small responses are noise; the savings on large ones are real.
+**Important caveat — TTFT cliff for interactive streams.** zstd as currently shipped buffers the entire response before sending the first byte. Measured TTFT on this server: gzip stays at ~11 ms regardless of size; zstd jumps to **3,768 ms at 2K tokens** — same as total time. For human-facing streams (chat, code completion) **use gzip**. zstd's full ratio is only safe for agent-to-agent and batch workloads where TTFT doesn't matter. The picker's `interactive: true` mode (the default) enforces this — see [`RESULTS.md` §1d](packages/bench/RESULTS.md) for the chart and full numbers.
+
+A simpler one-rule policy that gets ~95% of the win: **gzip for interactive, zstd for agent-to-agent**. Both deliver 220-560× wire reduction at scale; only zstd has the TTFT cost.
 
 **Brotli is a fallback tier, not a competitor.** On streaming small-frame workloads brotli's per-block overhead doesn't amortise, so when gzip *or* zstd is available the picker chooses one of those instead. But brotli has wider client coverage than zstd — Safari, iOS, older Firefox all ship br but not zstd — so it remains a critical fallback when neither modern encoder is supported. Identity is the universal floor; the picker only chooses it when nothing else negotiates.
 

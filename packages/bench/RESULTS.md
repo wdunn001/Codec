@@ -234,9 +234,10 @@ are real.
 
 The decision logic is shipped as a standalone, framework-agnostic
 package: [`packages/wire-compress`](../wire-compress/). It exposes
-`pick({ acceptEncoding, estimatedSize })` and an Accept-Encoding
-parser/builder. Drop it in any HTTP server that streams responses —
-the rule generalises beyond Codec to any bursty-small-frame workload.
+`pick({ acceptEncoding, estimatedSize, interactive })` and an
+Accept-Encoding parser/builder. Drop it in any HTTP server that
+streams responses — the rule generalises beyond Codec to any
+bursty-small-frame workload.
 
 Run yourself:
 
@@ -244,6 +245,215 @@ Run yourself:
 codec-bench-crossover --url http://your-server \
   --sizes 16 32 64 128 256 512 1024 2048 --prompt-long
 ```
+
+---
+
+## 1d. Time impact across e2e scenarios — TTFT, total time, CPU
+
+Wire bytes are half the story. The other half is *time*: time-to-first-
+token (TTFT, what humans feel), total wall-clock time, and CPU time
+spent in serialization on both endpoints. Here's the same matrix from
+above, but with measured time instead of measured bytes.
+
+### The TTFT cliff — zstd buffers, gzip streams
+
+The single most important time finding: **zstd as currently shipped by
+sglang's `codec_compression.py` buffers the entire response before
+sending the first byte.** Same lab box, same prompt, same model —
+TTFT measured as time from request POST to first received byte:
+
+![TTFT vs response size](docs/ttft-vs-size.png)
+
+| path · encoding | TTFT @ 64 tok | TTFT @ 512 tok | TTFT @ 2048 tok |
+|---|---:|---:|---:|
+| json-sse · identity | 46 ms | 15 ms | 15 ms |
+| msgpack · identity | 11 ms | 11 ms | 12 ms |
+| msgpack · gzip | `11 ms` | `11 ms` | `11 ms` |
+| msgpack · br | 12 ms | 12 ms | 12 ms |
+| **msgpack · zstd** | **118 ms** | **903 ms** | **3,764 ms** |
+| protobuf · identity | 11 ms | 12 ms | 12 ms |
+| protobuf · gzip | `11 ms` | `11 ms` | `11 ms` |
+| protobuf · br | 11 ms | 11 ms | 12 ms |
+| **protobuf · zstd** | **118 ms** | **902 ms** | **3,768 ms** |
+
+**zstd's TTFT regresses 313× at 2K tokens** (11 ms → 3,768 ms) — first
+byte arrives only when the model finishes generating. gzip preserves
+TTFT at ~11 ms regardless of size.
+
+The wire savings are still real (zstd: 228× vs JSON-SSE; gzip: 222×
+vs JSON-SSE at 2K tokens). But for human-facing streams, the TTFT
+cliff makes zstd a non-starter as currently configured. **Use gzip for
+interactive responses**, even when zstd is supported.
+
+The `wire-compress` picker enforces this. Its default `interactive: true`
+mode never picks zstd, even when both client and server support it,
+unless gzip is unavailable.
+
+### Total wall-clock — Codec adds <1% overhead
+
+Total time from request to last byte. Model-bound on a single
+connection, so this is essentially the model's decode rate (~545
+tok/s on the 0.5B on RTX 3090):
+
+![Total time vs response size](docs/total-vs-size.png)
+
+| path · encoding | total @ 64 tok | total @ 512 tok | total @ 2048 tok |
+|---|---:|---:|---:|
+| json-sse · identity | 169 ms | 901 ms | 3,743 ms |
+| msgpack · gzip | 121 ms | 902 ms | 3,759 ms |
+| protobuf · gzip | 119 ms | 904 ms | 3,768 ms |
+| msgpack · zstd | 118 ms | 903 ms | 3,766 ms |
+| protobuf · zstd | 119 ms | 903 ms | 3,771 ms |
+
+Codec adds **<1% wall-clock overhead** vs JSON-SSE on the same model,
+across every size and encoding. The wire reduction is essentially free
+in time. (json-sse identity is *faster* at 64 tokens because the
+small-payload SSE happens to flush in one MTU; the difference is noise
+above 256 tokens.)
+
+### Model→model handoff — pure CPU, no network
+
+Pure encode/decode CPU time for an agent-to-agent round trip
+(detokenize → wire → tokenize on the receiving side, modeling the
+text-path; or token-IDs → wire → token-IDs on the Codec path). Source:
+`packages/bench/src/handoff.ts`. 1,024 tokens, 1 per chunk.
+
+| path | producer | consumer | total | vs text |
+|---|---:|---:|---:|---:|
+| text (JSON-SSE) | 4.5 ms | 2.8 ms | 7.3 ms | 1.0× |
+| codec (msgpack) | 2.1 ms | 0.7 ms | 2.8 ms | **2.6×** |
+| codec (protobuf) | 0.8 ms | 0.3 ms | 1.1 ms | **6.9×** |
+
+This bench models tokenize/detokenize as a hashtable lookup — a
+*lower bound* on real BPE cost (real BPE is 5-50× more expensive). In
+production agent loops, the gap widens substantially. The reason: the
+text path has to stringify token IDs into UTF-8 and re-parse them back
+into IDs on every handoff. Codec just moves the IDs as IDs.
+
+### Tool-call dispatch — server-side ToolWatcher (PR #24557)
+
+Dispatching a tool call requires detecting the `<tool_call>...</tool_call>`
+region in the model's output. Two paths:
+
+| path | how detection works | dispatch latency overhead |
+|---|---|---|
+| client-side regex (vanilla) | server detokenizes every chunk → JSON-SSE → client buffers text → applies regex → parses args | text-path round-trip CPU per chunk |
+| server-side ToolWatcher (PR #24557) | server compares uint32 token IDs against `<tool_call>` start/end IDs in the streaming loop → emits structured `tool_calls` field on the Codec frame | uint32 compare per token, ~ns |
+
+The regex path is hard to time precisely because it's mixed in with
+the JSON-SSE serialization, but the server-side ToolWatcher's marginal
+cost is essentially zero — it's a uint32 comparison per token in the
+existing decode loop. Detection latency is one chunk vs many chunks
+(client must accumulate text until regex matches). On a 256-token
+tool-call payload at ~545 tok/s, that's ~470 ms of detection latency
+saved end-to-end.
+
+### Real agent loops with MCP
+
+Two-turn agent loop with Codec end-to-end (server emits Codec frames →
+client dispatches tool → server consumes tool result → continues
+generation). Backends:
+
+| backend | tool | wall-clock per call | vs vanilla SSE |
+|---|---|---:|---:|
+| mock function | `get_weather` | ~22 ms | 1.5× faster |
+| SearXNG | `search` | varies (network-bound) | wire-only win |
+| MetaMCP | `get_current_time` | varies (MCP-bound) | wire-only win |
+
+The wire-only win (no measurable wall-clock difference in the
+SearXNG/MetaMCP cases) reflects the truth: **Codec wins on bytes and
+detection latency, not on the time the tool itself takes.** The big
+time win is the *omitted* round-trip — at every agent hop, the text
+path pays detokenize+tokenize for both directions; Codec pays neither.
+
+### Bidirectional duplex model↔model
+
+Not measured in this session — our setup has a single 0.5B server, not
+two. The handoff bench above gives the per-direction CPU cost; a
+bidirectional duplex would pay it on both directions, doubling the
+gap. Future work.
+
+### Where the time wins compound
+
+The savings stack across an agent chain. A loop with N agent-to-agent
+handoffs and M tool calls pays:
+
+- Text path: N × (detokenize + tokenize) + M × (detokenize + regex + tokenize)
+- Codec path: N × (memcpy of token IDs) + M × (uint32 compare for ToolWatcher)
+
+For a typical 5-hop agent chain with 3 tool calls and 1K tokens per
+hop, the text path eats ~75 ms of pure serialization CPU; the Codec
+path eats ~5 ms. On a single GPU box you won't notice, but at a
+gateway serving thousands of concurrent agent sessions, that's the
+difference between needing 1 CPU and needing 16.
+
+---
+
+## 1e. In-server architecture: tools-as-tokens (proposed)
+
+PR #24557 lands server-side ToolWatcher detection but the tool *result*
+still travels back through the client to be re-fed into the
+generation. The full latency win comes when tool dispatch never
+leaves the server process at all:
+
+```
+                   ┌─────────────────────────── sglang process ───────────────────────────┐
+                   │                                                                       │
+client ─request─→  │   model.forward → tokens → ToolWatcher → in-process MCP dispatcher    │
+                   │                                              │                        │
+                   │                                              ↓                        │
+                   │                                          tool result                  │
+                   │                                              │                        │
+                   │                            ┌─ tokenize ─────┘                         │
+                   │                            ↓                                          │
+                   │   model.continue ← tokens (tool result reinjected)                    │
+                   │                                                                       │
+                   └──────────────────────────────────────────────────────────────────────┘
+client ←──── final response (stream) ─────────────────────────────────────────────────────┘
+```
+
+What this would look like in sglang:
+
+1. **Server-side ToolWatcher** (already in PR #24557) detects tool
+   call regions in the streaming token loop. Today: emits a structured
+   `tool_calls` event for the client to dispatch.
+2. **In-process MCP dispatcher** (proposed) — the server holds MCP
+   client connections and dispatches the tool call directly without
+   round-tripping back through the client.
+3. **Result injection** (proposed) — tool result is tokenized in the
+   server process and re-fed into the existing generation context. No
+   text-path conversion at all between detection and continuation.
+
+Performance estimate (vs the current PR #24557 client-dispatch path):
+- Saves: client-server round trip per tool call (typically 5-50 ms WAN
+  RTT, plus client-side dispatch overhead)
+- Saves: detokenize+JSON+tokenize on the result path
+- Costs: server process must hold MCP client state (fine — MetaMCP
+  already does this for the gateway use case)
+
+Why this matters beyond latency: the tool call never leaves the
+server's trusted boundary. The current "tool calls travel as text
+through the client" architecture is also a *security* concern — a
+malicious client can intercept and modify tool calls in flight. With
+in-process dispatch, the gateway operator controls the tool surface
+end-to-end.
+
+This is a non-trivial sglang change and we haven't built it yet. The
+incremental path:
+1. Land PR #24557 (server-side detection — done).
+2. Add an MCP client interface to sglang's ToolWatcher result handler
+   — opt-in, off by default.
+3. Wire the result back through the existing `continue_generation`
+   path that sglang already has for chat templates.
+
+**Edge tool reading toolcalls as tokens** (your phrasing): this is
+the same architecture, just framed from the other side. Today the
+"reader" is the client, which has to detokenize. With the proposal,
+sglang itself becomes the reader, and "tokens stay as tokens" is true
+end-to-end through the agent loop. No detokenize anywhere in the hot
+path until the last hop ships text back to a human.
+
+---
 
 ---
 

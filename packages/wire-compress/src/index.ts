@@ -42,6 +42,24 @@ export interface PickInput {
    * the server doesn't have a zstd encoder available.
    */
   serverSupports?: Encoding[];
+  /**
+   * Is this response being read by a human as it streams (interactive
+   * chat, code editor autocomplete, etc.) or by an agent that consumes
+   * the entire response at once (tool-call dispatch, model-to-model
+   * handoff, batch eval)?
+   *
+   * Default `true` (interactive). When `true`, the picker avoids
+   * encodings that buffer the whole response — measured TTFT goes from
+   * ~11 ms (gzip) to ~3,800 ms (zstd) at 2K tokens because zstd
+   * compressors typically wait for the whole stream to finalize their
+   * dictionary. So for human-facing streams, gzip wins regardless of
+   * size. For agent-to-agent or batch traffic where the consumer reads
+   * the whole response anyway, set `interactive: false` to unlock
+   * zstd's full ratio.
+   *
+   * See RESULTS.md §1d (TTFT cliff chart) for the measured data.
+   */
+  interactive?: boolean;
 }
 
 export interface PickOutput {
@@ -165,7 +183,12 @@ function isKnownEncoding(s: string): s is Encoding {
  *   5. identity is the universal fallback when nothing else is supported.
  */
 export function pick(input: PickInput): PickOutput {
-  const { acceptEncoding, estimatedSize, thresholds = DEFAULT_THRESHOLDS } = input;
+  const {
+    acceptEncoding,
+    estimatedSize,
+    thresholds = DEFAULT_THRESHOLDS,
+    interactive = true,
+  } = input;
   const serverCandidates: Set<Encoding> = new Set(
     input.serverSupports ?? ['identity', 'gzip', 'br', 'zstd'],
   );
@@ -176,11 +199,36 @@ export function pick(input: PickInput): PickOutput {
 
   const has = (e: Encoding) => candidates.has(e);
 
-  // Big stream → prefer zstd.
+  // Interactive streams: avoid zstd because typical implementations
+  // buffer the full response (TTFT cliff: ~11 ms → ~3.8 s at 2K tokens).
+  // gzip flushes per-chunk and preserves TTFT, with most of the wire win.
+  if (interactive) {
+    if (has('gzip')) {
+      return {
+        encoding: 'gzip',
+        reason: `interactive=true → gzip (preserves TTFT; zstd would buffer)`,
+      };
+    }
+    if (has('br')) {
+      return {
+        encoding: 'br',
+        reason: `interactive=true, no gzip → br fallback`,
+      };
+    }
+    if (has('zstd')) {
+      return {
+        encoding: 'zstd',
+        reason: `interactive=true, but only zstd supported — accepting TTFT regression`,
+      };
+    }
+    return { encoding: 'identity', reason: `interactive=true, nothing compressible` };
+  }
+
+  // Non-interactive (agent-to-agent, batch). TTFT doesn't matter, optimize
+  // for wire bytes.
   if (estimatedSize >= thresholds.zstdPreferredFrom && has('zstd')) {
     return { encoding: 'zstd', reason: `size=${estimatedSize} >= ${thresholds.zstdPreferredFrom} → zstd` };
   }
-  // Small stream → prefer gzip.
   if (estimatedSize <= thresholds.gzipPreferredUpTo && has('gzip')) {
     return { encoding: 'gzip', reason: `size=${estimatedSize} <= ${thresholds.gzipPreferredUpTo} → gzip` };
   }
