@@ -146,6 +146,12 @@ Fine-grained sweep at 8 sizes (16 / 32 / 64 / 128 / 256 / 512 / 1024 /
 2048 tokens) with the long-form prompt. Same lab box, same model, same
 PR-branch sglang. Cell = wire bytes for that (path, encoding, size).
 
+![Crossover chart](docs/crossover-summary.png)
+
+Per-format charts: [msgpack](docs/crossover-msgpack.png) ·
+[protobuf](docs/crossover-protobuf.png). Regenerate with
+`python packages/bench/scripts/plot_crossover.py`.
+
 ### Wire bytes by size (Codec paths)
 
 | path · encoding | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 |
@@ -184,10 +190,13 @@ vs zstd 140 B at 128; gzip 179 B vs zstd 164 B at 256). For msgpack
 it's noisier because of one-byte differences in the small range, but
 zstd dominates the moment payloads exceed ~150 tokens.
 
-**Brotli loses at every size we measured** for Codec streams. Each
-CodecFrame is small (~10-25 B), so brotli's per-block overhead never
-amortizes. Brotli is built for static web assets, not streaming token
-frames. Don't ship it for this workload.
+**Brotli underperforms at every size we measured** for Codec streams.
+Each CodecFrame is small (~10-25 B), so brotli's per-block overhead
+never amortizes. *But brotli is not useless* — it has wider client
+coverage than zstd (Safari, iOS, older Firefox all ship br but not
+zstd), so it remains a critical fallback when zstd isn't available.
+The picker (`packages/wire-compress`) treats br as a fallback tier:
+chosen only when neither gzip nor zstd is supported by the client.
 
 **Identity loses at every size, including 16 tokens.** Even the
 smallest compressed payload (107 B msgpack+zstd at 16 tokens) beats raw
@@ -202,8 +211,10 @@ The reference implementations should:
    (heuristic: estimated_max_tokens ≤ 128).
 2. **Switch to zstd** once the request indicates a long response (≥ 256
    tokens) or once the encoder has buffered > 128 tokens of output.
-3. **Never advertise br** in the default `Accept-Encoding` set for
-   Codec endpoints. It costs CPU for negative wire savings here.
+3. **Keep br in the negotiated set as a fallback only.** Browsers
+   without zstd (Safari, iOS, older Firefox) need br to avoid falling
+   back to identity. The picker should choose gzip over br whenever
+   both are available.
 4. **Never use identity** unless the network is genuinely free
    (loopback, unix socket). The CPU cost of gzip/zstd is sub-microsecond
    per CodecFrame; the wire savings are 2-50×.
@@ -214,6 +225,14 @@ implement: **always zstd, regardless of size** — at worst it costs
 16 tokens for protobuf), and it wins by 1.6× on large payloads. The
 extra bytes on small responses are noise; the savings on large ones
 are real.
+
+### Reference implementation
+
+The decision logic is shipped as a standalone, framework-agnostic
+package: [`packages/wire-compress`](../wire-compress/). It exposes
+`pick({ acceptEncoding, estimatedSize })` and an Accept-Encoding
+parser/builder. Drop it in any HTTP server that streams responses —
+the rule generalises beyond Codec to any bursty-small-frame workload.
 
 Run yourself:
 

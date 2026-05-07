@@ -233,8 +233,8 @@ Codec supports optional compression of the response stream via standard HTTP `Ac
 |------------|--------|--------|------------------------------------------------|
 | `identity` | MUST   | MUST   | The fallback. Always works.                    |
 | `gzip`     | SHOULD | SHOULD | Stdlib in every language. Universal browser support. |
-| `zstd`     | MAY    | MAY    | Best ratio. Browsers: Chrome 123+, Firefox 126+. |
-| `br`       | —      | —      | Not recommended. Per-block overhead exceeds savings on small Codec frames. |
+| `zstd`     | MAY    | MAY    | Best ratio at scale. Browsers: Chrome 123+, Firefox 126+. |
+| `br`       | MAY    | MAY    | Fallback only. Universal browser support (Safari, iOS, older Firefox) covers the gap until zstd ships everywhere. |
 
 Browsers handle decompression transparently in `fetch()`, so `@codecai/web` requires zero changes to consume compressed streams.
 
@@ -242,14 +242,33 @@ Browsers handle decompression transparently in `fetch()`, so `@codecai/web` requ
 
 A fine-grained sweep at 8 sizes (16 → 2,048 tokens, see `RESULTS.md` §1c) gives a clean rule of thumb on the PR-branch sglang server with Qwen2.5-0.5B-Instruct:
 
+![Encoding crossover by response size](packages/bench/docs/crossover-summary.png)
+
 | stream length     | best encoding | why                                                                          |
 |-------------------|---------------|------------------------------------------------------------------------------|
 | **≤ 128 tokens**  | **gzip**      | tiny deflate header beats zstd's frame header on payloads under ~150 tokens  |
+| **128 – 256**     | zstd if available, else gzip | within 10% of each other, both within reach of optimal                |
 | **≥ 256 tokens**  | **zstd**      | Huffman + dictionary keep amortising as the stream grows (562× vs JSON-SSE at 2K) |
 
 A simpler one-rule policy that gets ~95% of the win: **always zstd**. At worst it costs ~10% more bytes than gzip on the smallest payloads (≤32 tokens), and it wins by 1.6× on large payloads. The extra bytes on small responses are noise; the savings on large ones are real.
 
-**Brotli loses at every size we measured for streaming Codec frames.** Don't ship it on this workload — each CodecFrame is ~10-25 B and br's per-block overhead never amortises. Brotli is built for static web assets, not streaming token frames. **Identity also loses at every size we measured**, including 16 tokens (compressed is ≥2× smaller even there).
+**Brotli is a fallback tier, not a competitor.** On streaming small-frame workloads brotli's per-block overhead doesn't amortise, so when gzip *or* zstd is available the picker chooses one of those instead. But brotli has wider client coverage than zstd — Safari, iOS, older Firefox all ship br but not zstd — so it remains a critical fallback when neither modern encoder is supported. Identity is the universal floor; the picker only chooses it when nothing else negotiates.
+
+### Reference implementation: [`wire-compress`](packages/wire-compress)
+
+The encoding-picker logic is shipped as a standalone, framework-agnostic package — `packages/wire-compress`. Zero dependencies, ~5 KB. Drop it in any HTTP server (Express, Fastify, Hono, Workers, Bun, Deno):
+
+```ts
+import { pick } from 'wire-compress';
+
+const choice = pick({
+  acceptEncoding: req.headers['accept-encoding'],
+  estimatedSize: 1024,                  // tokens or bytes
+});
+res.setHeader('Content-Encoding', choice.encoding);
+```
+
+Works for any bursty small-frame streaming workload (SSE, gRPC-Web text, log streams, telemetry) — not just Codec.
 
 ---
 
