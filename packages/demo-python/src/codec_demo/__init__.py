@@ -300,6 +300,15 @@ async def run_all(url: str, model: str, prompt: str, max_tokens: int) -> None:
     print(render_table(grid))
 
 
+async def run_sweep(url: str, model: str, prompt: str,
+                    sizes: list[tuple[str, int]]) -> None:
+    """Run the full grid at small/medium/large and print each table.
+    Sizes is a list of (label, max_tokens) pairs."""
+    for label, max_tokens in sizes:
+        print(f"\n========== size={label} (max_tokens={max_tokens}) ==========")
+        await run_all(url, model, prompt, max_tokens)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="codec-bench")
     ap.add_argument("--url", default="http://192.168.1.88:30000",
@@ -309,10 +318,19 @@ def main() -> None:
     ap.add_argument("--prompt", default="Explain entropy in one sentence:",
                     help="prompt to send")
     ap.add_argument("--max-tokens", type=int, default=64,
-                    help="max output tokens (default: %(default)s)")
+                    help="max output tokens, single-size mode (default: %(default)s)")
+    ap.add_argument("--sweep", action="store_true",
+                    help="sweep small/medium/large sizes; ignores --max-tokens")
+    ap.add_argument("--small",  type=int, default=64,   help="small  size tokens (default: 64)")
+    ap.add_argument("--medium", type=int, default=512,  help="medium size tokens (default: 512)")
+    ap.add_argument("--large",  type=int, default=2048, help="large  size tokens (default: 2048)")
     args = ap.parse_args()
 
-    asyncio.run(run_all(args.url, args.model, args.prompt, args.max_tokens))
+    if args.sweep:
+        sizes = [("small", args.small), ("medium", args.medium), ("large", args.large)]
+        asyncio.run(run_sweep(args.url, args.model, args.prompt, sizes))
+    else:
+        asyncio.run(run_all(args.url, args.model, args.prompt, args.max_tokens))
 
 
 if __name__ == "__main__":

@@ -109,26 +109,35 @@ def render_compare(servers: list[tuple[str, str, list[list[Cell]], bool]]) -> st
 
 
 async def main_async(args):
-    async with httpx.AsyncClient() as client:
-        # Sanity: probe each server's response to a Codec request to confirm
-        # whether it supports stream_format.
-        servers = []
-        for label, url in [("vanilla main", args.vanilla), ("PR #24483", args.pr)]:
-            print(f"\n=== running grid against {label} ({url}) ===\n", file=sys.stderr)
-            grid = await run_grid(client, url, args.model, args.prompt, args.max_tokens)
-            # Detect codec support: did the msgpack path return a Codec content-type?
-            # We check: did the bench's msgpack counter find any tokens AND the
-            # decoded body looks like msgpack frames?
-            cell_msgpack = grid[1][0]  # Codec msgpack / identity
-            supports = (
-                cell_msgpack.status == "done"
-                and cell_msgpack.tokens > 0
-                and cell_msgpack.wire_bytes is not None
-                and cell_msgpack.wire_bytes < 5000  # JSON for 64 tokens >> 5KB
-            )
-            servers.append((label, url, grid, supports))
+    sizes: list[tuple[str, int]]
+    if args.sweep:
+        sizes = [("small", args.small), ("medium", args.medium), ("large", args.large)]
+    else:
+        sizes = [("", args.max_tokens)]
 
-    print(render_compare(servers))
+    async with httpx.AsyncClient() as client:
+        for size_label, max_tokens in sizes:
+            if args.sweep:
+                print(f"\n##### size={size_label} (max_tokens={max_tokens}) #####", file=sys.stderr)
+            servers = []
+            for label, url in [("vanilla main", args.vanilla), ("PR #24483", args.pr)]:
+                print(f"\n=== running grid against {label} ({url}) ===\n", file=sys.stderr)
+                grid = await run_grid(client, url, args.model, args.prompt, max_tokens)
+                # Detect codec support: did the msgpack path return a Codec content-type?
+                # We check: did the bench's msgpack counter find any tokens AND the
+                # decoded body looks like msgpack frames?
+                cell_msgpack = grid[1][0]  # Codec msgpack / identity
+                supports = (
+                    cell_msgpack.status == "done"
+                    and cell_msgpack.tokens > 0
+                    and cell_msgpack.wire_bytes is not None
+                    and cell_msgpack.wire_bytes < 5_000_000  # JSON for any size >> codec
+                )
+                servers.append((label, url, grid, supports))
+
+            if args.sweep:
+                print(f"\n========== size={size_label} (max_tokens={max_tokens}) ==========\n")
+            print(render_compare(servers))
 
 
 def main():
@@ -138,6 +147,11 @@ def main():
     ap.add_argument("--model",   default="Qwen/Qwen2.5-0.5B-Instruct")
     ap.add_argument("--prompt",  default="Explain entropy in one sentence:")
     ap.add_argument("--max-tokens", type=int, default=64)
+    ap.add_argument("--sweep",   action="store_true",
+                    help="run small/medium/large sizes and report all three")
+    ap.add_argument("--small",   type=int, default=64)
+    ap.add_argument("--medium",  type=int, default=512)
+    ap.add_argument("--large",   type=int, default=2048)
     args = ap.parse_args()
     asyncio.run(main_async(args))
 

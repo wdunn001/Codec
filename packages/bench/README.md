@@ -8,9 +8,10 @@ Three independent measurements, each runnable in isolation:
 
 | Bench | What it measures | Needs network? |
 |-------|------------------|----------------|
-| `wire` | Pure encode/decode cost per token across JSON-SSE, msgpack, protobuf, raw | No |
+| `wire` | Pure encode/decode cost per token across JSON-SSE, msgpack, protobuf, raw (sweeps 256/1024/4096 tokens) | No |
 | `handoff` | Agent-to-agent round-trip: text path vs Codec path | No |
-| `live` | Real wire bytes against a streaming OpenAI-compatible endpoint | Yes |
+| `compression` | Compression scaling sweep: each encoder × {identity, gzip, br, zstd} at small/medium/large | No |
+| `live` | Real wire bytes against a streaming OpenAI-compatible endpoint (set `BENCH_SWEEP=1` for sizes) | Yes |
 
 Plus full agent-loop benches (prompt → tool call → dispatch → final answer) live under `packages/demo-python` — see [`RESULTS.md`](RESULTS.md) §4–§6 for numbers.
 
@@ -19,10 +20,12 @@ Plus full agent-loop benches (prompt → tool call → dispatch → final answer
 From the repo root:
 
 ```bash
-npm run bench           # all three
-npm run bench:wire      # encoder microbench (deterministic, ~5s)
-npm run bench:handoff   # round-trip cost (deterministic, ~5s)
-npm run bench:live      # against a live server
+npm run bench               # all three
+npm run bench:wire          # encoder microbench (deterministic, ~5s)
+npm run bench:handoff       # round-trip cost (deterministic, ~5s)
+npm run bench:compression   # compression scaling sweep (deterministic, ~5s)
+npm run bench:live          # against a live server
+BENCH_SWEEP=1 npm run bench:live   # sweep small/medium/large on a live server
 ```
 
 The live bench targets `http://192.168.1.88:11434` (Ollama) by default. Override:
