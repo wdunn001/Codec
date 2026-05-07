@@ -1,0 +1,14 @@
+  ✓ JSON-SSE + client text scan + dispatch
+  ✓ Codec msgpack + server tool_watcher + dispatch
+target: http://localhost:30002
+model:  Qwen/Qwen2.5-0.5B-Instruct
+prompt: Search the web for the latest news about Anthropic Claude.
+
+path                                                    wire     detect   dispatch       TTFB      total  calls
+--------------------------------------------------------------------------------------------------------------
+JSON-SSE + client text scan + dispatch                 77124     0.0 ms  3025.7 ms    57.4 ms  3669.3 ms  1
+Codec msgpack + server tool_watcher + dispatch          4121     0.0 ms  1200.9 ms    52.4 ms  1829.4 ms  1
+
+tool calls dispatched:
+  [JSON-SSE + client text scan + ] search ← {"name": "search", "arguments": {"query": "latest news about Anthropic Claude"}}
+  [Codec msgpack + server tool_wa] search ← {"name": "search", "arguments": {"query": "latest news about Anthropic Claude"}}

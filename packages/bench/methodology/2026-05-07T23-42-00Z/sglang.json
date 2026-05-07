@@ -1,0 +1,62 @@
+{
+  "schema_version": "1",
+  "captured_at": "2026-05-07T23:42:00Z",
+  "run_id": "2026-05-07T23-42-00Z",
+  "hardware": {
+    "host": "vinez-ME03-PE0-000",
+    "cpu_model": "AMD EPYC 8124P 16-Core Processor",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_count": 2,
+    "gpu_driver": "580.142",
+    "ram_gb": 125.6,
+    "kernel": "Linux 6.8.0-84-generic"
+  },
+  "engine": {
+    "name": "sglang",
+    "version": "",
+    "branch": "",
+    "commit": "",
+    "container_image": "wdunn001/codec-sglang@sha256:671bc2a2ea50bde4ec6627b2994814a7af5f664b4d0ad572709e4fa33a313aef",
+    "launch_flags": [],
+    "endpoint": "http://localhost:30002",
+    "endpoint_kind": "localhost",
+    "stream_format_supported": [
+      "json",
+      "msgpack",
+      "protobuf"
+    ],
+    "compression_supported": [
+      "identity",
+      "gzip",
+      "br"
+    ],
+    "compression_probe_format": "msgpack"
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "quantization": "fp16",
+    "tokenizer_sha256": "",
+    "vocab_size": null,
+    "model_sha256": null
+  },
+  "client": null,
+  "bench_tool": null,
+  "workload": {
+    "prompts_file": "methodology/prompts.json",
+    "prompts_sha256": "eff837b6cbbad632c15efb99a7bfaef1e173276be2b81734833ca4bcf0fb3604",
+    "stream": true,
+    "temperature": 0.0
+  },
+  "git": {
+    "repo_commit": "d4dfb38b91fc122971e0b74bfef228c081953f9c",
+    "repo_branch": "main",
+    "repo_clean": false,
+    "repo_dirty_files": [
+      ".venv/",
+      "packages/bench/methodology/2026-05-07T23-08-54Z/",
+      "packages/bench/results/"
+    ]
+  },
+  "notes": "wdunn001/codec-sglang:latest rebuilt with brotli+zstandard runtime deps; tag points to sha256:671bc2a2ea50",
+  "fingerprint": "a9697bbe4b059cc2e7bd81d9d186e7ece42829fcf81a7662e60ce8e51a0ff904"
+}
