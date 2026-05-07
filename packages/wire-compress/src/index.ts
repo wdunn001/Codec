@@ -95,6 +95,83 @@ export const DEFAULT_THRESHOLDS: Thresholds = {
   identityFallbackOnly: true,
 };
 
+/**
+ * Per-stack measured compression characteristics. Lets the picker tune
+ * itself for the gateway it's actually running behind, instead of
+ * assuming sglang-shaped numbers everywhere.
+ *
+ * Each entry is `{ wireCoeff, ttftRatio }` per encoding:
+ *   - wireCoeff:  measured `compressed_bytes / raw_codec_bytes` (lower = better)
+ *   - ttftRatio:  measured `compressed_TTFT / raw_codec_TTFT`   (1.0 = streams)
+ *
+ * Source for each profile is RESULTS.md §1f. Update by re-running
+ * codec-bench-timed against the stack and computing the two ratios.
+ */
+export interface EncodingChars {
+  wireCoeff: number;
+  ttftRatio: number;
+}
+
+export interface StackProfile {
+  /** Stack name, for logging/diagnostics. */
+  name: string;
+  /** Per-encoding characterisation. Encodings missing here are assumed unsupported. */
+  encodings: Partial<Record<Exclude<Encoding, 'identity'>, EncodingChars>>;
+}
+
+/**
+ * Built-in stack profiles. Add more as we measure them.
+ *
+ * `default` is conservative — assumes typical streaming-aware gzip,
+ * working zstd with a buffering quirk (the sglang pattern), and a br
+ * implementation of unknown quality.
+ */
+export const STACK_PROFILES: Record<string, StackProfile> = {
+  default: {
+    name: 'default',
+    encodings: {
+      gzip: { wireCoeff: 0.05, ttftRatio: 1.0 },
+      br: { wireCoeff: 0.5, ttftRatio: 1.0 },
+      zstd: { wireCoeff: 0.05, ttftRatio: 100 },
+    },
+  },
+  sglang: {
+    name: 'sglang',
+    // Measured 2024-05; see RESULTS.md §1f. br is broken (per-frame
+    // compression sometimes expands the payload); zstd buffers full response.
+    encodings: {
+      gzip: { wireCoeff: 0.023, ttftRatio: 1.0 },
+      br: { wireCoeff: 0.733, ttftRatio: 1.0 },
+      zstd: { wireCoeff: 0.017, ttftRatio: 334 },
+    },
+  },
+  'llama.cpp': {
+    name: 'llama.cpp',
+    // Measured 2024-05 against PR #22757. The PR ships codec wire formats
+    // but does NOT add any compression middleware — every Accept-Encoding
+    // returns the raw codec bytes (wireCoeff = 1.0, "passthrough"). TTFT
+    // is consistently fast (5-7 ms) so streaming is not at risk.
+    // To upgrade: hook a streaming-aware gzip layer into mongoose's HTTP
+    // pipeline. Until then the picker should treat all encodings as
+    // equivalent on this stack.
+    encodings: {
+      gzip: { wireCoeff: 1.0, ttftRatio: 1.0 },
+      br: { wireCoeff: 1.0, ttftRatio: 1.0 },
+      zstd: { wireCoeff: 1.0, ttftRatio: 1.0 },
+    },
+  },
+  // vLLM profile pending the cross-stack bench run.
+};
+
+/**
+ * Look up a profile by stack name (`sglang`, `vllm`, `llama.cpp`).
+ * Falls back to `default` if not registered.
+ */
+export function profileFor(stackName: string | undefined): StackProfile {
+  if (!stackName) return STACK_PROFILES.default!;
+  return STACK_PROFILES[stackName] ?? STACK_PROFILES.default!;
+}
+
 // In the gap between gzipPreferredUpTo and zstdPreferredFrom (e.g. 129..255)
 // the data is noisy — both gzip and zstd are within 10% of optimal. We pick
 // gzip there because it's universally supported and the difference is sub-

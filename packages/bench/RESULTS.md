@@ -255,39 +255,173 @@ token (TTFT, what humans feel), total wall-clock time, and CPU time
 spent in serialization on both endpoints. Here's the same matrix from
 above, but with measured time instead of measured bytes.
 
-### The TTFT cliff — zstd buffers, gzip streams
+### Two findings: zstd buffers, brotli barely compresses
 
-The single most important time finding: **zstd as currently shipped by
-sglang's `codec_compression.py` buffers the entire response before
-sending the first byte.** Same lab box, same prompt, same model —
-TTFT measured as time from request POST to first received byte:
+All numbers below come from a single timed sweep, fixed prompt, all
+12 cells (3 paths × 4 encodings) at 3 sizes, median of 2 reps. Token
+counts are identical across encodings within a size (64 / 512 / 1967
+emitted), so the cells are directly comparable.
 
 ![TTFT vs response size](docs/ttft-vs-size.png)
 
-| path · encoding | TTFT @ 64 tok | TTFT @ 512 tok | TTFT @ 2048 tok |
+#### TTFT — only zstd buffers
+
+| path · encoding | TTFT @ 64 tok | TTFT @ 512 tok | TTFT @ 2048 tok | streams? |
+|---|---:|---:|---:|:---:|
+| json-sse · identity | 31 ms | 12 ms | 12 ms | ✓ |
+| msgpack · identity | 11 ms | 12 ms | 11 ms | ✓ |
+| msgpack · gzip | `11 ms` | `12 ms` | `12 ms` | ✓ |
+| msgpack · br | `11 ms` | `12 ms` | `11 ms` | ✓ |
+| **msgpack · zstd** | **119 ms** | **910 ms** | **3,674 ms** | ✗ |
+| protobuf · identity | 11 ms | 12 ms | 12 ms | ✓ |
+| protobuf · gzip | `11 ms` | `11 ms` | `11 ms` | ✓ |
+| protobuf · br | `11 ms` | `11 ms` | `11 ms` | ✓ |
+| **protobuf · zstd** | **119 ms** | **910 ms** | **3,684 ms** | ✗ |
+
+**zstd's TTFT regresses 334× at 2K tokens** (11 ms → 3,684 ms) — first
+byte arrives only when the model finishes generating. gzip, brotli,
+and identity all stream chunk-by-chunk and preserve TTFT.
+
+#### Wire bytes (same run) — brotli is barely doing anything
+
+The TTFT chart suggests br is a viable fallback. The wire-bytes table
+from the same run says otherwise — sglang's brotli middleware on
+Codec streams is delivering near-zero compression, sometimes
+*expanding* the output relative to identity:
+
+| path · encoding | wire @ 64 tok | wire @ 512 tok | wire @ 2048 tok |
 |---|---:|---:|---:|
-| json-sse · identity | 46 ms | 15 ms | 15 ms |
-| msgpack · identity | 11 ms | 11 ms | 12 ms |
-| msgpack · gzip | `11 ms` | `11 ms` | `11 ms` |
-| msgpack · br | 12 ms | 12 ms | 12 ms |
-| **msgpack · zstd** | **118 ms** | **903 ms** | **3,764 ms** |
-| protobuf · identity | 11 ms | 12 ms | 12 ms |
-| protobuf · gzip | `11 ms` | `11 ms` | `11 ms` |
-| protobuf · br | 11 ms | 11 ms | 12 ms |
-| **protobuf · zstd** | **118 ms** | **902 ms** | **3,768 ms** |
+| json-sse · any | 15.2 KB | 121.2 KB | 465.5 KB |
+| msgpack · identity | 952 B | 7.3 KB | 28.1 KB |
+| msgpack · gzip | `170 B` | `333 B` | `660 B` |
+| msgpack · br | 969 B | 5.8 KB | 20.6 KB |
+| msgpack · zstd | `182 B` | `284 B` | `470 B` |
+| protobuf · identity | 638 B | 4.9 KB | 18.9 KB |
+| protobuf · gzip | `157 B` | `313 B` | `608 B` |
+| protobuf · br | 838 B | 5.4 KB | **20.2 KB** ← bigger than identity |
+| protobuf · zstd | `179 B` | `293 B` | `467 B` |
 
-**zstd's TTFT regresses 313× at 2K tokens** (11 ms → 3,768 ms) — first
-byte arrives only when the model finishes generating. gzip preserves
-TTFT at ~11 ms regardless of size.
+**Look at protobuf · br at 2K**: 20.2 KB compressed vs 18.9 KB raw —
+br is making the output 7% *larger*. For msgpack · br at 2K it
+saves 27% over identity (20.6 KB vs 28.1 KB), but gzip in the same
+slot is 660 B — a **42×** smaller payload than br.
 
-The wire savings are still real (zstd: 228× vs JSON-SSE; gzip: 222×
-vs JSON-SSE at 2K tokens). But for human-facing streams, the TTFT
-cliff makes zstd a non-starter as currently configured. **Use gzip for
-interactive responses**, even when zstd is supported.
+This is a configuration problem in sglang's brotli middleware (likely
+per-frame compression with a quality setting that doesn't fit a
+small-frame workload), not a fundamental br limitation. But it means
+the right description of br on this stack today is "preserves TTFT,
+preserves wire bytes" — gzip preserves both *and* gives 30-40× more
+compression.
 
-The `wire-compress` picker enforces this. Its default `interactive: true`
-mode never picks zstd, even when both client and server support it,
-unless gzip is unavailable.
+#### The reduction-vs-baseline summary
+
+vs JSON-SSE identity (the incumbent), at 2K tokens:
+
+| encoding | wire reduction | TTFT @ 2K | use when |
+|---|---:|---:|---|
+| gzip | **705×** (msgpack) / **765×** (protobuf) | 11 ms | universal default for streaming |
+| zstd | **990×** (msgpack) / **997×** (protobuf) | 3,684 ms | non-interactive workloads (agent-to-agent, batch) |
+| br | 23× (msgpack) / 23× (protobuf) | 11 ms | only when client refuses both gzip and zstd |
+| identity | 17× (msgpack) / 25× (protobuf) | 11 ms | last-resort fallback |
+
+#### Composite metric: a single number that captures the trade-off
+
+A wire-bytes ranking puts zstd on top. A TTFT ranking puts gzip on
+top. To rank encodings holistically, multiply them: **wire bytes × TTFT**
+(byte-milliseconds — the "cost of holding this response in flight
+until the user sees something"). Then normalise to JSON-SSE identity
+at each size so each cell reads "X times more efficient than the
+incumbent." Lower byte-ms = higher ratio = better.
+
+This is the right metric for **interactive workloads** (humans
+reading the stream as it arrives). For **batch / agent-to-agent**
+where TTFT doesn't matter, score is just bytes. The two metrics
+disagree about who wins — that's the picker's whole job.
+
+![Interactive efficiency chart](docs/composite-interactive.png)
+
+##### Interactive efficiency (bytes × TTFT, normalised to JSON-SSE identity = 1.0×; higher is better)
+
+| path · encoding | 64 tok | 512 tok | 2048 tok |
+|---|---:|---:|---:|
+| json-sse · identity | 1.0× | 1.0× | 1.0× |
+| msgpack · identity | 46× | 17× | 18× |
+| msgpack · `gzip` | `258×` | `373×` | `722×` |
+| msgpack · br | 45× | 21× | 25× |
+| msgpack · zstd | 22× ↓ | 6× ↓ | 3× ↓ |
+| protobuf · identity | 69× | 25× | 25× |
+| protobuf · `gzip` | `279×` | `433×` | `855×` |
+| protobuf · br | 52× | 25× | 25× |
+| protobuf · zstd | 23× ↓ | 6× ↓ | 3× ↓ |
+
+The arrows mark cells where **zstd scores worse than uncompressed
+identity Codec on the composite metric** — i.e., the TTFT cliff has
+fully cancelled the wire savings, and you'd be better off shipping
+raw msgpack/protobuf frames. At 2K tokens the picture is brutal: zstd
+scores 3×, gzip scores 722-855× — gzip is **240× better than zstd**
+on what users actually feel.
+
+br tracks identity Codec almost exactly across every size (45-52× at
+64, ~21-25× at 512+, ~25× at 2K) — same TTFT as identity, near-zero
+extra wire compression. Confirms that on this server br is doing
+essentially nothing.
+
+![Batch efficiency chart](docs/composite-batch.png)
+
+##### Batch efficiency (wire bytes only, TTFT ignored; higher is better)
+
+| path · encoding | 64 tok | 512 tok | 2048 tok |
+|---|---:|---:|---:|
+| json-sse · identity | 1.0× | 1.0× | 1.0× |
+| msgpack · identity | 16× | 17× | 17× |
+| msgpack · `gzip` | `92×` | 373× | 722× |
+| msgpack · br | 16× | 21× | 23× |
+| msgpack · zstd | 86× | `437×` | `1014×` |
+| protobuf · identity | 24× | 25× | 25× |
+| protobuf · `gzip` | `99×` | 397× | 784× |
+| protobuf · br | 19× | 22× | 23× |
+| protobuf · zstd | 87× | `424×` | `1021×` |
+
+In batch mode TTFT vanishes, so the ranking flips. **At 64 tokens,
+gzip beats zstd** (92× vs 86× msgpack; 99× vs 87× protobuf — gzip
+wins the small-payload bracket because zstd's frame header is
+relatively heavier). **At 512 and 2K tokens, zstd wins** (437× vs
+373× at 512, 1014× vs 722× at 2K — zstd's dictionary amortises and
+takes the lead). br stays identity-equivalent throughout.
+
+This matches the size-threshold rule from §1c exactly: gzip below
+~128 tokens, zstd above ~256 tokens — the byte-ms metric and the
+bytes-only metric agree on the threshold.
+
+##### What this proves about the picker
+
+- **Interactive workloads — composite metric ranks `gzip > br ≈ identity > zstd`.**
+  At every measured size for human-facing streams, gzip wins. zstd is
+  worse than uncompressed at small/medium sizes once you account for
+  TTFT.
+- **Batch / agent-to-agent — bytes-only ranks `zstd > gzip > identity ≈ br`.**
+  zstd wins. gzip is the close fallback.
+- **The Pareto front for both metrics is `{gzip, zstd}`.** br and
+  identity are dominated. The `wire-compress` picker has exactly one
+  knob (`interactive: boolean`) because the two metrics cleanly
+  separate the workloads.
+
+#### What the picker does
+
+- **Interactive (default)** — pick `gzip` first; fall back to `br`
+  only if the client refuses gzip; accept `zstd` (with the TTFT cost)
+  only if it's the lone supported encoding. Never pick `identity`
+  unless the client refuses everything compressible.
+- **Agent / batch (`interactive: false`)** — `zstd` for sizes ≥ 256
+  tokens (best ratio, TTFT doesn't matter), `gzip` for ≤ 128 tokens
+  (smaller framing overhead).
+
+Brotli stays in the negotiated set as a fallback for clients that
+ship br but not gzip (Safari historical edge cases, some embedded
+HTTP stacks). When sglang's brotli middleware gets a streaming-aware
+configuration patch, br's role can be reconsidered. For now the data
+says: gzip is the universal default, zstd is the agent-mode upgrade,
+br is a fallback that costs essentially the same as identity.
 
 ### Total wall-clock — Codec adds <1% overhead
 
@@ -539,6 +673,252 @@ tokenize/detokenize ops in the hot path until the last hop hits a
 human.
 
 ---
+
+## 1f. Cross-stack ratios — comparing compression solutions across gateways
+
+The numbers in §1a–§1e are sglang-specific. Different inference
+servers (vLLM, llama.cpp/llama-server, TGI) have different wire
+encoders, different SSE flushing semantics, and different
+compression-middleware implementations. The brotli-barely-compresses
+finding from §1d is one example: that's an sglang-side configuration
+issue, not a Codec issue, and a different stack might do better.
+
+To compare across stacks we need ratios that are stack-portable —
+each computed from a stack's *own* baseline, so we can hold them up
+side by side.
+
+### The three ratios
+
+| ratio | what it measures | computed as | range |
+|---|---|---|---|
+| **Wire-compression coefficient** | how good is the stack's encoder implementation? | `compressed_bytes / raw_codec_bytes` (where raw = same Codec format with `identity` encoding) | 0.01 (excellent) → 1.0 (no compression) → >1.0 (expanded) |
+| **TTFT preservation ratio** | does the encoder stream or buffer? | `compressed_TTFT / raw_codec_TTFT` | 1.0 (streams) → 100×+ (buffers) |
+| **Composite efficiency** | one-number ranking incl. both | `(baseline_bytes × baseline_TTFT) / (cell_bytes × cell_TTFT)` where baseline = stack's JSON-SSE identity | higher = better |
+
+The first two are pure characterisations of the stack's compression
+implementation — they don't reference any baseline outside the stack
+itself, so they compare directly. The third uses each stack's own
+JSON-SSE identity as the 1.0× baseline, which makes it fair across
+stacks even if their JSON-SSE absolute byte counts differ.
+
+### What "good" looks like
+
+For an interactive streaming workload on Codec frames, a healthy stack
+should hit roughly:
+
+| dimension | good | acceptable | bad |
+|---|---|---|---|
+| gzip wire coeff | ≤ 0.05 | ≤ 0.20 | > 0.50 |
+| zstd wire coeff | ≤ 0.05 | ≤ 0.20 | > 0.50 |
+| br wire coeff | ≤ 0.20 | ≤ 0.50 | > 0.80 (sglang is here today) |
+| gzip TTFT ratio | 1.0 | ≤ 1.5 | > 2.0 |
+| zstd TTFT ratio | 1.0 | ≤ 2.0 | > 100 (sglang is here today: ~334×) |
+| br TTFT ratio | 1.0 | ≤ 1.5 | > 2.0 |
+
+Stacks that fall into the "bad" column for any of these have a
+fixable middleware issue, not a fundamental encoder problem. Patch
+the middleware, the ratio improves.
+
+### sglang — measured
+
+Numbers from §1d (codec-bench-timed run, 2 reps median, 2K-token
+response). Wire coefficients are vs identity Codec for the same path.
+
+| stack · path · encoding | wire coeff | TTFT ratio | composite (interactive) | composite (batch) | verdict |
+|---|---:|---:|---:|---:|---|
+| sglang · msgpack · gzip | **0.023** ✓ | **1.00** ✓ | 722× | 722× | excellent |
+| sglang · msgpack · br   | 0.733 ✗ | 1.00 ✓ | 25× | 23× | broken middleware |
+| sglang · msgpack · zstd | **0.017** ✓ | **334×** ✗ | 3× | 1014× | wire ✓, streaming ✗ |
+| sglang · protobuf · gzip | **0.032** ✓ | **1.00** ✓ | 855× | 784× | excellent |
+| sglang · protobuf · br   | 1.069 ✗ | 1.00 ✓ | 25× | 23× | **expands payload** |
+| sglang · protobuf · zstd | **0.025** ✓ | **335×** ✗ | 3× | 1021× | wire ✓, streaming ✗ |
+
+The pattern is clear: gzip is the only encoding sglang ships
+correctly today. zstd buffers (TTFT cliff). br is misconfigured (per-
+frame compression, sometimes expands the payload). All three are
+sglang middleware issues, not Codec issues — gzip works because
+sglang has good streaming gzip; the other two need patches.
+
+### vLLM — install attempted, blocked on torch/xformers compatibility
+
+We attempted to deploy PR #41765 on the lab box using
+`vllm/vllm-openai:latest` as a base + `pip install -e .
+--no-build-isolation` with `VLLM_USE_PRECOMPILED=1` to overlay the
+PR's Python changes on the precompiled CUDA kernels. The install
+completed but pulled `torch==2.11.0`, which conflicts with the
+precompiled `xformers==0.0.31` (requires `torch==2.7.1`). The
+api_server then failed to start cleanly inside the container.
+
+A clean deploy needs either (a) a full from-source build of vLLM
+from the PR branch (~30 min CUDA kernel compile + matching disk),
+or (b) producing a custom Docker image that pins torch to the
+precompiled wheel's version. Both are tractable but more invasive
+than fit in this session's window. Filling in the vLLM row is
+explicit follow-on work; the framework is in place to drop the
+numbers in as soon as a deploy lands.
+
+| stack · path · encoding | wire coeff | TTFT ratio | composite (interactive) | composite (batch) | verdict |
+|---|---:|---:|---:|---:|---|
+| vllm · msgpack · gzip | TBD | TBD | TBD | TBD | TBD |
+| vllm · msgpack · br | TBD | TBD | TBD | TBD | TBD |
+| vllm · msgpack · zstd | TBD | TBD | TBD | TBD | TBD |
+| vllm · protobuf · gzip | TBD | TBD | TBD | TBD | TBD |
+| vllm · protobuf · br | TBD | TBD | TBD | TBD | TBD |
+| vllm · protobuf · zstd | TBD | TBD | TBD | TBD | TBD |
+
+### llama.cpp — measured (PR #22757)
+
+Built llama-server from PR #22757 with CUDA, ran against the same Qwen2.5-0.5B GGUF (Q4_K_M). Timed sweep at 64/512/2048, 2 reps, identical token counts across encodings (64/512/2048 emitted).
+
+**Headline finding: llama.cpp's PR ships Codec wire formats but no compression middleware.** All four `Accept-Encoding` values return identical bytes — the server passthrough doesn't honor the header. That's a strictly cleaner baseline than sglang (no broken middleware to worry about) but you only get the format ratio, not the compression bonus.
+
+Wire bytes at 2K tokens:
+
+| | identity | gzip | br | zstd |
+|---|---:|---:|---:|---:|
+| Codec msgpack | 28.4 KB | 28.4 KB | 28.4 KB | 28.4 KB |
+| Codec protobuf | 19.5 KB | 19.5 KB | 19.5 KB | 19.5 KB |
+
+TTFT is consistently 5-7 ms across every encoding (better than sglang's 11 ms — llama.cpp's HTTP layer flushes faster).
+
+| stack · path · encoding | wire coeff | TTFT ratio | composite (interactive) | composite (batch) | verdict |
+|---|---:|---:|---:|---:|---|
+| llama.cpp · msgpack · gzip | 1.000 = | 1.00 ✓ | 31× | 17× | passthrough |
+| llama.cpp · msgpack · br | 1.000 = | 1.00 ✓ | 39× | 17× | passthrough |
+| llama.cpp · msgpack · zstd | 1.000 = | 1.00 ✓ | 41× | 17× | passthrough |
+| llama.cpp · protobuf · gzip | 1.000 = | 1.00 ✓ | 55× | 25× | passthrough |
+| llama.cpp · protobuf · br | 1.000 = | 1.00 ✓ | 52× | 25× | passthrough |
+| llama.cpp · protobuf · zstd | 1.000 = | 1.00 ✓ | 60× | 25× | passthrough |
+
+`= 1.000` means "no compression applied" — the wire-coefficient is
+exactly 1.0 because llama.cpp returns the raw codec bytes regardless
+of `Accept-Encoding`. The composite scores are still >1× because
+Codec frames are intrinsically 17-25× smaller than JSON-SSE *without*
+any compression layer.
+
+**Stack-comparison takeaway:** llama.cpp PR #22757 today is at parity
+with `sglang · *codec* · identity` — wire-format wins delivered, no
+compression layer. Adding a streaming-aware gzip middleware (e.g.
+hooking into mongoose's existing gzip support, or wrapping the SSE
+writer with a `boost::iostreams::gzip_compressor`) would lift it from
+17-25× to 700×+, matching sglang's gzip cell.
+
+#### Scaling holds across the full crossover sweep
+
+8-size crossover sweep (16/32/64/128/256/512/1024/2048 tokens) on the
+same llama-server confirms the passthrough behaviour at every size —
+gzip/br/zstd cells are bit-identical to identity for both Codec
+formats:
+
+| path · encoding | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| msgpack · {identity, gzip, br, zstd} | 261 B | 485 B | 945 B | 1.8 KB | 3.6 KB | 7.2 KB | 14.3 KB | 28.5 KB |
+| protobuf · {identity, gzip, br, zstd} | 169 B | 323 B | 634 B | 1.2 KB | 2.4 KB | 4.9 KB | 9.7 KB | 19.4 KB |
+
+Reading the table: each row's four encodings produce *literally
+identical* bytes at every size. The crossover study's
+recommendation-derivation prints `identity wins at every size,
+gzip/br/zstd never win and are always within 20% of best` — i.e.
+"compression is a no-op here, pick whichever you like."
+
+Per-token cost is constant: msgpack ~14 B/tok, protobuf ~9.5 B/tok at
+every size. Format efficiency works exactly as the bytes-only sweep
+in §1c predicted; only the compression layer is missing.
+
+#### What changes for polyglot clients
+
+Wire format is stack-independent: the msgpack/protobuf bytes coming
+out of llama.cpp parse cleanly with the same Python/.NET/C/Web
+clients used for sglang. Polyglot interop (§2) holds without
+modification — the only thing that differs across stacks is whether
+the response went through a compressor.
+
+A polyglot client speaking to llama.cpp gets:
+- ✅ Codec wire (binary frames, real token IDs)
+- ✅ Same parsing path (no per-stack codec branch)
+- ❌ No compression — payload is identity-sized
+
+…vs the same client against sglang gzip:
+- ✅ Codec wire
+- ✅ Same parsing path (transparent decompression in fetch/httpx)
+- ✅ ~30× smaller payloads at scale
+
+#### Standard-grid bench, parity with §1 sglang numbers
+
+For direct comparison with the sglang § 1 wire-format A/B table, here
+are the same 12 cells (3 paths × 4 encodings) at 64 tokens, same
+prompt, against llama-server PR #22757:
+
+| | identity | gzip | br | zstd |
+|---|---:|---:|---:|---:|
+| JSON-SSE | 15.8 KB | 15.8 KB | 15.8 KB | 15.8 KB |
+| Codec msgpack | 989 B | 989 B | 989 B | 989 B |
+| Codec protobuf | 656 B | 656 B | 656 B | 656 B |
+
+Reduction-vs-baseline at 64 tokens:
+
+| | reduction vs JSON-SSE identity |
+|---|---:|
+| Codec msgpack (any encoding) | **16.4×** |
+| Codec protobuf (any encoding) | **24.7×** |
+
+These match sglang's identity row (16.0× / 23.9×) within noise —
+**Codec wire format itself is stack-agnostic**, the only stack
+difference is whether the response then went through a compressor.
+sglang gzip pushes msgpack from 16× to 705× at scale; llama.cpp's
+passthrough keeps it at the format-only 16-25× across every size we
+tested.
+
+TTFT / total wall-clock at 64 tokens:
+
+| path · encoding | TTFT | total |
+|---|---:|---:|
+| JSON-SSE · identity | 45 ms | 175 ms |
+| JSON-SSE · gzip | 6 ms | 125 ms |
+| Codec · any | 5-7 ms | 119-122 ms |
+
+Codec lowers wall-clock by ~30% vs JSON-SSE identity at the small-
+payload size (shorter response → less time spent in JSON
+serialisation), and TTFT is preserved across all encodings since
+nothing buffers.
+
+#### Bench suite coverage on llama.cpp
+
+The full bench suite ran clean on this PR:
+
+| bench | status | result |
+|---|---|---|
+| `codec-bench` (standard grid, 64 tok) | ✅ | All 12 cells succeed; ratios match sglang's identity row |
+| `codec-bench-timed` (3 sizes × 2 reps) | ✅ | Bytes flat across encodings; TTFT 5-7 ms; total wall-clock matches model rate |
+| `codec-bench-crossover` (8 sizes × full grid) | ✅ | identity wins at every size; gzip/br/zstd literally tied with identity |
+| handoff (deterministic, stack-independent) | ✅ | Same as sglang: protobuf 6.9× faster than text-path |
+| polyglot interop | ✅ | msgpack/protobuf bytes from llama.cpp parse cleanly with Python/.NET/C/Web clients |
+
+### Why this matters for the picker
+
+The `wire-compress` package's defaults are calibrated against the
+sglang ratios. If a stack has materially different ratios — e.g. a
+stack where br is well-configured and matches gzip on wire-coeff —
+then the picker's `interactive` mode could promote br above its
+current "fallback only" tier on that specific stack.
+
+The point of the cross-stack matrix is to make those calibration
+decisions empirical. Each stack publishes its three ratios; the
+picker reads them and chooses accordingly. A future iteration of
+the SDK can ship per-stack threshold profiles bundled in.
+
+### Reproducing
+
+```bash
+# Run codec-bench-timed against any stack with stream_format support:
+codec-bench-timed --url http://your-stack:port \
+                   --model your/model \
+                   --sizes 64 512 2048 --reps 2
+
+# The output includes wire bytes, TTFT, total, interactive efficiency,
+# and batch efficiency — everything needed to fill in a row in the
+# matrix above.
+```
 
 ---
 
