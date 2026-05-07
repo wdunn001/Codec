@@ -1,0 +1,44 @@
+{
+  "name": "wire-compress",
+  "version": "0.1.0",
+  "description": "Pick the right Content-Encoding for streaming responses based on client support and payload size. Measured thresholds, framework-agnostic, zero deps.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "keywords": [
+    "compression",
+    "http",
+    "content-encoding",
+    "accept-encoding",
+    "gzip",
+    "brotli",
+    "zstd",
+    "streaming",
+    "sse",
+    "codec"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wdunn001/Codec.git",
+    "directory": "packages/wire-compress"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

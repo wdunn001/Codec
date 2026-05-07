@@ -33,7 +33,16 @@ const MODEL = process.env.BENCH_MODEL ?? 'qwen2.5:latest';
 const PROMPT =
   process.env.BENCH_PROMPT ??
   'Explain how transformer attention works in plain language, in about 200 words.';
+
+// Single-size mode (back-compat) vs. sweep mode. Set BENCH_SWEEP=1 to run
+// small/medium/large in sequence so you can see how compression scales.
+const SWEEP_MODE = process.env.BENCH_SWEEP === '1' || process.env.BENCH_SWEEP === 'true';
 const MAX_TOKENS = Number(process.env.BENCH_MAX_TOKENS ?? '256');
+const SWEEP_SIZES: Array<{ label: string; max: number }> = [
+  { label: 'small',  max: Number(process.env.BENCH_SMALL  ?? '64') },
+  { label: 'medium', max: Number(process.env.BENCH_MEDIUM ?? '512') },
+  { label: 'large',  max: Number(process.env.BENCH_LARGE  ?? '2048') },
+];
 
 interface LiveResult {
   ok: boolean;
@@ -55,7 +64,7 @@ async function probe(): Promise<boolean> {
   }
 }
 
-async function streamCompletion(): Promise<LiveResult> {
+async function streamCompletion(maxTokens: number = MAX_TOKENS): Promise<LiveResult> {
   const t0 = performance.now();
   const resp = await fetch(`${BASE_URL}/v1/chat/completions`, {
     method: 'POST',
@@ -63,7 +72,7 @@ async function streamCompletion(): Promise<LiveResult> {
     body: JSON.stringify({
       model: MODEL,
       stream: true,
-      max_tokens: MAX_TOKENS,
+      max_tokens: maxTokens,
       messages: [{ role: 'user', content: PROMPT }],
     }),
   });
@@ -158,6 +167,56 @@ async function main() {
         `at any OpenAI-compatible streaming endpoint (Ollama, vLLM, …).\n`
     );
     process.exit(0);
+  }
+
+  if (SWEEP_MODE) {
+    console.log(hr('sweep: small / medium / large'));
+    console.log();
+    interface SweepRow {
+      label: string;
+      tokens: number;
+      sseBytes: number;
+      msgpackBytes: number;
+      protobufBytes: number;
+    }
+    const sweepRows: SweepRow[] = [];
+    for (const sz of SWEEP_SIZES) {
+      const rr = await streamCompletion(sz.max);
+      if (!rr.ok) {
+        console.log(`Failed (${sz.label}, max=${sz.max}): ${rr.reason}\n`);
+        continue;
+      }
+      const proj = projectCodecBytes(rr.outputTokens, 1);
+      sweepRows.push({
+        label: sz.label,
+        tokens: rr.outputTokens,
+        sseBytes: rr.wireBytes,
+        msgpackBytes: proj.msgpackBytes,
+        protobufBytes: proj.protobufBytes,
+      });
+    }
+    console.log(
+      table(
+        ['size', 'tokens', 'json-sse', 'msgpack', 'msgpack vs sse', 'protobuf', 'protobuf vs sse'],
+        sweepRows.map((r) => [
+          r.label,
+          fmtNum(r.tokens),
+          fmtBytes(r.sseBytes),
+          fmtBytes(r.msgpackBytes),
+          ratio(r.sseBytes, r.msgpackBytes),
+          fmtBytes(r.protobufBytes),
+          ratio(r.sseBytes, r.protobufBytes),
+        ]),
+      ),
+    );
+    console.log();
+    console.log(
+      `Reading the sweep: msgpack/protobuf ratios should grow with token count\n` +
+        `because JSON-SSE per-event framing overhead is amortized over more events,\n` +
+        `but Codec's framing is constant-per-token. The "vs sse" columns are the\n` +
+        `headline: how much smaller Codec is at each size.\n`,
+    );
+    return;
   }
 
   const r = await streamCompletion();

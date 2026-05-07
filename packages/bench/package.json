@@ -8,6 +8,7 @@
     "wire": "tsx src/wire.ts",
     "handoff": "tsx src/handoff.ts",
     "live": "tsx src/live.ts",
+    "compression": "tsx src/compression.ts",
     "all": "tsx src/index.ts"
   },
   "dependencies": {

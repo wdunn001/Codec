@@ -82,19 +82,16 @@ function fmt(n: number): string {
 // ── Run ──────────────────────────────────────────────────────────────────────
 
 console.log('# Compression overlay benchmark\n');
-console.log('Stream: 1,024 tokens, 1 per chunk (matches wire.ts).\n');
 console.log(
-  'Compression is layered as it would be at the HTTP layer: a single\n' +
-    'context for the whole response stream. This matches what\n' +
-    'Content-Encoding: gzip/zstd does in vLLM and SGLang.\n',
+  'Sweeps three response sizes (small / medium / large) so you can see how\n' +
+    'each compression solution scales. Compression is layered as it would be\n' +
+    "at the HTTP layer: a single context for the whole response stream — this\n" +
+    'matches what Content-Encoding: gzip/br/zstd does in vLLM and SGLang.\n',
 );
 
 if (!zstdCompressSync) {
   console.log('(zstd: not available in this Node — install Node 23+ for native zstd support.)\n');
 }
-
-const NUM_TOKENS = 1024;
-const stream = makeStream(NUM_TOKENS, 1);
 
 interface Row {
   encoder: string;
@@ -104,58 +101,112 @@ interface Row {
   zstd: number | null;
 }
 
-const rows: Row[] = [];
-
-for (const name of ['json-sse', 'msgpack', 'protobuf'] as const) {
-  const encoded = encodeStream(name, stream);
-  const buf = Buffer.from(encoded);
-  rows.push({
-    encoder: name,
-    identity: buf.length,
-    gzip: gzipSync(buf, { level: 6 }).length,
-    br: brotli4(buf).length,
-    zstd: zstdCompressSync ? zstdCompressSync(buf).length : null,
-  });
+interface SweepSize {
+  label: string;
+  tokens: number;
 }
 
-console.log('| encoder  | identity   | + gzip     | + br       | + zstd     |');
-console.log('|----------|------------|------------|------------|------------|');
-for (const r of rows) {
-  console.log(
-    `| ${r.encoder.padEnd(8)} | ${fmt(r.identity).padEnd(10)} | ${fmt(r.gzip).padEnd(10)} | ${fmt(r.br).padEnd(10)} | ${(r.zstd !== null ? fmt(r.zstd) : 'n/a').padEnd(10)} |`,
-  );
+const SWEEP: SweepSize[] = [
+  { label: 'small',  tokens: 256 },
+  { label: 'medium', tokens: 1024 },
+  { label: 'large',  tokens: 8192 },
+];
+
+interface Sweep {
+  size: SweepSize;
+  rows: Row[];
 }
 
-console.log('\nBytes/token:\n');
-console.log('| encoder  | identity | + gzip | +  br  | + zstd |');
-console.log('|----------|---------:|-------:|-------:|-------:|');
-for (const r of rows) {
-  const f = (n: number | null) => (n === null ? '   n/a' : (n / NUM_TOKENS).toFixed(2).padStart(6));
-  console.log(`| ${r.encoder.padEnd(8)} | ${f(r.identity).padStart(8)} | ${f(r.gzip)} | ${f(r.br)} | ${f(r.zstd)} |`);
+const sweeps: Sweep[] = [];
+
+for (const size of SWEEP) {
+  const stream = makeStream(size.tokens, 1);
+  const rows: Row[] = [];
+  for (const name of ['json-sse', 'msgpack', 'protobuf'] as const) {
+    const encoded = encodeStream(name, stream);
+    const buf = Buffer.from(encoded);
+    rows.push({
+      encoder: name,
+      identity: buf.length,
+      gzip: gzipSync(buf, { level: 6 }).length,
+      br: brotli4(buf).length,
+      zstd: zstdCompressSync ? zstdCompressSync(buf).length : null,
+    });
+  }
+  sweeps.push({ size, rows });
 }
 
-console.log('\nReduction summary (vs JSON-SSE identity):\n');
-const baseline = rows.find((r) => r.encoder === 'json-sse')!.identity;
-console.log('| configuration            | bytes/token | vs json-sse |');
-console.log('|--------------------------|------------:|------------:|');
-for (const r of rows) {
-  for (const [suffix, bytes] of [
-    ['', r.identity] as [string, number],
-    [' + gzip', r.gzip],
-    [' + br', r.br],
-    ...(r.zstd !== null ? [[' + zstd', r.zstd] as [string, number]] : []),
-  ]) {
-    const bpt = (bytes / NUM_TOKENS).toFixed(2);
-    const ratio = (baseline / bytes).toFixed(1);
-    console.log(`| ${(r.encoder + suffix).padEnd(24)} | ${bpt.padStart(11)} | ${(ratio + '\xd7').padStart(11)} |`);
+for (const { size, rows } of sweeps) {
+  console.log(`\n## ${size.label} — ${size.tokens.toLocaleString()} tokens, 1 per chunk\n`);
+  console.log('| encoder  | identity   | + gzip     | + br       | + zstd     |');
+  console.log('|----------|------------|------------|------------|------------|');
+  for (const r of rows) {
+    console.log(
+      `| ${r.encoder.padEnd(8)} | ${fmt(r.identity).padEnd(10)} | ${fmt(r.gzip).padEnd(10)} | ${fmt(r.br).padEnd(10)} | ${(r.zstd !== null ? fmt(r.zstd) : 'n/a').padEnd(10)} |`,
+    );
+  }
+
+  console.log('\nBytes/token:\n');
+  console.log('| encoder  | identity | + gzip | +  br  | + zstd |');
+  console.log('|----------|---------:|-------:|-------:|-------:|');
+  for (const r of rows) {
+    const f = (n: number | null) => (n === null ? '   n/a' : (n / size.tokens).toFixed(2).padStart(6));
+    console.log(`| ${r.encoder.padEnd(8)} | ${f(r.identity).padStart(8)} | ${f(r.gzip)} | ${f(r.br)} | ${f(r.zstd)} |`);
+  }
+}
+
+// ── Cross-size scaling table ───────────────────────────────────────────────
+// The headline question: does each (encoder × compression) combo get *better*
+// at scale? Show vs-baseline ratio for every cell at every size, side by side.
+
+console.log('\n## Scaling: reduction vs JSON-SSE identity, across sizes\n');
+const cols = SWEEP.map((s) => s.label).join(' | ');
+const header = `| configuration            | ${cols} |`;
+const sep = '|--------------------------|' + SWEEP.map(() => '-----------:').join('|') + '|';
+console.log(header);
+console.log(sep);
+
+const baselines = new Map<string, number>(
+  sweeps.map((s) => [s.size.label, s.rows.find((r) => r.encoder === 'json-sse')!.identity]),
+);
+
+const ENCODERS = ['json-sse', 'msgpack', 'protobuf'] as const;
+const VARIANTS: { suffix: string; key: keyof Row }[] = [
+  { suffix: '',         key: 'identity' },
+  { suffix: ' + gzip',  key: 'gzip' },
+  { suffix: ' + br',    key: 'br' },
+  { suffix: ' + zstd',  key: 'zstd' },
+];
+
+for (const enc of ENCODERS) {
+  for (const v of VARIANTS) {
+    const row: string[] = [];
+    let printable = true;
+    for (const sw of sweeps) {
+      const r = sw.rows.find((x) => x.encoder === enc)!;
+      const bytes = r[v.key] as number | null;
+      const baseline = baselines.get(sw.size.label)!;
+      if (bytes === null) {
+        row.push('   n/a    ');
+        if (v.key === 'zstd') printable = !!zstdCompressSync;
+      } else {
+        row.push((`${(baseline / bytes).toFixed(1)}\xd7`).padStart(10));
+      }
+    }
+    if (!printable && v.key === 'zstd') continue;
+    console.log(`| ${(enc + v.suffix).padEnd(24)} | ${row.join(' | ')} |`);
   }
 }
 
 console.log(
-  '\nNotes:\n' +
-    '  - JSON-SSE compresses well because it has lots of repeated keys ("data:", "ids":, etc.).\n' +
-    '  - Codec frames have less structural redundancy, so the absolute compression ratio\n' +
-    '    is smaller — but the *post-compression* bytes/token is what matters for the wire.\n' +
-    '  - zstd dictionaries (future v2 protocol) will push Codec further by pre-training on\n' +
-    '    typical token sequences for each model.',
+  '\nReading the scaling table:\n' +
+    '  - If a row\'s ratio *grows* from small to large, that combo gets relatively\n' +
+    '    better with more tokens (compressor amortises framing/header overhead).\n' +
+    '  - If a row\'s ratio is *flat*, the stream is already near the entropy floor\n' +
+    '    for that encoder — more bytes won\'t help.\n' +
+    '  - JSON-SSE+compression has a structural advantage from repeated keys ("data:",\n' +
+    '    "id":, etc.). Codec frames are denser, so absolute ratios are smaller —\n' +
+    '    but the *bytes/token* number is what hits the wire.\n' +
+    '  - zstd dictionaries (future v2 protocol) pre-train on typical token sequences\n' +
+    '    and should push Codec further at every size.',
 );

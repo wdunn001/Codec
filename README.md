@@ -51,36 +51,38 @@ Codec:    model → uint32 IDs → binary frames → wire → uint32 IDs → mod
 
 ## Measured wire impact
 
-These come from `packages/bench` — deterministic microbench plus a live Ollama measurement. No vendor numbers, no marketing math.
+All numbers below are real measurements from `packages/bench` and the polyglot demo suite — captured against a live sglang server (Codec PR #24483 + ToolWatcher PR #24557) on Qwen/Qwen2.5-0.5B-Instruct, RTX 3090, deterministic at temperature 0.0. Full report: [`packages/bench/RESULTS.md`](packages/bench/RESULTS.md).
 
-**Wire microbench (1024 tokens, 1 token per chunk — token-by-token streaming):**
+**Live A/B against sglang main vs PR #24483** (3 wire formats × 4 encodings, same prompt, 64-token completion):
 
-| Encoder                                   | B/token | vs JSON-SSE |
-|-------------------------------------------|--------:|------------:|
-| JSON-SSE                                  |   154.0 |        1.0× |
-| Codec msgpack (identity)                  |    16.0 |        9.6× |
-| Codec protobuf (identity)                 |    10.9 |   **14.2×** |
-| Codec msgpack + `Content-Encoding: zstd`  |     3.4 |   **45.0×** |
-| Codec protobuf + `Content-Encoding: zstd` |     3.6 |       43.1× |
-| (theoretical floor: raw uint32)           |     4.0 |       38.5× |
+| Path | identity | gzip | br | zstd |
+|---|---:|---:|---:|---:|
+| JSON-SSE (vanilla main) | 15.2 KB | 15.2 KB | 15.2 KB | 15.2 KB |
+| JSON-SSE (PR #24483) | 15.2 KB | 15.2 KB | 15.2 KB | 15.2 KB |
+| Codec msgpack | **16.0×** | **68.8×** | 13.4× | 61.5× |
+| Codec protobuf | **23.9×** | **69.5×** | 16.8× | 57.4× |
 
-**Live Ollama qwen2.5 (320-token completion, real model output):**
+**Per-token cost: 243 B/tok JSON-SSE → 3.5 B/tok Codec + gzip.**
 
-| Encoder                    | Wire     | B/token | vs JSON-SSE |
-|----------------------------|---------:|--------:|------------:|
-| JSON-SSE measured          |  58.3 KB |   186.4 |        1.0× |
-| Codec msgpack (projected)  |   4.7 KB |    15.1 |   **12.4×** |
-| Codec protobuf (projected) |   3.4 KB |    11.0 |   **16.9×** |
+**Polyglot interop** — same wire decoded by Python, .NET, C, and Web clients; wire bytes match exactly across all four. (One `.NET` zstd cell skips because BCL doesn't ship a zstd decompressor; the wire-byte count still matches.)
 
-**Agent-to-agent round-trip (1024 tokens, modeled tokenize/detokenize):**
+**End-to-end agent loop** — full two-turn round-trip (prompt → model emits tool call → dispatch → tool result fed back → final answer):
 
-| Path             | Wire   | Total time | vs text |
-|------------------|-------:|-----------:|--------:|
-| text (JSON-SSE)  | 115 KB |    10.7 ms |    1.0× |
-| codec (msgpack)  |  16 KB |     6.6 ms |    1.6× |
-| codec (protobuf) |  11 KB |     2.9 ms | **3.6×** |
+| Tool | JSON-SSE wire | Codec wire | Reduction | JSON total | Codec total | Speedup |
+|---|---:|---:|---:|---:|---:|---:|
+| mock `get_weather` | 13.7 KB | 809 B | **16.9×** | 134 ms | 124 ms | 1.08× |
+| **SearXNG** (live web) | 61.9 KB | 3.4 KB | **18.2×** | 2426 ms | 1954 ms | **1.24×** |
+| **MetaMCP** (Time MCP) | 19.6 KB | 1.1 KB | **17.8×** | 686 ms | 551 ms | **1.24×** |
 
-Real BPE tokenizers are 5–50× slower than the modeled hashtable lookup, so the codec advantage on real workloads is wider. See [`packages/bench`](packages/bench) for the methodology and to reproduce.
+**ToolWatcher CPU microbench** (libcodec, C99, 1M synthetic tokens):
+
+| Path | ns/token | Mtok/s |
+|---|---:|---:|
+| `codec_tool_watcher_feed` | 0.61 | 1,648 |
+| `codec_detokenizer_render` | 60.4 | 16.6 |
+| **Speedup** | | **~100×** |
+
+These are reproducible. Bench drivers under [`packages/demo-python`](packages/demo-python), [`packages/demo-dotnet`](packages/demo-dotnet), [`packages/demo-c`](packages/demo-c), [`packages/demo-web`](packages/demo-web). Full methodology + raw numbers in [`packages/bench/RESULTS.md`](packages/bench/RESULTS.md).
 
 ---
 
@@ -231,9 +233,78 @@ Codec supports optional compression of the response stream via standard HTTP `Ac
 |------------|--------|--------|------------------------------------------------|
 | `identity` | MUST   | MUST   | The fallback. Always works.                    |
 | `gzip`     | SHOULD | SHOULD | Stdlib in every language. Universal browser support. |
-| `zstd`     | MAY    | MAY    | Best ratio. Browsers: Chrome 123+, Firefox 126+. |
+| `zstd`     | MAY    | MAY    | Best ratio at scale. Browsers: Chrome 123+, Firefox 126+. |
+| `br`       | MAY    | MAY    | Fallback only. Universal browser support (Safari, iOS, older Firefox) covers the gap until zstd ships everywhere. |
 
 Browsers handle decompression transparently in `fetch()`, so `@codecai/web` requires zero changes to consume compressed streams.
+
+### Which encoding to pick (measured threshold)
+
+A fine-grained sweep at 8 sizes (16 → 2,048 tokens, see `RESULTS.md` §1c) gives a clean rule of thumb on the PR-branch sglang server with Qwen2.5-0.5B-Instruct:
+
+![Encoding crossover by response size](packages/bench/docs/crossover-summary.png)
+
+| stream length     | best encoding | why                                                                          |
+|-------------------|---------------|------------------------------------------------------------------------------|
+| **≤ 128 tokens**  | **gzip**      | tiny deflate header beats zstd's frame header on payloads under ~150 tokens  |
+| **128 – 256**     | zstd if available, else gzip | within 10% of each other, both within reach of optimal                |
+| **≥ 256 tokens**  | **zstd**      | Huffman + dictionary keep amortising as the stream grows (562× vs JSON-SSE at 2K) |
+
+**Important caveat — TTFT cliff for interactive streams.** zstd as currently shipped buffers the entire response before sending the first byte. Measured TTFT on this server: gzip stays at ~11 ms regardless of size; zstd jumps to **3,768 ms at 2K tokens** — same as total time. For human-facing streams (chat, code completion) **use gzip**. zstd's full ratio is only safe for agent-to-agent and batch workloads where TTFT doesn't matter. The picker's `interactive: true` mode (the default) enforces this — see [`RESULTS.md` §1d](packages/bench/RESULTS.md) for the chart and full numbers.
+
+A simpler one-rule policy that gets ~95% of the win: **gzip for interactive, zstd for agent-to-agent**. Both deliver 220-560× wire reduction at scale; only zstd has the TTFT cost.
+
+**Brotli is a fallback tier, not a competitor.** On streaming small-frame workloads brotli's per-block overhead doesn't amortise, so when gzip *or* zstd is available the picker chooses one of those instead. But brotli has wider client coverage than zstd — Safari, iOS, older Firefox all ship br but not zstd — so it remains a critical fallback when neither modern encoder is supported. Identity is the universal floor; the picker only chooses it when nothing else negotiates.
+
+### Reference implementation: [`wire-compress`](packages/wire-compress)
+
+The encoding-picker logic is shipped as a standalone, framework-agnostic package — `packages/wire-compress`. Zero dependencies, ~5 KB. Drop it in any HTTP server (Express, Fastify, Hono, Workers, Bun, Deno):
+
+```ts
+import { pick } from 'wire-compress';
+
+const choice = pick({
+  acceptEncoding: req.headers['accept-encoding'],
+  estimatedSize: 1024,                  // tokens or bytes
+});
+res.setHeader('Content-Encoding', choice.encoding);
+```
+
+Works for any bursty small-frame streaming workload (SSE, gRPC-Web text, log streams, telemetry) — not just Codec.
+
+### Bolt-on tools: [`codec-tool-kit`](packages/codec-tool-kit)
+
+Tools should remain modular — independently versioned, deployed, and authored, hosted in their own repos. `codec-tool-kit` is the SDK for building Codec-native bolt-ons that pre-cache the tokenizer at build time so the gateway stays a pure token router.
+
+```ts
+import { precache } from 'codec-tool-kit/precache';
+
+// Build time: tokenize once, ship the cache.
+const cache = precache({
+  fragments: [
+    { id: 'iso-prefix',  kind: 'static',   text: 'The current time is ' },
+    { id: 'iso-suffix',  kind: 'static',   text: ' UTC.' },
+    { id: 'human-tpl',   kind: 'template', text: 'It is {hours}:{minutes} on {day}.' },
+  ],
+  tokenizer,
+});
+```
+
+```ts
+import { type CodecTool, tokensResult, renderTemplate } from 'codec-tool-kit';
+
+// Runtime hot path: cached IDs in, cached IDs out — gateway sees no text.
+export const tool: CodecTool = {
+  manifest,
+  async handle(call) {
+    const args = decodeArgs(call.argumentIds);
+    const ids = renderTemplate(cache.fragments['human-tpl'], {...}, smallTokenizer);
+    return tokensResult(call.callId, ids);
+  },
+};
+```
+
+See [`packages/codec-tool-kit/README.md`](packages/codec-tool-kit/) for the full architecture and `RESULTS.md §1e` for why bolt-ons beat in-process MCP dispatch.
 
 ---
 

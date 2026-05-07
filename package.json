@@ -14,7 +14,8 @@
     "bench": "tsx packages/bench/src/index.ts",
     "bench:wire": "tsx packages/bench/src/wire.ts",
     "bench:handoff": "tsx packages/bench/src/handoff.ts",
-    "bench:live": "tsx packages/bench/src/live.ts"
+    "bench:live": "tsx packages/bench/src/live.ts",
+    "bench:compression": "tsx packages/bench/src/compression.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.2",
