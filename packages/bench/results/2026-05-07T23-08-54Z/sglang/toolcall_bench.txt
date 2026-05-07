@@ -1,0 +1,19 @@
+  warn: tokenizer load failed (No module named 'transformers'); path B will skip detokenize
+  ✓ JSON-SSE + client text scan: wire=6034 bytes  tokens=22  detect=   0.2 ms  calls=1
+  ✓ Codec msgpack + client detokenize+scan: wire=343 bytes  tokens=21  detect=   0.0 ms  calls=0
+  ✓ Codec msgpack + server tool_watcher: wire=393 bytes  tokens=1  detect=   0.1 ms  calls=1
+target: http://localhost:30002
+model:  Qwen/Qwen2.5-0.5B-Instruct
+max_tokens=128  watcher_ids=(151657, 151658)
+
+path                                                 wire  tokens      detect       TTFB      total  calls
+--------------------------------------------------------------------------------------------------------------
+JSON-SSE + client text scan                          6034      22      0.2 ms  2018.0 ms  2051.2 ms  1
+Codec msgpack + client detokenize+scan                343      21      0.0 ms    62.2 ms    99.4 ms  0
+Codec msgpack + server tool_watcher                   393       1      0.1 ms    56.8 ms    95.3 ms  1
+
+tool calls captured:
+  [JSON-SSE + client text scan]
+    0: {"name": "get_weather", "arguments": {"city": "Tokyo"}}
+  [Codec msgpack + server tool_watcher]
+    0: {"name": "get_weather", "arguments": {"city": "Tokyo"}}
