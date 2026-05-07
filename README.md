@@ -250,17 +250,19 @@ A fine-grained sweep at 8 sizes (16 → 2,048 tokens, see `RESULTS.md` §1c) giv
 | **128 – 256**     | zstd if available, else gzip | within 10% of each other, both within reach of optimal                |
 | **≥ 256 tokens**  | **zstd**      | Huffman + dictionary keep amortising as the stream grows (562× vs JSON-SSE at 2K) |
 
-**Important caveat — TTFT cliff for interactive streams.** zstd as currently shipped buffers the entire response before sending the first byte. Measured TTFT on this server:
+**Two important caveats from the timed-sweep data** (single run, fixed prompt, all 12 cells, median of reps — at 2K tokens):
 
-| encoding | TTFT @ 2K tok | wire reduction | streams? |
-|---|---:|---:|:---:|
-| gzip | 11 ms | 222× | ✓ |
-| br | 12 ms | ~17× | ✓ |
-| zstd | 3,768 ms | 228× | ✗ (buffers) |
+| encoding | wire reduction vs JSON-SSE | TTFT @ 2K | streams? | notes |
+|---|---:|---:|:---:|---|
+| gzip | **705×–765×** | 11 ms | ✓ | universal default for streaming |
+| zstd | **990×–997×** | 3,684 ms | ✗ (buffers) | best ratio, agent/batch only |
+| br | 23× | 11 ms | ✓ | sglang's br middleware barely compresses Codec frames — sometimes *expands* them (protobuf · br at 2K = 20.2 KB, vs identity 18.9 KB). Streams cleanly, but no real wire savings on this stack today. |
+| identity | 17×–25× | 11 ms | ✓ | last-resort fallback |
 
-gzip and brotli both stream chunk-by-chunk and preserve TTFT regardless of size; only zstd buffers. For human-facing streams (chat, code completion) **use gzip**, fall back to br for clients without gzip support. zstd's full ratio is only safe for agent-to-agent and batch workloads where TTFT doesn't matter. The picker's `interactive: true` mode (the default) enforces this — see [`RESULTS.md` §1d](packages/bench/RESULTS.md) for the chart and full numbers.
+1. **TTFT cliff.** zstd buffers the full response before sending the first byte. gzip, brotli, and identity all stream chunk-by-chunk. Only zstd has the cliff.
+2. **Brotli isn't compressing.** sglang's br middleware on Codec streams is delivering near-zero compression at scale — barely better than identity, sometimes worse. This is a sglang configuration issue (likely per-frame compression with a quality setting that doesn't fit small-frame workloads), not a fundamental br limitation. Until that's patched upstream, br is in the negotiated set as a fallback only.
 
-A simpler one-rule policy that gets ~95% of the win: **gzip for interactive, zstd for agent-to-agent, br for clients without either**. All three deliver real wire reduction; only zstd has the TTFT cost.
+For human-facing streams (chat, code completion) **use gzip** — it streams *and* delivers 700×+ wire reduction. zstd's full ratio is only safe for agent-to-agent and batch workloads where TTFT doesn't matter. The picker's `interactive: true` mode (the default) enforces this — see [`RESULTS.md` §1d](packages/bench/RESULTS.md) for the chart and full numbers.
 
 **Brotli is a fallback tier, not a competitor.** On streaming small-frame workloads brotli's per-block overhead doesn't amortise, so when gzip *or* zstd is available the picker chooses one of those instead. But brotli has wider client coverage than zstd — Safari, iOS, older Firefox all ship br but not zstd — so it remains a critical fallback when neither modern encoder is supported. Identity is the universal floor; the picker only chooses it when nothing else negotiates.
 

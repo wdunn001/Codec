@@ -255,60 +255,91 @@ token (TTFT, what humans feel), total wall-clock time, and CPU time
 spent in serialization on both endpoints. Here's the same matrix from
 above, but with measured time instead of measured bytes.
 
-### The TTFT cliff — zstd buffers, gzip and brotli stream
+### Two findings: zstd buffers, brotli barely compresses
 
-The single most important time finding: **zstd as currently shipped by
-sglang's `codec_compression.py` buffers the entire response before
-sending the first byte.** gzip and brotli, by contrast, both flush
-chunk-by-chunk and preserve TTFT regardless of size. Same lab box,
-same prompt, same model — TTFT measured as time from request POST to
-first received byte:
+All numbers below come from a single timed sweep, fixed prompt, all
+12 cells (3 paths × 4 encodings) at 3 sizes, median of 2 reps. Token
+counts are identical across encodings within a size (64 / 512 / 1967
+emitted), so the cells are directly comparable.
 
 ![TTFT vs response size](docs/ttft-vs-size.png)
 
+#### TTFT — only zstd buffers
+
 | path · encoding | TTFT @ 64 tok | TTFT @ 512 tok | TTFT @ 2048 tok | streams? |
 |---|---:|---:|---:|:---:|
-| json-sse · identity | 46 ms | 15 ms | 15 ms | ✓ |
-| json-sse · br | 12 ms | 13 ms | 12 ms | ✓ |
-| msgpack · identity | 11 ms | 11 ms | 12 ms | ✓ |
-| msgpack · gzip | `11 ms` | `11 ms` | `11 ms` | ✓ |
-| msgpack · br | `12 ms` | `12 ms` | `12 ms` | ✓ |
-| **msgpack · zstd** | **118 ms** | **903 ms** | **3,764 ms** | ✗ |
+| json-sse · identity | 31 ms | 12 ms | 12 ms | ✓ |
+| msgpack · identity | 11 ms | 12 ms | 11 ms | ✓ |
+| msgpack · gzip | `11 ms` | `12 ms` | `12 ms` | ✓ |
+| msgpack · br | `11 ms` | `12 ms` | `11 ms` | ✓ |
+| **msgpack · zstd** | **119 ms** | **910 ms** | **3,674 ms** | ✗ |
 | protobuf · identity | 11 ms | 12 ms | 12 ms | ✓ |
 | protobuf · gzip | `11 ms` | `11 ms` | `11 ms` | ✓ |
-| protobuf · br | `11 ms` | `11 ms` | `12 ms` | ✓ |
-| **protobuf · zstd** | **118 ms** | **902 ms** | **3,768 ms** | ✗ |
+| protobuf · br | `11 ms` | `11 ms` | `11 ms` | ✓ |
+| **protobuf · zstd** | **119 ms** | **910 ms** | **3,684 ms** | ✗ |
 
-**zstd's TTFT regresses 313× at 2K tokens** (11 ms → 3,768 ms) — first
-byte arrives only when the model finishes generating. **gzip and
-brotli both preserve TTFT** at ~11 ms regardless of size; only zstd
-buffers.
+**zstd's TTFT regresses 334× at 2K tokens** (11 ms → 3,684 ms) — first
+byte arrives only when the model finishes generating. gzip, brotli,
+and identity all stream chunk-by-chunk and preserve TTFT.
 
-That changes the encoding story: the streaming-vs-buffering split
-isn't gzip-versus-everything-else, it's zstd-versus-everything-else.
-Brotli is a perfectly viable streaming choice — it just doesn't
-compress Codec frames as well as gzip at small sizes (see §1c). At
-the same time it preserves TTFT exactly like gzip, which makes it the
-right pick for clients that have br support but not gzip (or where br
-is the negotiated default for some other reason).
+#### Wire bytes (same run) — brotli is barely doing anything
 
-The wire savings are still real (zstd: 228× vs JSON-SSE; gzip: 222×
-vs JSON-SSE; br: ~17× vs JSON-SSE — at 2K tokens). The trade-offs:
+The TTFT chart suggests br is a viable fallback. The wire-bytes table
+from the same run says otherwise — sglang's brotli middleware on
+Codec streams is delivering near-zero compression, sometimes
+*expanding* the output relative to identity:
 
-| encoding | wire reduction at 2K | TTFT @ 2K | use when |
+| path · encoding | wire @ 64 tok | wire @ 512 tok | wire @ 2048 tok |
+|---|---:|---:|---:|
+| json-sse · any | 15.2 KB | 121.2 KB | 465.5 KB |
+| msgpack · identity | 952 B | 7.3 KB | 28.1 KB |
+| msgpack · gzip | `170 B` | `333 B` | `660 B` |
+| msgpack · br | 969 B | 5.8 KB | 20.6 KB |
+| msgpack · zstd | `182 B` | `284 B` | `470 B` |
+| protobuf · identity | 638 B | 4.9 KB | 18.9 KB |
+| protobuf · gzip | `157 B` | `313 B` | `608 B` |
+| protobuf · br | 838 B | 5.4 KB | **20.2 KB** ← bigger than identity |
+| protobuf · zstd | `179 B` | `293 B` | `467 B` |
+
+**Look at protobuf · br at 2K**: 20.2 KB compressed vs 18.9 KB raw —
+br is making the output 7% *larger*. For msgpack · br at 2K it
+saves 27% over identity (20.6 KB vs 28.1 KB), but gzip in the same
+slot is 660 B — a **42×** smaller payload than br.
+
+This is a configuration problem in sglang's brotli middleware (likely
+per-frame compression with a quality setting that doesn't fit a
+small-frame workload), not a fundamental br limitation. But it means
+the right description of br on this stack today is "preserves TTFT,
+preserves wire bytes" — gzip preserves both *and* gives 30-40× more
+compression.
+
+#### The reduction-vs-baseline summary
+
+vs JSON-SSE identity (the incumbent), at 2K tokens:
+
+| encoding | wire reduction | TTFT @ 2K | use when |
 |---|---:|---:|---|
-| gzip | 222× | 11 ms | universal default for streaming |
-| br | ~17× | 12 ms | gzip unavailable client-side (Safari/iOS edge cases) |
-| zstd | 228× | 3,768 ms | non-interactive workloads (agent-to-agent, batch) |
+| gzip | **705×** (msgpack) / **765×** (protobuf) | 11 ms | universal default for streaming |
+| zstd | **990×** (msgpack) / **997×** (protobuf) | 3,684 ms | non-interactive workloads (agent-to-agent, batch) |
+| br | 23× (msgpack) / 23× (protobuf) | 11 ms | only when client refuses both gzip and zstd |
+| identity | 17× (msgpack) / 25× (protobuf) | 11 ms | last-resort fallback |
 
-For human-facing streams, the TTFT cliff makes zstd a non-starter as
-currently configured. **Use gzip for interactive responses**, fall
-back to br when gzip isn't supported, and only unlock zstd when the
-consumer is reading the whole response at once.
+#### What the picker does
 
-The `wire-compress` picker enforces this. Its default `interactive: true`
-mode never picks zstd; in that mode the order is gzip > br > zstd
-(zstd only chosen when it's the lone supported encoding).
+- **Interactive (default)** — pick `gzip` first; fall back to `br`
+  only if the client refuses gzip; accept `zstd` (with the TTFT cost)
+  only if it's the lone supported encoding. Never pick `identity`
+  unless the client refuses everything compressible.
+- **Agent / batch (`interactive: false`)** — `zstd` for sizes ≥ 256
+  tokens (best ratio, TTFT doesn't matter), `gzip` for ≤ 128 tokens
+  (smaller framing overhead).
+
+Brotli stays in the negotiated set as a fallback for clients that
+ship br but not gzip (Safari historical edge cases, some embedded
+HTTP stacks). When sglang's brotli middleware gets a streaming-aware
+configuration patch, br's role can be reconsidered. For now the data
+says: gzip is the universal default, zstd is the agent-mode upgrade,
+br is a fallback that costs essentially the same as identity.
 
 ### Total wall-clock — Codec adds <1% overhead
 

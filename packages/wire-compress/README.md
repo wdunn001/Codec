@@ -55,9 +55,13 @@ There are two regimes — interactive (humans read as it streams) and agent-mode
 
 ### Interactive (default)
 
-Picks streaming encodings only — gzip first, brotli as fallback. Reason: measured TTFT on Codec streams jumps from ~11 ms (gzip or br) to ~3,800 ms (zstd) at 2K tokens, because zstd compressors typically buffer the full stream to finalise their dictionary. gzip and brotli both flush chunk-by-chunk and preserve TTFT.
+Picks streaming encodings only — gzip first, brotli as fallback. Reason: measured TTFT on Codec streams jumps from ~11 ms (gzip / br / identity) to ~3,700 ms (zstd) at 2K tokens, because zstd compressors typically buffer the full stream to finalise their dictionary. gzip and brotli both flush chunk-by-chunk and preserve TTFT.
 
-For chat, code completion, anything a human reads as it streams, **gzip and brotli are both safe choices**; gzip is preferred because it gets ~225× wire reduction (vs ~17× for br on Codec frames at 2K tokens). zstd is never picked in interactive mode unless it's the only encoding the client supports, in which case the picker accepts the regression and surfaces it in `reason`.
+For anything a human reads as it streams, **gzip is the universal default** — it streams *and* delivers 700×+ wire reduction vs JSON-SSE on this stack.
+
+Brotli is in the picker as a fallback for clients that ship br but not gzip (Safari historical edge cases, some embedded HTTP stacks). On the current sglang server, br's wire reduction is near-zero — it preserves TTFT but barely compresses Codec frames (sometimes *expands* them: protobuf·br at 2K tokens is 20.2 KB, vs identity 18.9 KB). That's a server-side configuration issue, not a fundamental br limitation; if/when sglang's middleware gets a streaming-aware brotli config, br's role expands. Until then, choose gzip.
+
+zstd is never picked in interactive mode unless it's the only encoding the client supports, in which case the picker accepts the TTFT regression and surfaces it in the `reason` field.
 
 ### Agent-mode (`interactive: false`)
 

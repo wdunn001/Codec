@@ -18,30 +18,33 @@ import matplotlib.ticker as mtick
 # Numbers are TTFT in milliseconds (time to first received byte).
 SIZES = [64, 512, 2048]      # tokens emitted (max_tokens=64/512/2048)
 
-# (path, encoding) → [ttft_ms_at_each_size]
+# Source: codec-bench-timed run, 2 reps median, single consistent dataset.
+# Token counts identical across encodings within a size (64 / 512 / 1967).
 TTFT = {
-    ("json-sse", "identity"): [46, 15, 15],
-    ("json-sse", "gzip"):     [12, 12, 12],
-    ("json-sse", "br"):       [12, 13, 12],
-    ("json-sse", "zstd"):     [12, 12, 12],
-    ("msgpack", "identity"):  [11, 11, 12],
-    ("msgpack", "gzip"):      [11, 11, 11],
-    ("msgpack", "br"):        [12, 12, 12],
-    ("msgpack", "zstd"):      [118, 903, 3764],   # ← THE CLIFF
+    ("json-sse", "identity"): [31, 12, 12],
+    ("json-sse", "gzip"):     [11, 12, 12],
+    ("json-sse", "br"):       [11, 11, 12],
+    ("json-sse", "zstd"):     [11, 12, 12],
+    ("msgpack", "identity"):  [11, 12, 11],
+    ("msgpack", "gzip"):      [11, 12, 12],
+    ("msgpack", "br"):        [11, 12, 11],
+    ("msgpack", "zstd"):      [119, 910, 3674],   # ← THE CLIFF
     ("protobuf", "identity"): [11, 12, 12],
     ("protobuf", "gzip"):     [11, 11, 11],
-    ("protobuf", "br"):       [11, 11, 12],
-    ("protobuf", "zstd"):     [118, 902, 3768],   # ← THE CLIFF
+    ("protobuf", "br"):       [11, 11, 11],
+    ("protobuf", "zstd"):     [119, 910, 3684],   # ← THE CLIFF
 }
 
-# Total wall-clock per request, ms. Model-bound.
+# Total wall-clock per request, ms. Model-bound (~545 tok/s decode).
 TOTAL = {
-    ("json-sse", "identity"): [169, 901, 3743],
-    ("json-sse", "gzip"):     [123, 901, 3749],
-    ("msgpack", "gzip"):      [121, 902, 3759],
-    ("msgpack", "zstd"):      [118, 903, 3766],
-    ("protobuf", "gzip"):     [119, 904, 3768],
-    ("protobuf", "zstd"):     [119, 903, 3771],
+    ("json-sse", "identity"): [145, 905, 3660],
+    ("json-sse", "gzip"):     [119, 906, 3667],
+    ("msgpack", "gzip"):      [120, 908, 3674],
+    ("msgpack", "br"):        [119, 910, 3675],
+    ("msgpack", "zstd"):      [119, 911, 3675],
+    ("protobuf", "gzip"):     [119, 911, 3684],
+    ("protobuf", "br"):       [119, 911, 3686],
+    ("protobuf", "zstd"):     [119, 911, 3687],
 }
 
 COLORS = {
