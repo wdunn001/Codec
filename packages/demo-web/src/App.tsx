@@ -9,7 +9,7 @@ import {
 } from './bench';
 
 const DEFAULTS: Endpoint = {
-  url: 'http://192.168.1.88:30000',
+  url: 'http://192.168.1.88:30002',
   model: 'Qwen/Qwen2.5-0.5B-Instruct',
   prompt: 'Explain entropy in one sentence:',
   maxTokens: 64,

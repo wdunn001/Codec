@@ -98,6 +98,8 @@ For huge prompts (>50K tokens, e.g. RAG with long context), `/v1/completions/cod
 | Symbol | Purpose |
 |---|---|
 | `load_map(url=..., hash=...)` | Fetch + sha256-verify + cache a dialect map (async) |
+| `discover_map(origin=..., id=...)` | Resolve a map via the `.well-known/codec/` convention (async) |
+| `discover_index(origin=...)` | Fetch `.well-known/codec/index.json` (optional directory, async) |
 | `MemoryMapCache` | Default in-memory `MapCache`. Subclass for Redis / disk |
 | `TokenizerMap.from_json(...)` | Parse + schema check |
 | `Detokenizer` | Stateful detokenizer: byte_level + metaspace + byte fallback + partial UTF-8 |
@@ -172,6 +174,18 @@ To generate a map from a HuggingFace `tokenizer.json`:
 ```bash
 npx @codecai/maps-cli build my-org/my-model --id=my-org/my-model
 ```
+
+### Self-hosted discovery via `.well-known/codec/`
+
+If the model maintainer publishes their map at the standard `.well-known/codec/` location on a domain they control, clients only need the origin and map ID:
+
+```python
+from codecai import discover_map
+
+m = await discover_map(origin="https://qwen.io", id="qwen/qwen2")
+```
+
+This fetches `https://qwen.io/.well-known/codec/maps/qwen/qwen2.json` — either a small `{ id, url, hash }` pointer (recommended) or the full map served inline. Hash verification still anchors the bytes. Spec: [`WELL_KNOWN_DISCOVERY.md`](https://github.com/wdunn001/Codec/blob/main/spec/WELL_KNOWN_DISCOVERY.md). Maintainers can generate the publishing tree with `codecai-maps well-known --map=... --url=...`.
 
 ## Compression
 

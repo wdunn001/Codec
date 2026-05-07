@@ -51,6 +51,17 @@ from .map_loader import (
     TokenizerMapHashMismatchError,
     load_map,
 )
+from .discover import (
+    MapDiscoveryError,
+    MapDiscoveryNotFoundError,
+    MapIndex,
+    MapPointer,
+    WELL_KNOWN_BASE,
+    discover_index,
+    discover_map,
+    well_known_index_url,
+    well_known_map_url,
+)
 from .tool_watcher import (
     ToolWatcher,
     ToolWatcherError,
@@ -93,6 +104,16 @@ __all__ = [
     "LoadOptions",
     "TokenizerMapHashMismatchError",
     "load_map",
+    # discovery
+    "WELL_KNOWN_BASE",
+    "MapDiscoveryError",
+    "MapDiscoveryNotFoundError",
+    "MapIndex",
+    "MapPointer",
+    "discover_index",
+    "discover_map",
+    "well_known_index_url",
+    "well_known_map_url",
     # tool watcher
     "ToolWatcher",
     "ToolWatcherError",

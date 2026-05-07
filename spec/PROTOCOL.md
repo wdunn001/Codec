@@ -359,31 +359,75 @@ Notes:
   when there's structural redundancy to crush — like JSON-SSE, which it
   flattens to <1 B/token in synthetic streams (this is misleading — real
   JSON-SSE contains detokenized text which doesn't compress as well).
-- **Pre-trained ZSTD dictionaries (future) push Codec further.** Training
-  a dictionary on typical token sequences for a model captures bigrams,
-  instruction templates, and code structure before the first byte. Not
-  yet benchmarked.
+- **Pre-trained ZSTD dictionaries push Codec further.** Training a
+  dictionary on typical token sequences for a model captures bigrams,
+  instruction templates, and code structure before the first byte. See
+  the next section.
 
-### Future: pre-trained ZSTD dictionaries
+### Pre-trained ZSTD dictionaries
 
-A v2 protocol extension will allow tokenizer maps to declare an optional
-ZSTD dictionary URL alongside the map URL:
+Tokenizer maps MAY declare one or more pre-trained ZSTD dictionaries
+alongside the map data. Each entry is keyed by Codec wire format
+(`msgpack` or `protobuf`) — the two formats train against different byte
+distributions, so dicts are not interchangeable across formats.
 
 ```json
 {
   "id": "qwen/qwen2",
   "vocab": {...},
   "merges": [...],
-  "zstd_dictionary": {
-    "url": "https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/dictionaries/qwen-qwen2.zstd",
-    "hash": "sha256:..."
-  }
+  "zstd_dictionaries": [
+    {
+      "format": "msgpack",
+      "url":    "https://raw.githubusercontent.com/wdunn001/Codec/main/dictionaries/qwen2.5-msgpack-v1.dict",
+      "hash":   "sha256:...",
+      "size_bytes": 16384
+    },
+    {
+      "format": "protobuf",
+      "url":    "https://raw.githubusercontent.com/wdunn001/Codec/main/dictionaries/qwen2.5-protobuf-v1.dict",
+      "hash":   "sha256:...",
+      "size_bytes": 16384
+    }
+  ]
 }
 ```
 
-Servers that load the dictionary compress all frames against it; clients that
-load the same dictionary decompress with it. Estimated improvement to
-~1.2 bytes/token with negligible CPU overhead.
+A server that supports `Content-Encoding: zstd` and has a dict whose
+`format` matches the response `stream_format` SHOULD load that dict into
+the encoder for the whole stream. A client that decompresses zstd
+responses MUST load the same dict (matched by hash) for that
+(`tokenizer_id`, `format`) pair before reading.
+
+**The dict is the precondition for using zstd at all** — not an
+optimization on top. A server MUST NOT respond with `Content-Encoding:
+zstd` unless it has loaded a matching dictionary. Without the dict:
+
+- Wire-byte advantage over gzip is essentially zero on Codec streams
+  (RESULTS.md §1f: gzip and no-dict zstd both reach ~3.4 B/token, within
+  noise of each other).
+- TTFB on shipped buffered middleware is catastrophic (RESULTS.md §1d:
+  334× regression at 2K tokens, 11 ms → 3,684 ms).
+
+So no-dict zstd is the worst of both worlds. The picker
+(`packages/wire-compress`) enforces this with two gates: `zstdHasDict`
+(per request, set by the server when its loaded tokenizer map has a
+matching `zstd_dictionaries[]` entry) and `zstdEnabled` (operator's
+attestation that the middleware streams instead of buffering). Both
+must be true for zstd to be selected; otherwise the picker falls through
+to gzip. Servers without dicts therefore stay on gzip; servers with
+dicts unlock zstd's 16–38% extra wire savings (RESULTS.md §1g) at
++0.13 ms streaming-TTFB.
+
+Dicts are content-addressed by sha256: a new training run publishes a
+new entry with a new hash. Implementations MUST verify the hash on
+fetch and SHOULD cache by hash indefinitely. Negotiation stays in
+standard `Accept-Encoding` / `Content-Encoding` — no new HTTP headers.
+
+Reference training pipeline lives in
+`packages/bench/scripts/train-zstd-dict.py`; reference shipped
+dictionaries live in `dictionaries/`. Measured gain over no-dict zstd:
+see `packages/bench/RESULTS.md` §1g.
 
 ---
 
@@ -496,13 +540,29 @@ Clients learn `map_url` and `map_hash` from one of:
 1. **Direct configuration** — the application code passes them to `loadMap`.
    Simplest case, used for fixed-model deployments.
 
-2. **Future: `READY` frame** — when the full session protocol is
+2. **`.well-known/codec/` convention** — model maintainers self-host a
+   pointer (or the map itself) at a fixed location on a domain they
+   control:
+
+   ```
+   GET https://<origin>/.well-known/codec/maps/<id>.json
+   ```
+
+   The document is either an inline `TokenizerMap` (Form B) or a small
+   pointer `{ id, url, hash }` (Form A) that references the actual map on
+   any CDN. Clients pass `(origin, id)` to `discoverMap` and the loader
+   resolves the rest. Maintainers may also publish
+   `.well-known/codec/index.json` listing every map they expose. Full
+   spec: [`WELL_KNOWN_DISCOVERY.md`](./WELL_KNOWN_DISCOVERY.md).
+
+3. **Future: `READY` frame** — when the full session protocol is
    implemented, the server's `READY` response carries `map_url` and
    `map_hash` for the negotiated tokenizer. Same data; different transport.
 
-3. **Future: registry lookup** — `GET registry.codec.ai/v1/maps/<model-id>`
+4. **Future: registry lookup** — `GET registry.codec.ai/v1/maps/<model-id>`
    returns `{ url, hash }`. Enables cross-org discovery and air-gapped
-   substitution.
+   substitution. Coexists with the `.well-known` convention; the registry
+   is centralised lookup, the convention is decentralised publishing.
 
 ---
 
@@ -664,19 +724,24 @@ map, the same way Wireshark decodes binary protocols.
 
 ## Open questions (v0.2)
 
-1. **Pre-trained ZSTD dictionaries.** The next compression win, ~30%
-   beyond raw zstd. Distribution model: dictionary URL + hash declared in
-   the tokenizer map. Trained on a corpus of typical token sequences for
-   each model. Not yet benchmarked.
+1. ~~**Pre-trained ZSTD dictionaries.**~~ **Resolved.** Schema and
+   training pipeline shipped: `zstd_dictionaries[]` on the tokenizer map,
+   one entry per format (msgpack, protobuf), distributed by URL + sha256.
+   Training pipeline at `packages/bench/scripts/train-zstd-dict.py`;
+   reference dicts at `dictionaries/`. Measured offline gain in
+   `packages/bench/RESULTS.md` §1g. Server-side enablement (loading the
+   dict in sglang's `codec_compression.py` and the vLLM/llama.cpp PR
+   equivalents) is the remaining piece — tracked separately.
 
 2. **Batched / parallel streams.** Multi-stream multiplexing (HTTP/2 push
    style) within a single connection, for speculative decoding outputs.
 
-3. **Map discovery registry.** Centralised lookup
-   (`registry.codec.ai/v1/maps/<id>`) vs convention-based
-   (`https://<creator>/.well-known/codec/<slug>.json`). Both have advocates;
-   the registry is more flexible for enterprise, the convention is more
-   decentralised.
+3. ~~**Map discovery registry.**~~ **Resolved toward decentralised publishing
+   first.** Maintainers self-host at `https://<origin>/.well-known/codec/maps/<id>.json`
+   (pointer or inline map); clients call `discoverMap({ origin, id })`.
+   See [`WELL_KNOWN_DISCOVERY.md`](./WELL_KNOWN_DISCOVERY.md). A centralised
+   registry (`registry.codec.ai/v1/maps/<id>`) remains an open option for
+   cross-org discovery and air-gapped substitution; the two coexist.
 
 4. ~~**Bidirectional.**~~ **Resolved.** `POST /v1/completions/codec` accepts
    binary request bodies (`prompt_ids` as packed uint32) and streams binary

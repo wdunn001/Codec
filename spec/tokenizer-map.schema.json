@@ -72,6 +72,47 @@
       "type": "string",
       "format": "date-time",
       "description": "ISO 8601 timestamp when this map was published. Informational only — content addressing is via sha256 hash, not timestamp."
+    },
+    "zstd_dictionaries": {
+      "type": "array",
+      "description": "Optional pre-trained ZSTD dictionaries for compressing CodecFrame streams emitted by this model. One entry per Codec wire format (msgpack, protobuf) — they train against different byte distributions and are not interchangeable. A server that loads the dict for a given format compresses every frame in the stream against it; a client that loads the same dict (matched by hash) decompresses with it. Dicts are content-addressed by sha256; a new training run publishes a new entry with a new hash. Servers and clients SHOULD fetch the dict once and cache it indefinitely.",
+      "items": {
+        "type": "object",
+        "required": ["format", "url", "hash"],
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": ["msgpack", "protobuf"],
+            "description": "Codec wire format this dictionary was trained against. Servers MUST select the dict whose format matches the response's stream_format; using a mismatched dict is a wire-format error."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL the dictionary file can be fetched from. Typically a CDN or GitHub raw URL. The body MUST be the raw zstd dictionary bytes (the output of zstd --train or zstandard.train_dictionary), not a JSON wrapper."
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "description": "sha256 of the dictionary file body, prefixed with 'sha256:'. Implementations MUST verify the fetched bytes match this hash before loading."
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Size of the dictionary file in bytes. Informational; aids cache budgeting."
+          },
+          "trained_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this dictionary was trained. Informational only."
+          },
+          "corpus_summary": {
+            "type": "object",
+            "description": "Free-form metadata about the training corpus (sample count, source kind, prompt-shape mix). Helpful for downstream auditors deciding whether to re-train.",
+            "additionalProperties": true
+          }
+        }
+      }
     }
   },
   "anyOf": [
@@ -104,7 +145,25 @@
         "<|im_start|>": 151644,
         "<|im_end|>": 151645
       },
-      "published_at": "2026-05-06T00:00:00Z"
+      "published_at": "2026-05-06T00:00:00Z",
+      "zstd_dictionaries": [
+        {
+          "format": "msgpack",
+          "url": "https://raw.githubusercontent.com/wdunn001/Codec/main/dictionaries/qwen2.5-msgpack-v1.dict",
+          "hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+          "size_bytes": 16384,
+          "trained_at": "2026-05-07T00:00:00Z",
+          "corpus_summary": { "n_samples": 256, "source": "live-sglang" }
+        },
+        {
+          "format": "protobuf",
+          "url": "https://raw.githubusercontent.com/wdunn001/Codec/main/dictionaries/qwen2.5-protobuf-v1.dict",
+          "hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+          "size_bytes": 16384,
+          "trained_at": "2026-05-07T00:00:00Z",
+          "corpus_summary": { "n_samples": 256, "source": "live-sglang" }
+        }
+      ]
     },
     {
       "id": "meta-llama/llama-2",

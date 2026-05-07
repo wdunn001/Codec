@@ -286,11 +286,16 @@ void codec_frame_init(codec_frame_t *frame) {
     frame->ids_len = 0;
     frame->done = false;
     frame->finish_reason = NULL;
+    /* tool_calls is a borrowed pointer — see codec.h. Init nulls it out;
+     * destroy does NOT free it (caller owns the array and the strings). */
+    frame->tool_calls = NULL;
+    frame->tool_calls_len = 0;
 }
 
 void codec_frame_destroy(codec_frame_t *frame) {
     if (!frame) return;
     free(frame->ids);
     free(frame->finish_reason);
+    /* tool_calls intentionally NOT freed — borrowed pointer. */
     codec_frame_init(frame);
 }

@@ -92,6 +92,13 @@ codec_status_t codec_tool_watcher_new(const codec_tokenizer_map_t *map,
     codec_status_t s2 = codec_map_special_id(map, end_name, &end_id);
     if (s2 != CODEC_OK) return s2;
 
+    return codec_tool_watcher_new_with_ids(start_id, end_id, out);
+}
+
+codec_status_t codec_tool_watcher_new_with_ids(uint32_t start_id,
+                                               uint32_t end_id,
+                                               codec_tool_watcher_t **out) {
+    if (!out) return CODEC_ERR_INVALID_ARG;
     codec_tool_watcher_t *w = (codec_tool_watcher_t *)calloc(1, sizeof(*w));
     if (!w) return CODEC_ERR_OUT_OF_MEMORY;
     w->start_id = start_id;

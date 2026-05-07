@@ -22,19 +22,19 @@ Server side — pick what to apply:
 import { pick } from 'wire-compress';
 
 app.get('/stream', (req, res) => {
+  const dictForThisRequest = lookupZstdDict(req);  // see "zstd & dicts" below
   const choice = pick({
     acceptEncoding: req.headers['accept-encoding'],
     estimatedSize: 1024,                // tokens or bytes — your call
-    interactive: true,                  // human reads as it streams (default)
+    zstdHasDict: dictForThisRequest !== null,
+    zstdEnabled: STREAMING_ZSTD_MIDDLEWARE,  // operator-set; see below
   });
   if (choice.encoding !== 'identity') {
     res.setHeader('Content-Encoding', choice.encoding);
   }
-  // ... apply the chosen compressor and stream
+  // ... apply the chosen compressor (with dict if zstd) and stream
 });
 ```
-
-For agent-to-agent or batch traffic where TTFT doesn't matter, set `interactive: false` to unlock zstd's larger ratio.
 
 Client side — build the request header:
 
@@ -43,33 +43,52 @@ import { buildAcceptEncoding } from 'wire-compress';
 
 fetch('/stream', {
   headers: { 'Accept-Encoding': buildAcceptEncoding() },
-  // → "zstd;q=1.0, gzip;q=0.9, br;q=0.5"
+  // → "gzip;q=1.0, br;q=0.5"           (zstd omitted by default)
+});
+
+// Opt into zstd only when you've confirmed (a) the server has a dict for
+// this tokenizer and (b) the gateway streams (doesn't buffer):
+fetch('/stream', {
+  headers: { 'Accept-Encoding': buildAcceptEncoding({ zstd: true }) },
+  // → "gzip;q=1.0, br;q=0.5, zstd;q=0.3"
 });
 ```
 
-## The thresholds (and why)
+## zstd & pre-trained dictionaries
 
-Defaults are calibrated against measured streaming binary frames (Codec on sglang, see `packages/bench/RESULTS.md` §1c-1d in the parent repo, or [the chart](#chart)). Override them via `pick({ thresholds })`.
+The picker enforces a hard rule: **`Content-Encoding: zstd` is selected ONLY when both `zstdHasDict` and `zstdEnabled` are true.** Either gate failing → fall through to gzip.
 
-There are two regimes — interactive (humans read as it streams) and agent-mode (consumer reads everything at once). The `interactive` flag selects between them.
+Why both gates:
 
-### Interactive (default)
+- **Without a dict**, no-dict zstd's wire-byte advantage over gzip is essentially zero on Codec streams (RESULTS.md §1f: gzip and no-dict zstd both reach ~3.4 B/token, within noise) — and on shipped middleware (sglang, vLLM/llama.cpp PR equivs) zstd buffers the whole response, regressing TTFB by 334× at 2K tokens (RESULTS.md §1d). No-dict zstd is the worst of both worlds: same bytes as gzip, much worse TTFB.
+- **With a dict + streaming middleware**, zstd-with-dict beats gzip by 16–38% on bytes (RESULTS.md §1g) at +0.13 ms streaming TTFB. That's the only configuration where zstd is actually preferable to gzip.
 
-Picks streaming encodings only — gzip first, brotli as fallback. Reason: measured TTFT on Codec streams jumps from ~11 ms (gzip / br / identity) to ~3,700 ms (zstd) at 2K tokens, because zstd compressors typically buffer the full stream to finalise their dictionary. gzip and brotli both flush chunk-by-chunk and preserve TTFT.
+So the dict isn't an optimization layered on top of zstd — it's the **precondition** for zstd being on the menu at all. In practice this means:
 
-For anything a human reads as it streams, **gzip is the universal default** — it streams *and* delivers 700×+ wire reduction vs JSON-SSE on this stack.
+1. Your server loads its tokenizer map.
+2. For each request, you check whether the loaded map's `zstd_dictionaries[]` field has an entry whose `format` matches the response's `stream_format`. If so, set `zstdHasDict: true`.
+3. You set `zstdEnabled: true` once, globally, after confirming your gateway uses streaming-zstd-with-flush (not buffered finalisation).
+4. The picker handles the rest: zstd when both gates pass for this request, gzip otherwise. There is no zstd-no-dict path.
 
-Brotli is in the picker as a fallback for clients that ship br but not gzip (Safari historical edge cases, some embedded HTTP stacks). On the current sglang server, br's wire reduction is near-zero — it preserves TTFT but barely compresses Codec frames (sometimes *expands* them: protobuf·br at 2K tokens is 20.2 KB, vs identity 18.9 KB). That's a server-side configuration issue, not a fundamental br limitation; if/when sglang's middleware gets a streaming-aware brotli config, br's role expands. Until then, choose gzip.
+See `spec/PROTOCOL.md` "Pre-trained ZSTD dictionaries" and `dictionaries/README.md` in the parent repo for the dict format, training pipeline, and why per-tokenizer dicts are tractable (~10 popular families × 2 wire formats = ~20 dicts of ~16 KB each).
 
-zstd is never picked in interactive mode unless it's the only encoding the client supports, in which case the picker accepts the TTFT regression and surfaces it in the `reason` field.
+## The rule
 
-### Agent-mode (`interactive: false`)
+Defaults are calibrated against measured streaming binary frames (Codec on sglang, see `packages/bench/RESULTS.md` §1c-1g in the parent repo, or [the chart](#chart)).
 
-| stream length | best encoding | rationale |
-|---|---|---|
-| **≤ 128 tokens** | **gzip** | tiny deflate header beats zstd's frame header on payloads under ~150 tokens |
-| **mid-band 128-256** | zstd if available, else gzip | both are within 10% of optimal; zstd wins as the stream grows past the estimate |
-| **≥ 256 tokens** | **zstd** | Huffman + dictionary keep amortising — 562× smaller than uncompressed JSON-SSE at 2K tokens |
+| condition | encoding |
+|---|---|
+| `zstdHasDict && zstdEnabled` && client accepts zstd | **zstd** |
+| client accepts gzip | **gzip** |
+| client accepts br only | br (fallback) |
+| nothing else | identity |
+
+The `interactive` flag exists for backward compatibility but doesn't change the encoding selected by default — with the new rule it's redundant, because:
+
+- **Without a dict**, zstd is dropped from candidates (no fallback to no-dict zstd), so interactive mode lands on gzip anyway.
+- **With a dict + streaming middleware**, zstd-with-dict beats gzip even for interactive workloads (+0.13 ms streaming TTFB vs 16–38% byte savings — see `RESULTS.md` §1g).
+
+Brotli stays in the picker as a fallback for clients that ship br but not gzip (Safari historical edge cases, some embedded HTTP stacks). On the current sglang server, br's wire reduction is near-zero — it preserves TTFT but barely compresses Codec frames (sometimes *expands* them: protobuf·br at 2K tokens is 20.2 KB, vs identity 18.9 KB). That's a server-side configuration issue, not a fundamental br limitation. Until upstream fixes its streaming-brotli config, choose gzip when both are available.
 
 ### What about brotli?
 
@@ -99,8 +118,20 @@ Identity loses at every size we measured — even at 16 tokens, compressed Codec
 interface PickInput {
   acceptEncoding?: string | null;          // raw header value
   estimatedSize: number;                    // tokens or bytes (your unit)
-  thresholds?: Thresholds;                  // override defaults
+
+  // Required for zstd to be a candidate (default false). Set per request:
+  // true when the loaded tokenizer map's zstd_dictionaries[] has an entry
+  // matching this response's stream_format.
+  zstdHasDict?: boolean;
+
+  // Required for zstd to be a candidate (default false). Set globally:
+  // true when the gateway uses streaming-zstd-with-flush, not buffered
+  // finalisation (see RESULTS.md §1d).
+  zstdEnabled?: boolean;
+
+  thresholds?: Thresholds;                  // legacy; rule no longer uses sizes
   serverSupports?: Encoding[];              // restrict server-side capabilities
+  interactive?: boolean;                    // legacy; no effect under new rule
 }
 
 interface PickOutput {

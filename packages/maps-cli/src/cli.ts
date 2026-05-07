@@ -35,7 +35,9 @@
  *     Note: context-free; prefer the streaming `translate` for runtime use.
  */
 
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { argv, exit, stdout, stderr } from 'node:process';
 import {
   validateMap,
@@ -44,6 +46,9 @@ import {
   pickTokenizer,
   Translator,
   staticTranslationTable,
+  WELL_KNOWN_BASE,
+  type MapPointer,
+  type MapIndex,
 } from '@codecai/web';
 import {
   convertHFTokenizer,
@@ -61,6 +66,10 @@ interface Flags {
   from?: string;
   to?: string;
   ids?: string;
+  map?: string;
+  url?: string;
+  inline?: string;
+  'out-dir'?: string;
 }
 
 function parseFlags(args: string[]): { positional: string[]; flags: Flags } {
@@ -236,6 +245,95 @@ async function cmdTranslationTable(_args: string[], flags: Flags): Promise<void>
   stdout.write(`  build time:       ${((t1 - t0) / 1000).toFixed(1)}s\n`);
 }
 
+/**
+ * Validate the same id constraints as the discover.ts loader, so the CLI fails
+ * fast rather than emitting a tree the runtime would later reject.
+ */
+function validateMapIdForWellKnown(id: string): void {
+  if (!/^[a-z0-9._/-]+$/.test(id)) {
+    fail(`map id ${JSON.stringify(id)} must match [a-z0-9._/-]+ for well-known publishing`);
+  }
+  if (id.includes('..') || id.startsWith('/') || id.endsWith('/')) {
+    fail(`map id ${JSON.stringify(id)} contains a path traversal or empty segment`);
+  }
+}
+
+async function cmdWellKnown(_args: string[], flags: Flags): Promise<void> {
+  if (!flags.map) fail('well-known requires --map=<path-to-map.json>');
+  const outDir = flags['out-dir'] ?? '.';
+
+  const mapJson = await readFile(flags.map!, 'utf-8');
+  const map = JSON.parse(mapJson) as TokenizerMap;
+  validateMap(map);
+  validateMapIdForWellKnown(map.id);
+
+  const inline = flags.inline === 'true';
+  if (!inline && !flags.url) {
+    fail('well-known requires either --url=<hosted-map-url> (Form A pointer) or --inline (Form B)');
+  }
+  if (inline && flags.url) {
+    fail('well-known: --inline and --url are mutually exclusive');
+  }
+
+  const hash = await hashMap(map);
+  const targetPath = path.join(
+    outDir,
+    WELL_KNOWN_BASE,
+    'maps',
+    ...map.id.split('/'),
+  ) + '.json';
+  await mkdir(path.dirname(targetPath), { recursive: true });
+
+  let docBytes: string;
+  let pointer: MapPointer | null = null;
+  if (inline) {
+    // Form B — write the full map at the well-known location verbatim.
+    docBytes = JSON.stringify(map, null, 2) + '\n';
+  } else {
+    // Form A — write a small pointer document.
+    pointer = {
+      id: map.id,
+      url: flags.url!,
+      hash,
+      published_at: map.published_at ?? new Date().toISOString(),
+    };
+    docBytes = JSON.stringify(pointer, null, 2) + '\n';
+  }
+  await writeFile(targetPath, docBytes, 'utf-8');
+
+  // Maintain index.json. Replace the entry for this id if it exists; otherwise
+  // append. Inline-only publishes skip the index by default — the index is a
+  // pointer directory.
+  const indexPath = path.join(outDir, WELL_KNOWN_BASE, 'index.json');
+  if (pointer) {
+    let index: MapIndex = { codec_version: '0.2', maps: [] };
+    if (existsSync(indexPath)) {
+      const raw = await readFile(indexPath, 'utf-8');
+      try {
+        index = JSON.parse(raw) as MapIndex;
+      } catch {
+        fail(`existing index at ${indexPath} is not valid JSON`);
+      }
+    }
+    const entries = [...(index.maps ?? [])].filter((e) => e.id !== pointer!.id);
+    entries.push(pointer);
+    entries.sort((a, b) => a.id.localeCompare(b.id));
+    const updated: MapIndex = { codec_version: '0.2', maps: entries };
+    await mkdir(path.dirname(indexPath), { recursive: true });
+    await writeFile(indexPath, JSON.stringify(updated, null, 2) + '\n', 'utf-8');
+  }
+
+  stdout.write(`✓ wrote   ${targetPath}\n`);
+  if (pointer) {
+    stdout.write(`✓ index   ${indexPath} (${pointer.id})\n`);
+    stdout.write(`  url           ${pointer.url}\n`);
+    stdout.write(`  hash          ${pointer.hash}\n`);
+  } else {
+    stdout.write(`  inline map (${(docBytes.length / 1024).toFixed(1)} KB)\n`);
+    stdout.write(`  hash          ${hash}\n`);
+  }
+}
+
 function help(): void {
   stdout.write(`codecai-maps — generate Codec tokenizer dialect maps
 
@@ -266,6 +364,14 @@ Commands:
     decoded text through the target tokenizer. Output is JSON. Note:
     context-free; prefer the streaming Translator API at runtime.
 
+  well-known --map=<map.json> (--url=<hosted-url> | --inline) [--out-dir=<dir>]
+    Emit a .well-known/codec/maps/<id>.json document and update
+    .well-known/codec/index.json under <out-dir> (default: cwd). Use
+    --url for the recommended pointer form (small file referencing a
+    CDN-hosted map by hash); use --inline to write the full map at the
+    well-known location. Designed to be checked into a static site so
+    clients can call discoverMap({ origin, id }) against your domain.
+
 Examples:
   codecai-maps build Qwen/Qwen2.5-7B-Instruct --id=qwen/qwen2
   codecai-maps build meta-llama/Llama-3.1-8B --token=hf_xxx
@@ -275,6 +381,9 @@ Examples:
                          --text="Explain entropy."
   codecai-maps translation-table --from=qwen2.json --to=llama-3.json \\
                                  --out=qwen-to-llama.json
+  codecai-maps well-known --map=./qwen_qwen2.json \\
+                          --url=https://cdn.example/qwen2.json \\
+                          --out-dir=./public
 `);
 }
 
@@ -291,6 +400,7 @@ async function main(): Promise<void> {
       case 'preview': return await cmdPreview(positional, flags);
       case 'translate': return await cmdTranslate(positional, flags);
       case 'translation-table': return await cmdTranslationTable(positional, flags);
+      case 'well-known': return await cmdWellKnown(positional, flags);
       case 'help':
       case '--help':
       case '-h':

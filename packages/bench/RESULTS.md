@@ -234,10 +234,20 @@ are real.
 
 The decision logic is shipped as a standalone, framework-agnostic
 package: [`packages/wire-compress`](../wire-compress/). It exposes
-`pick({ acceptEncoding, estimatedSize, interactive })` and an
-Accept-Encoding parser/builder. Drop it in any HTTP server that
-streams responses — the rule generalises beyond Codec to any
+`pick({ acceptEncoding, estimatedSize, interactive, zstdEnabled })`
+and an Accept-Encoding parser/builder. Drop it in any HTTP server
+that streams responses — the rule generalises beyond Codec to any
 bursty-small-frame workload.
+
+**zstd is off by default in the picker.** The TTFT cliff measured
+on every shipped middleware (sglang, the vLLM/llama.cpp PR equivs
+where they exist) makes zstd a dead end for streaming workloads
+including agent-to-agent. Even a 4-second TTFT in a model→model
+hop compounds disastrously across multi-hop chains, and zstd's ~30%
+extra wire savings over gzip don't pay for that latency. Callers
+must explicitly set `zstdEnabled: true` to opt in, and only after
+confirming the gateway uses *streaming-zstd with periodic flushes*
+(not the default buffered-finalisation path).
 
 Run yourself:
 
@@ -408,20 +418,29 @@ bytes-only metric agree on the threshold.
 
 #### What the picker does
 
-- **Interactive (default)** — pick `gzip` first; fall back to `br`
-  only if the client refuses gzip; accept `zstd` (with the TTFT cost)
-  only if it's the lone supported encoding. Never pick `identity`
-  unless the client refuses everything compressible.
-- **Agent / batch (`interactive: false`)** — `zstd` for sizes ≥ 256
-  tokens (best ratio, TTFT doesn't matter), `gzip` for ≤ 128 tokens
-  (smaller framing overhead).
+- **Default policy (interactive *or* agent/batch)** — pick `gzip`.
+  Fall back to `br` if the client refuses gzip. Use `identity` only
+  if the client refuses everything compressible.
+- **`zstdEnabled: true`** — the picker still prefers gzip below the
+  size threshold, then unlocks zstd at sizes ≥ 256 tokens. Only set
+  this after confirming the gateway uses *streaming-zstd with
+  periodic flushes* (not the default buffered-finalisation path
+  every shipped middleware uses today).
+
+The earlier "zstd at scale for agent traffic" recommendation didn't
+survive the timing data. **zstd-as-shipped is a dead end for
+streaming workloads, including agent-to-agent.** Even agent loops
+care about TTFT — a 4-second wait between hops compounds
+catastrophically across multi-hop chains, and zstd's ~30% extra
+wire savings over gzip don't pay for that latency. The picker
+treats zstd as opt-in until streaming-zstd middleware exists.
 
 Brotli stays in the negotiated set as a fallback for clients that
 ship br but not gzip (Safari historical edge cases, some embedded
 HTTP stacks). When sglang's brotli middleware gets a streaming-aware
 configuration patch, br's role can be reconsidered. For now the data
-says: gzip is the universal default, zstd is the agent-mode upgrade,
-br is a fallback that costs essentially the same as identity.
+says: **gzip is the universal default. Don't use zstd. br is a
+fallback. identity is last resort.**
 
 ### Total wall-clock — Codec adds <1% overhead
 
@@ -919,6 +938,219 @@ codec-bench-timed --url http://your-stack:port \
 # and batch efficiency — everything needed to fill in a row in the
 # matrix above.
 ```
+
+---
+
+## 1g. Pre-trained ZSTD dictionaries — measured gain
+
+`spec/PROTOCOL.md` "Pre-trained ZSTD dictionaries" estimated ~30% byte
+reduction beyond raw zstd as the v0.2 win. We've now trained, shipped,
+and measured. The pipeline is `bench/scripts/{synth,capture}-codec-
+samples.py` → `bench/scripts/train-zstd-dict.py` → output to
+[`dictionaries/`](../../dictionaries/) → `bench/src/compression-dict.ts`
+for the round-trip-verified measurement.
+
+The numbers below come from the **synthetic corpus** (256 streams per
+format, generated deterministically from `bench/golden/qwen2.json` plus
+RNG-shaped framing). Synthetic dicts are weaker than live-trained dicts
+because they only see the model's tokenizer test corpus rather than the
+model's actual generation distribution — replace with the live numbers
+once `bench/scripts/capture-codec-samples.py` has been run against
+sglang and `dict:train` re-emits a `qwen2.5-msgpack-v1.dict` (no
+`-synth-` infix).
+
+### Headline: dict-zstd vs no-dict zstd, by raw payload size
+
+Each cell below is a 256-sample mean. Encode-latency rows are the median of
+5 reps per sample; streaming-TTFB rows are the median of 5 reps × 24
+stratified samples. Round-trip (compress → decompress) is verified per
+sample; a mismatch aborts the run.
+
+#### msgpack — dict `qwen2.5-synth-msgpack-v1` (16 KB)
+
+**Bytes:**
+
+| bucket | n | raw | gzip | no-dict zstd | **with-dict zstd** | dict gain vs zstd |
+|---|---:|---:|---:|---:|---:|---:|
+| small (≤ 300 B raw)   |  17 | 189 B | 130 B | 125 B | **78 B**  | **38.1%** |
+| medium (≤ 2.5 KB raw) |  77 | 1.2 KB | 381 B | 409 B | **256 B** | **37.5%** |
+| large (> 2.5 KB)      | 162 | 11.0 KB | 2.2 KB | 2.3 KB | **1.9 KB** | 14.5% |
+| **all**               | 256 | 7.4 KB | 1.5 KB | 1.6 KB | **1.3 KB** | **16.4%** |
+
+**Encode latency (sync TTFB)** — wall-clock to compress one whole sample:
+
+| bucket | n | gzip | no-dict zstd | with-dict zstd | dict overhead |
+|---|---:|---:|---:|---:|---:|
+| small (≤ 300 B raw)   |  17 | 0.02 ms | 0.02 ms | 0.22 ms | +0.20 ms |
+| medium (≤ 2.5 KB raw) |  77 | 0.05 ms | 0.03 ms | 0.26 ms | +0.23 ms |
+| large (> 2.5 KB)      | 162 | 0.18 ms | 0.15 ms | 0.41 ms | +0.26 ms |
+| **all**               | 256 | 0.13 ms | 0.10 ms | 0.35 ms | **+0.25 ms** |
+
+**Streaming TTFB** — first input chunk → first compressed byte
+(256 B chunks, flush after first chunk; models a streaming-zstd middleware):
+
+| pipeline | mean TTFB | overhead |
+|---|---:|---:|
+| no-dict zstd (streaming) | 0.21 ms | (baseline) |
+| with-dict zstd (streaming) | 0.34 ms | **+0.12 ms** |
+
+#### protobuf — dict `qwen2.5-synth-protobuf-v1` (16 KB)
+
+**Bytes:**
+
+| bucket | n | raw | gzip | no-dict zstd | **with-dict zstd** | dict gain vs zstd |
+|---|---:|---:|---:|---:|---:|---:|
+| small (≤ 300 B raw)   |  25 | 176 B | 122 B | 128 B | **81 B**  | **36.4%** |
+| medium (≤ 2.5 KB raw) |  88 | 1.3 KB | 508 B | 558 B | **367 B** | **34.2%** |
+| large (> 2.5 KB)      | 143 | 9.4 KB | 2.7 KB | 2.9 KB | **2.5 KB** | 15.5% |
+| **all**               | 256 | 5.7 KB | 1.7 KB | 1.8 KB | **1.5 KB** | **17.6%** |
+
+**Encode latency (sync TTFB):**
+
+| bucket | n | gzip | no-dict zstd | with-dict zstd | dict overhead |
+|---|---:|---:|---:|---:|---:|
+| small (≤ 300 B raw)   |  25 | 0.02 ms | 0.02 ms | 0.27 ms | +0.25 ms |
+| medium (≤ 2.5 KB raw) |  88 | 0.05 ms | 0.03 ms | 0.27 ms | +0.24 ms |
+| large (> 2.5 KB)      | 143 | 0.20 ms | 0.15 ms | 0.40 ms | +0.24 ms |
+| **all**               | 256 | 0.13 ms | 0.10 ms | 0.34 ms | **+0.24 ms** |
+
+**Streaming TTFB:**
+
+| pipeline | mean TTFB | overhead |
+|---|---:|---:|
+| no-dict zstd (streaming) | 0.22 ms | (baseline) |
+| with-dict zstd (streaming) | 0.35 ms | **+0.13 ms** |
+
+### Reading the tables
+
+**Bytes:**
+
+- **Small streams gain the most.** A 200-byte msgpack frame compressed
+  with no-dict zstd has no time to learn the model's bigram structure
+  before the stream ends — the dict pre-loads ~16 KB of typical
+  CodecFrame patterns. Result: **37–38% extra reduction** at small
+  sizes for both formats. This is exactly the "first-byte" cost the
+  spec section called out, now measured.
+- **Large streams gain less.** At ≥ 2.5 KB, no-dict zstd has built up
+  enough internal context that the pre-trained dict only adds ~15%.
+  Still real bytes, but the marginal value drops as the stream grows.
+- **Per-format dicts are not interchangeable.** Cross-loading (the
+  msgpack dict on a protobuf stream or vice versa) is treated as a
+  wire-format error in the spec. Per-format training is cheap
+  (~16 KB each) and correct.
+- **Holdout gain.** The trainer reported 15.7% (msgpack) and 16.7%
+  (protobuf) on its 20% holdout set during training; the
+  per-bucket bench above re-measures over the full 256-sample corpus
+  including the train slice and gets very close numbers (16.4% / 17.6%
+  overall) — the dict isn't overfitting the train set.
+
+**Timing:**
+
+- **Sync encode latency** (whole-sample compress) goes from ~0.10 ms
+  (no-dict zstd) to ~0.35 ms (with-dict zstd). The +0.24 ms overhead is
+  dict-load + setup, paid once per response. For comparison, the
+  baseline TTFB measured against sglang in §1d is ~11 ms — the dict's
+  extra cost is **~2% of one TTFB tick**, deep in the noise floor.
+  Compared to the byte savings (kilobytes off most responses), the CPU
+  trade is overwhelmingly favourable.
+- **Streaming TTFB** is the more honest number for a streaming-zstd
+  middleware: feed the response in 256 B chunks, flush after the first
+  chunk, time from first input byte to first output byte. With-dict
+  costs **+0.12–0.13 ms over no-dict** — nearly free, because the dict
+  is loaded once at stream construction and the first compressed
+  output byte still emerges within a millisecond. This rules out the
+  worry that pre-training adds anything like §1d's TTFT cliff (which
+  is a property of buffered finalisation, not of compression itself).
+- **gzip is faster but coarser.** Gzip encode-latency on small samples
+  is 0.02 ms vs zstd's 0.02 ms (same wall-clock at this size; both are
+  doing little work). The dict only changes the picture for zstd —
+  gzip has its own static dictionaries baked in and isn't tuned per-
+  model. The picker rule (`packages/wire-compress`) doesn't change:
+  gzip still wins on streaming where TTFT cliffs matter, zstd-with-
+  dict wins on bytes when the gateway uses streaming-zstd-with-flush.
+- **Caveat on absolute ms.** Numbers above are from a single Node 25
+  process on Windows; absolute values shift on Linux/macOS and across
+  CPU generations. The **relative deltas** (with-dict vs no-dict, dict
+  overhead vs baseline TTFT) are what matter and are stable.
+
+### Dict size sweep
+
+`train-zstd-dict.py` sweeps {4 KB, 16 KB, 64 KB} and picks the smallest
+size within 1 percentage point of the best holdout gain. For both
+formats this came out to **16 KB**:
+
+| dict size | msgpack holdout gain | protobuf holdout gain |
+|---:|---:|---:|
+|  4 KB | +13.0% | +14.2% |
+| **16 KB** | **+15.7%** | **+16.7%** |
+| 64 KB | +14.6% | +17.3% |
+
+64 KB beats 16 KB on protobuf by 0.6 pp — within the picker's 1pp
+tolerance, so the smaller dict ships. 16 KB is also small enough to
+inline into the tokenizer map JSON later if we ever want to skip the
+extra fetch.
+
+### Caveats
+
+- **Synthetic corpus only.** These numbers prove the pipeline; a
+  live-trained dict against real sglang traffic will likely score
+  higher on small streams (closer to the ~30% spec estimate
+  *over no-dict zstd at typical sizes*) and similar on large.
+- **Server-side enablement is the next step.** sglang's
+  `codec_compression.py` ignores the `zstd_dictionaries[]` field today.
+  Until it's taught to load a dict, the picker
+  (`packages/wire-compress`) refuses to select zstd at all (see below)
+  — so on-the-wire `Content-Encoding: zstd` responses won't appear in
+  production until that PR lands. The dicts shipped in `dictionaries/`
+  are inert in production until then.
+- **The dict is the precondition for zstd, not an optimization on
+  top.** RESULTS.md §1f showed gzip and no-dict zstd are within noise
+  of each other on Codec streams (~3.4 B/token both); RESULTS.md §1d
+  showed shipped zstd middleware buffers the whole response (334×
+  TTFT cliff at 2K tokens). The picker therefore enforces a hard
+  rule: zstd is selected only when both `zstdHasDict` (per request,
+  set when the loaded tokenizer map has a matching
+  `zstd_dictionaries[]` entry) AND `zstdEnabled` (operator's
+  attestation that the middleware streams) are true. The fallback
+  chain is `zstd-with-dict > gzip > br > identity` — there is no
+  zstd-no-dict step. So when a server doesn't have a dict for a given
+  tokenizer, requests for that tokenizer land on gzip, with the
+  baseline 76% reduction over identity but losing the dict's extra
+  16–38%.
+- **TTFT cliff is unchanged for buffered middleware.** A pre-trained
+  dict reduces *bytes*; it does not change zstd's buffered-finalisation
+  behaviour. So even with a dict loaded, an operator running
+  buffered-zstd middleware MUST keep `zstdEnabled: false` until the
+  middleware switches to streaming-with-flush. See "Streaming TTFB"
+  table above for what zstd looks like with the streaming fix in
+  place.
+
+### Reproduce
+
+```bash
+cd packages/bench
+
+# 1. Synthetic corpus (no GPU, deterministic, ~1s)
+python scripts/synth-codec-samples.py --out ./corpora/qwen2.5-synth
+
+# 2. Train both dicts
+python scripts/train-zstd-dict.py \
+  --corpus ./corpora/qwen2.5-synth \
+  --out ../../dictionaries \
+  --tag qwen2.5-synth --version v1 \
+  --source-tag synthetic
+
+# 3. Bench
+npx tsx src/compression-dict.ts \
+  --corpus-root corpora/qwen2.5-synth \
+  --dict-root ../../dictionaries \
+  --tag qwen2.5-synth --version v1
+```
+
+To run with live captures from sglang at `192.168.1.88:30000` instead,
+swap step 1 for `python scripts/capture-codec-samples.py --url
+http://192.168.1.88:30000 --n-samples 256 --out ./corpora/qwen2.5` and
+adjust `--corpus` / `--tag` accordingly.
 
 ---
 
