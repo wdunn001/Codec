@@ -389,69 +389,154 @@ difference between needing 1 CPU and needing 16.
 
 ---
 
-## 1e. In-server architecture: tools-as-tokens (proposed)
+## 1e. Bolt-on tool architecture: tools-as-tokens, tokenized at build time
 
-PR #24557 lands server-side ToolWatcher detection but the tool *result*
-still travels back through the client to be re-fed into the
-generation. The full latency win comes when tool dispatch never
-leaves the server process at all:
+PR #24557 lands server-side ToolWatcher detection in sglang. The next
+step isn't "in-process MCP dispatcher inside sglang" — that path locks
+tools into the inference server and makes every tool change a server
+release. The right architecture is **bolt-on tools with build-time
+tokenization**, hosted in their own repos, hot-swappable per gateway.
+
+### The flow
 
 ```
-                   ┌─────────────────────────── sglang process ───────────────────────────┐
-                   │                                                                       │
-client ─request─→  │   model.forward → tokens → ToolWatcher → in-process MCP dispatcher    │
-                   │                                              │                        │
-                   │                                              ↓                        │
-                   │                                          tool result                  │
-                   │                                              │                        │
-                   │                            ┌─ tokenize ─────┘                         │
-                   │                            ↓                                          │
-                   │   model.continue ← tokens (tool result reinjected)                    │
-                   │                                                                       │
-                   └──────────────────────────────────────────────────────────────────────┘
-client ←──── final response (stream) ─────────────────────────────────────────────────────┘
+                    ┌───────── gateway (sglang / vLLM / llama.cpp) ─────────┐
+client ─request──→  │ model.forward → tokens                                │
+                    │   → ToolWatcher detects <tool_call> (uint32 compare)  │
+                    │   → routes raw argument token IDs over MCP            │ ──tool call──→  bolt-on tool
+                    │                                                       │                    │
+                    │                                                       │                    │ decode args once
+                    │                                                       │                    │ run logic
+                    │                                                       │                    │ concat cached IDs
+                    │   ◀── response token IDs (pre-cached for this model) ─┤  ←─tool result──   │
+                    │                                                       │
+                    │ ToolWatcher reinjects response IDs into generation    │
+                    │ model.continue → tokens → ... → final stream          │
+                    └───────────────────────────────────────────────────────┘
 ```
 
-What this would look like in sglang:
+The gateway never detokenizes. The tool never tokenizes on the hot
+path. Token IDs flow through the loop as IDs, end to end.
 
-1. **Server-side ToolWatcher** (already in PR #24557) detects tool
-   call regions in the streaming token loop. Today: emits a structured
-   `tool_calls` event for the client to dispatch.
-2. **In-process MCP dispatcher** (proposed) — the server holds MCP
-   client connections and dispatches the tool call directly without
-   round-tripping back through the client.
-3. **Result injection** (proposed) — tool result is tokenized in the
-   server process and re-fed into the existing generation context. No
-   text-path conversion at all between detection and continuation.
+### Why tools own the cache
 
-Performance estimate (vs the current PR #24557 client-dispatch path):
-- Saves: client-server round trip per tool call (typically 5-50 ms WAN
-  RTT, plus client-side dispatch overhead)
-- Saves: detokenize+JSON+tokenize on the result path
-- Costs: server process must hold MCP client state (fine — MetaMCP
-  already does this for the gateway use case)
+Earlier sketches put MCP dispatch inside sglang. Three problems with that:
 
-Why this matters beyond latency: the tool call never leaves the
-server's trusted boundary. The current "tool calls travel as text
-through the client" architecture is also a *security* concern — a
-malicious client can intercept and modify tool calls in flight. With
-in-process dispatch, the gateway operator controls the tool surface
-end-to-end.
+1. **Modularity loss.** Tools want their own release cadence, security
+   review, and deploy surface. Locking them into the inference server
+   forces every tool change into a server release.
+2. **Wrong layer for tokenization.** The gateway doesn't know what
+   fragments a tool emits. The tool does. A weather tool that says
+   `"It is {temp}°F in {city}."` 100 times a second knows exactly
+   which fragments to pre-cache. The gateway would have to either
+   maintain a central template registry (coupling) or do BPE every
+   call (slow).
+3. **Independent hosting.** Teams want to publish tools from their own
+   repos with their own infra. The gateway only needs the manifest URL.
 
-This is a non-trivial sglang change and we haven't built it yet. The
-incremental path:
-1. Land PR #24557 (server-side detection — done).
-2. Add an MCP client interface to sglang's ToolWatcher result handler
-   — opt-in, off by default.
-3. Wire the result back through the existing `continue_generation`
-   path that sglang already has for chat templates.
+**Bolt-on tools tokenize their response fragments once at build
+time.** A tool that emits `"The current time is {iso} UTC."` ships a
+`cache/qwen25-0.5b.json` containing the pre-built token IDs for
+`"The current time is "` and `" UTC."`. At runtime, the tool's hot
+path is:
 
-**Edge tool reading toolcalls as tokens** (your phrasing): this is
-the same architecture, just framed from the other side. Today the
-"reader" is the client, which has to detokenize. With the proposal,
-sglang itself becomes the reader, and "tokens stay as tokens" is true
-end-to-end through the agent loop. No detokenize anywhere in the hot
-path until the last hop ships text back to a human.
+```
+decode_args(call.argumentIds) →
+  business_logic(args) →
+    [...prefix_ids, ...tokenize(short_dynamic_value), ...suffix_ids]
+```
+
+Tokenization cost on the hot path: just the digits in the timestamp.
+Everything else is memcpy. CPU per call drops from "BPE on N hundred
+bytes" to "memcpy of N hundred bytes" — typically a 50-100× CPU
+reduction at the tool layer, and zero CPU at the gateway.
+
+### What ships today
+
+- **`packages/codec-tool-kit`** — the standalone TS SDK for authoring
+  bolt-on tools. Defines the manifest spec, the `CodecTool` interface,
+  the `CodecToolCall` / `CodecToolResult` wire shapes, and the
+  `precache()` build helper. Zero runtime dependencies, ~6 KB. Lives
+  at [`packages/codec-tool-kit/`](../codec-tool-kit/).
+- **Manifest schema** — JSON manifest declaring the tool's name,
+  arguments JSON-Schema, and per-model bindings (HF model id +
+  tokenizer SHA-256 + cache file path). The gateway reads this once
+  at registration; after that only token IDs cross the wire.
+- **`precache()` build helper** — takes a fragment list (`static` or
+  `template`) and a tokenizer, emits a `ToolCache` JSON file. Tool
+  authors run this in their CI; the resulting caches ship inside
+  the published package.
+- **`renderTemplate()` runtime helper** — concatenates cached parts
+  with freshly-tokenized slot values. The slot values are usually
+  short (digits, single words), so even runtime tokenization is
+  effectively free.
+- **Stale-cache detection** — `verifyCache()` checks the cache's
+  tokenizer hash against what the gateway is currently serving. If
+  the gateway swapped models or upgraded the tokenizer, the tool
+  falls back to text-mode and the gateway tokenizes at the boundary.
+  No silent corruption.
+
+### Worked example (full code in `codec-tool-kit/README.md`)
+
+A `get_current_time` bolt-on:
+
+| | size | what's in it |
+|---|---:|---|
+| `manifest.json` | ~600 B | name, schema, model bindings (Qwen2.5, Llama-3) |
+| `cache/qwen25-0.5b.json` | ~400 B | pre-tokenized prefixes + suffixes + template parts |
+| `cache/llama-3.2-3b.json` | ~400 B | same fragments, Llama tokenizer |
+| `index.ts` | ~80 LOC | `tool.handle(call)` — decode args, lookup cache, return token IDs |
+| `build-cache.ts` | ~30 LOC | runs `precache()` for each model in CI |
+
+That's the entire tool. The repo is independent, the npm package is
+versioned independently, and the gateway only needs to point at the
+manifest URL to start using it.
+
+### What's still needed in the gateway (sglang, vLLM, etc.)
+
+PR #24557 already does the detection half. The dispatcher half is a
+small add-on:
+
+1. **Tool registry** that loads manifests at startup and validates
+   `tokenizerHash` against the active model's tokenizer.
+2. **MCP-style HTTP/IPC client** that posts `CodecToolCall` to the
+   tool's endpoint and receives `CodecToolResult`. We're proposing
+   the same wire shape MetaMCP already uses, so existing MCP servers
+   can be wrapped with a thin adapter.
+3. **Reinjection path** that takes `responseIds` and feeds them back
+   into the generation context at the position where `<tool_call>`
+   was detected. The text fallback path tokenizes via the gateway's
+   own tokenizer.
+
+None of these require model-specific code in sglang. All of them can
+sit behind a feature flag and be opt-in.
+
+### Security framing
+
+Today's "tool calls travel as text through the client" architecture
+has a quiet security problem: a malicious client can intercept and
+modify tool-call args in flight. With bolt-on dispatch and a
+gateway-side tool registry, the args never leave the gateway's
+trusted boundary unmodified. The gateway operator controls the tool
+surface; the client only sees the final stream.
+
+This is the same property as the in-process design — and bolt-on
+tools get it without sacrificing modularity. The MCP hop from gateway
+to tool can be auth'd with mTLS or a static token; the gateway never
+trusts the client to nominate which tool gets called.
+
+### Edge tool reading tool calls as tokens
+
+Your phrasing: this *is* what bolt-on tools do. The "reader" of the
+tool call is the bolt-on, and what it reads are token IDs — not text.
+The gateway routes IDs; the tool processes IDs; the response is IDs.
+The only place text appears is when the gateway tokenizes a
+text-fallback result for an unsupported model, or when the final
+response streams back to a human.
+
+The end-to-end agent loop with bolt-on Codec tools has zero
+tokenize/detokenize ops in the hot path until the last hop hits a
+human.
 
 ---
 

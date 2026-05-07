@@ -1,0 +1,50 @@
+{
+  "name": "codec-tool-kit",
+  "version": "0.1.0",
+  "description": "Build Codec-native tools as independently-hosted bolt-ons. Pre-cache the tokenizer at build time so the gateway stays a pure token router.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./precache": {
+      "types": "./dist/precache.d.ts",
+      "default": "./dist/precache.js"
+    },
+    "./manifest": {
+      "types": "./dist/manifest.d.ts",
+      "default": "./dist/manifest.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "keywords": [
+    "codec",
+    "tool",
+    "mcp",
+    "tokenizer",
+    "agent",
+    "llm",
+    "tools-as-tokens",
+    "bolt-on"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wdunn001/Codec.git",
+    "directory": "packages/codec-tool-kit"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

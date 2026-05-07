@@ -272,6 +272,40 @@ res.setHeader('Content-Encoding', choice.encoding);
 
 Works for any bursty small-frame streaming workload (SSE, gRPC-Web text, log streams, telemetry) — not just Codec.
 
+### Bolt-on tools: [`codec-tool-kit`](packages/codec-tool-kit)
+
+Tools should remain modular — independently versioned, deployed, and authored, hosted in their own repos. `codec-tool-kit` is the SDK for building Codec-native bolt-ons that pre-cache the tokenizer at build time so the gateway stays a pure token router.
+
+```ts
+import { precache } from 'codec-tool-kit/precache';
+
+// Build time: tokenize once, ship the cache.
+const cache = precache({
+  fragments: [
+    { id: 'iso-prefix',  kind: 'static',   text: 'The current time is ' },
+    { id: 'iso-suffix',  kind: 'static',   text: ' UTC.' },
+    { id: 'human-tpl',   kind: 'template', text: 'It is {hours}:{minutes} on {day}.' },
+  ],
+  tokenizer,
+});
+```
+
+```ts
+import { type CodecTool, tokensResult, renderTemplate } from 'codec-tool-kit';
+
+// Runtime hot path: cached IDs in, cached IDs out — gateway sees no text.
+export const tool: CodecTool = {
+  manifest,
+  async handle(call) {
+    const args = decodeArgs(call.argumentIds);
+    const ids = renderTemplate(cache.fragments['human-tpl'], {...}, smallTokenizer);
+    return tokensResult(call.callId, ids);
+  },
+};
+```
+
+See [`packages/codec-tool-kit/README.md`](packages/codec-tool-kit/) for the full architecture and `RESULTS.md §1e` for why bolt-ons beat in-process MCP dispatch.
+
 ---
 
 ## Run the benchmarks
