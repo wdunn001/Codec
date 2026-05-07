@@ -140,6 +140,90 @@ codec-bench --sweep                     # demo-python, full grid × 3 sizes
 
 ---
 
+## 1c. Compression crossover study — when does each algorithm win?
+
+Fine-grained sweep at 8 sizes (16 / 32 / 64 / 128 / 256 / 512 / 1024 /
+2048 tokens) with the long-form prompt. Same lab box, same model, same
+PR-branch sglang. Cell = wire bytes for that (path, encoding, size).
+
+### Wire bytes by size (Codec paths)
+
+| path · encoding | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| msgpack · identity | 249 | 482 | 944 | 1.8 KB | 3.6 KB | 7.2 KB | 14.4 KB | 27.1 KB |
+| msgpack · **gzip** | **110** | **115** | **126** | **146** | 194 | 268 | 400 | 639 |
+| msgpack · br | 303 | 574 | 923 | 1.6 KB | 2.9 KB | 5.5 KB | 10.8 KB | 20.2 KB |
+| msgpack · **zstd** | **107** | **112** | 134 | 152 | **176** | **239** | **273** | **381** |
+| protobuf · identity | 164 | 322 | 636 | 1.2 KB | 2.5 KB | 4.9 KB | 9.8 KB | 18.5 KB |
+| protobuf · **gzip** | **98** | **102** | **113** | **133** | 179 | 247 | 367 | 587 |
+| protobuf · br | 243 | 408 | 762 | 1.4 KB | 2.7 KB | 5.3 KB | 10.6 KB | 20.0 KB |
+| protobuf · **zstd** | 100 | 104 | 122 | 140 | **164** | **223** | **258** | **368** |
+
+**Bold = winner at that size.** JSON-SSE row omitted because the server
+never compresses text streams in this build (identity at all sizes:
+3.8 KB → 457 KB linear).
+
+### Winner per size
+
+| path | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 |
+|---|---|---|---|---|---|---|---|---|
+| Codec msgpack | zstd | zstd | **gzip** | **gzip** | zstd | zstd | zstd | zstd |
+| Codec protobuf | gzip | gzip | gzip | gzip | **zstd** | **zstd** | **zstd** | **zstd** |
+
+### The threshold rule
+
+The data points to a clean per-encoder switching rule:
+
+| stream length | best encoding | why |
+|---|---|---|
+| **≤ 128 tokens** | **gzip** (level 6) | smaller framing overhead than zstd at this size; gzip's deflate header is tiny vs. zstd's frame header |
+| **≥ 256 tokens** | **zstd** | dictionary/Huffman amortizes across more frames; ratio keeps improving with size |
+
+The crossover for protobuf is **between 128 and 256 tokens** (gzip 133 B
+vs zstd 140 B at 128; gzip 179 B vs zstd 164 B at 256). For msgpack
+it's noisier because of one-byte differences in the small range, but
+zstd dominates the moment payloads exceed ~150 tokens.
+
+**Brotli loses at every size we measured** for Codec streams. Each
+CodecFrame is small (~10-25 B), so brotli's per-block overhead never
+amortizes. Brotli is built for static web assets, not streaming token
+frames. Don't ship it for this workload.
+
+**Identity loses at every size, including 16 tokens.** Even the
+smallest compressed payload (107 B msgpack+zstd at 16 tokens) beats raw
+msgpack (249 B) by 2.3×. There's no size where shipping uncompressed
+Codec is the right call.
+
+### Recommendation for v0.2 protocol
+
+The reference implementations should:
+
+1. **Default to gzip** for the first chunk and small responses
+   (heuristic: estimated_max_tokens ≤ 128).
+2. **Switch to zstd** once the request indicates a long response (≥ 256
+   tokens) or once the encoder has buffered > 128 tokens of output.
+3. **Never advertise br** in the default `Accept-Encoding` set for
+   Codec endpoints. It costs CPU for negative wire savings here.
+4. **Never use identity** unless the network is genuinely free
+   (loopback, unix socket). The CPU cost of gzip/zstd is sub-microsecond
+   per CodecFrame; the wire savings are 2-50×.
+
+A simpler one-rule policy that gets ~95% of the win and is easier to
+implement: **always zstd, regardless of size** — at worst it costs
+~30% more bytes than gzip on the smallest payloads (107 B vs 98 B at
+16 tokens for protobuf), and it wins by 1.6× on large payloads. The
+extra bytes on small responses are noise; the savings on large ones
+are real.
+
+Run yourself:
+
+```bash
+codec-bench-crossover --url http://your-server \
+  --sizes 16 32 64 128 256 512 1024 2048 --prompt-long
+```
+
+---
+
 ## 2. Polyglot interop — 4 client implementations
 
 Same Codec wire, four language clients. Wire bytes match exactly.

@@ -20,6 +20,8 @@ dependencies = [
 
 [project.scripts]
 codec-bench = "codec_demo:main"
+codec-bench-compare = "codec_demo.compare:main"
+codec-bench-crossover = "codec_demo.crossover:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/codec_demo"]

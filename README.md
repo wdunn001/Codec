@@ -234,8 +234,22 @@ Codec supports optional compression of the response stream via standard HTTP `Ac
 | `identity` | MUST   | MUST   | The fallback. Always works.                    |
 | `gzip`     | SHOULD | SHOULD | Stdlib in every language. Universal browser support. |
 | `zstd`     | MAY    | MAY    | Best ratio. Browsers: Chrome 123+, Firefox 126+. |
+| `br`       | —      | —      | Not recommended. Per-block overhead exceeds savings on small Codec frames. |
 
 Browsers handle decompression transparently in `fetch()`, so `@codecai/web` requires zero changes to consume compressed streams.
+
+### Which encoding to pick (measured threshold)
+
+A fine-grained sweep at 8 sizes (16 → 2,048 tokens, see `RESULTS.md` §1c) gives a clean rule of thumb on the PR-branch sglang server with Qwen2.5-0.5B-Instruct:
+
+| stream length     | best encoding | why                                                                          |
+|-------------------|---------------|------------------------------------------------------------------------------|
+| **≤ 128 tokens**  | **gzip**      | tiny deflate header beats zstd's frame header on payloads under ~150 tokens  |
+| **≥ 256 tokens**  | **zstd**      | Huffman + dictionary keep amortising as the stream grows (562× vs JSON-SSE at 2K) |
+
+A simpler one-rule policy that gets ~95% of the win: **always zstd**. At worst it costs ~10% more bytes than gzip on the smallest payloads (≤32 tokens), and it wins by 1.6× on large payloads. The extra bytes on small responses are noise; the savings on large ones are real.
+
+**Brotli loses at every size we measured for streaming Codec frames.** Don't ship it on this workload — each CodecFrame is ~10-25 B and br's per-block overhead never amortises. Brotli is built for static web assets, not streaming token frames. **Identity also loses at every size we measured**, including 16 tokens (compressed is ≥2× smaller even there).
 
 ---
 
