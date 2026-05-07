@@ -264,6 +264,17 @@ A fine-grained sweep at 8 sizes (16 → 2,048 tokens, see `RESULTS.md` §1c) giv
 
 For human-facing streams (chat, code completion) **use gzip** — it streams *and* delivers 700×+ wire reduction. zstd's full ratio is only safe for agent-to-agent and batch workloads where TTFT doesn't matter. The picker's `interactive: true` mode (the default) enforces this — see [`RESULTS.md` §1d](packages/bench/RESULTS.md) for the chart and full numbers.
 
+#### A single number to rank by: **bytes × TTFT** (interactive) and **bytes** (batch)
+
+To compare encodings holistically you can multiply the two: `bytes × TTFT` is the "byte-milliseconds you pay before the user sees something" — a composite efficiency score normalised to JSON-SSE identity = 1.0×. The two regimes give two different rankings:
+
+| metric | best at 2K tok | second | also-rans |
+|---|---|---|---|
+| **Interactive (bytes × TTFT)** | gzip — **722-855×** better than JSON-SSE | identity Codec — 18-25× | br — 25× &nbsp;·&nbsp; **zstd — only 3×** (TTFT cliff) |
+| **Batch (bytes only)** | zstd — **1014-1021×** | gzip — 722-784× | br — 23× &nbsp;·&nbsp; identity — 17-25× |
+
+The Pareto front for both metrics is `{gzip, zstd}` — br and identity are dominated everywhere. That's why the `wire-compress` picker has exactly one knob (`interactive: boolean`).
+
 **Brotli is a fallback tier, not a competitor.** On streaming small-frame workloads brotli's per-block overhead doesn't amortise, so when gzip *or* zstd is available the picker chooses one of those instead. But brotli has wider client coverage than zstd — Safari, iOS, older Firefox all ship br but not zstd — so it remains a critical fallback when neither modern encoder is supported. Identity is the universal floor; the picker only chooses it when nothing else negotiates.
 
 ### Reference implementation: [`wire-compress`](packages/wire-compress)

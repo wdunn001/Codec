@@ -140,6 +140,69 @@ async def main_async(args: argparse.Namespace) -> None:
                 cells.append(f"{v:>11s}")
             print(f"| {label + ' · ' + enc:30s} |" + "|".join(f" {c} " for c in cells) + "|")
 
+    # Composite metric: bytes x TTFT (lower is better). Normalized so the
+    # JSON-SSE identity cell at each size = 1.0; everything else is "X times
+    # more efficient than the baseline at this size for interactive use."
+    # This captures the bytes/time trade-off in a single number.
+    print("\n## Interactive efficiency: bytes \xd7 TTFT (lower = better; X = times better than json-sse identity)\n")
+    print(header)
+    print(sep)
+    baselines: dict[int, float] = {}
+    for size in sizes:
+        base = next((r for r in results
+                     if r.size == size
+                     and r.path_label == PATHS[0][0]
+                     and r.encoding == ENCODINGS[0]
+                     and r.wire_bytes is not None
+                     and r.ttfb_ms is not None), None)
+        if base is not None and base.wire_bytes and base.ttfb_ms:
+            baselines[size] = base.wire_bytes * base.ttfb_ms
+    for label, fmt in PATHS:
+        for enc in ENCODINGS:
+            cells = []
+            for size in sizes:
+                hit = next((r for r in results if r.size == size and r.path_label == label and r.encoding == enc), None)
+                if hit is None or hit.wire_bytes is None or hit.ttfb_ms is None:
+                    cells.append("           -")
+                    continue
+                product = hit.wire_bytes * hit.ttfb_ms
+                base = baselines.get(size)
+                if not base or not product:
+                    cells.append("           -")
+                else:
+                    ratio = base / product
+                    cells.append(f"{ratio:>9.1f}\xd7")
+            print(f"| {label + ' \xb7 ' + enc:30s} |" + "|".join(f" {c} " for c in cells) + "|")
+
+    # Batch efficiency: bytes-only. (TTFT doesn't matter when nobody is waiting.)
+    print("\n## Batch efficiency: wire bytes only (X = times better than json-sse identity)\n")
+    print(header)
+    print(sep)
+    bytes_baselines: dict[int, int] = {}
+    for size in sizes:
+        base = next((r for r in results
+                     if r.size == size
+                     and r.path_label == PATHS[0][0]
+                     and r.encoding == ENCODINGS[0]
+                     and r.wire_bytes is not None), None)
+        if base is not None and base.wire_bytes:
+            bytes_baselines[size] = base.wire_bytes
+    for label, fmt in PATHS:
+        for enc in ENCODINGS:
+            cells = []
+            for size in sizes:
+                hit = next((r for r in results if r.size == size and r.path_label == label and r.encoding == enc), None)
+                if hit is None or hit.wire_bytes is None:
+                    cells.append("           -")
+                    continue
+                base = bytes_baselines.get(size)
+                if not base:
+                    cells.append("           -")
+                else:
+                    ratio = base / hit.wire_bytes
+                    cells.append(f"{ratio:>9.1f}\xd7")
+            print(f"| {label + ' \xb7 ' + enc:30s} |" + "|".join(f" {c} " for c in cells) + "|")
+
     # Tokens emitted (sanity: should be roughly equal across encodings within a size)
     print("\n## Tokens emitted (sanity check)\n")
     print(header)

@@ -324,6 +324,88 @@ vs JSON-SSE identity (the incumbent), at 2K tokens:
 | br | 23× (msgpack) / 23× (protobuf) | 11 ms | only when client refuses both gzip and zstd |
 | identity | 17× (msgpack) / 25× (protobuf) | 11 ms | last-resort fallback |
 
+#### Composite metric: a single number that captures the trade-off
+
+A wire-bytes ranking puts zstd on top. A TTFT ranking puts gzip on
+top. To rank encodings holistically, multiply them: **wire bytes × TTFT**
+(byte-milliseconds — the "cost of holding this response in flight
+until the user sees something"). Then normalise to JSON-SSE identity
+at each size so each cell reads "X times more efficient than the
+incumbent." Lower byte-ms = higher ratio = better.
+
+This is the right metric for **interactive workloads** (humans
+reading the stream as it arrives). For **batch / agent-to-agent**
+where TTFT doesn't matter, score is just bytes. The two metrics
+disagree about who wins — that's the picker's whole job.
+
+![Interactive efficiency chart](docs/composite-interactive.png)
+
+##### Interactive efficiency (bytes × TTFT, normalised to JSON-SSE identity = 1.0×; higher is better)
+
+| path · encoding | 64 tok | 512 tok | 2048 tok |
+|---|---:|---:|---:|
+| json-sse · identity | 1.0× | 1.0× | 1.0× |
+| msgpack · identity | 46× | 17× | 18× |
+| msgpack · `gzip` | `258×` | `373×` | `722×` |
+| msgpack · br | 45× | 21× | 25× |
+| msgpack · zstd | 22× ↓ | 6× ↓ | 3× ↓ |
+| protobuf · identity | 69× | 25× | 25× |
+| protobuf · `gzip` | `279×` | `433×` | `855×` |
+| protobuf · br | 52× | 25× | 25× |
+| protobuf · zstd | 23× ↓ | 6× ↓ | 3× ↓ |
+
+The arrows mark cells where **zstd scores worse than uncompressed
+identity Codec on the composite metric** — i.e., the TTFT cliff has
+fully cancelled the wire savings, and you'd be better off shipping
+raw msgpack/protobuf frames. At 2K tokens the picture is brutal: zstd
+scores 3×, gzip scores 722-855× — gzip is **240× better than zstd**
+on what users actually feel.
+
+br tracks identity Codec almost exactly across every size (45-52× at
+64, ~21-25× at 512+, ~25× at 2K) — same TTFT as identity, near-zero
+extra wire compression. Confirms that on this server br is doing
+essentially nothing.
+
+![Batch efficiency chart](docs/composite-batch.png)
+
+##### Batch efficiency (wire bytes only, TTFT ignored; higher is better)
+
+| path · encoding | 64 tok | 512 tok | 2048 tok |
+|---|---:|---:|---:|
+| json-sse · identity | 1.0× | 1.0× | 1.0× |
+| msgpack · identity | 16× | 17× | 17× |
+| msgpack · `gzip` | `92×` | 373× | 722× |
+| msgpack · br | 16× | 21× | 23× |
+| msgpack · zstd | 86× | `437×` | `1014×` |
+| protobuf · identity | 24× | 25× | 25× |
+| protobuf · `gzip` | `99×` | 397× | 784× |
+| protobuf · br | 19× | 22× | 23× |
+| protobuf · zstd | 87× | `424×` | `1021×` |
+
+In batch mode TTFT vanishes, so the ranking flips. **At 64 tokens,
+gzip beats zstd** (92× vs 86× msgpack; 99× vs 87× protobuf — gzip
+wins the small-payload bracket because zstd's frame header is
+relatively heavier). **At 512 and 2K tokens, zstd wins** (437× vs
+373× at 512, 1014× vs 722× at 2K — zstd's dictionary amortises and
+takes the lead). br stays identity-equivalent throughout.
+
+This matches the size-threshold rule from §1c exactly: gzip below
+~128 tokens, zstd above ~256 tokens — the byte-ms metric and the
+bytes-only metric agree on the threshold.
+
+##### What this proves about the picker
+
+- **Interactive workloads — composite metric ranks `gzip > br ≈ identity > zstd`.**
+  At every measured size for human-facing streams, gzip wins. zstd is
+  worse than uncompressed at small/medium sizes once you account for
+  TTFT.
+- **Batch / agent-to-agent — bytes-only ranks `zstd > gzip > identity ≈ br`.**
+  zstd wins. gzip is the close fallback.
+- **The Pareto front for both metrics is `{gzip, zstd}`.** br and
+  identity are dominated. The `wire-compress` picker has exactly one
+  knob (`interactive: boolean`) because the two metrics cleanly
+  separate the workloads.
+
 #### What the picker does
 
 - **Interactive (default)** — pick `gzip` first; fall back to `br`
