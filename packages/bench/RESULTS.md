@@ -753,23 +753,42 @@ box. Numbers will land when the build finishes.
 | vllm · protobuf · br | TBD | TBD | TBD | TBD | TBD |
 | vllm · protobuf · zstd | TBD | TBD | TBD | TBD | TBD |
 
-### llama.cpp — pending (PR #22757 in flight)
+### llama.cpp — measured (PR #22757)
 
-llama.cpp's compression story is different: llama-server uses
-mongoose's HTTP layer with its own gzip support and no native br/zstd
-middleware, so we expect zstd and br to fall back to identity unless
-the PR adds them explicitly. That itself is data — a stack where
-"gzip works, others fall back" is a strictly safer baseline than
-sglang where "br is broken in a sneaky way."
+Built llama-server from PR #22757 with CUDA, ran against the same Qwen2.5-0.5B GGUF (Q4_K_M). Timed sweep at 64/512/2048, 2 reps, identical token counts across encodings (64/512/2048 emitted).
+
+**Headline finding: llama.cpp's PR ships Codec wire formats but no compression middleware.** All four `Accept-Encoding` values return identical bytes — the server passthrough doesn't honor the header. That's a strictly cleaner baseline than sglang (no broken middleware to worry about) but you only get the format ratio, not the compression bonus.
+
+Wire bytes at 2K tokens:
+
+| | identity | gzip | br | zstd |
+|---|---:|---:|---:|---:|
+| Codec msgpack | 28.4 KB | 28.4 KB | 28.4 KB | 28.4 KB |
+| Codec protobuf | 19.5 KB | 19.5 KB | 19.5 KB | 19.5 KB |
+
+TTFT is consistently 5-7 ms across every encoding (better than sglang's 11 ms — llama.cpp's HTTP layer flushes faster).
 
 | stack · path · encoding | wire coeff | TTFT ratio | composite (interactive) | composite (batch) | verdict |
 |---|---:|---:|---:|---:|---|
-| llama.cpp · msgpack · gzip | TBD | TBD | TBD | TBD | TBD |
-| llama.cpp · msgpack · br | TBD | TBD | TBD | TBD | TBD |
-| llama.cpp · msgpack · zstd | TBD | TBD | TBD | TBD | TBD |
-| llama.cpp · protobuf · gzip | TBD | TBD | TBD | TBD | TBD |
-| llama.cpp · protobuf · br | TBD | TBD | TBD | TBD | TBD |
-| llama.cpp · protobuf · zstd | TBD | TBD | TBD | TBD | TBD |
+| llama.cpp · msgpack · gzip | 1.000 = | 1.00 ✓ | 31× | 17× | passthrough |
+| llama.cpp · msgpack · br | 1.000 = | 1.00 ✓ | 39× | 17× | passthrough |
+| llama.cpp · msgpack · zstd | 1.000 = | 1.00 ✓ | 41× | 17× | passthrough |
+| llama.cpp · protobuf · gzip | 1.000 = | 1.00 ✓ | 55× | 25× | passthrough |
+| llama.cpp · protobuf · br | 1.000 = | 1.00 ✓ | 52× | 25× | passthrough |
+| llama.cpp · protobuf · zstd | 1.000 = | 1.00 ✓ | 60× | 25× | passthrough |
+
+`= 1.000` means "no compression applied" — the wire-coefficient is
+exactly 1.0 because llama.cpp returns the raw codec bytes regardless
+of `Accept-Encoding`. The composite scores are still >1× because
+Codec frames are intrinsically 17-25× smaller than JSON-SSE *without*
+any compression layer.
+
+**Stack-comparison takeaway:** llama.cpp PR #22757 today is at parity
+with `sglang · *codec* · identity` — wire-format wins delivered, no
+compression layer. Adding a streaming-aware gzip middleware (e.g.
+hooking into mongoose's existing gzip support, or wrapping the SSE
+writer with a `boost::iostreams::gzip_compressor`) would lift it from
+17-25× to 700×+, matching sglang's gzip cell.
 
 ### Why this matters for the picker
 

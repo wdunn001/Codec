@@ -145,8 +145,22 @@ export const STACK_PROFILES: Record<string, StackProfile> = {
       zstd: { wireCoeff: 0.017, ttftRatio: 334 },
     },
   },
-  // vLLM and llama.cpp profiles will be filled in as the cross-stack
-  // bench results land. Until then they fall through to `default`.
+  'llama.cpp': {
+    name: 'llama.cpp',
+    // Measured 2024-05 against PR #22757. The PR ships codec wire formats
+    // but does NOT add any compression middleware — every Accept-Encoding
+    // returns the raw codec bytes (wireCoeff = 1.0, "passthrough"). TTFT
+    // is consistently fast (5-7 ms) so streaming is not at risk.
+    // To upgrade: hook a streaming-aware gzip layer into mongoose's HTTP
+    // pipeline. Until then the picker should treat all encodings as
+    // equivalent on this stack.
+    encodings: {
+      gzip: { wireCoeff: 1.0, ttftRatio: 1.0 },
+      br: { wireCoeff: 1.0, ttftRatio: 1.0 },
+      zstd: { wireCoeff: 1.0, ttftRatio: 1.0 },
+    },
+  },
+  // vLLM profile pending the cross-stack bench run.
 };
 
 /**
