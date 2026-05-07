@@ -1,0 +1,48 @@
+[package]
+name = "codec-rs"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT"
+description = "Isomorphic tokenizer + detokenizer for the Codec binary transport protocol — for Rust. Decodes streaming token IDs from Codec-compliant servers (vLLM, SGLang) and encodes text into IDs for the bidirectional path."
+repository = "https://github.com/wdunn001/Codec"
+homepage = "https://github.com/wdunn001/Codec"
+documentation = "https://docs.rs/codec-rs"
+readme = "README.md"
+keywords = ["ai", "llm", "tokens", "codec", "transport"]
+categories = ["api-bindings"]
+authors = ["wdunn001"]
+
+[features]
+default = ["http"]
+# Enables MapLoader's blocking + async HTTP fetching via reqwest.
+http = ["dep:reqwest"]
+# Enables async Stream-returning variants of the stream decoders.
+tokio = ["dep:tokio", "dep:futures-util", "dep:async-stream", "dep:pin-project-lite"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rmp-serde = "1.3"
+rmp = "0.8"
+sha2 = "0.10"
+regex = { version = "1.10", features = ["unicode-perl", "unicode-case", "unicode-gencat", "unicode-bool", "unicode-segment", "unicode-script", "unicode-age"] }
+thiserror = "1.0"
+hex = "0.4"
+
+# Optional async deps (feature-gated).
+tokio = { version = "1", features = ["io-util", "rt"], optional = true }
+futures-util = { version = "0.3", optional = true }
+async-stream = { version = "0.3", optional = true }
+pin-project-lite = { version = "0.2", optional = true }
+
+# Optional HTTP loader.
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "gzip", "brotli"], optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+futures-util = "0.3"
+
+[lib]
+name = "codec_rs"
+path = "src/lib.rs"

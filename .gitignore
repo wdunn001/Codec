@@ -20,3 +20,7 @@ packages/*/dist/
 *.tmp
 .env
 .env.local
+
+# Local scratch / generated test fixtures (regenerable from scripts)
+.scratch/
+packages/bench/corpora/

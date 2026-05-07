@@ -360,13 +360,14 @@ What's validated end-to-end:
 - ✅ **vLLM PR open** with binary streaming + bidirectional codec endpoint + zstd/gzip negotiation.
 - ✅ **SGLang PR open** with the same surface.
 - ✅ **llama.cpp PR open** — binary streaming for `llama-server` (covers Ollama).
+- ✅ **Pre-trained ZSTD dictionaries shipped** — `zstd_dictionaries[]` field on tokenizer maps, training pipeline at `packages/bench/scripts/train-zstd-dict.py`, reference dicts at [`dictionaries/`](dictionaries/). The dict is the **precondition** for zstd being selected at all (no-dict zstd ties gzip on bytes but eats a TTFB cliff on shipped middleware — `wire-compress` enforces `zstdHasDict` + `zstdEnabled` as twin gates, otherwise falls through to gzip). With both gates open, measured 16–18% byte reduction over gzip overall and **36–38% on small streams (≤ 300 B raw)** at a streaming-TTFB cost of **+0.13 ms** vs gzip — see [bench/RESULTS.md §1g](packages/bench/RESULTS.md#1g-pre-trained-zstd-dictionaries--measured-gain). Server-side enablement (loading the dict in sglang's `codec_compression.py`) is the next PR.
 
 What's still on the roadmap:
 
 - **C BPE encoder + Translator** — needs the pretok program runtime in C plus Unicode `\p{L}` / `\p{N}` interval-list tables (one-shot generator from UCD). The pretok-program work landed specifically to make this tractable.
 - **Java client (Maven Central)** — JDK has Unicode regex natively, so the port is straightforward. Queued.
 - **Pretok program runtime in Python + .NET** — both have `\p{L}` support today, so the regex path works fine; porting the program runtime gives ~10–30% encode-startup speedup.
-- **Pre-trained ZSTD dictionaries** declared alongside tokenizer maps. Estimated ~30% beyond zstd identity for typical streams.
+- **Server-side dictionary loading** — sglang/vLLM/llama.cpp middleware needs to pick the right dict for the (`tokenizer_id`, `stream_format`) pair before compressing. Dict artifacts and schema are in place; this is the wiring step.
 - **Map discovery** — formal registry vs `.well-known` URL convention. Not blocking; clients can pin URLs+hashes today.
 - **Session protocol** — persistent connection variant for multiplexing. Stateless HTTP covers the common case.
 

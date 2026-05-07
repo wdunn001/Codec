@@ -124,6 +124,8 @@ const ids = tok.encode(text);
 | Export                      | Purpose                                                       |
 |-----------------------------|---------------------------------------------------------------|
 | `loadMap(opts)`             | Fetch + sha256-verify + cache a tokenizer map                 |
+| `discoverMap({ origin, id })` | Resolve a map via the `.well-known/codec/` convention       |
+| `discoverIndex({ origin })` | Fetch `.well-known/codec/index.json` (optional directory)     |
 | `MemoryMapCache`            | Default in-memory cache. Implement `MapCache` for IDB / KV    |
 | `validateMap(unknown)`      | Type-narrowing schema check                                   |
 | `Detokenizer`               | Stateful detokenizer: byte-level + metaspace + byte fallback + partial UTF-8 buffering |
@@ -188,6 +190,21 @@ To generate your own from a HuggingFace `tokenizer.json`:
 npx @codecai/maps-cli build my-org/my-model --id=my-org/my-model
 npx @codecai/maps-cli hash my-org_my-model.json
 ```
+
+### Self-hosted discovery via `.well-known/codec/`
+
+Model maintainers can publish their own maps at a known location on a domain they control, so clients only need to know the origin and the map ID — no out-of-band URL+hash exchange:
+
+```ts
+import { discoverMap } from '@codecai/web';
+
+const map = await discoverMap({
+  origin: 'https://qwen.io',
+  id:     'qwen/qwen2',
+});
+```
+
+This fetches `https://qwen.io/.well-known/codec/maps/qwen/qwen2.json`. The document is either a tiny pointer (`{ id, url, hash }`) referencing the actual map on a CDN, or the full map served inline. Either way, hash verification still anchors the bytes. See [`spec/WELL_KNOWN_DISCOVERY.md`](https://github.com/wdunn001/Codec/blob/main/spec/WELL_KNOWN_DISCOVERY.md) for the convention, and [`@codecai/maps-cli`](https://www.npmjs.com/package/@codecai/maps-cli)'s `well-known` command to generate the publishing tree.
 
 ## Compatibility
 

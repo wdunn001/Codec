@@ -164,3 +164,145 @@ test(
     assert.match(r.stderr, /codecai-maps help/);
   },
 );
+
+// ── well-known publishing ───────────────────────────────────────────────────
+
+test(
+  'cli well-known --url: emits a pointer + index under .well-known/codec/',
+  { skip: !haveBuilt && 'run npm run build first' },
+  () => {
+    const dir = tmpDir();
+    const hfPath = path.join(dir, 'tokenizer.json');
+    const mapPath = path.join(dir, 'test.json');
+    fs.writeFileSync(hfPath, JSON.stringify(makeByteLevelHF()), 'utf-8');
+
+    // Build a real map first.
+    const conv = run(['convert', hfPath, '--id=test/byte-level', `--out=${mapPath}`]);
+    assert.equal(conv.code, 0, conv.stderr);
+
+    const wk = run([
+      'well-known',
+      `--map=${mapPath}`,
+      '--url=https://cdn.example/byte-level.json',
+      `--out-dir=${dir}`,
+    ]);
+    assert.equal(wk.code, 0, `well-known exited ${wk.code}: ${wk.stderr}`);
+
+    const docPath = path.join(dir, '.well-known', 'codec', 'maps', 'test', 'byte-level.json');
+    const indexPath = path.join(dir, '.well-known', 'codec', 'index.json');
+    assert.ok(fs.existsSync(docPath), `pointer doc written at ${docPath}`);
+    assert.ok(fs.existsSync(indexPath), `index written at ${indexPath}`);
+
+    const pointer = JSON.parse(fs.readFileSync(docPath, 'utf-8'));
+    assert.equal(pointer.id, 'test/byte-level');
+    assert.equal(pointer.url, 'https://cdn.example/byte-level.json');
+    assert.match(pointer.hash, /^sha256:[0-9a-f]{64}$/);
+
+    const index = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
+    assert.equal(index.codec_version, '0.2');
+    assert.equal(index.maps.length, 1);
+    assert.equal(index.maps[0].id, 'test/byte-level');
+
+    fs.rmSync(dir, { recursive: true });
+  },
+);
+
+test(
+  'cli well-known --inline: writes the full map at the well-known path',
+  { skip: !haveBuilt && 'run npm run build first' },
+  () => {
+    const dir = tmpDir();
+    const hfPath = path.join(dir, 'tokenizer.json');
+    const mapPath = path.join(dir, 'test.json');
+    fs.writeFileSync(hfPath, JSON.stringify(makeByteLevelHF()), 'utf-8');
+
+    const conv = run(['convert', hfPath, '--id=test/byte-level', `--out=${mapPath}`]);
+    assert.equal(conv.code, 0, conv.stderr);
+
+    const wk = run(['well-known', `--map=${mapPath}`, '--inline', `--out-dir=${dir}`]);
+    assert.equal(wk.code, 0, `well-known exited ${wk.code}: ${wk.stderr}`);
+
+    const docPath = path.join(dir, '.well-known', 'codec', 'maps', 'test', 'byte-level.json');
+    assert.ok(fs.existsSync(docPath));
+    const inline = JSON.parse(fs.readFileSync(docPath, 'utf-8'));
+    // Inline maps carry a `vocab` field; pointers do not.
+    assert.equal(inline.id, 'test/byte-level');
+    assert.ok(inline.vocab && typeof inline.vocab === 'object', 'inline doc must include vocab');
+
+    // Index file is intentionally not maintained for --inline (it's a pointer
+    // directory). Either absent entirely or empty is acceptable.
+    const indexPath = path.join(dir, '.well-known', 'codec', 'index.json');
+    if (fs.existsSync(indexPath)) {
+      const index = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
+      assert.equal(index.maps.length, 0);
+    }
+
+    fs.rmSync(dir, { recursive: true });
+  },
+);
+
+test(
+  'cli well-known: --url and --inline are mutually exclusive',
+  { skip: !haveBuilt && 'run npm run build first' },
+  () => {
+    const dir = tmpDir();
+    const hfPath = path.join(dir, 'tokenizer.json');
+    const mapPath = path.join(dir, 'test.json');
+    fs.writeFileSync(hfPath, JSON.stringify(makeByteLevelHF()), 'utf-8');
+    run(['convert', hfPath, '--id=test/byte-level', `--out=${mapPath}`]);
+
+    const r = run([
+      'well-known',
+      `--map=${mapPath}`,
+      '--inline',
+      '--url=https://cdn.example/x.json',
+      `--out-dir=${dir}`,
+    ]);
+    assert.notEqual(r.code, 0);
+    assert.match(r.stderr, /mutually exclusive/);
+
+    fs.rmSync(dir, { recursive: true });
+  },
+);
+
+test(
+  'cli well-known: missing --map fails fast',
+  { skip: !haveBuilt && 'run npm run build first' },
+  () => {
+    const r = run(['well-known', '--url=https://cdn.example/x.json']);
+    assert.notEqual(r.code, 0);
+    assert.match(r.stderr, /requires --map/);
+  },
+);
+
+test(
+  'cli well-known: re-running with same id replaces the index entry',
+  { skip: !haveBuilt && 'run npm run build first' },
+  () => {
+    const dir = tmpDir();
+    const hfPath = path.join(dir, 'tokenizer.json');
+    const mapPath = path.join(dir, 'test.json');
+    fs.writeFileSync(hfPath, JSON.stringify(makeByteLevelHF()), 'utf-8');
+    run(['convert', hfPath, '--id=test/byte-level', `--out=${mapPath}`]);
+
+    run([
+      'well-known',
+      `--map=${mapPath}`,
+      '--url=https://cdn.example/v1.json',
+      `--out-dir=${dir}`,
+    ]);
+    run([
+      'well-known',
+      `--map=${mapPath}`,
+      '--url=https://cdn.example/v2.json',
+      `--out-dir=${dir}`,
+    ]);
+
+    const indexPath = path.join(dir, '.well-known', 'codec', 'index.json');
+    const index = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
+    assert.equal(index.maps.length, 1, 'second publish should replace, not duplicate');
+    assert.equal(index.maps[0].url, 'https://cdn.example/v2.json');
+
+    fs.rmSync(dir, { recursive: true });
+  },
+);

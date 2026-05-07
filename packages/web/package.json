@@ -29,6 +29,11 @@
       "import": "./dist/esm/map.js",
       "require": "./dist/cjs/map.cjs"
     },
+    "./discover": {
+      "types": "./dist/types/discover.d.ts",
+      "import": "./dist/esm/discover.js",
+      "require": "./dist/cjs/discover.cjs"
+    },
     "./stream": {
       "types": "./dist/types/stream.d.ts",
       "import": "./dist/esm/stream.js",

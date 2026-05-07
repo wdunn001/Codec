@@ -6,7 +6,6 @@ import {
   parseAcceptEncoding,
   buildAcceptEncoding,
   describeRule,
-  DEFAULT_THRESHOLDS,
 } from '../src/index.ts';
 
 describe('parseAcceptEncoding', () => {
@@ -37,142 +36,149 @@ describe('parseAcceptEncoding', () => {
   });
 });
 
-describe('pick — Codec streaming defaults', () => {
+// Selection rule under the new model: zstd is chosen ONLY when both
+// `zstdHasDict` and `zstdEnabled` are true. Otherwise gzip > br > identity.
+// No-dict zstd is never picked — RESULTS.md §1d showed it's catastrophically
+// slow on shipped middleware, and §1f showed its byte advantage over gzip is
+// noise on Codec streams.
+
+describe('pick — rule: zstd only with dict + streaming middleware', () => {
   const ALL_CLIENT = 'zstd, gzip, br';
-  // Most tests run agent-mode (interactive=false) to exercise the size-based
-  // thresholds. The interactive-mode tests are in their own describe block.
-  const A = { acceptEncoding: ALL_CLIENT, interactive: false } as const;
+  const READY = { zstdHasDict: true, zstdEnabled: true } as const;
 
-  it('< 128 tokens → gzip when client supports it', () => {
-    const r = pick({ ...A, estimatedSize: 64 });
+  it('default (no flags) → gzip even with full client support', () => {
+    const r = pick({ acceptEncoding: ALL_CLIENT, estimatedSize: 1024 });
     assert.equal(r.encoding, 'gzip');
   });
 
-  it('exactly 128 → still gzip (boundary)', () => {
-    const r = pick({ ...A, estimatedSize: 128 });
+  it('zstdEnabled alone → still gzip (no dict, no zstd)', () => {
+    // The point of the new rule: enabling zstd middleware without a dict
+    // is a footgun. Picker refuses to use zstd until both gates open.
+    const r = pick({
+      acceptEncoding: ALL_CLIENT,
+      estimatedSize: 1024,
+      zstdEnabled: true,
+      // zstdHasDict not set
+    });
     assert.equal(r.encoding, 'gzip');
   });
 
-  it('mid-band 200 tokens → zstd (preferred when supported)', () => {
-    const r = pick({ ...A, estimatedSize: 200 });
+  it('zstdHasDict alone → still gzip (middleware not confirmed streaming)', () => {
+    const r = pick({
+      acceptEncoding: ALL_CLIENT,
+      estimatedSize: 1024,
+      zstdHasDict: true,
+      // zstdEnabled not set
+    });
+    assert.equal(r.encoding, 'gzip');
+  });
+
+  it('both gates open + client supports zstd → zstd at every size', () => {
+    for (const size of [16, 64, 128, 256, 1024, 8192]) {
+      const r = pick({ ...READY, acceptEncoding: ALL_CLIENT, estimatedSize: size });
+      assert.equal(r.encoding, 'zstd', `size=${size} → ${r.encoding}`);
+    }
+  });
+
+  it('both gates open + interactive=true (default) → zstd', () => {
+    // The dict's streaming-TTFB cost is +0.13 ms (RESULTS.md §1g),
+    // dwarfed by network. Interactive flag no longer forces gzip.
+    const r = pick({ ...READY, acceptEncoding: ALL_CLIENT, estimatedSize: 64, interactive: true });
     assert.equal(r.encoding, 'zstd');
   });
 
-  it('>= 256 tokens → zstd', () => {
-    const r = pick({ ...A, estimatedSize: 1024 });
+  it('both gates open + interactive=false → zstd', () => {
+    const r = pick({ ...READY, acceptEncoding: ALL_CLIENT, estimatedSize: 64, interactive: false });
     assert.equal(r.encoding, 'zstd');
   });
 
-  it('>= 256 with no zstd → gzip', () => {
-    const r = pick({ acceptEncoding: 'gzip, br', estimatedSize: 1024, interactive: false });
-    assert.equal(r.encoding, 'gzip');
+  it('zstd-only client without dict → identity (refuse no-dict zstd)', () => {
+    // Server doesn't have a dict. Client says zstd-only. Picker MUST NOT
+    // return zstd (TTFT cliff + zero byte advantage). Returns identity.
+    const r = pick({ acceptEncoding: 'zstd', estimatedSize: 1024 });
+    assert.equal(r.encoding, 'identity');
   });
 
-  it('zstd-only client at small size still gets zstd', () => {
-    const r = pick({ acceptEncoding: 'zstd', estimatedSize: 32, interactive: false });
-    assert.ok(r.encoding === 'gzip' || r.encoding === 'zstd', `got ${r.encoding}`);
+  it('zstd-only client with dict + streaming → zstd', () => {
+    const r = pick({ ...READY, acceptEncoding: 'zstd', estimatedSize: 1024 });
+    assert.equal(r.encoding, 'zstd');
   });
 
   it('br-only client → br fallback', () => {
-    const r = pick({ acceptEncoding: 'br', estimatedSize: 1024, interactive: false });
+    const r = pick({ acceptEncoding: 'br', estimatedSize: 1024 });
     assert.equal(r.encoding, 'br');
   });
 
   it('identity-only client → identity', () => {
-    const r = pick({ acceptEncoding: 'identity', estimatedSize: 1024, interactive: false });
+    const r = pick({ acceptEncoding: 'identity', estimatedSize: 1024 });
     assert.equal(r.encoding, 'identity');
   });
 
   it('no Accept-Encoding header → uses identity (RFC fallback)', () => {
-    const r = pick({ acceptEncoding: null, estimatedSize: 1024, interactive: false });
+    const r = pick({ acceptEncoding: null, estimatedSize: 1024 });
     assert.equal(r.encoding, 'identity');
   });
 
   it('server-side capability restriction', () => {
     const r = pick({
-      ...A,
+      ...READY,
+      acceptEncoding: ALL_CLIENT,
       estimatedSize: 2048,
       serverSupports: ['gzip', 'identity'],
     });
     assert.equal(r.encoding, 'gzip');
   });
 
-  it('br is never chosen when gzip is also supported (agent mode)', () => {
+  it('br is never chosen when gzip is also supported', () => {
     for (const size of [16, 64, 128, 256, 512, 2048]) {
-      const r = pick({ acceptEncoding: 'gzip, br', estimatedSize: size, interactive: false });
+      const r = pick({ acceptEncoding: 'gzip, br', estimatedSize: size });
       assert.notEqual(r.encoding, 'br', `size=${size} → ${r.encoding}`);
     }
   });
 
-  it('threshold override: always-zstd policy', () => {
-    const r = pick({
-      acceptEncoding: ALL_CLIENT,
-      estimatedSize: 16,
-      interactive: false,
-      thresholds: { ...DEFAULT_THRESHOLDS, gzipPreferredUpTo: 0, zstdPreferredFrom: 0 },
-    });
-    assert.equal(r.encoding, 'zstd');
-  });
-
-  it('interactive=true (default) → gzip even at large sizes', () => {
-    // Interactive responses must not buffer; zstd has a TTFT cliff.
-    for (const size of [16, 64, 256, 2048, 16384]) {
-      const r = pick({ acceptEncoding: ALL_CLIENT, estimatedSize: size });
-      assert.equal(r.encoding, 'gzip', `size=${size} → ${r.encoding}`);
+  it('zstd never chosen by default (both gates closed)', () => {
+    for (const size of [16, 256, 2048]) {
+      const r = pick({ acceptEncoding: 'zstd, gzip, br', estimatedSize: size });
+      assert.notEqual(r.encoding, 'zstd', `size=${size} → ${r.encoding}`);
     }
   });
 
-  it('interactive=false → zstd at large sizes (no TTFT cost)', () => {
-    const r = pick({
-      acceptEncoding: ALL_CLIENT,
-      estimatedSize: 1024,
-      interactive: false,
-    });
-    assert.equal(r.encoding, 'zstd');
-  });
-
-  it('interactive=true with no gzip → br fallback', () => {
-    const r = pick({
-      acceptEncoding: 'br, zstd',
-      estimatedSize: 1024,
-      interactive: true,
-    });
-    // br preferred over zstd here because zstd would kill TTFT.
-    assert.equal(r.encoding, 'br');
-  });
-
-  it('interactive=true with only zstd → accept the regression', () => {
-    const r = pick({
-      acceptEncoding: 'zstd',
-      estimatedSize: 1024,
-      interactive: true,
-    });
-    assert.equal(r.encoding, 'zstd');
+  it('reason string mentions dict requirement when zstd is suppressed', () => {
+    const r = pick({ acceptEncoding: 'zstd, gzip', estimatedSize: 1024 });
+    assert.equal(r.encoding, 'gzip');
+    assert.ok(/dict/i.test(r.reason), `expected dict mention, got: ${r.reason}`);
   });
 });
 
 describe('buildAcceptEncoding', () => {
-  it('default order is zstd > gzip > br', () => {
+  it('default omits zstd; order is gzip > br', () => {
     const h = buildAcceptEncoding();
-    assert.equal(h, 'zstd;q=1.0, gzip;q=0.9, br;q=0.5');
+    assert.equal(h, 'gzip;q=1.0, br;q=0.5');
+  });
+
+  it('explicit opt-in adds zstd at low q', () => {
+    const h = buildAcceptEncoding({ zstd: true });
+    assert.equal(h, 'gzip;q=1.0, br;q=0.5, zstd;q=0.3');
   });
 
   it('omits disabled encodings', () => {
-    const h = buildAcceptEncoding({ zstd: false });
-    assert.equal(h, 'gzip;q=0.9, br;q=0.5');
+    const h = buildAcceptEncoding({ br: false });
+    assert.equal(h, 'gzip;q=1.0');
   });
 
   it('round-trips through the parser preserving order', () => {
     const parsed = parseAcceptEncoding(buildAcceptEncoding());
-    assert.deepEqual(parsed.accepted.slice(0, 3), ['zstd', 'gzip', 'br']);
+    assert.deepEqual(parsed.accepted.slice(0, 2), ['gzip', 'br']);
   });
 });
 
 describe('describeRule', () => {
-  it('mentions all four encodings', () => {
+  it('mentions all four encodings and the dict precondition', () => {
     const s = describeRule();
     for (const e of ['gzip', 'zstd', 'brotli', 'identity']) {
       assert.ok(s.includes(e), `expected ${e} in description`);
     }
+    assert.ok(/dict/i.test(s), 'expected dict precondition mention');
+    assert.ok(/zstdHasDict/.test(s), 'expected zstdHasDict gate mention');
   });
 });

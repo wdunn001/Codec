@@ -1,0 +1,86 @@
+{
+  "schema_version": "1",
+  "captured_at": "2026-05-07T12:19:53Z",
+  "run_id": "smoke-test",
+  "hardware": {
+    "host": "192.168.1.88",
+    "cpu_model": "AMD EPYC 8124P 16-Core Processor",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_count": 2,
+    "gpu_driver": "580.142",
+    "ram_gb": 125.6,
+    "kernel": "Linux 6.8.0-84-generic"
+  },
+  "engine": {
+    "name": "sglang",
+    "version": "",
+    "branch": "",
+    "commit": "",
+    "container_image": null,
+    "launch_flags": [],
+    "endpoint": "http://192.168.1.88:30000",
+    "endpoint_kind": "lan",
+    "stream_format_supported": [
+      "json",
+      "msgpack",
+      "protobuf"
+    ],
+    "compression_supported": [
+      "identity",
+      "gzip",
+      "br",
+      "zstd"
+    ],
+    "compression_probe_format": "msgpack"
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "quantization": "fp16",
+    "tokenizer_sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+    "vocab_size": null,
+    "model_sha256": null
+  },
+  "client": null,
+  "bench_tool": null,
+  "workload": {
+    "prompts_file": "methodology/prompts.json",
+    "prompts_sha256": "eff837b6cbbad632c15efb99a7bfaef1e173276be2b81734833ca4bcf0fb3604",
+    "stream": true,
+    "temperature": 0.0
+  },
+  "git": {
+    "repo_commit": "1ab2fcf37bd8164578f9e0b64d8815c31912883c",
+    "repo_branch": "docs/measured-results",
+    "repo_clean": false,
+    "repo_dirty_files": [
+      "packages/bench/RESULTS.md",
+      "packages/demo-web/src/App.tsx",
+      "packages/maps-cli/README.md",
+      "packages/maps-cli/src/cli.ts",
+      "packages/maps-cli/test/cli.test.ts",
+      "packages/python/README.md",
+      "packages/python/src/codecai/__init__.py",
+      "packages/web/README.md",
+      "packages/web/package.json",
+      "packages/web/src/index.ts",
+      "packages/wire-compress/src/index.ts",
+      "packages/wire-compress/test/picker.test.ts",
+      "spec/PROTOCOL.md",
+      ".scratch/",
+      "article/agents-dont-need-text.md",
+      "packages/bench/methodology/",
+      "packages/bench/scripts/capture_methodology.py",
+      "packages/demo-java/",
+      "packages/demo-rust/",
+      "packages/java/",
+      "packages/python/src/codecai/discover.py",
+      "packages/python/tests/test_discover.py",
+      "packages/rust/",
+      "packages/web/src/discover.ts",
+      "packages/web/test/discover.test.ts",
+      "spec/WELL_KNOWN_DISCOVERY.md"
+    ]
+  },
+  "notes": "Pipeline smoke test (fixed)",
+  "fingerprint": "f45a918822cf0ca203ab83f16cdfe2ac4ac38a47a58f3761663086874a60ffba"
+}

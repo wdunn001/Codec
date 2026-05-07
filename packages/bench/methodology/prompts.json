@@ -1,0 +1,14 @@
+{
+  "schema_version": "1",
+  "description": "Canonical per-size prompts for the cross-stack benchmark matrix. Each size MUST use exactly the prompt listed here so different (engine, lang) cells are measuring the same workload at that size. Prompts are tuned so a temperature=0 generation actually produces close to the requested token count -- short prompts for small sizes (so the model wraps up before being truncated) and progressively longer prompts for larger sizes (so the model doesn't decide it's done early).",
+  "prompts": {
+    "16": "Say hi.",
+    "32": "Reply with one short sentence about the sky.",
+    "64": "Explain entropy in one sentence:",
+    "128": "Briefly describe how transformer attention works. Two short paragraphs.",
+    "256": "Write a four-paragraph explanation of how transformer attention works. Cover Q/K/V, scaled dot-product, multi-head, and a brief example.",
+    "512": "Write a detailed eight-paragraph explanation covering: 1) what a transformer is, 2) the attention mechanism with Q/K/V, 3) multi-head attention, 4) positional encodings, 5) the feed-forward block, 6) layer norm and residuals, 7) training objectives (MLM vs causal LM), 8) why this scaled. Use concrete examples and complete sentences.",
+    "1024": "Write a thorough essay covering: 1) the complete architecture of a transformer block from input embeddings through output logits with all sublayers, 2) the math behind self-attention with worked numerical examples, 3) the difference between encoder, decoder, and encoder-decoder transformers with examples of each (BERT, GPT, T5), 4) tokenization (BPE, SentencePiece, byte-level BPE) and why it matters, 5) training objectives across the three architectures, 6) common positional encoding schemes (sinusoidal, learned, RoPE, ALiBi). Be thorough and use complete sentences with concrete examples.",
+    "2048": "Write a long, detailed essay covering: 1) the complete history of artificial intelligence from 1950 to today, including symbolic AI, expert systems, the AI winters, the rise of statistical methods, the deep learning revolution, and the foundation model era; 2) every major neural architecture (perceptrons, MLPs, CNNs, RNNs, LSTMs, GRUs, transformers, mixture-of-experts, state-space models) with their inductive biases; 3) the math behind backprop and attention with worked examples including gradient computation; 4) the alignment problem in detail, covering RLHF, constitutional AI, debate, and the difficulty of specifying human values; 5) hardware evolution from CPUs to GPUs to TPUs to dedicated ASICs and how it shaped what was tractable; 6) the economics of training large models including data, compute, and the scaling laws. Be thorough and use complete sentences with concrete examples and citations of seminal papers where relevant."
+  }
+}

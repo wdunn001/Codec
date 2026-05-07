@@ -111,11 +111,37 @@ codec_status_t codec_map_special_id(const codec_tokenizer_map_t *map,
 
 /* ── Codec frames ───────────────────────────────────────────────────────── */
 
+/*
+ * One tool call surfaced on a frame. Mirrors the openai-style
+ * { id, name, arguments } shape used by every chat-tuned model in current
+ * use; libcodec keeps `arguments` as the raw JSON string so the caller can
+ * parse it with whatever JSON library suits its host environment.
+ *
+ * Lifetime: the strings are BORROWED — callers (e.g. an inference server
+ * encoding tool calls into outbound frames) own the buffers. The encoder
+ * reads the pointers; codec_frame_destroy does NOT free them. This matches
+ * the borrow idiom that llama.cpp/sglang already use for finish_reason
+ * via the null-before-destroy dance.
+ */
+typedef struct codec_tool_call {
+    const char *name;            /* optional — NULL if absent */
+    const char *arguments_json;  /* required — raw JSON body between markers */
+    const char *id;              /* optional — server-generated, e.g. "tc_<hex>" */
+} codec_tool_call_t;
+
 typedef struct codec_frame {
-    uint32_t *ids;          /* heap-allocated array of `ids_len` token IDs */
+    uint32_t *ids;                  /* heap-allocated array of `ids_len` token IDs */
     size_t    ids_len;
     bool      done;
-    char     *finish_reason; /* heap-allocated UTF-8 string, NULL if absent */
+    char     *finish_reason;        /* heap-allocated UTF-8 string, NULL if absent */
+    /* Server-side tool-call detection (sglang PR #24557, vLLM #41765-tools,
+     * llama.cpp #22757-tools). When the model emits a complete <start>..<end>
+     * region in this chunk, the parsed result rides along on the same frame
+     * whose `ids` come from immediately after the region. Multiple tool calls
+     * in one frame are emitted as an array. Borrowed pointer — caller owns
+     * both the array and its strings. */
+    const codec_tool_call_t *tool_calls;
+    size_t                   tool_calls_len;
 } codec_frame_t;
 
 /* Initialise to zero. */
@@ -237,6 +263,17 @@ codec_status_t codec_tool_watcher_new(const codec_tokenizer_map_t *map,
                                       const char *start_name,
                                       const char *end_name,
                                       codec_tool_watcher_t **out);
+
+/*
+ * Map-less constructor: bind directly to a (start_id, end_id) pair. Use
+ * this from inference servers that already own the model's vocab (llama.cpp,
+ * vLLM via the HF tokenizer, sglang via TokenizerManager) and don't want
+ * to round-trip through a Codec tokenizer map JSON to resolve the marker
+ * IDs they already have.
+ */
+codec_status_t codec_tool_watcher_new_with_ids(uint32_t start_id,
+                                               uint32_t end_id,
+                                               codec_tool_watcher_t **out);
 
 /* Free the watcher. Safe to pass NULL. */
 void codec_tool_watcher_free(codec_tool_watcher_t *w);

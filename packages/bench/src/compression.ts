@@ -207,6 +207,9 @@ console.log(
     '  - JSON-SSE+compression has a structural advantage from repeated keys ("data:",\n' +
     '    "id":, etc.). Codec frames are denser, so absolute ratios are smaller —\n' +
     '    but the *bytes/token* number is what hits the wire.\n' +
-    '  - zstd dictionaries (future v2 protocol) pre-train on typical token sequences\n' +
-    '    and should push Codec further at every size.',
+    '  - zstd dictionaries pre-train on typical token sequences and push Codec\n' +
+    '    further at every size — measured 16–18% beyond no-dict zstd overall, and\n' +
+    '    36–38% on small streams, at a streaming-TTFB cost of only +0.13 ms. See\n' +
+    '    packages/bench/src/compression-dict.ts and RESULTS.md §1g for the\n' +
+    '    dict-zstd bench (run: `npm run compression:dict`).',
 );

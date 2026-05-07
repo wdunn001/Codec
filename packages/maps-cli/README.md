@@ -202,6 +202,32 @@ const map = await loadMap({
 });
 ```
 
+### `well-known` — publish for `.well-known/codec/` discovery
+
+Generate the static directory tree clients need to find your map by `(origin, id)` alone, so consumers don't have to hard-code your CDN URL:
+
+```bash
+codecai-maps well-known --map=./qwen_qwen2.json \
+  --url=https://cdn.example/qwen2.json \
+  --out-dir=./public
+```
+
+This writes:
+
+```
+public/.well-known/codec/maps/qwen/qwen2.json   ← pointer { id, url, hash }
+public/.well-known/codec/index.json             ← directory of all your maps
+```
+
+Drop `./public` onto any static host (GitHub Pages, S3, Vercel) under the origin you control, and any client can do:
+
+```ts
+import { discoverMap } from '@codecai/web';
+const map = await discoverMap({ origin: 'https://qwen.io', id: 'qwen/qwen2' });
+```
+
+Pass `--inline` instead of `--url` to embed the full map at the well-known location (skips the CDN indirection — recommended only for small maps). Re-running with the same id replaces the existing index entry. See [`spec/WELL_KNOWN_DISCOVERY.md`](https://github.com/wdunn001/Codec/blob/main/spec/WELL_KNOWN_DISCOVERY.md) for the publishing contract.
+
 ## License
 
 MIT.

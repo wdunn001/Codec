@@ -23,6 +23,7 @@ codec-bench = "codec_demo:main"
 codec-bench-compare = "codec_demo.compare:main"
 codec-bench-crossover = "codec_demo.crossover:main"
 codec-bench-timed = "codec_demo.timed_sweep:main"
+codec-bench-matrix = "codec_demo.matrix_run:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/codec_demo"]

@@ -48,6 +48,20 @@ export {
 } from './map.js';
 
 export {
+  discoverMap,
+  discoverIndex,
+  wellKnownMapUrl,
+  wellKnownIndexUrl,
+  WELL_KNOWN_BASE,
+  MapDiscoveryError,
+  MapDiscoveryNotFoundError,
+  type MapPointer,
+  type MapIndex,
+  type DiscoverMapOptions,
+  type DiscoverIndexOptions,
+} from './discover.js';
+
+export {
   Detokenizer,
   detokenize,
   type DetokenizeOptions,

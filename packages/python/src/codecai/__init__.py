@@ -51,6 +51,17 @@ from .map_loader import (
     TokenizerMapHashMismatchError,
     load_map,
 )
+from .discover import (
+    MapDiscoveryError,
+    MapDiscoveryNotFoundError,
+    MapIndex,
+    MapPointer,
+    WELL_KNOWN_BASE,
+    discover_index,
+    discover_map,
+    well_known_index_url,
+    well_known_map_url,
+)
 from .tool_watcher import (
     ToolWatcher,
     ToolWatcherError,
@@ -60,6 +71,11 @@ from .translate import (
     Translator,
     static_translation_table,
     translate,
+)
+from .compression import (
+    CodecZstdDictError,
+    hash_zstd_dict,
+    select_zstd_dict_for_response,
 )
 
 __version__ = "0.2.0"
@@ -93,6 +109,16 @@ __all__ = [
     "LoadOptions",
     "TokenizerMapHashMismatchError",
     "load_map",
+    # discovery
+    "WELL_KNOWN_BASE",
+    "MapDiscoveryError",
+    "MapDiscoveryNotFoundError",
+    "MapIndex",
+    "MapPointer",
+    "discover_index",
+    "discover_map",
+    "well_known_index_url",
+    "well_known_map_url",
     # tool watcher
     "ToolWatcher",
     "ToolWatcherError",
@@ -101,5 +127,9 @@ __all__ = [
     "Translator",
     "translate",
     "static_translation_table",
+    # compression
+    "CodecZstdDictError",
+    "hash_zstd_dict",
+    "select_zstd_dict_for_response",
     "__version__",
 ]

@@ -102,10 +102,42 @@ static int mp_pack_str(bytebuf_t *b, const char *s, size_t len) {
 
 static int mp_pack_bool(bytebuf_t *b, bool v) { return bb_putc(b, v ? 0xC3 : 0xC2); }
 
+/* Pack one tool call as a msgpack map. Mirrors sglang's
+ * _encode_tool_call_msg + the python wire shape:
+ *   {arguments_json: str, name?: str, id?: str}
+ * Only present fields are packed — keeps small frames small. */
+static int mp_pack_tool_call(bytebuf_t *b, const codec_tool_call_t *tc) {
+    uint32_t fields = 1; /* arguments_json is required */
+    if (tc->name) fields++;
+    if (tc->id)   fields++;
+
+    if (!mp_pack_map_header(b, fields)) return 0;
+
+    /* arguments_json — always emitted; empty string if the model produced
+     * an empty body. Downstream parsers distinguish missing vs empty by
+     * key presence. */
+    {
+        const char *s = tc->arguments_json ? tc->arguments_json : "";
+        if (!mp_pack_str(b, "arguments_json", 14)) return 0;
+        if (!mp_pack_str(b, s, strlen(s))) return 0;
+    }
+    if (tc->name) {
+        if (!mp_pack_str(b, "name", 4)) return 0;
+        if (!mp_pack_str(b, tc->name, strlen(tc->name))) return 0;
+    }
+    if (tc->id) {
+        if (!mp_pack_str(b, "id", 2)) return 0;
+        if (!mp_pack_str(b, tc->id, strlen(tc->id))) return 0;
+    }
+    return 1;
+}
+
 codec_status_t codec_encode_msgpack(const codec_frame_t *frame, codec_buffer_t *out) {
     if (!frame || !out) return CODEC_ERR_INVALID_ARG;
     bytebuf_t b = {0};
-    uint32_t fields = (frame->finish_reason ? 3 : 2);
+    uint32_t fields = 2; /* ids, done */
+    if (frame->finish_reason)        fields++;
+    if (frame->tool_calls_len > 0)   fields++;
 
     if (!mp_pack_map_header(&b, fields)) goto oom;
 
@@ -119,6 +151,14 @@ codec_status_t codec_encode_msgpack(const codec_frame_t *frame, codec_buffer_t *
     if (frame->finish_reason) {
         if (!mp_pack_str(&b, "finish_reason", 13)) goto oom;
         if (!mp_pack_str(&b, frame->finish_reason, strlen(frame->finish_reason))) goto oom;
+    }
+    if (frame->tool_calls_len > 0) {
+        if (!frame->tool_calls) goto oom; /* defensive: len > 0 with NULL ptr is a caller bug */
+        if (!mp_pack_str(&b, "tool_calls", 10)) goto oom;
+        if (!mp_pack_array_header(&b, (uint32_t)frame->tool_calls_len)) goto oom;
+        for (size_t i = 0; i < frame->tool_calls_len; i++) {
+            if (!mp_pack_tool_call(&b, &frame->tool_calls[i])) goto oom;
+        }
     }
 
     out->data = b.data;
@@ -341,6 +381,36 @@ static int pb_put_varint(bytebuf_t *b, uint64_t v) {
     return bb_putc(b, (uint8_t)v);
 }
 
+/* Encode a single ToolCall sub-message into `out` (no length prefix; the
+ * caller adds the length-delimited wrapper as field 4 of CodecFrame).
+ * Wire shape (matches sglang's _encode_tool_call_msg):
+ *   tag 0x0a  field 1  string name           (optional)
+ *   tag 0x12  field 2  string arguments_json (required)
+ *   tag 0x1a  field 3  string id             (optional)
+ */
+static int pb_encode_tool_call(bytebuf_t *out, const codec_tool_call_t *tc) {
+    if (tc->name) {
+        size_t n = strlen(tc->name);
+        if (!bb_putc(out, 0x0A) ||
+            !pb_put_varint(out, n) ||
+            !bb_put(out, (const uint8_t *)tc->name, n)) return 0;
+    }
+    {
+        const char *s = tc->arguments_json ? tc->arguments_json : "";
+        size_t n = strlen(s);
+        if (!bb_putc(out, 0x12) ||
+            !pb_put_varint(out, n) ||
+            !bb_put(out, (const uint8_t *)s, n)) return 0;
+    }
+    if (tc->id) {
+        size_t n = strlen(tc->id);
+        if (!bb_putc(out, 0x1A) ||
+            !pb_put_varint(out, n) ||
+            !bb_put(out, (const uint8_t *)tc->id, n)) return 0;
+    }
+    return 1;
+}
+
 codec_status_t codec_encode_protobuf(const codec_frame_t *frame, codec_buffer_t *out) {
     if (!frame || !out) return CODEC_ERR_INVALID_ARG;
     bytebuf_t b = {0};
@@ -376,6 +446,24 @@ codec_status_t codec_encode_protobuf(const codec_frame_t *frame, codec_buffer_t 
             !pb_put_varint(&payload, slen) ||
             !bb_put(&payload, (const uint8_t *)frame->finish_reason, slen)) {
             free(payload.data); return CODEC_ERR_OUT_OF_MEMORY;
+        }
+    }
+
+    /* Field 4: repeated ToolCall tool_calls. Each call is a length-delimited
+     * sub-message tagged 0x22 = (4 << 3) | 2. */
+    if (frame->tool_calls_len > 0) {
+        if (!frame->tool_calls) { free(payload.data); return CODEC_ERR_INVALID_ARG; }
+        for (size_t i = 0; i < frame->tool_calls_len; i++) {
+            bytebuf_t sub = {0};
+            if (!pb_encode_tool_call(&sub, &frame->tool_calls[i])) {
+                free(sub.data); free(payload.data); return CODEC_ERR_OUT_OF_MEMORY;
+            }
+            if (!bb_putc(&payload, 0x22) ||
+                !pb_put_varint(&payload, sub.len) ||
+                !bb_put(&payload, sub.data, sub.len)) {
+                free(sub.data); free(payload.data); return CODEC_ERR_OUT_OF_MEMORY;
+            }
+            free(sub.data);
         }
     }
 

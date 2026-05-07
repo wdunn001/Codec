@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "dictionaries": {
+    "qwen2.5-synth-msgpack-v1": {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "codec_format": "msgpack",
+      "dict_size_bytes": 16384,
+      "file": "qwen2.5-synth-msgpack-v1.dict",
+      "sha256": "sha256:29a810f3fbded045d55f1cd4435c7d2959f6dbc9c697dc7fe41fb44bd2e891db",
+      "trained_at": "2026-05-07T12:27:15Z",
+      "corpus": {
+        "n_samples": 256,
+        "median_bytes": 4088,
+        "source": "synthetic",
+        "corpus_dir": "corpora\\qwen2.5-synth"
+      },
+      "holdout": {
+        "n_samples": 51,
+        "baseline_avg_bytes": 1586.4,
+        "with_dict_avg_bytes": 1338.1,
+        "gain_pct": 15.65
+      },
+      "training_level": 3
+    },
+    "qwen2.5-synth-protobuf-v1": {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "codec_format": "protobuf",
+      "dict_size_bytes": 16384,
+      "file": "qwen2.5-synth-protobuf-v1.dict",
+      "sha256": "sha256:ecbfacb309c84270cda1356191bb917de9ceada61ca4fd49faf87b861d736c5c",
+      "trained_at": "2026-05-07T12:27:18Z",
+      "corpus": {
+        "n_samples": 256,
+        "median_bytes": 3369,
+        "source": "synthetic",
+        "corpus_dir": "corpora\\qwen2.5-synth"
+      },
+      "holdout": {
+        "n_samples": 51,
+        "baseline_avg_bytes": 1917.1,
+        "with_dict_avg_bytes": 1597.5,
+        "gain_pct": 16.67
+      },
+      "training_level": 3
+    }
+  }
+}
