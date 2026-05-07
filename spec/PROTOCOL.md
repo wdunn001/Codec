@@ -421,8 +421,56 @@ dicts unlock zstd's 16–38% extra wire savings (RESULTS.md §1g) at
 
 Dicts are content-addressed by sha256: a new training run publishes a
 new entry with a new hash. Implementations MUST verify the hash on
-fetch and SHOULD cache by hash indefinitely. Negotiation stays in
-standard `Accept-Encoding` / `Content-Encoding` — no new HTTP headers.
+fetch and SHOULD cache by hash indefinitely.
+
+#### `Codec-Zstd-Dict` response header
+
+When a server responds with `Content-Encoding: zstd`, it MUST emit the
+hash of the dictionary it used as a `Codec-Zstd-Dict` header:
+
+```
+Content-Encoding: zstd
+Codec-Zstd-Dict:  sha256:79b707aea8c2b41c2883ec7913b0c4a0c880044ac844d89a9a03e779eb92db04
+Vary:             Accept-Encoding
+```
+
+The header value is `sha256:` followed by the lowercase hex digest of
+the raw dictionary bytes — same shape as the `hash` field in
+`zstd_dictionaries[]` entries. Without this header a client only knows
+"the response is zstd-compressed"; with it, the client knows which dict
+to apply for decompression and can fail fast if it doesn't have a copy
+loaded.
+
+**Client behaviour**:
+
+- A client that receives `Content-Encoding: zstd` MUST check the
+  `Codec-Zstd-Dict` header and verify the hash matches a dictionary it
+  has loaded. If the dict isn't loaded locally the client SHOULD fetch
+  it (using the URL from the tokenizer map's `zstd_dictionaries[]`
+  entry whose `hash` matches), validate the hash, and cache.
+- A hash mismatch (server's header doesn't match the dict the client
+  fetched from the map) is a fatal stream error — the client MUST NOT
+  attempt decompression with a different dict. Wrong-dict decompression
+  produces garbage bytes that downstream parsers will misinterpret.
+- A `Codec-Zstd-Dict` header on a non-zstd response (or a missing
+  header on a zstd response) is a server protocol error and the client
+  SHOULD treat it as such.
+
+**Why a new header instead of inferring from `tokenizer_id`**: a single
+tokenizer can have multiple dict versions over time (re-trained on
+fresher corpora, or specialised per workload — code-heavy vs.
+chat-heavy). The header lets a server upgrade its dict without coordinating
+a tokenizer-map version bump, and lets a single deployment serve
+multiple dicts to clients that have loaded different versions. It also
+makes intermediaries (proxies, observability tools) able to identify
+the active dict by reading headers alone.
+
+**Backward compatibility**: pre-header servers omit the header. A
+client receiving zstd without the header SHOULD treat it as if the
+header named the canonical dict for the negotiated `(tokenizer_id,
+stream_format)` per the tokenizer map — the original implicit contract.
+New clients MAY refuse to decompress in this case and surface the
+missing header as an error; this is a deployment-time decision.
 
 Reference training pipeline lives in
 `packages/bench/scripts/train-zstd-dict.py`; reference shipped

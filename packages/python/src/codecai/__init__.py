@@ -72,6 +72,11 @@ from .translate import (
     static_translation_table,
     translate,
 )
+from .compression import (
+    CodecZstdDictError,
+    hash_zstd_dict,
+    select_zstd_dict_for_response,
+)
 
 __version__ = "0.2.0"
 
@@ -122,5 +127,9 @@ __all__ = [
     "Translator",
     "translate",
     "static_translation_table",
+    # compression
+    "CodecZstdDictError",
+    "hash_zstd_dict",
+    "select_zstd_dict_for_response",
     "__version__",
 ]
