@@ -739,10 +739,23 @@ frame compression, sometimes expands the payload). All three are
 sglang middleware issues, not Codec issues — gzip works because
 sglang has good streaming gzip; the other two need patches.
 
-### vLLM — pending (PR #41765 in flight)
+### vLLM — install attempted, blocked on torch/xformers compatibility
 
-We're running the same `codec-bench-timed` against vLLM on this lab
-box. Numbers will land when the build finishes.
+We attempted to deploy PR #41765 on the lab box using
+`vllm/vllm-openai:latest` as a base + `pip install -e .
+--no-build-isolation` with `VLLM_USE_PRECOMPILED=1` to overlay the
+PR's Python changes on the precompiled CUDA kernels. The install
+completed but pulled `torch==2.11.0`, which conflicts with the
+precompiled `xformers==0.0.31` (requires `torch==2.7.1`). The
+api_server then failed to start cleanly inside the container.
+
+A clean deploy needs either (a) a full from-source build of vLLM
+from the PR branch (~30 min CUDA kernel compile + matching disk),
+or (b) producing a custom Docker image that pins torch to the
+precompiled wheel's version. Both are tractable but more invasive
+than fit in this session's window. Filling in the vLLM row is
+explicit follow-on work; the framework is in place to drop the
+numbers in as soon as a deploy lands.
 
 | stack · path · encoding | wire coeff | TTFT ratio | composite (interactive) | composite (batch) | verdict |
 |---|---:|---:|---:|---:|---|
@@ -789,6 +802,97 @@ compression layer. Adding a streaming-aware gzip middleware (e.g.
 hooking into mongoose's existing gzip support, or wrapping the SSE
 writer with a `boost::iostreams::gzip_compressor`) would lift it from
 17-25× to 700×+, matching sglang's gzip cell.
+
+#### Scaling holds across the full crossover sweep
+
+8-size crossover sweep (16/32/64/128/256/512/1024/2048 tokens) on the
+same llama-server confirms the passthrough behaviour at every size —
+gzip/br/zstd cells are bit-identical to identity for both Codec
+formats:
+
+| path · encoding | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| msgpack · {identity, gzip, br, zstd} | 261 B | 485 B | 945 B | 1.8 KB | 3.6 KB | 7.2 KB | 14.3 KB | 28.5 KB |
+| protobuf · {identity, gzip, br, zstd} | 169 B | 323 B | 634 B | 1.2 KB | 2.4 KB | 4.9 KB | 9.7 KB | 19.4 KB |
+
+Reading the table: each row's four encodings produce *literally
+identical* bytes at every size. The crossover study's
+recommendation-derivation prints `identity wins at every size,
+gzip/br/zstd never win and are always within 20% of best` — i.e.
+"compression is a no-op here, pick whichever you like."
+
+Per-token cost is constant: msgpack ~14 B/tok, protobuf ~9.5 B/tok at
+every size. Format efficiency works exactly as the bytes-only sweep
+in §1c predicted; only the compression layer is missing.
+
+#### What changes for polyglot clients
+
+Wire format is stack-independent: the msgpack/protobuf bytes coming
+out of llama.cpp parse cleanly with the same Python/.NET/C/Web
+clients used for sglang. Polyglot interop (§2) holds without
+modification — the only thing that differs across stacks is whether
+the response went through a compressor.
+
+A polyglot client speaking to llama.cpp gets:
+- ✅ Codec wire (binary frames, real token IDs)
+- ✅ Same parsing path (no per-stack codec branch)
+- ❌ No compression — payload is identity-sized
+
+…vs the same client against sglang gzip:
+- ✅ Codec wire
+- ✅ Same parsing path (transparent decompression in fetch/httpx)
+- ✅ ~30× smaller payloads at scale
+
+#### Standard-grid bench, parity with §1 sglang numbers
+
+For direct comparison with the sglang § 1 wire-format A/B table, here
+are the same 12 cells (3 paths × 4 encodings) at 64 tokens, same
+prompt, against llama-server PR #22757:
+
+| | identity | gzip | br | zstd |
+|---|---:|---:|---:|---:|
+| JSON-SSE | 15.8 KB | 15.8 KB | 15.8 KB | 15.8 KB |
+| Codec msgpack | 989 B | 989 B | 989 B | 989 B |
+| Codec protobuf | 656 B | 656 B | 656 B | 656 B |
+
+Reduction-vs-baseline at 64 tokens:
+
+| | reduction vs JSON-SSE identity |
+|---|---:|
+| Codec msgpack (any encoding) | **16.4×** |
+| Codec protobuf (any encoding) | **24.7×** |
+
+These match sglang's identity row (16.0× / 23.9×) within noise —
+**Codec wire format itself is stack-agnostic**, the only stack
+difference is whether the response then went through a compressor.
+sglang gzip pushes msgpack from 16× to 705× at scale; llama.cpp's
+passthrough keeps it at the format-only 16-25× across every size we
+tested.
+
+TTFT / total wall-clock at 64 tokens:
+
+| path · encoding | TTFT | total |
+|---|---:|---:|
+| JSON-SSE · identity | 45 ms | 175 ms |
+| JSON-SSE · gzip | 6 ms | 125 ms |
+| Codec · any | 5-7 ms | 119-122 ms |
+
+Codec lowers wall-clock by ~30% vs JSON-SSE identity at the small-
+payload size (shorter response → less time spent in JSON
+serialisation), and TTFT is preserved across all encodings since
+nothing buffers.
+
+#### Bench suite coverage on llama.cpp
+
+The full bench suite ran clean on this PR:
+
+| bench | status | result |
+|---|---|---|
+| `codec-bench` (standard grid, 64 tok) | ✅ | All 12 cells succeed; ratios match sglang's identity row |
+| `codec-bench-timed` (3 sizes × 2 reps) | ✅ | Bytes flat across encodings; TTFT 5-7 ms; total wall-clock matches model rate |
+| `codec-bench-crossover` (8 sizes × full grid) | ✅ | identity wins at every size; gzip/br/zstd literally tied with identity |
+| handoff (deterministic, stack-independent) | ✅ | Same as sglang: protobuf 6.9× faster than text-path |
+| polyglot interop | ✅ | msgpack/protobuf bytes from llama.cpp parse cleanly with Python/.NET/C/Web clients |
 
 ### Why this matters for the picker
 
