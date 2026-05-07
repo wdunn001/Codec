@@ -674,6 +674,129 @@ human.
 
 ---
 
+## 1f. Cross-stack ratios — comparing compression solutions across gateways
+
+The numbers in §1a–§1e are sglang-specific. Different inference
+servers (vLLM, llama.cpp/llama-server, TGI) have different wire
+encoders, different SSE flushing semantics, and different
+compression-middleware implementations. The brotli-barely-compresses
+finding from §1d is one example: that's an sglang-side configuration
+issue, not a Codec issue, and a different stack might do better.
+
+To compare across stacks we need ratios that are stack-portable —
+each computed from a stack's *own* baseline, so we can hold them up
+side by side.
+
+### The three ratios
+
+| ratio | what it measures | computed as | range |
+|---|---|---|---|
+| **Wire-compression coefficient** | how good is the stack's encoder implementation? | `compressed_bytes / raw_codec_bytes` (where raw = same Codec format with `identity` encoding) | 0.01 (excellent) → 1.0 (no compression) → >1.0 (expanded) |
+| **TTFT preservation ratio** | does the encoder stream or buffer? | `compressed_TTFT / raw_codec_TTFT` | 1.0 (streams) → 100×+ (buffers) |
+| **Composite efficiency** | one-number ranking incl. both | `(baseline_bytes × baseline_TTFT) / (cell_bytes × cell_TTFT)` where baseline = stack's JSON-SSE identity | higher = better |
+
+The first two are pure characterisations of the stack's compression
+implementation — they don't reference any baseline outside the stack
+itself, so they compare directly. The third uses each stack's own
+JSON-SSE identity as the 1.0× baseline, which makes it fair across
+stacks even if their JSON-SSE absolute byte counts differ.
+
+### What "good" looks like
+
+For an interactive streaming workload on Codec frames, a healthy stack
+should hit roughly:
+
+| dimension | good | acceptable | bad |
+|---|---|---|---|
+| gzip wire coeff | ≤ 0.05 | ≤ 0.20 | > 0.50 |
+| zstd wire coeff | ≤ 0.05 | ≤ 0.20 | > 0.50 |
+| br wire coeff | ≤ 0.20 | ≤ 0.50 | > 0.80 (sglang is here today) |
+| gzip TTFT ratio | 1.0 | ≤ 1.5 | > 2.0 |
+| zstd TTFT ratio | 1.0 | ≤ 2.0 | > 100 (sglang is here today: ~334×) |
+| br TTFT ratio | 1.0 | ≤ 1.5 | > 2.0 |
+
+Stacks that fall into the "bad" column for any of these have a
+fixable middleware issue, not a fundamental encoder problem. Patch
+the middleware, the ratio improves.
+
+### sglang — measured
+
+Numbers from §1d (codec-bench-timed run, 2 reps median, 2K-token
+response). Wire coefficients are vs identity Codec for the same path.
+
+| stack · path · encoding | wire coeff | TTFT ratio | composite (interactive) | composite (batch) | verdict |
+|---|---:|---:|---:|---:|---|
+| sglang · msgpack · gzip | **0.023** ✓ | **1.00** ✓ | 722× | 722× | excellent |
+| sglang · msgpack · br   | 0.733 ✗ | 1.00 ✓ | 25× | 23× | broken middleware |
+| sglang · msgpack · zstd | **0.017** ✓ | **334×** ✗ | 3× | 1014× | wire ✓, streaming ✗ |
+| sglang · protobuf · gzip | **0.032** ✓ | **1.00** ✓ | 855× | 784× | excellent |
+| sglang · protobuf · br   | 1.069 ✗ | 1.00 ✓ | 25× | 23× | **expands payload** |
+| sglang · protobuf · zstd | **0.025** ✓ | **335×** ✗ | 3× | 1021× | wire ✓, streaming ✗ |
+
+The pattern is clear: gzip is the only encoding sglang ships
+correctly today. zstd buffers (TTFT cliff). br is misconfigured (per-
+frame compression, sometimes expands the payload). All three are
+sglang middleware issues, not Codec issues — gzip works because
+sglang has good streaming gzip; the other two need patches.
+
+### vLLM — pending (PR #41765 in flight)
+
+We're running the same `codec-bench-timed` against vLLM on this lab
+box. Numbers will land when the build finishes.
+
+| stack · path · encoding | wire coeff | TTFT ratio | composite (interactive) | composite (batch) | verdict |
+|---|---:|---:|---:|---:|---|
+| vllm · msgpack · gzip | TBD | TBD | TBD | TBD | TBD |
+| vllm · msgpack · br | TBD | TBD | TBD | TBD | TBD |
+| vllm · msgpack · zstd | TBD | TBD | TBD | TBD | TBD |
+| vllm · protobuf · gzip | TBD | TBD | TBD | TBD | TBD |
+| vllm · protobuf · br | TBD | TBD | TBD | TBD | TBD |
+| vllm · protobuf · zstd | TBD | TBD | TBD | TBD | TBD |
+
+### llama.cpp — pending (PR #22757 in flight)
+
+llama.cpp's compression story is different: llama-server uses
+mongoose's HTTP layer with its own gzip support and no native br/zstd
+middleware, so we expect zstd and br to fall back to identity unless
+the PR adds them explicitly. That itself is data — a stack where
+"gzip works, others fall back" is a strictly safer baseline than
+sglang where "br is broken in a sneaky way."
+
+| stack · path · encoding | wire coeff | TTFT ratio | composite (interactive) | composite (batch) | verdict |
+|---|---:|---:|---:|---:|---|
+| llama.cpp · msgpack · gzip | TBD | TBD | TBD | TBD | TBD |
+| llama.cpp · msgpack · br | TBD | TBD | TBD | TBD | TBD |
+| llama.cpp · msgpack · zstd | TBD | TBD | TBD | TBD | TBD |
+| llama.cpp · protobuf · gzip | TBD | TBD | TBD | TBD | TBD |
+| llama.cpp · protobuf · br | TBD | TBD | TBD | TBD | TBD |
+| llama.cpp · protobuf · zstd | TBD | TBD | TBD | TBD | TBD |
+
+### Why this matters for the picker
+
+The `wire-compress` package's defaults are calibrated against the
+sglang ratios. If a stack has materially different ratios — e.g. a
+stack where br is well-configured and matches gzip on wire-coeff —
+then the picker's `interactive` mode could promote br above its
+current "fallback only" tier on that specific stack.
+
+The point of the cross-stack matrix is to make those calibration
+decisions empirical. Each stack publishes its three ratios; the
+picker reads them and chooses accordingly. A future iteration of
+the SDK can ship per-stack threshold profiles bundled in.
+
+### Reproducing
+
+```bash
+# Run codec-bench-timed against any stack with stream_format support:
+codec-bench-timed --url http://your-stack:port \
+                   --model your/model \
+                   --sizes 64 512 2048 --reps 2
+
+# The output includes wire bytes, TTFT, total, interactive efficiency,
+# and batch efficiency — everything needed to fill in a row in the
+# matrix above.
+```
+
 ---
 
 ## 2. Polyglot interop — 4 client implementations
