@@ -19,6 +19,8 @@ use codec_rs::{decode_msgpack_stream, decode_protobuf_stream};
 use futures_util::StreamExt;
 use serde_json::json;
 
+mod matrix_run;
+
 const PATHS: &[(&str, &str)] = &[
     ("JSON-SSE (default)", "json"),
     ("Codec msgpack", "msgpack"),
@@ -295,6 +297,13 @@ fn render(grid: &[Vec<Cell>]) {
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Dispatch: if --methodology is given, run the SCHEMA-v1 matrix mode.
+    // Otherwise fall through to the legacy ad-hoc grid bench (kept for
+    // quick interactive use; not part of the cross-stack matrix harness).
+    if let Some(matrix_args) = matrix_run::parse_matrix_args() {
+        return matrix_run::run_matrix(matrix_args).await;
+    }
+
     let args = parse_args();
     eprintln!("target: {}", args.url);
     eprintln!("model:  {}", args.model);
