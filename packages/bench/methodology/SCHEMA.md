@@ -84,7 +84,7 @@ Multiple runs are kept side-by-side; nothing overwrites.
     "reps": 2,
     "warmup_reps": 0,
     "aggregation": "median",
-    "ttft_definition":     "wall-clock from request POST to first received byte (TCP-level, before decompression)",
+    "ttft_definition":     "wall-clock from request POST to first body byte (canonical) OR first headers byte (legacy cohort) — runner MUST state which",
     "wire_bytes_definition": "raw socket bytes received before any Content-Encoding decompression",
     "total_ms_definition":   "wall-clock from request POST to last byte (after server emits final frame)"
   },
@@ -155,10 +155,47 @@ diverged. Quarantine never silently drops data.
 4. **MUST** measure `wire_bytes` as raw socket bytes received *before*
    any Content-Encoding decompression. `tokens_emitted` is decoded
    afterward for sanity.
-5. **MUST** measure `ttft_ms` as wall-clock from request POST to first
-   received byte. (For HTTP libraries that buffer initial response
-   chunks: use the lowest-level read available — e.g. `aiter_raw` in
-   httpx, raw fetch reader in browsers, raw `read()` on a socket in C.)
+5. **MUST** measure `ttft_ms` as wall-clock from request POST to **first
+   body byte** — the first byte of the HTTP response payload, after
+   the response headers have been received. The bench tool's
+   `ttft_definition` field MUST state explicitly which moment was
+   captured so reviewers can quarantine cohort-mismatched cells.
+
+   The Phase-2 cross-language run surfaced two clean cohorts:
+
+   - **Body-byte TTFB**: Python (`httpx.aiter_raw` first iteration),
+     TypeScript (`http.IncomingMessage` first `data` event),
+     C (`libcurl` first `WRITEFUNCTION` invocation). These all measure
+     wall-clock to the first payload byte and are the canonical
+     reading SCHEMA-v1 mandates.
+   - **Headers-byte TTFB**: .NET (`HttpClient.SendAsync` with
+     `ResponseHeadersRead`), Rust (`reqwest::Client::send().await`),
+     Java (`HttpClient.send` return). These return when response
+     headers are available, before any body bytes have arrived. They
+     are NOT canonical TTFB under SCHEMA-v1. Their numbers are
+     correctly recorded but the aggregator routes them into the
+     "headers-byte cohort" column rather than the canonical column.
+
+   On non-buffering encodings (identity, gzip, br) headers and first
+   body byte arrive in the same TCP segment in practice, so the
+   cohorts agree. They diverge sharply on buffered encodings (current
+   sglang dict-zstd middleware buffers small responses to
+   end-of-stream; headers-byte readers see ~35 ms while body-byte
+   readers see total-response time). The aggregator's §4 splits the
+   two cohorts so neither is hidden.
+
+   **Migration path for headers-byte clients**: switch the timer to
+   start AFTER the headers-future returns and stop at the first
+   non-empty body chunk. Each language has an idiomatic equivalent
+   (.NET: read `Response.Content` stream first byte; Rust: poll
+   `bytes_stream` first item; Java: `BodyHandlers.ofInputStream` first
+   `read`). Until those migrations land, recorded numbers stay in the
+   headers-byte cohort.
+
+   For HTTP libraries that buffer initial response chunks: use the
+   lowest-level read available — e.g. `aiter_raw` in httpx, raw fetch
+   reader in browsers, raw `read()` on a socket in C, `WRITEFUNCTION`
+   in libcurl.
 6. **MUST** emit the unified JSON to stdout or `--out <path>`; **MUST NOT**
    print free-form text on stdout.
 7. **SHOULD** run reps as defined in `methodology.bench_tool.reps`.
