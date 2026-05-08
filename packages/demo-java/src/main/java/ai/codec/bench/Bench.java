@@ -259,7 +259,15 @@ public final class Bench {
         System.out.print(sb);
     }
 
-    public static void main(String[] argv) {
+    public static void main(String[] argv) throws Exception {
+        // Dispatch: if --methodology is given, run the SCHEMA-v1 matrix mode.
+        // Otherwise fall through to the legacy ad-hoc grid bench.
+        MatrixRun.MatrixArgs matrixArgs = MatrixRun.parseMatrixArgs(argv);
+        if (matrixArgs != null) {
+            MatrixRun.run(matrixArgs);
+            return;
+        }
+
         Args args = parseArgs(argv);
         System.err.println("target: " + args.url);
         System.err.println("model:  " + args.model);
