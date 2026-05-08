@@ -214,7 +214,7 @@ static void run_one(CURL *curl, const char *endpoint, const char *model,
     char url[512];
     snprintf(url, sizeof(url), "%s/v1/completions", endpoint);
 
-    char body[2048];
+    char body[8192];  /* 8K covers the canonical 2K-token essay prompt with escapes */
     int blen;
     /* Escape the prompt's quotes — it can contain " from the canonical
      * 2K-token essay prompt. We only need to escape \" and \\. */
