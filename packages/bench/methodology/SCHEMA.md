@@ -11,10 +11,13 @@ fields, which are expected to differ across language cells).
 Files live at:
 
 ```
-packages/bench/methodology/{run_id}/{engine}.json     # canonical methodology, captured once per engine
-packages/bench/methodology/prompts.json               # canonical per-size prompts, identical for every run
-packages/bench/results/{run_id}/{engine}/{lang}.json  # one file per (engine, lang) cell
-packages/bench/results/{run_id}/MATRIX.md             # aggregated readable matrix
+packages/bench/methodology/{run_id}/{engine}.json         # canonical methodology, captured once per engine
+packages/bench/methodology/prompts.json                   # canonical per-size text prompts (text-tokens modality)
+packages/bench/methodology/latent-fixtures.json           # canonical per-size latent fixtures (image-/video-latents, v0.3+)
+packages/bench/results/{run_id}/{engine}/{lang}.json      # one file per (engine, lang) cell
+packages/bench/results/{run_id}/MATRIX.md                 # aggregated readable matrix
+packages/bench/golden/<latent_space_id>/<fixture>/        # perceptual ground-truth pixels (latent benches only)
+packages/bench/corpora/<latent_space_id>-synth/           # captured wire frames, fed to dict trainers
 ```
 
 `{run_id}` is an ISO-8601-ish UTC stamp like `2026-05-07T14-30-00Z`.
@@ -90,10 +93,49 @@ Multiple runs are kept side-by-side; nothing overwrites.
   },
 
   "workload": {
+    // Text modality (v0.2): runner reads per-size prompt from prompts.json.
+    // Latent modality (v0.3+): runner reads per-size fixture from latent-fixtures.json.
+    // Exactly one of `prompts_file` / `fixtures_file` MUST be set, matched to
+    // `modality.kind` below.
     "prompts_file": "methodology/prompts.json",
-    "prompts_sha256": "<hex>",                   // sha256 of prompts.json
+    "prompts_sha256": "<hex>",                   // sha256 of prompts.json (text modality only)
+    "fixtures_file": null,                       // "methodology/latent-fixtures.json" for latent runs
+    "fixtures_sha256": null,                     // sha256 of latent-fixtures.json (latent only)
     "stream": true,
     "temperature": 0.0
+  },
+
+  // Modality block (v0.3+, additive).
+  // Absent OR { "kind": "text-tokens" } means a v0.2-style text run; the
+  // aggregator treats absence as kind="text-tokens" so existing result files
+  // continue to validate without rewrite.
+  "modality": {
+    "kind": "image-latents",                     // text-tokens | image-latents | video-latents
+
+    // ── Latent-only fields (omitted when kind == "text-tokens") ─────────
+    "latent_space_id":     "stabilityai/sd-vae-ft-mse",
+    "latent_space_sha256": "<hex>",              // sha256 of the resolved LatentSpaceMap JSON
+    "shape":  [4, 64, 64],                       // per-frame latent shape, channel-first
+    "dtype":  "fp16",                            // fp32 | fp16 | bf16 | int8 | int4
+    "pipeline": "int8",                          // raw | int8 | int4 | int8-adaptive | int4-adaptive | delta+int8 | delta+int4
+
+    "decoder": {
+      "runtime":        "onnx-web",              // onnx-web | onnx | torch | ggml | wgsl | safetensors-pt
+      "weights_sha256": "<hex>",
+      "weights_bytes":  335000000
+    },
+
+    // The perceptual trust anchor. Every latent bench cell records what its
+    // SSIM / PSNR / LPIPS numbers were resolved against. Mismatch with the
+    // canonical golden image is a fingerprint divergence and quarantines the
+    // cell. See packages/bench/golden-builder/.
+    "quality_reference": {
+      "runtime":           "torch",
+      "torch_version":     "2.5.1",
+      "diffusers_version": "0.31.0",
+      "container_image":   "ghcr.io/wdunn001/codec-golden:torch-2.5.1-diffusers-0.31.0",
+      "container_sha256":  "<hex>"               // pinned by digest, NOT by tag
+    }
   },
 
   "git": {
@@ -120,6 +162,12 @@ or different bench tools can compare cleanly):
 - `captured_at` — wallclock time
 - `notes` — free-text
 - `git.repo_dirty_files` — file list (the boolean `repo_clean` IS in the fingerprint)
+- `modality.decoder.runtime` (v0.3+, latent only) — the whole point of
+  the runtime-drift bench is to compare ONNX-Web vs torch vs ggml vs
+  WGSL on the **same latent bytes**, so the runtime field MUST be
+  allowed to vary across cells. The decoder's `weights_sha256` stays
+  in the fingerprint, so two cells with different runtimes but the
+  same weights still compare cleanly.
 
 Two rows with the same fingerprint belong in the same comparison
 table. Two rows with different fingerprints get **quarantined** —
@@ -127,6 +175,8 @@ shown in their own table with a diff section explaining what
 diverged. Quarantine never silently drops data.
 
 ## `rows` — one entry per measured cell
+
+Text modality (v0.2 — unchanged):
 
 ```jsonc
 {
@@ -143,6 +193,57 @@ diverged. Quarantine never silently drops data.
   "error": null                                  // string if cell failed; row still kept
 }
 ```
+
+Latent modality (v0.3+ — additive fields). The `format` and `encoding`
+columns keep their text-modality meaning (msgpack/protobuf wire mode +
+HTTP Content-Encoding). New fields measure the latent-specific cost +
+quality axes. Fields whose values are `null` mean "not measured this
+run", not "zero":
+
+```jsonc
+{
+  "size": "512",                                 // fixture key from latent-fixtures.json (string,
+                                                 //   not int — covers both "512" and "video-1s")
+  "format": "msgpack",
+  "encoding": "zstd",
+  "wire_bytes": 14336,
+  "ttft_ms": null,                               // not meaningful for latents — see ttff_ms below
+  "ttff_ms": 23,                                 // time to first frame: wall-clock from POST to
+                                                 //   first LatentFrame (after LatentStreamHeader).
+                                                 //   Replaces ttft_ms semantically for latents.
+  "total_ms": 380,                               // wall-clock to stream done
+  "frames_emitted": 1,                           // 1 for image, N for video
+  "tokens_emitted": null,                        // text-only field; null for latents
+  "rep_wire_bytes": [14336, 14352],
+  "rep_ttff_ms": [23, 24],
+  "rep_total_ms": [380, 384],
+
+  // Decoder cost (only present when the bench runs vae_decode in this cell —
+  // i.e. this client has a decoder loaded). Cells running the wire only
+  // (parse-only, no decode) leave these null.
+  "decode_cold_ms":     840,                     // first decode latency, includes weight load
+  "decode_steady_ms":   38,                      // steady-state per-frame decode latency
+  "decode_peak_mem_mb": 612,
+
+  // Perceptual quality — measured against packages/bench/golden/<latent_space_id>/<size>/
+  // produced by the golden-builder image. Cells without a decoder loaded
+  // (parse-only) leave all four null.
+  "ssim":  0.9962,                               // higher = better
+  "psnr":  41.7,                                 // dB; higher = better
+  "lpips": 0.018,                                // lower = better
+
+  // Video-only quality — null for image-latents
+  "vmaf":          null,                         // 0–100, higher = better
+  "temporal_ssim": null,                         // SSIM between adjacent decoded frames; flags flicker
+
+  "error": null
+}
+```
+
+A cell that measures the wire only (no decoder loaded) is still a
+useful cell — `wire_bytes` and `ttff_ms` capture the protocol-level
+cost. Cells with a decoder loaded additionally produce the perceptual
+columns; those numbers anchor the rate-distortion plots.
 
 ## Normative rules for demo runners
 
@@ -207,7 +308,10 @@ diverged. Quarantine never silently drops data.
 When building MATRIX.md from a `results/{run_id}/` tree:
 
 1. Load every `*.json` file.
-2. Group rows by `(engine, format, encoding, size)`.
+2. Group rows by `(modality.kind, engine, format, encoding, size)`.
+   Modality is the outer split: text-tokens cells never appear in the
+   same table as latent cells, even when fingerprints would otherwise
+   match.
 3. Within each group, compare methodology fingerprints across the
    language cells.
 4. If all fingerprints match → render in the main table.
@@ -216,3 +320,22 @@ When building MATRIX.md from a `results/{run_id}/` tree:
    table with the methodology diff inline.
 6. Always emit a "Methodology" section at the top citing the
    canonical methodology block and the fingerprint each table uses.
+
+### Latent-specific aggregator outputs (v0.3+)
+
+For runs whose `modality.kind` is `image-latents` or `video-latents`,
+the aggregator also emits two plot scripts beyond the text-side
+TTFT/total/crossover charts:
+
+- `rate-distortion-{latent_space_id}.png` — wire bytes vs SSIM as the
+  pipeline sweeps `raw → int8 → int4 → delta+int8 → delta+int4`. The
+  canonical curve every classical video codec publishes; latents
+  inherit the visualisation.
+- `runtime-drift-{latent_space_id}.png` — pairwise SSIM heatmap across
+  decoder runtimes (torch / ONNX-Web / ggml / WGSL) on identical
+  latent bytes. Quantifies how far the perceptual contract bends
+  across implementations.
+
+Both scripts read the same `results/{run_id}/` tree the matrix builder
+does. Cells without `ssim` (parse-only) are excluded from the curves
+but still contribute to the wire-cost columns of the main table.

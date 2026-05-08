@@ -161,11 +161,26 @@ interface ConventionEntry {
   readonly result_format: ToolCallingBlock['result_format'];
 }
 
+// Auto-detection registry — only conventions whose markers come as a
+// paired (start, end) special-token pair AND whose chat templates carry
+// a unique unambiguous signature. Auto-detection is conservative on
+// purpose; if a convention's template doesn't fit the paired-marker
+// model cleanly, it stays out of auto-detection and operators opt in
+// via the CLI `--convention=<name>` override.
+//
+// Known opt-in-only cases (rationale, in case re-derivation looks
+// possible later):
+//   - mistral_nemo: opens with `[TOOL_CALLS][` but the closing `]` is
+//     the JSON array's closing bracket, not a paired marker token. The
+//     paired-markers schema can't represent this without inventing a
+//     sentinel.
+//   - phi4: the public phi-4 chat template is short enough that it
+//     doesn't carry an explicit tool-call marker pair; phi-4-with-
+//     tools deployments use a longer template variant.
 const CONVENTIONS: readonly ConventionEntry[] = [
   // Llama 3.1+ — `<|python_tag|>get_weather(location="NYC")<|eom_id|>`.
-  // Detected by the unique python_tag marker; args_format is python_args
-  // because the convention emits a Python-style call expression after the
-  // tag rather than a JSON object.
+  // args_format is python_args because the convention emits a
+  // Python-style call expression after the tag rather than a JSON object.
   {
     convention: 'llama3',
     templateSignature: '<|python_tag|>',
@@ -178,22 +193,6 @@ const CONVENTIONS: readonly ConventionEntry[] = [
     convention: 'qwen25',
     templateSignature: '<tool_call>',
     markers: { start: '<tool_call>', end: '</tool_call>' },
-    args_format: 'json',
-    result_format: 'json',
-  },
-  // Phi-4 — `<|tool|>{...}<|/tool|>`.
-  {
-    convention: 'phi4',
-    templateSignature: '<|tool|>',
-    markers: { start: '<|tool|>', end: '<|/tool|>' },
-    args_format: 'json',
-    result_format: 'json',
-  },
-  // Mistral-Nemo — `[TOOL_CALLS][{...}, {...}][/TOOL_CALLS]`.
-  {
-    convention: 'mistral_nemo',
-    templateSignature: '[TOOL_CALLS]',
-    markers: { start: '[TOOL_CALLS]', end: '[/TOOL_CALLS]' },
     args_format: 'json',
     result_format: 'json',
   },
