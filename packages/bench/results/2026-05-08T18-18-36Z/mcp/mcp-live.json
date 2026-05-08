@@ -1,0 +1,4125 @@
+{
+  "stamp": "2026-05-08T18-18-36Z",
+  "target": "http://192.168.1.88:12008/metamcp/openwebui-api/mcp",
+  "summary": {
+    "target": "http://192.168.1.88:12008/metamcp/openwebui-api/mcp",
+    "bearer_present": true,
+    "map_configured": false,
+    "tool_count": 35,
+    "tool_names": [
+      "YouTube-Transcripts__get_transcript",
+      "Playwright__start_codegen_session",
+      "Playwright__end_codegen_session",
+      "Playwright__clear_codegen_session",
+      "Playwright__get_codegen_session",
+      "Playwright__playwright_navigate",
+      "Playwright__playwright_screenshot",
+      "Playwright__playwright_click",
+      "Playwright__playwright_iframe_fill",
+      "Playwright__playwright_iframe_click",
+      "Playwright__playwright_fill",
+      "Playwright__playwright_select",
+      "Playwright__playwright_hover",
+      "Playwright__playwright_upload_file",
+      "Playwright__playwright_evaluate",
+      "Playwright__playwright_console_logs",
+      "Playwright__playwright_close",
+      "Playwright__playwright_get",
+      "Playwright__playwright_post",
+      "Playwright__playwright_put",
+      "Playwright__playwright_patch",
+      "Playwright__playwright_delete",
+      "Playwright__playwright_expect_response",
+      "Playwright__playwright_assert_response",
+      "Playwright__playwright_custom_user_agent",
+      "Playwright__playwright_get_visible_text",
+      "Playwright__playwright_get_visible_html",
+      "Playwright__playwright_go_back",
+      "Playwright__playwright_drag",
+      "Playwright__playwright_press_key",
+      "Playwright__playwright_save_as_pdf",
+      "Playwright__playwright_click_and_switch_tab",
+      "Sequential-Thinking__sequentialthinking",
+      "Playwright__playwright_go_forward",
+      "Playwright__playwright_resize"
+    ],
+    "variants_run": [
+      "json",
+      "msgpack-resp",
+      "msgpack-both",
+      "msgpack-both+gzip"
+    ]
+  },
+  "reports": [
+    {
+      "method": "initialize",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 402,
+          "reqBodyBytes": 166,
+          "respWireBytes": 892,
+          "respBodyDecodedBytes": 242,
+          "ttfbMs": 5.516800000000046,
+          "totalMs": 5.6521000000000186,
+          "messages": [
+            {
+              "result": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {
+                  "prompts": {},
+                  "resources": {},
+                  "tools": {}
+                },
+                "serverInfo": {
+                  "name": "metamcp-unified-95dc749f-923e-45c1-9448-885e630aa2ce",
+                  "version": "1.0.0"
+                }
+              },
+              "jsonrpc": "2.0",
+              "id": "2"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 394,
+          "reqBodyBytes": 166,
+          "respWireBytes": 826,
+          "respBodyDecodedBytes": 183,
+          "ttfbMs": 5.274100000000033,
+          "totalMs": 5.390500000000031,
+          "messages": [
+            {
+              "result": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {
+                  "prompts": {},
+                  "resources": {},
+                  "tools": {}
+                },
+                "serverInfo": {
+                  "name": "metamcp-unified-95dc749f-923e-45c1-9448-885e630aa2ce",
+                  "version": "1.0.0"
+                }
+              },
+              "jsonrpc": "2.0",
+              "id": "3"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-both",
+          "ok": false,
+          "status": 0,
+          "reason": "initialize HTTP 415: \u0000\u0000\u0000g��jsonrpc�2.0�error��codeу\u0000�message�=Unsupported Media ",
+          "reqBytes": 0,
+          "reqBodyBytes": 0,
+          "respWireBytes": 0,
+          "respBodyDecodedBytes": 0,
+          "ttfbMs": 0,
+          "totalMs": 0,
+          "messages": []
+        },
+        {
+          "variant": "msgpack-both+gzip",
+          "ok": false,
+          "status": 0,
+          "reason": "initialize HTTP 415: \u0000\u0000\u0000g��jsonrpc�2.0�error��codeу\u0000�message�=Unsupported Media ",
+          "reqBytes": 0,
+          "reqBodyBytes": 0,
+          "respWireBytes": 0,
+          "respBodyDecodedBytes": 0,
+          "ttfbMs": 0,
+          "totalMs": 0,
+          "messages": []
+        }
+      ]
+    },
+    {
+      "method": "tools/list",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 349,
+          "reqBodyBytes": 60,
+          "respWireBytes": 19813,
+          "respBodyDecodedBytes": 19163,
+          "ttfbMs": 96.1585,
+          "totalMs": 97.58549999999997,
+          "messages": [
+            {
+              "result": {
+                "tools": [
+                  {
+                    "name": "YouTube-Transcripts__get_transcript",
+                    "description": "Extract transcript from a YouTube video URL or ID",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "YouTube video URL or ID"
+                        },
+                        "lang": {
+                          "type": "string",
+                          "description": "Language code for transcript (e.g., 'ko', 'en')",
+                          "default": "en"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "lang"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__get_codegen_session",
+                    "description": "Get information about a code generation session",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "sessionId": {
+                          "type": "string",
+                          "description": "ID of the session to retrieve"
+                        }
+                      },
+                      "required": [
+                        "sessionId"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__end_codegen_session",
+                    "description": "End a code generation session and generate the test file",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "sessionId": {
+                          "type": "string",
+                          "description": "ID of the session to end"
+                        }
+                      },
+                      "required": [
+                        "sessionId"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_fill",
+                    "description": "fill out an input field",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for input field"
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Value to fill"
+                        }
+                      },
+                      "required": [
+                        "selector",
+                        "value"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_select",
+                    "description": "Select an element on the page with Select tag",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for element to select"
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Value to select"
+                        }
+                      },
+                      "required": [
+                        "selector",
+                        "value"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_navigate",
+                    "description": "Navigate to a URL",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "URL to navigate to the website specified"
+                        },
+                        "browserType": {
+                          "type": "string",
+                          "description": "Browser type to use (chromium, firefox, webkit). Defaults to chromium",
+                          "enum": [
+                            "chromium",
+                            "firefox",
+                            "webkit"
+                          ]
+                        },
+                        "width": {
+                          "type": "number",
+                          "description": "Viewport width in pixels (default: 1280)"
+                        },
+                        "height": {
+                          "type": "number",
+                          "description": "Viewport height in pixels (default: 720)"
+                        },
+                        "timeout": {
+                          "type": "number",
+                          "description": "Navigation timeout in milliseconds"
+                        },
+                        "waitUntil": {
+                          "type": "string",
+                          "description": "Navigation wait condition"
+                        },
+                        "headless": {
+                          "type": "boolean",
+                          "description": "Run browser in headless mode (default: false)"
+                        }
+                      },
+                      "required": [
+                        "url"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_upload_file",
+                    "description": "Upload a file to an input[type='file'] element on the page",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for the file input element"
+                        },
+                        "filePath": {
+                          "type": "string",
+                          "description": "Absolute path to the file to upload"
+                        }
+                      },
+                      "required": [
+                        "selector",
+                        "filePath"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_evaluate",
+                    "description": "Execute JavaScript in the browser console",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "script": {
+                          "type": "string",
+                          "description": "JavaScript code to execute"
+                        }
+                      },
+                      "required": [
+                        "script"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_console_logs",
+                    "description": "Retrieve console logs from the browser with filtering options",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "description": "Type of logs to retrieve (all, error, warning, log, info, debug, exception)",
+                          "enum": [
+                            "all",
+                            "error",
+                            "warning",
+                            "log",
+                            "info",
+                            "debug",
+                            "exception"
+                          ]
+                        },
+                        "search": {
+                          "type": "string",
+                          "description": "Text to search for in logs (handles text with square brackets)"
+                        },
+                        "limit": {
+                          "type": "number",
+                          "description": "Maximum number of logs to return"
+                        },
+                        "clear": {
+                          "type": "boolean",
+                          "description": "Whether to clear logs after retrieval (default: false)"
+                        }
+                      },
+                      "required": []
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_hover",
+                    "description": "Hover an element on the page",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for element to hover"
+                        }
+                      },
+                      "required": [
+                        "selector"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_get",
+                    "description": "Perform an HTTP GET request",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "URL to perform GET operation"
+                        },
+                        "token": {
+                          "type": "string",
+                          "description": "Bearer token for authorization"
+                        },
+                        "headers": {
+                          "type": "object",
+                          "description": "Additional headers to include in the request",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "url"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__start_codegen_session",
+                    "description": "Start a new code generation session to record Playwright actions",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "options": {
+                          "type": "object",
+                          "description": "Code generation options",
+                          "properties": {
+                            "outputPath": {
+                              "type": "string",
+                              "description": "Directory path where generated tests will be saved (use absolute path)"
+                            },
+                            "testNamePrefix": {
+                              "type": "string",
+                              "description": "Prefix to use for generated test names (default: 'GeneratedTest')"
+                            },
+                            "includeComments": {
+                              "type": "boolean",
+                              "description": "Whether to include descriptive comments in generated tests"
+                            }
+                          },
+                          "required": [
+                            "outputPath"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "options"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_close",
+                    "description": "Close the browser and release all resources",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {},
+                      "required": []
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_put",
+                    "description": "Perform an HTTP PUT request",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "URL to perform PUT operation"
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Data to PUT in the body"
+                        },
+                        "token": {
+                          "type": "string",
+                          "description": "Bearer token for authorization"
+                        },
+                        "headers": {
+                          "type": "object",
+                          "description": "Additional headers to include in the request",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "value"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_expect_response",
+                    "description": "Ask Playwright to start waiting for a HTTP response. This tool initiates the wait operation but does not wait for its completion.",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Unique & arbitrary identifier to be used for retrieving this response later with `Playwright_assert_response`."
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "URL pattern to match in the response."
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "url"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_post",
+                    "description": "Perform an HTTP POST request",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "URL to perform POST operation"
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Data to post in the body"
+                        },
+                        "token": {
+                          "type": "string",
+                          "description": "Bearer token for authorization"
+                        },
+                        "headers": {
+                          "type": "object",
+                          "description": "Additional headers to include in the request",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "value"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_patch",
+                    "description": "Perform an HTTP PATCH request",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "URL to perform PATCH operation"
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Data to PATCH in the body"
+                        },
+                        "token": {
+                          "type": "string",
+                          "description": "Bearer token for authorization"
+                        },
+                        "headers": {
+                          "type": "object",
+                          "description": "Additional headers to include in the request",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "value"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__clear_codegen_session",
+                    "description": "Clear a code generation session without generating a test",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "sessionId": {
+                          "type": "string",
+                          "description": "ID of the session to clear"
+                        }
+                      },
+                      "required": [
+                        "sessionId"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_delete",
+                    "description": "Perform an HTTP DELETE request",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "URL to perform DELETE operation"
+                        },
+                        "token": {
+                          "type": "string",
+                          "description": "Bearer token for authorization"
+                        },
+                        "headers": {
+                          "type": "object",
+                          "description": "Additional headers to include in the request",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "url"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_assert_response",
+                    "description": "Wait for and validate a previously initiated HTTP response wait operation.",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Identifier of the HTTP response initially expected using `Playwright_expect_response`."
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Data to expect in the body of the HTTP response. If provided, the assertion will fail if this value is not found in the response body."
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_custom_user_agent",
+                    "description": "Set a custom User Agent for the browser",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "userAgent": {
+                          "type": "string",
+                          "description": "Custom User Agent for the Playwright browser instance"
+                        }
+                      },
+                      "required": [
+                        "userAgent"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_get_visible_text",
+                    "description": "Get the visible text content of the current page",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {},
+                      "required": []
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_get_visible_html",
+                    "description": "Get the HTML content of the current page. By default, all <script> tags are removed from the output unless removeScripts is explicitly set to false.",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector to limit the HTML to a specific container"
+                        },
+                        "removeScripts": {
+                          "type": "boolean",
+                          "description": "Remove all script tags from the HTML (default: true)"
+                        },
+                        "removeComments": {
+                          "type": "boolean",
+                          "description": "Remove all HTML comments (default: false)"
+                        },
+                        "removeStyles": {
+                          "type": "boolean",
+                          "description": "Remove all style tags from the HTML (default: false)"
+                        },
+                        "removeMeta": {
+                          "type": "boolean",
+                          "description": "Remove all meta tags from the HTML (default: false)"
+                        },
+                        "cleanHtml": {
+                          "type": "boolean",
+                          "description": "Perform comprehensive HTML cleaning (default: false)"
+                        },
+                        "minify": {
+                          "type": "boolean",
+                          "description": "Minify the HTML output (default: false)"
+                        },
+                        "maxLength": {
+                          "type": "number",
+                          "description": "Maximum number of characters to return (default: 20000)"
+                        }
+                      },
+                      "required": []
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_go_back",
+                    "description": "Navigate back in browser history",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {},
+                      "required": []
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_save_as_pdf",
+                    "description": "Save the current page as a PDF file",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "outputPath": {
+                          "type": "string",
+                          "description": "Directory path where PDF will be saved"
+                        },
+                        "filename": {
+                          "type": "string",
+                          "description": "Name of the PDF file (default: page.pdf)"
+                        },
+                        "format": {
+                          "type": "string",
+                          "description": "Page format (e.g. 'A4', 'Letter')"
+                        },
+                        "printBackground": {
+                          "type": "boolean",
+                          "description": "Whether to print background graphics"
+                        },
+                        "margin": {
+                          "type": "object",
+                          "description": "Page margins",
+                          "properties": {
+                            "top": {
+                              "type": "string"
+                            },
+                            "right": {
+                              "type": "string"
+                            },
+                            "bottom": {
+                              "type": "string"
+                            },
+                            "left": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "required": [
+                        "outputPath"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_click_and_switch_tab",
+                    "description": "Click a link and switch to the newly opened tab",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for the link to click"
+                        }
+                      },
+                      "required": [
+                        "selector"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Sequential-Thinking__sequentialthinking",
+                    "description": "A detailed tool for dynamic and reflective problem-solving through thoughts.\nThis tool helps analyze problems through a flexible thinking process that can adapt and evolve.\nEach thought can build on, question, or revise previous insights as understanding deepens.\n\nWhen to use this tool:\n- Breaking down complex problems into steps\n- Planning and design with room for revision\n- Analysis that might need course correction\n- Problems where the full scope might not be clear initially\n- Problems that require a multi-step solution\n- Tasks that need to maintain context over multiple steps\n- Situations where irrelevant information needs to be filtered out\n\nKey features:\n- You can adjust total_thoughts up or down as you progress\n- You can question or revise previous thoughts\n- You can add more thoughts even after reaching what seemed like the end\n- You can express uncertainty and explore alternative approaches\n- Not every thought needs to build linearly - you can branch or backtrack\n- Generates a solution hypothesis\n- Verifies the hypothesis based on the Chain of Thought steps\n- Repeats the process until satisfied\n- Provides a correct answer\n\nParameters explained:\n- thought: Your current thinking step, which can include:\n  * Regular analytical steps\n  * Revisions of previous thoughts\n  * Questions about previous decisions\n  * Realizations about needing more analysis\n  * Changes in approach\n  * Hypothesis generation\n  * Hypothesis verification\n- nextThoughtNeeded: True if you need more thinking, even if at what seemed like the end\n- thoughtNumber: Current number in sequence (can go beyond initial total if needed)\n- totalThoughts: Current estimate of thoughts needed (can be adjusted up/down)\n- isRevision: A boolean indicating if this thought revises previous thinking\n- revisesThought: If is_revision is true, which thought number is being reconsidered\n- branchFromThought: If branching, which thought number is the branching point\n- branchId: Identifier for the current branch (if any)\n- needsMoreThoughts: If reaching end but realizing more thoughts needed\n\nYou should:\n1. Start with an initial estimate of needed thoughts, but be ready to adjust\n2. Feel free to question or revise previous thoughts\n3. Don't hesitate to add more thoughts if needed, even at the \"end\"\n4. Express uncertainty when present\n5. Mark thoughts that revise previous thinking or branch into new paths\n6. Ignore information that is irrelevant to the current step\n7. Generate a solution hypothesis when appropriate\n8. Verify the hypothesis based on the Chain of Thought steps\n9. Repeat the process until satisfied with the solution\n10. Provide a single, ideally correct answer as the final output\n11. Only set nextThoughtNeeded to false when truly done and a satisfactory answer is reached",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "thought": {
+                          "type": "string",
+                          "description": "Your current thinking step"
+                        },
+                        "nextThoughtNeeded": {
+                          "type": "boolean",
+                          "description": "Whether another thought step is needed"
+                        },
+                        "thoughtNumber": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Current thought number (numeric value, e.g., 1, 2, 3)"
+                        },
+                        "totalThoughts": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Estimated total thoughts needed (numeric value, e.g., 5, 10)"
+                        },
+                        "isRevision": {
+                          "description": "Whether this revises previous thinking",
+                          "type": "boolean"
+                        },
+                        "revisesThought": {
+                          "description": "Which thought is being reconsidered",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "branchFromThought": {
+                          "description": "Branching point thought number",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "branchId": {
+                          "description": "Branch identifier",
+                          "type": "string"
+                        },
+                        "needsMoreThoughts": {
+                          "description": "If more thoughts are needed",
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "thought",
+                        "nextThoughtNeeded",
+                        "thoughtNumber",
+                        "totalThoughts"
+                      ],
+                      "$schema": "http://json-schema.org/draft-07/schema#"
+                    },
+                    "outputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "thoughtNumber": {
+                          "type": "number"
+                        },
+                        "totalThoughts": {
+                          "type": "number"
+                        },
+                        "nextThoughtNeeded": {
+                          "type": "boolean"
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "thoughtHistoryLength": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "thoughtNumber",
+                        "totalThoughts",
+                        "nextThoughtNeeded",
+                        "branches",
+                        "thoughtHistoryLength"
+                      ],
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "additionalProperties": false
+                    },
+                    "execution": {
+                      "taskSupport": "forbidden"
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_click",
+                    "description": "Click an element on the page",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for the element to click"
+                        }
+                      },
+                      "required": [
+                        "selector"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_screenshot",
+                    "description": "Take a screenshot of the current page or a specific element",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Name for the screenshot"
+                        },
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for element to screenshot"
+                        },
+                        "width": {
+                          "type": "number",
+                          "description": "Width in pixels (default: 800)"
+                        },
+                        "height": {
+                          "type": "number",
+                          "description": "Height in pixels (default: 600)"
+                        },
+                        "storeBase64": {
+                          "type": "boolean",
+                          "description": "Store screenshot in base64 format (default: true)"
+                        },
+                        "fullPage": {
+                          "type": "boolean",
+                          "description": "Store screenshot of the entire page (default: false)"
+                        },
+                        "savePng": {
+                          "type": "boolean",
+                          "description": "Save screenshot as PNG file (default: false)"
+                        },
+                        "downloadsDir": {
+                          "type": "string",
+                          "description": "Custom downloads directory path (default: user's Downloads folder)"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_iframe_click",
+                    "description": "Click an element in an iframe on the page",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "iframeSelector": {
+                          "type": "string",
+                          "description": "CSS selector for the iframe containing the element to click"
+                        },
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for the element to click"
+                        }
+                      },
+                      "required": [
+                        "iframeSelector",
+                        "selector"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_go_forward",
+                    "description": "Navigate forward in browser history",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {},
+                      "required": []
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_drag",
+                    "description": "Drag an element to a target location",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "sourceSelector": {
+                          "type": "string",
+                          "description": "CSS selector for the element to drag"
+                        },
+                        "targetSelector": {
+                          "type": "string",
+                          "description": "CSS selector for the target location"
+                        }
+                      },
+                      "required": [
+                        "sourceSelector",
+                        "targetSelector"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_press_key",
+                    "description": "Press a keyboard key",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "description": "Key to press (e.g. 'Enter', 'ArrowDown', 'a')"
+                        },
+                        "selector": {
+                          "type": "string",
+                          "description": "Optional CSS selector to focus before pressing key"
+                        }
+                      },
+                      "required": [
+                        "key"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_iframe_fill",
+                    "description": "Fill an element in an iframe on the page",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "iframeSelector": {
+                          "type": "string",
+                          "description": "CSS selector for the iframe containing the element to fill"
+                        },
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for the element to fill"
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Value to fill"
+                        }
+                      },
+                      "required": [
+                        "iframeSelector",
+                        "selector",
+                        "value"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_resize",
+                    "description": "Resize the browser viewport using manual dimensions or device presets. Supports 143+ device presets including iPhone, iPad, Android devices, and desktop browsers with proper user-agent and touch emulation.",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "device": {
+                          "type": "string",
+                          "description": "Device preset name (e.g., 'iPhone 13', 'iPad Pro 11', 'Pixel 7', 'Galaxy S24', 'Desktop Chrome'). Automatically configures viewport, user-agent, and device capabilities. Use playwright.devices to see all available devices."
+                        },
+                        "width": {
+                          "type": "number",
+                          "description": "Viewport width in pixels (for manual resize without device preset)"
+                        },
+                        "height": {
+                          "type": "number",
+                          "description": "Viewport height in pixels (for manual resize without device preset)"
+                        },
+                        "orientation": {
+                          "type": "string",
+                          "description": "Device orientation: 'portrait' or 'landscape' (only applies when using device preset)",
+                          "enum": [
+                            "portrait",
+                            "landscape"
+                          ]
+                        }
+                      },
+                      "required": []
+                    }
+                  }
+                ]
+              },
+              "jsonrpc": "2.0",
+              "id": "6"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 341,
+          "reqBodyBytes": 60,
+          "respWireBytes": 17657,
+          "respBodyDecodedBytes": 17014,
+          "ttfbMs": 2414.5040000000004,
+          "totalMs": 2415.5493,
+          "messages": [
+            {
+              "result": {
+                "tools": [
+                  {
+                    "name": "Sequential-Thinking__sequentialthinking",
+                    "description": "A detailed tool for dynamic and reflective problem-solving through thoughts.\nThis tool helps analyze problems through a flexible thinking process that can adapt and evolve.\nEach thought can build on, question, or revise previous insights as understanding deepens.\n\nWhen to use this tool:\n- Breaking down complex problems into steps\n- Planning and design with room for revision\n- Analysis that might need course correction\n- Problems where the full scope might not be clear initially\n- Problems that require a multi-step solution\n- Tasks that need to maintain context over multiple steps\n- Situations where irrelevant information needs to be filtered out\n\nKey features:\n- You can adjust total_thoughts up or down as you progress\n- You can question or revise previous thoughts\n- You can add more thoughts even after reaching what seemed like the end\n- You can express uncertainty and explore alternative approaches\n- Not every thought needs to build linearly - you can branch or backtrack\n- Generates a solution hypothesis\n- Verifies the hypothesis based on the Chain of Thought steps\n- Repeats the process until satisfied\n- Provides a correct answer\n\nParameters explained:\n- thought: Your current thinking step, which can include:\n  * Regular analytical steps\n  * Revisions of previous thoughts\n  * Questions about previous decisions\n  * Realizations about needing more analysis\n  * Changes in approach\n  * Hypothesis generation\n  * Hypothesis verification\n- nextThoughtNeeded: True if you need more thinking, even if at what seemed like the end\n- thoughtNumber: Current number in sequence (can go beyond initial total if needed)\n- totalThoughts: Current estimate of thoughts needed (can be adjusted up/down)\n- isRevision: A boolean indicating if this thought revises previous thinking\n- revisesThought: If is_revision is true, which thought number is being reconsidered\n- branchFromThought: If branching, which thought number is the branching point\n- branchId: Identifier for the current branch (if any)\n- needsMoreThoughts: If reaching end but realizing more thoughts needed\n\nYou should:\n1. Start with an initial estimate of needed thoughts, but be ready to adjust\n2. Feel free to question or revise previous thoughts\n3. Don't hesitate to add more thoughts if needed, even at the \"end\"\n4. Express uncertainty when present\n5. Mark thoughts that revise previous thinking or branch into new paths\n6. Ignore information that is irrelevant to the current step\n7. Generate a solution hypothesis when appropriate\n8. Verify the hypothesis based on the Chain of Thought steps\n9. Repeat the process until satisfied with the solution\n10. Provide a single, ideally correct answer as the final output\n11. Only set nextThoughtNeeded to false when truly done and a satisfactory answer is reached",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "thought": {
+                          "type": "string",
+                          "description": "Your current thinking step"
+                        },
+                        "nextThoughtNeeded": {
+                          "type": "boolean",
+                          "description": "Whether another thought step is needed"
+                        },
+                        "thoughtNumber": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Current thought number (numeric value, e.g., 1, 2, 3)"
+                        },
+                        "totalThoughts": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Estimated total thoughts needed (numeric value, e.g., 5, 10)"
+                        },
+                        "isRevision": {
+                          "description": "Whether this revises previous thinking",
+                          "type": "boolean"
+                        },
+                        "revisesThought": {
+                          "description": "Which thought is being reconsidered",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "branchFromThought": {
+                          "description": "Branching point thought number",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "branchId": {
+                          "description": "Branch identifier",
+                          "type": "string"
+                        },
+                        "needsMoreThoughts": {
+                          "description": "If more thoughts are needed",
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "thought",
+                        "nextThoughtNeeded",
+                        "thoughtNumber",
+                        "totalThoughts"
+                      ],
+                      "$schema": "http://json-schema.org/draft-07/schema#"
+                    },
+                    "outputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "thoughtNumber": {
+                          "type": "number"
+                        },
+                        "totalThoughts": {
+                          "type": "number"
+                        },
+                        "nextThoughtNeeded": {
+                          "type": "boolean"
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "thoughtHistoryLength": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "thoughtNumber",
+                        "totalThoughts",
+                        "nextThoughtNeeded",
+                        "branches",
+                        "thoughtHistoryLength"
+                      ],
+                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "additionalProperties": false
+                    },
+                    "execution": {
+                      "taskSupport": "forbidden"
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_iframe_fill",
+                    "description": "Fill an element in an iframe on the page",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "iframeSelector": {
+                          "type": "string",
+                          "description": "CSS selector for the iframe containing the element to fill"
+                        },
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for the element to fill"
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Value to fill"
+                        }
+                      },
+                      "required": [
+                        "iframeSelector",
+                        "selector",
+                        "value"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "YouTube-Transcripts__get_transcript",
+                    "description": "Extract transcript from a YouTube video URL or ID",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "YouTube video URL or ID"
+                        },
+                        "lang": {
+                          "type": "string",
+                          "description": "Language code for transcript (e.g., 'ko', 'en')",
+                          "default": "en"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "lang"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_navigate",
+                    "description": "Navigate to a URL",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "URL to navigate to the website specified"
+                        },
+                        "browserType": {
+                          "type": "string",
+                          "description": "Browser type to use (chromium, firefox, webkit). Defaults to chromium",
+                          "enum": [
+                            "chromium",
+                            "firefox",
+                            "webkit"
+                          ]
+                        },
+                        "width": {
+                          "type": "number",
+                          "description": "Viewport width in pixels (default: 1280)"
+                        },
+                        "height": {
+                          "type": "number",
+                          "description": "Viewport height in pixels (default: 720)"
+                        },
+                        "timeout": {
+                          "type": "number",
+                          "description": "Navigation timeout in milliseconds"
+                        },
+                        "waitUntil": {
+                          "type": "string",
+                          "description": "Navigation wait condition"
+                        },
+                        "headless": {
+                          "type": "boolean",
+                          "description": "Run browser in headless mode (default: false)"
+                        }
+                      },
+                      "required": [
+                        "url"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__start_codegen_session",
+                    "description": "Start a new code generation session to record Playwright actions",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "options": {
+                          "type": "object",
+                          "description": "Code generation options",
+                          "properties": {
+                            "outputPath": {
+                              "type": "string",
+                              "description": "Directory path where generated tests will be saved (use absolute path)"
+                            },
+                            "testNamePrefix": {
+                              "type": "string",
+                              "description": "Prefix to use for generated test names (default: 'GeneratedTest')"
+                            },
+                            "includeComments": {
+                              "type": "boolean",
+                              "description": "Whether to include descriptive comments in generated tests"
+                            }
+                          },
+                          "required": [
+                            "outputPath"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "options"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__clear_codegen_session",
+                    "description": "Clear a code generation session without generating a test",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "sessionId": {
+                          "type": "string",
+                          "description": "ID of the session to clear"
+                        }
+                      },
+                      "required": [
+                        "sessionId"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__end_codegen_session",
+                    "description": "End a code generation session and generate the test file",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "sessionId": {
+                          "type": "string",
+                          "description": "ID of the session to end"
+                        }
+                      },
+                      "required": [
+                        "sessionId"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__get_codegen_session",
+                    "description": "Get information about a code generation session",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "sessionId": {
+                          "type": "string",
+                          "description": "ID of the session to retrieve"
+                        }
+                      },
+                      "required": [
+                        "sessionId"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_screenshot",
+                    "description": "Take a screenshot of the current page or a specific element",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Name for the screenshot"
+                        },
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for element to screenshot"
+                        },
+                        "width": {
+                          "type": "number",
+                          "description": "Width in pixels (default: 800)"
+                        },
+                        "height": {
+                          "type": "number",
+                          "description": "Height in pixels (default: 600)"
+                        },
+                        "storeBase64": {
+                          "type": "boolean",
+                          "description": "Store screenshot in base64 format (default: true)"
+                        },
+                        "fullPage": {
+                          "type": "boolean",
+                          "description": "Store screenshot of the entire page (default: false)"
+                        },
+                        "savePng": {
+                          "type": "boolean",
+                          "description": "Save screenshot as PNG file (default: false)"
+                        },
+                        "downloadsDir": {
+                          "type": "string",
+                          "description": "Custom downloads directory path (default: user's Downloads folder)"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_iframe_click",
+                    "description": "Click an element in an iframe on the page",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "iframeSelector": {
+                          "type": "string",
+                          "description": "CSS selector for the iframe containing the element to click"
+                        },
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for the element to click"
+                        }
+                      },
+                      "required": [
+                        "iframeSelector",
+                        "selector"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_fill",
+                    "description": "fill out an input field",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for input field"
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Value to fill"
+                        }
+                      },
+                      "required": [
+                        "selector",
+                        "value"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_select",
+                    "description": "Select an element on the page with Select tag",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for element to select"
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Value to select"
+                        }
+                      },
+                      "required": [
+                        "selector",
+                        "value"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_click",
+                    "description": "Click an element on the page",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for the element to click"
+                        }
+                      },
+                      "required": [
+                        "selector"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_evaluate",
+                    "description": "Execute JavaScript in the browser console",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "script": {
+                          "type": "string",
+                          "description": "JavaScript code to execute"
+                        }
+                      },
+                      "required": [
+                        "script"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_hover",
+                    "description": "Hover an element on the page",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for element to hover"
+                        }
+                      },
+                      "required": [
+                        "selector"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_upload_file",
+                    "description": "Upload a file to an input[type='file'] element on the page",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for the file input element"
+                        },
+                        "filePath": {
+                          "type": "string",
+                          "description": "Absolute path to the file to upload"
+                        }
+                      },
+                      "required": [
+                        "selector",
+                        "filePath"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_get",
+                    "description": "Perform an HTTP GET request",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "URL to perform GET operation"
+                        },
+                        "token": {
+                          "type": "string",
+                          "description": "Bearer token for authorization"
+                        },
+                        "headers": {
+                          "type": "object",
+                          "description": "Additional headers to include in the request",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "url"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_console_logs",
+                    "description": "Retrieve console logs from the browser with filtering options",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "description": "Type of logs to retrieve (all, error, warning, log, info, debug, exception)",
+                          "enum": [
+                            "all",
+                            "error",
+                            "warning",
+                            "log",
+                            "info",
+                            "debug",
+                            "exception"
+                          ]
+                        },
+                        "search": {
+                          "type": "string",
+                          "description": "Text to search for in logs (handles text with square brackets)"
+                        },
+                        "limit": {
+                          "type": "number",
+                          "description": "Maximum number of logs to return"
+                        },
+                        "clear": {
+                          "type": "boolean",
+                          "description": "Whether to clear logs after retrieval (default: false)"
+                        }
+                      },
+                      "required": []
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_close",
+                    "description": "Close the browser and release all resources",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {},
+                      "required": []
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_get_visible_text",
+                    "description": "Get the visible text content of the current page",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {},
+                      "required": []
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_patch",
+                    "description": "Perform an HTTP PATCH request",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "URL to perform PATCH operation"
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Data to PATCH in the body"
+                        },
+                        "token": {
+                          "type": "string",
+                          "description": "Bearer token for authorization"
+                        },
+                        "headers": {
+                          "type": "object",
+                          "description": "Additional headers to include in the request",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "value"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_expect_response",
+                    "description": "Ask Playwright to start waiting for a HTTP response. This tool initiates the wait operation but does not wait for its completion.",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Unique & arbitrary identifier to be used for retrieving this response later with `Playwright_assert_response`."
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "URL pattern to match in the response."
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "url"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_put",
+                    "description": "Perform an HTTP PUT request",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "URL to perform PUT operation"
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Data to PUT in the body"
+                        },
+                        "token": {
+                          "type": "string",
+                          "description": "Bearer token for authorization"
+                        },
+                        "headers": {
+                          "type": "object",
+                          "description": "Additional headers to include in the request",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "value"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_assert_response",
+                    "description": "Wait for and validate a previously initiated HTTP response wait operation.",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Identifier of the HTTP response initially expected using `Playwright_expect_response`."
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Data to expect in the body of the HTTP response. If provided, the assertion will fail if this value is not found in the response body."
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_delete",
+                    "description": "Perform an HTTP DELETE request",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "URL to perform DELETE operation"
+                        },
+                        "token": {
+                          "type": "string",
+                          "description": "Bearer token for authorization"
+                        },
+                        "headers": {
+                          "type": "object",
+                          "description": "Additional headers to include in the request",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "url"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_custom_user_agent",
+                    "description": "Set a custom User Agent for the browser",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "userAgent": {
+                          "type": "string",
+                          "description": "Custom User Agent for the Playwright browser instance"
+                        }
+                      },
+                      "required": [
+                        "userAgent"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_post",
+                    "description": "Perform an HTTP POST request",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "URL to perform POST operation"
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Data to post in the body"
+                        },
+                        "token": {
+                          "type": "string",
+                          "description": "Bearer token for authorization"
+                        },
+                        "headers": {
+                          "type": "object",
+                          "description": "Additional headers to include in the request",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "value"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_get_visible_html",
+                    "description": "Get the HTML content of the current page. By default, all <script> tags are removed from the output unless removeScripts is explicitly set to false.",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector to limit the HTML to a specific container"
+                        },
+                        "removeScripts": {
+                          "type": "boolean",
+                          "description": "Remove all script tags from the HTML (default: true)"
+                        },
+                        "removeComments": {
+                          "type": "boolean",
+                          "description": "Remove all HTML comments (default: false)"
+                        },
+                        "removeStyles": {
+                          "type": "boolean",
+                          "description": "Remove all style tags from the HTML (default: false)"
+                        },
+                        "removeMeta": {
+                          "type": "boolean",
+                          "description": "Remove all meta tags from the HTML (default: false)"
+                        },
+                        "cleanHtml": {
+                          "type": "boolean",
+                          "description": "Perform comprehensive HTML cleaning (default: false)"
+                        },
+                        "minify": {
+                          "type": "boolean",
+                          "description": "Minify the HTML output (default: false)"
+                        },
+                        "maxLength": {
+                          "type": "number",
+                          "description": "Maximum number of characters to return (default: 20000)"
+                        }
+                      },
+                      "required": []
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_go_back",
+                    "description": "Navigate back in browser history",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {},
+                      "required": []
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_go_forward",
+                    "description": "Navigate forward in browser history",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {},
+                      "required": []
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_save_as_pdf",
+                    "description": "Save the current page as a PDF file",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "outputPath": {
+                          "type": "string",
+                          "description": "Directory path where PDF will be saved"
+                        },
+                        "filename": {
+                          "type": "string",
+                          "description": "Name of the PDF file (default: page.pdf)"
+                        },
+                        "format": {
+                          "type": "string",
+                          "description": "Page format (e.g. 'A4', 'Letter')"
+                        },
+                        "printBackground": {
+                          "type": "boolean",
+                          "description": "Whether to print background graphics"
+                        },
+                        "margin": {
+                          "type": "object",
+                          "description": "Page margins",
+                          "properties": {
+                            "top": {
+                              "type": "string"
+                            },
+                            "right": {
+                              "type": "string"
+                            },
+                            "bottom": {
+                              "type": "string"
+                            },
+                            "left": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "required": [
+                        "outputPath"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_drag",
+                    "description": "Drag an element to a target location",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "sourceSelector": {
+                          "type": "string",
+                          "description": "CSS selector for the element to drag"
+                        },
+                        "targetSelector": {
+                          "type": "string",
+                          "description": "CSS selector for the target location"
+                        }
+                      },
+                      "required": [
+                        "sourceSelector",
+                        "targetSelector"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_press_key",
+                    "description": "Press a keyboard key",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "description": "Key to press (e.g. 'Enter', 'ArrowDown', 'a')"
+                        },
+                        "selector": {
+                          "type": "string",
+                          "description": "Optional CSS selector to focus before pressing key"
+                        }
+                      },
+                      "required": [
+                        "key"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_click_and_switch_tab",
+                    "description": "Click a link and switch to the newly opened tab",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "selector": {
+                          "type": "string",
+                          "description": "CSS selector for the link to click"
+                        }
+                      },
+                      "required": [
+                        "selector"
+                      ]
+                    }
+                  },
+                  {
+                    "name": "Playwright__playwright_resize",
+                    "description": "Resize the browser viewport using manual dimensions or device presets. Supports 143+ device presets including iPhone, iPad, Android devices, and desktop browsers with proper user-agent and touch emulation.",
+                    "inputSchema": {
+                      "type": "object",
+                      "properties": {
+                        "device": {
+                          "type": "string",
+                          "description": "Device preset name (e.g., 'iPhone 13', 'iPad Pro 11', 'Pixel 7', 'Galaxy S24', 'Desktop Chrome'). Automatically configures viewport, user-agent, and device capabilities. Use playwright.devices to see all available devices."
+                        },
+                        "width": {
+                          "type": "number",
+                          "description": "Viewport width in pixels (for manual resize without device preset)"
+                        },
+                        "height": {
+                          "type": "number",
+                          "description": "Viewport height in pixels (for manual resize without device preset)"
+                        },
+                        "orientation": {
+                          "type": "string",
+                          "description": "Device orientation: 'portrait' or 'landscape' (only applies when using device preset)",
+                          "enum": [
+                            "portrait",
+                            "landscape"
+                          ]
+                        }
+                      },
+                      "required": []
+                    }
+                  }
+                ]
+              },
+              "jsonrpc": "2.0",
+              "id": "7"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-both",
+          "ok": false,
+          "status": 0,
+          "reason": "no session",
+          "reqBytes": 0,
+          "reqBodyBytes": 0,
+          "respWireBytes": 0,
+          "respBodyDecodedBytes": 0,
+          "ttfbMs": 0,
+          "totalMs": 0,
+          "messages": []
+        },
+        {
+          "variant": "msgpack-both+gzip",
+          "ok": false,
+          "status": 0,
+          "reason": "no session",
+          "reqBytes": 0,
+          "reqBodyBytes": 0,
+          "respWireBytes": 0,
+          "respBodyDecodedBytes": 0,
+          "ttfbMs": 0,
+          "totalMs": 0,
+          "messages": []
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "YouTube-Transcripts__get_transcript",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 457,
+          "reqBodyBytes": 167,
+          "respWireBytes": 824,
+          "respBodyDecodedBytes": 174,
+          "ttfbMs": 11.81269999999995,
+          "totalMs": 12.1871000000001,
+          "messages": [
+            {
+              "jsonrpc": "2.0",
+              "id": "9",
+              "error": {
+                "code": -32602,
+                "message": "MCP error -32602: MCP error -32602: Could not extract video ID from: https://example.com"
+              }
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 450,
+          "reqBodyBytes": 168,
+          "respWireBytes": 779,
+          "respBodyDecodedBytes": 136,
+          "ttfbMs": 10.660499999999956,
+          "totalMs": 10.986199999999826,
+          "messages": [
+            {
+              "jsonrpc": "2.0",
+              "id": "10",
+              "error": {
+                "code": -32602,
+                "message": "MCP error -32602: MCP error -32602: Could not extract video ID from: https://example.com"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__start_codegen_session",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 420,
+          "reqBodyBytes": 130,
+          "respWireBytes": 1020,
+          "respBodyDecodedBytes": 370,
+          "ttfbMs": 12.699299999999766,
+          "totalMs": 12.901800000000094,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"sessionId\":\"4ed27a3b-cd2d-4b64-b995-b5a11ac0a3ab\",\"options\":{\"outputPath\":\"/app/apps/backend/e2e\",\"testNamePrefix\":\"Test\",\"includeComments\":true},\"message\":\"Started codegen session. Tests will be generated in: /app/apps/backend/e2e\"}"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "11"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 412,
+          "reqBodyBytes": 130,
+          "respWireBytes": 945,
+          "respBodyDecodedBytes": 302,
+          "ttfbMs": 13.887900000000172,
+          "totalMs": 14.09730000000036,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\"sessionId\":\"8ba2ac88-5a42-447a-bc8b-421f42d31495\",\"options\":{\"outputPath\":\"/app/apps/backend/e2e\",\"testNamePrefix\":\"Test\",\"includeComments\":true},\"message\":\"Started codegen session. Tests will be generated in: /app/apps/backend/e2e\"}"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "12"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__end_codegen_session",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 431,
+          "reqBodyBytes": 141,
+          "respWireBytes": 824,
+          "respBodyDecodedBytes": 174,
+          "ttfbMs": 12.351400000000012,
+          "totalMs": 12.602900000000318,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to end codegen session: Session codec-bench not found"
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "13"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 423,
+          "reqBodyBytes": 141,
+          "respWireBytes": 770,
+          "respBodyDecodedBytes": 127,
+          "ttfbMs": 8.92489999999998,
+          "totalMs": 9.153499999999894,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to end codegen session: Session codec-bench not found"
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "14"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__clear_codegen_session",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 433,
+          "reqBodyBytes": 143,
+          "respWireBytes": 793,
+          "respBodyDecodedBytes": 143,
+          "ttfbMs": 9.401800000000094,
+          "totalMs": 9.558199999999943,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Session codec-bench not found"
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "15"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 425,
+          "reqBodyBytes": 143,
+          "respWireBytes": 738,
+          "respBodyDecodedBytes": 95,
+          "ttfbMs": 7.0702000000001135,
+          "totalMs": 7.26299999999992,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Session codec-bench not found"
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "16"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__get_codegen_session",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 431,
+          "reqBodyBytes": 141,
+          "respWireBytes": 793,
+          "respBodyDecodedBytes": 143,
+          "ttfbMs": 6.79930000000013,
+          "totalMs": 6.957100000000082,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Session codec-bench not found"
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "17"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 423,
+          "reqBodyBytes": 141,
+          "respWireBytes": 738,
+          "respBodyDecodedBytes": 95,
+          "ttfbMs": 6.768300000000181,
+          "totalMs": 6.95069999999987,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Session codec-bench not found"
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "18"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_navigate",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 433,
+          "reqBodyBytes": 143,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3666.6836000000003,
+          "totalMs": 3666.7971,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "19"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 425,
+          "reqBodyBytes": 143,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3718.5688,
+          "totalMs": 3718.7578000000003,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "20"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_screenshot",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 428,
+          "reqBodyBytes": 138,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3667.3611999999994,
+          "totalMs": 3667.5986999999986,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "21"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 420,
+          "reqBodyBytes": 138,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3690.2364000000016,
+          "totalMs": 3690.388600000002,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "22"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_click",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 427,
+          "reqBodyBytes": 137,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3687.5946000000004,
+          "totalMs": 3687.8306999999986,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "23"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 419,
+          "reqBodyBytes": 137,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3749.6261000000013,
+          "totalMs": 3749.7904000000017,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "24"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_iframe_fill",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 486,
+          "reqBodyBytes": 196,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3661.973900000001,
+          "totalMs": 3662.0867999999973,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "25"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 478,
+          "reqBodyBytes": 196,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3727.8966,
+          "totalMs": 3728.095000000001,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "26"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_iframe_click",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 465,
+          "reqBodyBytes": 175,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3722.3808000000026,
+          "totalMs": 3722.5246000000006,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "27"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 457,
+          "reqBodyBytes": 175,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3658.652500000004,
+          "totalMs": 3658.8278000000064,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "28"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_fill",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 448,
+          "reqBodyBytes": 158,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3710.745400000007,
+          "totalMs": 3710.885900000001,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "29"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 440,
+          "reqBodyBytes": 158,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3677.4824999999983,
+          "totalMs": 3677.6005000000005,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "30"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_select",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 450,
+          "reqBodyBytes": 160,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3621.642,
+          "totalMs": 3621.935900000004,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "31"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 442,
+          "reqBodyBytes": 160,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3713.0653999999995,
+          "totalMs": 3713.202400000002,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "32"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_hover",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 427,
+          "reqBodyBytes": 137,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3691.3007999999973,
+          "totalMs": 3691.4884999999995,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "33"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 419,
+          "reqBodyBytes": 137,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3742.0351999999984,
+          "totalMs": 3742.143799999998,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "34"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_upload_file",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 458,
+          "reqBodyBytes": 168,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3645.0704999999944,
+          "totalMs": 3645.1998999999996,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "35"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 450,
+          "reqBodyBytes": 168,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3831.136000000013,
+          "totalMs": 3831.2570000000123,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "36"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_evaluate",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 428,
+          "reqBodyBytes": 138,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3699.6210999999894,
+          "totalMs": 3699.7405,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "37"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 420,
+          "reqBodyBytes": 138,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3683.3171,
+          "totalMs": 3683.5190000000002,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "38"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_console_logs",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 410,
+          "reqBodyBytes": 120,
+          "respWireBytes": 802,
+          "respBodyDecodedBytes": 152,
+          "ttfbMs": 11.485499999995227,
+          "totalMs": 11.642999999996391,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "No console logs matching the criteria"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "39"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 402,
+          "reqBodyBytes": 120,
+          "respWireBytes": 747,
+          "respBodyDecodedBytes": 104,
+          "ttfbMs": 11.13310000000638,
+          "totalMs": 11.296000000002095,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "No console logs matching the criteria"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "40"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_close",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 403,
+          "reqBodyBytes": 113,
+          "respWireBytes": 793,
+          "respBodyDecodedBytes": 143,
+          "ttfbMs": 10.774099999995087,
+          "totalMs": 10.931800000005751,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "No browser instance to close"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "41"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 395,
+          "reqBodyBytes": 113,
+          "respWireBytes": 737,
+          "respBodyDecodedBytes": 94,
+          "ttfbMs": 8.428700000004028,
+          "totalMs": 8.594800000006217,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "No browser instance to close"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "42"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_get",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 428,
+          "reqBodyBytes": 138,
+          "respWireBytes": 1412,
+          "respBodyDecodedBytes": 762,
+          "ttfbMs": 290.383799999996,
+          "totalMs": 290.50389999999607,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "GET request to https://example.com"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Status: 200 OK"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Response: <!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style></head><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.</p><p><a href=\"https://iana.org/domains/example\">Learn more</a></p></div></body></html>\n"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "43"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 420,
+          "reqBodyBytes": 138,
+          "respWireBytes": 1332,
+          "respBodyDecodedBytes": 689,
+          "ttfbMs": 233.91670000000158,
+          "totalMs": 234.06630000000587,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "GET request to https://example.com"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Status: 200 OK"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Response: <!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style></head><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.</p><p><a href=\"https://iana.org/domains/example\">Learn more</a></p></div></body></html>\n"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "44"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_post",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 451,
+          "reqBodyBytes": 161,
+          "respWireBytes": 1412,
+          "respBodyDecodedBytes": 762,
+          "ttfbMs": 75.5514000000112,
+          "totalMs": 75.73020000000542,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "POST request to https://example.com"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Status: 405 Method Not Allowed"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Response: <!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.<p><a href=\"https://iana.org/domains/example\">Learn more</a></div></body></html>"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "45"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 443,
+          "reqBodyBytes": 161,
+          "respWireBytes": 1333,
+          "respBodyDecodedBytes": 690,
+          "ttfbMs": 72.15680000001157,
+          "totalMs": 72.37890000001062,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "POST request to https://example.com"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Status: 405 Method Not Allowed"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Response: <!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.<p><a href=\"https://iana.org/domains/example\">Learn more</a></div></body></html>"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "46"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_put",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 450,
+          "reqBodyBytes": 160,
+          "respWireBytes": 1411,
+          "respBodyDecodedBytes": 761,
+          "ttfbMs": 70.18829999999434,
+          "totalMs": 70.39019999999437,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "PUT request to https://example.com"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Status: 405 Method Not Allowed"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Response: <!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.<p><a href=\"https://iana.org/domains/example\">Learn more</a></div></body></html>"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "47"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 442,
+          "reqBodyBytes": 160,
+          "respWireBytes": 1332,
+          "respBodyDecodedBytes": 689,
+          "ttfbMs": 71.58650000000489,
+          "totalMs": 71.71870000001218,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "PUT request to https://example.com"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Status: 405 Method Not Allowed"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Response: <!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.<p><a href=\"https://iana.org/domains/example\">Learn more</a></div></body></html>"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "48"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_patch",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 452,
+          "reqBodyBytes": 162,
+          "respWireBytes": 1413,
+          "respBodyDecodedBytes": 763,
+          "ttfbMs": 72.96379999999772,
+          "totalMs": 73.14989999998943,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "PATCH request to https://example.com"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Status: 405 Method Not Allowed"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Response: <!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.<p><a href=\"https://iana.org/domains/example\">Learn more</a></div></body></html>"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "49"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 444,
+          "reqBodyBytes": 162,
+          "respWireBytes": 1334,
+          "respBodyDecodedBytes": 691,
+          "ttfbMs": 72.80299999999988,
+          "totalMs": 73.03530000000319,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "PATCH request to https://example.com"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Status: 405 Method Not Allowed"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Response: <!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.<p><a href=\"https://iana.org/domains/example\">Learn more</a></div></body></html>"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "50"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_delete",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 431,
+          "reqBodyBytes": 141,
+          "respWireBytes": 1414,
+          "respBodyDecodedBytes": 764,
+          "ttfbMs": 71.12249999999767,
+          "totalMs": 71.29490000000806,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "DELETE request to https://example.com"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Status: 405 Method Not Allowed"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Response: <!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.<p><a href=\"https://iana.org/domains/example\">Learn more</a></div></body></html>"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "51"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 423,
+          "reqBodyBytes": 141,
+          "respWireBytes": 1335,
+          "respBodyDecodedBytes": 692,
+          "ttfbMs": 74.36789999999746,
+          "totalMs": 74.47389999999723,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "DELETE request to https://example.com"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Status: 405 Method Not Allowed"
+                  },
+                  {
+                    "type": "text",
+                    "text": "Response: <!doctype html><html lang=\"en\"><head><title>Example Domain</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.<p><a href=\"https://iana.org/domains/example\">Learn more</a></div></body></html>"
+                  }
+                ],
+                "isError": false
+              },
+              "jsonrpc": "2.0",
+              "id": "52"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_expect_response",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 459,
+          "reqBodyBytes": 169,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3703.8959999999934,
+          "totalMs": 3704.2312999999995,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "53"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 451,
+          "reqBodyBytes": 169,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3637.0890999999974,
+          "totalMs": 3637.2045999999973,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "54"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_assert_response",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 431,
+          "reqBodyBytes": 141,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3714.925199999998,
+          "totalMs": 3715.045399999988,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "55"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 423,
+          "reqBodyBytes": 141,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3735.3798000000097,
+          "totalMs": 3735.512200000012,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "56"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_custom_user_agent",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 440,
+          "reqBodyBytes": 150,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3723.966400000005,
+          "totalMs": 3724.0841000000073,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "57"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 432,
+          "reqBodyBytes": 150,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3662.2151000000013,
+          "totalMs": 3662.3359000000055,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "58"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_get_visible_text",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 414,
+          "reqBodyBytes": 124,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3667.319499999998,
+          "totalMs": 3667.4502000000066,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "59"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 406,
+          "reqBodyBytes": 124,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3768.388500000001,
+          "totalMs": 3768.6291000000056,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "60"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_get_visible_html",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 414,
+          "reqBodyBytes": 124,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3696.458200000008,
+          "totalMs": 3696.590200000006,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "61"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 406,
+          "reqBodyBytes": 124,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3682.248800000001,
+          "totalMs": 3682.3784999999916,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "62"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_go_back",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 405,
+          "reqBodyBytes": 115,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3667.546000000002,
+          "totalMs": 3667.679700000008,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "63"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 397,
+          "reqBodyBytes": 115,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3723.2428999999975,
+          "totalMs": 3723.3833999999915,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_drag",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 463,
+          "reqBodyBytes": 173,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3669.7206000000006,
+          "totalMs": 3669.8280000000086,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "65"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 455,
+          "reqBodyBytes": 173,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3679.9495999999926,
+          "totalMs": 3680.0622000000003,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "66"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_press_key",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 426,
+          "reqBodyBytes": 136,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3719.635300000009,
+          "totalMs": 3719.7813999999926,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "67"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 418,
+          "reqBodyBytes": 136,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3633.8125999999756,
+          "totalMs": 3633.9345999999787,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "68"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_save_as_pdf",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 435,
+          "reqBodyBytes": 145,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3677.8387999999977,
+          "totalMs": 3678.013800000015,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "69"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 427,
+          "reqBodyBytes": 145,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3694.8550000000105,
+          "totalMs": 3694.989100000006,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "70"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_click_and_switch_tab",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 442,
+          "reqBodyBytes": 152,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3705.3076,
+          "totalMs": 3705.4110999999975,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "71"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 434,
+          "reqBodyBytes": 152,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3733.0397999999986,
+          "totalMs": 3733.196399999986,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "72"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Sequential-Thinking__sequentialthinking",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 499,
+          "reqBodyBytes": 209,
+          "respWireBytes": 1011,
+          "respBodyDecodedBytes": 361,
+          "ttfbMs": 15.901400000002468,
+          "totalMs": 16.039099999994505,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n  \"thoughtNumber\": 1,\n  \"totalThoughts\": 1,\n  \"nextThoughtNeeded\": false,\n  \"branches\": [],\n  \"thoughtHistoryLength\": 1\n}"
+                  }
+                ],
+                "structuredContent": {
+                  "thoughtNumber": 1,
+                  "totalThoughts": 1,
+                  "nextThoughtNeeded": false,
+                  "branches": [],
+                  "thoughtHistoryLength": 1
+                }
+              },
+              "jsonrpc": "2.0",
+              "id": "73"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 491,
+          "reqBodyBytes": 209,
+          "respWireBytes": 924,
+          "respBodyDecodedBytes": 281,
+          "ttfbMs": 13.066899999976158,
+          "totalMs": 13.15649999998277,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{\n  \"thoughtNumber\": 1,\n  \"totalThoughts\": 1,\n  \"nextThoughtNeeded\": false,\n  \"branches\": [],\n  \"thoughtHistoryLength\": 1\n}"
+                  }
+                ],
+                "structuredContent": {
+                  "thoughtNumber": 1,
+                  "totalThoughts": 1,
+                  "nextThoughtNeeded": false,
+                  "branches": [],
+                  "thoughtHistoryLength": 1
+                }
+              },
+              "jsonrpc": "2.0",
+              "id": "74"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_go_forward",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 408,
+          "reqBodyBytes": 118,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3677.1602999999886,
+          "totalMs": 3677.2958999999973,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "75"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 400,
+          "reqBodyBytes": 118,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3720.8739999999816,
+          "totalMs": 3720.9866999999795,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "76"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "method": "tools/call",
+      "toolName": "Playwright__playwright_resize",
+      "rows": [
+        {
+          "variant": "json",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 404,
+          "reqBodyBytes": 114,
+          "respWireBytes": 1870,
+          "respBodyDecodedBytes": 1220,
+          "ttfbMs": 3691.8620999999985,
+          "totalMs": 3691.9837999999872,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "77"
+            }
+          ]
+        },
+        {
+          "variant": "msgpack-resp",
+          "ok": true,
+          "status": 200,
+          "reqBytes": 396,
+          "reqBodyBytes": 114,
+          "respWireBytes": 1809,
+          "respBodyDecodedBytes": 1166,
+          "ttfbMs": 3730.103000000003,
+          "totalMs": 3730.2165000000095,
+          "messages": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Failed to initialize browser: browserType.launch: Executable doesn't exist at /home/nextjs/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome\n╔═════════════════════════════════════════════════════════════════════════╗\n║ Looks like Playwright Test or Playwright was just installed or updated. ║\n║ Please run the following command to download new browsers:              ║\n║                                                                         ║\n║     npx playwright install                                              ║\n║                                                                         ║\n║ <3 Playwright Team                                                      ║\n╚═════════════════════════════════════════════════════════════════════════╝. Please try again."
+                  }
+                ],
+                "isError": true
+              },
+              "jsonrpc": "2.0",
+              "id": "78"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
