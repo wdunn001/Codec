@@ -304,7 +304,13 @@ public final class MatrixRun {
                 "wall-clock from request POST to last byte");
         methodology.set("bench_tool", benchTool);
 
+        // Force HTTP/1.1: JDK HttpClient defaults to HTTP/2 but the
+        // codec-supervisor's uvicorn proxy (sglang's parent process)
+        // returns "Invalid HTTP request received." on h2 attempts.
+        // sglang itself uses uvicorn-with-h11 on :30000; the supervisor
+        // proxy on :8080 → :30000 is the layer that's strict about h1.
         HttpClient http = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
 
