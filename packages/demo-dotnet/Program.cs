@@ -240,14 +240,33 @@ internal static class Program
         };
         if (cell.Format != "json") body["stream_format"] = cell.Format;
 
+        // Phase 1: fetch + wire/TTFB/total. These are the bench's primary
+        // signal and MUST land regardless of any downstream decompression
+        // or decoding failure (e.g. dict-zstd response when no matching
+        // dict is loaded client-side, or .NET 8 BCL's lack of native zstd).
         var sw = Stopwatch.StartNew();
+        byte[] decoded;
         try
         {
-            var (decoded, wire, ttfb) = await FetchStream(http, args.Url, body, cell.Encoding);
-            cell.WireBytes = wire;
-            cell.DecodedBytes = decoded.Length;
-            cell.TtfbMs = ttfb;
+            var fetched = await FetchStream(http, args.Url, body, cell.Encoding);
+            decoded = fetched.Body;
+            cell.WireBytes = fetched.WireBytes;
+            cell.TtfbMs = fetched.TtfbMs;
             cell.TotalMs = sw.Elapsed.TotalMilliseconds;
+            cell.DecodedBytes = decoded.Length;
+        }
+        catch (Exception e)
+        {
+            cell.Error = $"{e.GetType().Name}: {e.Message}";
+            cell.Status = "error";
+            return;
+        }
+
+        // Phase 2: token counting — best-effort. Failure here records the
+        // error string but leaves wire/TTFB/total intact (cell.Status =
+        // done_undecoded). Mirrors the Python codec_demo behaviour.
+        try
+        {
             cell.Tokens = cell.Format switch
             {
                 "json"     => CountJsonSse(decoded),
@@ -259,8 +278,9 @@ internal static class Program
         }
         catch (Exception e)
         {
-            cell.Error = $"{e.GetType().Name}: {e.Message}";
-            cell.Status = "error";
+            cell.Tokens = 0;
+            cell.Error = $"decode {cell.Encoding}: {e.GetType().Name}: {e.Message}";
+            cell.Status = "done_undecoded";
         }
     }
 
@@ -449,12 +469,18 @@ internal static class Program
                             Url = endpoint, Model = model, Prompt = prompt, MaxTokens = size,
                         };
                         await RunOne(http, thisArgs, cell);
-                        if (cell.Status == "done" && cell.WireBytes is not null)
+                        // Both "done" and "done_undecoded" land wire/TTFB/total.
+                        // Only hard "error" status (HTTP failure, etc.) skips them.
+                        if ((cell.Status == "done" || cell.Status == "done_undecoded")
+                            && cell.WireBytes is not null)
                         {
                             repWire.Add(cell.WireBytes.Value);
                             if (cell.TtfbMs.HasValue) repTtft.Add(cell.TtfbMs.Value);
                             if (cell.TotalMs.HasValue) repTotal.Add(cell.TotalMs.Value);
                             tokens = Math.Max(tokens, cell.Tokens);
+                            // Surface decode error on the row so reviewers see it.
+                            if (cell.Status == "done_undecoded" && cell.Error is not null)
+                                error = cell.Error;
                         }
                         else
                         {
