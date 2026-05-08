@@ -1,15 +1,23 @@
 # Codec
 
-**Token-native binary transport for AI APIs.**
+**A control-plane primitive for AI inference.**
 
-AI models speak token IDs internally — 32-bit integers drawn from a fixed vocabulary. Current APIs convert those IDs to UTF-8, wrap them in JSON, and ship that over HTTPS. The wire carries 150–190 bytes per token (measured). The model emitted a 4-byte integer.
-
-Codec fixes the layer boundary. Token IDs stay token IDs until a human actually needs to read them.
+Codec is the substrate that lets gateways, routers, agents, tool dispatchers, and observers operate on raw token IDs end-to-end. No detokenize on the hot path. No JSON-parse per token. No UTF-8 round-trip at every hop. Compression and wire reduction are byproducts of the framing — what you actually buy is the ability to run the inference layer like infrastructure.
 
 ```
-Current:  model → uint32 IDs → UTF-8 → JSON/SSE → wire → JSON → UTF-8 → uint32 IDs → model
-Codec:    model → uint32 IDs → binary frames → wire → uint32 IDs → model
+Today's stack:   model → uint32 IDs → UTF-8 → JSON/SSE → wire → JSON → UTF-8 → uint32 IDs → model
+                                       └── detokenize/retokenize at every hop ──┘
+Codec stack:     model → uint32 IDs → binary frames → wire → uint32 IDs → model
+                                       └── text only at the edges that need it ──┘
 ```
+
+Three primitives fall out of the layering:
+
+- **Wire-native streaming.** Length-prefixed binary frames over plain HTTP, the same wire on every engine in the [cross-stack matrix](packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md). Compression is a layer on top: 67× smaller on a short chat reply, **1,404×** on a 2 K-token agent stream, TTFB within 1 ms of JSON-SSE. *Receipts, not pitch.*
+- **Tool-call dispatch without detokenization.** `ToolWatcher` matches reserved control IDs in the raw token stream — single 32-bit compare per token, ~100× faster than detokenize+regex. Lives canonically in the [MetaMCP gateway](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.metamcp) but the primitive works in any inference proxy, agent runtime, or middleware.
+- **Cross-vocab agent handoff.** `Translator` carries one model's stream into another's vocabulary via one in-process detokenize/retokenize step. UTF-8 never crosses the wire. Llama-3 → Qwen-2 at 2 K tokens: 30 % less bridge CPU on 15× fewer wire bytes; both paths emit byte-identical Qwen-2 IDs.
+
+Source-available under [BSL 1.1](LICENSE). Patent posture in [PATENTS.md](PATENTS.md).
 
 ---
 
@@ -39,19 +47,34 @@ Codec:    model → uint32 IDs → binary frames → wire → uint32 IDs → mod
 | **Map generator** | [`@codecai/maps-cli`](https://www.npmjs.com/package/@codecai/maps-cli) | npm 0.3.0 — generate maps from HF `tokenizer.json`, plus `translate` / `translation-table` for cross-vocab analysis |
 | **Map registry** | [`codec-maps`](https://github.com/wdunn001/codec-maps) | 14 model families / 70+ aliases, served via jsDelivr |
 
-### Servers
+### Inference engines
 
-| Surface | Where | What it is |
+| Engine | Where | What it is |
 |---|---|---|
 | **vLLM** | [PR #41765](https://github.com/vllm-project/vllm/pull/41765) | `stream_format` on `/v1/completions` + dedicated `/v1/completions/codec` |
 | **SGLang** | [PR #24483](https://github.com/sgl-project/sglang/pull/24483) | Same surface, mirrored into SGLang |
 | **llama.cpp** | [PR #22757](https://github.com/ggml-org/llama.cpp/pull/22757) | Same surface in `llama-server` (covers Ollama too) |
 
+### Gateway / control-plane
+
+| Surface | Where | What it is |
+|---|---|---|
+| **MetaMCP** | [PR #287](https://github.com/metatool-ai/metamcp/pull/287) | Codec wire framing + token-aware tool dispatch at the JSON-RPC seam. Detokenize runs once at the MCP-server boundary; everything upstream stays token-native. Image: `wdunn001/codec-metamcp:latest`. |
+| **Pre-built images** | [`wdunn001/codec-supervisor`](https://github.com/wdunn001/codec-supervisor) | One Docker image per engine + the gateway: `codec-sglang`, `codec-vllm`, `codec-llamacpp`, `codec-metamcp`. `docker run` and you're at the wire. |
+
 ---
 
-## Measured wire impact
+## Measured impact (cross-stack)
 
-All numbers below are real measurements from `packages/bench` and the polyglot demo suite — captured against a live sglang server (Codec PR #24483 + ToolWatcher PR #24557) on Qwen/Qwen2.5-0.5B-Instruct, RTX 3090, deterministic at temperature 0.0. Full report: [`packages/bench/RESULTS.md`](packages/bench/RESULTS.md).
+All numbers are real measurements from `packages/bench/`. The headline data set is the cross-stack matrix: three real inference engines × six client languages × 36 cells × 3 payload sizes = 648 SCHEMA-v1 result rows, captured against `wdunn001/codec-{sglang,vllm,llamacpp}` containers on RTX 3090 + Qwen2.5-0.5B-Instruct, temperature 0.0. Full table: [`packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md`](packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md).
+
+**Headline at 2 K tokens** (Python row, Codec msgpack):
+
+| Engine | JSON-SSE baseline | Best Codec wire | Reduction | TTFB |
+|---|---:|---:|---:|---:|
+| sglang | 485 KB | 354 B (dict-zstd) | **1,404×** | 45.6 ms |
+| vllm | 479 KB | 3.9 KB (gzip) | **126×** | 67.3 ms |
+| llama.cpp | 529 KB | 16 KB (gzip) | **33×** | 40.7 ms |
 
 **Live A/B against sglang main vs PR #24483** (3 wire formats × 4 encodings, same prompt, 64-token completion):
 
@@ -349,18 +372,15 @@ All bench output is deterministic given a fixed RNG seed. If a number in this RE
 
 What's validated end-to-end:
 
-- ✅ **Wire format correctness.** Round-trip equivalence for msgpack and protobuf, tested at every chunk size.
-- ✅ **9.6–17× reduction.** Measured uncompressed; ~45× with `Content-Encoding: zstd`.
-- ✅ **3.6× handoff speedup.** End-to-end agent round-trip with eliminated detokenize/tokenize.
-- ✅ **Pure-language BPE.** Bit-identical to HuggingFace's reference tokenizer for Qwen-2 (152K vocab) across ASCII / code / emoji / CJK in `@codecai/web`, `codecai`, and `Codec.Net`.
+- ✅ **Cross-stack matrix.** Three engines (sglang, vllm, llama.cpp) × six client languages (TS, Python, .NET, Rust, Java, C) × all 12 wire-format/encoding cells × 3 sizes = 648 SCHEMA-v1 result rows. Same prompt, same model, byte-identical Codec frames per cell on sglang and llama.cpp. Full data in [`packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md`](packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md).
+- ✅ **Wire reduction.** sglang 485 KB → 354 B with full Codec stack at 2 K tokens (**1,404×**). vllm 479 KB → 3.9 KB with gzip alone (**126×**). llama.cpp 529 KB → 16 KB with gzip alone (**33×**). TTFB stays within 1 ms of JSON-SSE on the same engines.
+- ✅ **Tool-call dispatch on raw IDs.** `ToolWatcher` runs at 0.61 ms / 1 M tokens vs 60.4 ms for detokenize+regex (~100× faster). Available in every client.
+- ✅ **Cross-vocab agent handoff.** Llama-3 → Qwen-2 at 2 K tokens: 30 % less bridge CPU, 15.1× smaller wire, byte-identical Qwen-2 output asserted by the bench.
 - ✅ **Polyglot clients shipped** — TS, Python, .NET, C all on package registries. Frame format + Detokenizer everywhere; BPE encoder in TS / Python / .NET (C deferred until Unicode tables land).
-- ✅ **ToolWatcher** — every client detects tool-call regions in token-ID streams without decoding (~100× faster than detokenize on the same stream).
-- ✅ **Translator** — every client except C does cross-vocab agent handoff (Qwen-2 → Llama-3 round-trip verified bit-identical to source text).
+- ✅ **vLLM / SGLang / llama.cpp PRs open** — same wire surface across all three; engines tested in the cross-stack matrix.
+- ✅ **MetaMCP PR open** — gateway-side Codec + token-aware tool dispatch ([`metatool-ai/metamcp#287`](https://github.com/metatool-ai/metamcp/pull/287)). Image: `wdunn001/codec-metamcp:0.2.4`.
 - ✅ **Pretok program v2.1** — maps-cli compiles regex pre-tokenizers into a regex-free op list. Equivalence verified on 23 stress inputs against the real Qwen-2 / Llama-3 regexes.
-- ✅ **vLLM PR open** with binary streaming + bidirectional codec endpoint + zstd/gzip negotiation.
-- ✅ **SGLang PR open** with the same surface.
-- ✅ **llama.cpp PR open** — binary streaming for `llama-server` (covers Ollama).
-- ✅ **Pre-trained ZSTD dictionaries shipped** — `zstd_dictionaries[]` field on tokenizer maps, training pipeline at `packages/bench/scripts/train-zstd-dict.py`, reference dicts at [`dictionaries/`](dictionaries/). The dict is the **precondition** for zstd being selected at all (no-dict zstd ties gzip on bytes but eats a TTFB cliff on shipped middleware — `wire-compress` enforces `zstdHasDict` + `zstdEnabled` as twin gates, otherwise falls through to gzip). With both gates open, measured 16–18% byte reduction over gzip overall and **36–38% on small streams (≤ 300 B raw)** at a streaming-TTFB cost of **+0.13 ms** vs gzip — see [bench/RESULTS.md §1g](packages/bench/RESULTS.md#1g-pre-trained-zstd-dictionaries--measured-gain). Server-side enablement (loading the dict in sglang's `codec_compression.py`) is the next PR.
+- ✅ **Pre-trained ZSTD dictionaries shipped** — `zstd_dictionaries[]` field on tokenizer maps, training pipeline at `packages/bench/scripts/train-zstd-dict.py`, reference dicts at [`dictionaries/`](dictionaries/). The dict is the **precondition** for zstd being selected at all; `wire-compress` enforces `zstdHasDict` + `zstdEnabled` as twin gates and falls through to gzip otherwise. With both gates open, measured 16–18 % byte reduction over gzip overall and **36–38 % on small streams (≤ 300 B raw)** at a streaming-TTFB cost of **+0.13 ms** vs gzip.
 
 What's still on the roadmap:
 
@@ -373,6 +393,10 @@ What's still on the roadmap:
 
 ---
 
-## License
+## License + patent posture
 
-MIT. See [LICENSE](LICENSE).
+**Source license: [BSL 1.1](LICENSE)** by Quasarke LLC. Free for non-production use and for production use under US $5M annual revenue. Each release auto-converts to Apache-2.0 four years after publication. Commercial terms above the threshold: see [COMMERCIAL.md](COMMERCIAL.md) or contact [licensing@quasarke.com](mailto:licensing@quasarke.com).
+
+**Patent posture: [PATENTS.md](PATENTS.md).** Quasarke is pursuing patent protection on certain Codec mechanisms. The wire format, handshake, and content-addressed map distribution described in `spec/PROTOCOL.md` are intended to be made available on royalty-free or FRAND terms to implementers of the spec when patents issue. Adjacent improvements (ToolWatcher, Translator, the dictionary system, `Codec-Zstd-Dict` negotiation) may be commercially licensed separately — a Codec-compliant implementation does not require those modules. Defensive termination clause will apply to any future patent license grant. Full text in `PATENTS.md`.
+
+**Contributions** are licensed under BSL 1.1 plus a non-exclusive, royalty-free grant to Quasarke for inclusion in any future patent license commitment. See `PATENTS.md` § Contributions.
