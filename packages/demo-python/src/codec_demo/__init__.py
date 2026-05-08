@@ -36,6 +36,38 @@ PATHS = [
 ENCODINGS = ["identity", "gzip", "br", "zstd"]
 
 
+# ----- Codec-Zstd-Dict client-side registry ---------------------------------
+# Hash → bytes for any dict the bench has loaded locally. Keys MUST follow
+# the canonical "sha256:<hex>" shape the server emits in the
+# Codec-Zstd-Dict response header. Populated by load_zstd_dict_files()
+# below; matrix_run.py invokes that on startup with the reference dicts
+# from packages/dictionaries/.
+CODEC_ZSTD_DICTS: dict[str, bytes] = {}
+
+
+def _hash_zstd_dict(dict_bytes: bytes) -> str:
+    import hashlib
+    return "sha256:" + hashlib.sha256(dict_bytes).hexdigest()
+
+
+def load_zstd_dict_files(*paths: str) -> None:
+    """Load each dict file into the client-side registry, keyed by its
+    sha256. Missing files are silently skipped — the bench then
+    decompresses successfully only on cells whose Codec-Zstd-Dict header
+    matches a hash we have. Use this from matrix_run.py before the
+    matrix loop begins."""
+    import os
+    for p in paths:
+        if not p or not os.path.isfile(p):
+            continue
+        try:
+            with open(p, "rb") as f:
+                b = f.read()
+            CODEC_ZSTD_DICTS[_hash_zstd_dict(b)] = b
+        except OSError:
+            pass
+
+
 @dataclass
 class Cell:
     path_label: str
@@ -177,6 +209,9 @@ async def run_one(client: httpx.AsyncClient, url: str, model: str, prompt: str,
 
     t0 = time.perf_counter()
     ttfb = None
+    wire_bytes: bytes = b""
+    content_encoding = "identity"
+    codec_dict_hash: str | None = None
     try:
         async with client.stream(
             "POST",
@@ -187,16 +222,29 @@ async def run_one(client: httpx.AsyncClient, url: str, model: str, prompt: str,
         ) as resp:
             resp.raise_for_status()
             content_encoding = resp.headers.get("content-encoding", "identity")
+            codec_dict_hash = resp.headers.get("codec-zstd-dict")
             wire_buf = bytearray()
             async for chunk in resp.aiter_raw():
                 if ttfb is None:
                     ttfb = (time.perf_counter() - t0) * 1000
                 wire_buf.extend(chunk)
-
         wire_bytes = bytes(wire_buf)
-        cell.wire_bytes = len(wire_bytes)
+    except Exception as e:
+        cell.error = f"{type(e).__name__}: {e}"
+        cell.status = "error"
+        return
 
-        # Decompress for token counting if the server applied an encoding.
+    # Wire/TTFB/total are now safe regardless of decompression outcome —
+    # the bench's primary signal stays valid even on a mismatched dict
+    # or missing decompressor library.
+    cell.wire_bytes = len(wire_bytes)
+    cell.ttfb_ms = ttfb
+    cell.total_ms = (time.perf_counter() - t0) * 1000
+
+    # Decompress for token counting (best-effort). If decompression fails
+    # the cell still reports wire/TTFB; tokens drops to 0 and we record
+    # the failure separately so reviewers can see it.
+    try:
         if content_encoding == "gzip":
             import gzip
             decompressed = gzip.decompress(wire_bytes)
@@ -204,27 +252,33 @@ async def run_one(client: httpx.AsyncClient, url: str, model: str, prompt: str,
             import brotli  # type: ignore
             decompressed = brotli.decompress(wire_bytes)
         elif content_encoding == "zstd":
-            # Use stream_reader: server-side compression doesn't write a
-            # content-size header in the zstd frame, which makes the
-            # one-shot .decompress() raise. stream_reader handles
-            # frame-by-frame decompression cleanly.
             import io
             import zstandard  # type: ignore
-            with zstandard.ZstdDecompressor().stream_reader(
+            # Server-side dict-zstd: the response advertises which dict it
+            # used via Codec-Zstd-Dict. We look it up in our local
+            # CODEC_ZSTD_DICTS registry (populated via load_zstd_dict_files
+            # below) and pass the bytes to ZstdDecompressor.
+            zdict = None
+            if codec_dict_hash and codec_dict_hash in CODEC_ZSTD_DICTS:
+                zdict = zstandard.ZstdCompressionDict(CODEC_ZSTD_DICTS[codec_dict_hash])
+            with zstandard.ZstdDecompressor(dict_data=zdict).stream_reader(
                 io.BytesIO(wire_bytes)
             ) as reader:
                 decompressed = reader.read()
         else:
             decompressed = wire_bytes
-
         cell.decoded_bytes = len(decompressed)
         cell.tokens = COUNTERS[cell.format](decompressed)
-        cell.ttfb_ms = ttfb
-        cell.total_ms = (time.perf_counter() - t0) * 1000
         cell.status = "done"
     except Exception as e:
-        cell.error = f"{type(e).__name__}: {e}"
-        cell.status = "error"
+        # Decompression-only failure — record it but keep wire/TTFB.
+        cell.tokens = 0
+        cell.error = (
+            f"decompress {content_encoding}: {type(e).__name__}: {e}"
+            + (f" (server used Codec-Zstd-Dict {codec_dict_hash})"
+               if codec_dict_hash else "")
+        )
+        cell.status = "done_undecoded"
 
 
 # ----- table rendering -------------------------------------------------------

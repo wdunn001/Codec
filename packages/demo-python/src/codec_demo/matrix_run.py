@@ -28,7 +28,7 @@ from typing import Any
 
 import httpx
 
-from . import PATHS, ENCODINGS, Cell, run_one
+from . import PATHS, ENCODINGS, Cell, run_one, load_zstd_dict_files
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -157,6 +157,18 @@ async def main_async(args: argparse.Namespace) -> None:
     prompts = load_prompts(methodology)
     endpoint = methodology["engine"]["endpoint"]
     model = methodology["model"]["id"]
+
+    # Load reference zstd dicts so the client can decompress dict-zstd
+    # responses. The bench harness ships the canonical Qwen2.5 dicts at
+    # repo-root/dictionaries/. If the server is configured to use a
+    # different dict, the wire/ttft numbers still land — only the
+    # decoded-tokens count drops to 0 with a "Codec-Zstd-Dict mismatch"
+    # error string on the row, which keeps reviewers honest.
+    dict_dir = REPO_ROOT / "dictionaries"
+    load_zstd_dict_files(
+        str(dict_dir / "qwen2.5-synth-msgpack-v1.dict"),
+        str(dict_dir / "qwen2.5-synth-protobuf-v1.dict"),
+    )
 
     rows: list[dict[str, Any]] = []
     async with httpx.AsyncClient() as cli:

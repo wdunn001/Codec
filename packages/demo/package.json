@@ -6,11 +6,13 @@
   "scripts": {
     "benchmark": "tsx src/benchmark.ts",
     "agent": "tsx src/agent.ts",
-    "tgi": "tsx src/tgi.ts"
+    "tgi": "tsx src/tgi.ts",
+    "matrix": "tsx src/matrix_run.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
     "@codec/core": "*",
-    "@codec/client": "*"
+    "@codec/client": "*",
+    "@codecai/web": "*"
   }
 }
