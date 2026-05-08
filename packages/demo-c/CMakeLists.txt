@@ -30,16 +30,29 @@ if(NOT TARGET codec::codec)
 endif()
 
 add_executable(codec-bench bench.c)
+
+# SCHEMA-v1 matrix runner (mirrors matrix_run.py / matrix_run.ts /
+# Program.cs's matrix mode / matrix_run.rs / MatrixRun.java). Distinct
+# binary because the legacy bench.c keeps its single-prompt grid
+# behaviour for ad-hoc smoke tests.
+add_executable(codec-matrix matrix_run.c)
+
 # Link against the static lib — the shared lib uses hidden visibility
 # and not every public symbol carries an export attribute yet.
 if(TARGET codec::codec_static)
     target_link_libraries(codec-bench PRIVATE codec::codec_static CURL::libcurl)
+    target_link_libraries(codec-matrix PRIVATE codec::codec_static CURL::libcurl)
 else()
     target_link_libraries(codec-bench PRIVATE codec::codec CURL::libcurl)
+    target_link_libraries(codec-matrix PRIVATE codec::codec CURL::libcurl)
 endif()
 
 if(MSVC)
     target_compile_options(codec-bench PRIVATE /W4)
+    target_compile_options(codec-matrix PRIVATE /W4)
 else()
     target_compile_options(codec-bench PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(codec-matrix PRIVATE -Wall -Wextra -Wpedantic)
+    # matrix_run.c uses memmem (GNU extension)
+    target_compile_definitions(codec-matrix PRIVATE _GNU_SOURCE)
 endif()
