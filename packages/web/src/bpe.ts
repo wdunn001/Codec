@@ -102,7 +102,20 @@ export class BPETokenizer implements Tokenizer {
         this.preTokProgram = map.pre_tokenizer_program as unknown as PreTokProgram;
         this.preTokRegex = null;
       } else if (map.pre_tokenizer_pattern) {
-        this.preTokRegex = new RegExp(map.pre_tokenizer_pattern, 'gu');
+        // Try the `'gv'` flag first — Unicode-sets mode, supports
+        // ES2025 inline-flag groups like `(?i:...)` that some
+        // pre-tokenizer patterns (e.g. qwen2's contraction handler)
+        // depend on. Fall back to legacy `'gu'` when the runtime's
+        // V8 is too old for `v` flag, OR when the pattern uses
+        // syntax that's valid under `u` but not under the stricter
+        // `v` (some character class escapes differ). Either flag
+        // alone is wrong for some maps; the try/catch is the
+        // straightforward way to cover both.
+        try {
+          this.preTokRegex = new RegExp(map.pre_tokenizer_pattern, 'gv');
+        } catch {
+          this.preTokRegex = new RegExp(map.pre_tokenizer_pattern, 'gu');
+        }
         this.preTokProgram = null;
       } else {
         throw new Error(
