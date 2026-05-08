@@ -318,21 +318,19 @@ static void run_one(CURL *curl, const char *endpoint, const char *model,
 static char *find_repo_root_and_load(const char *methodology_path,
                                      const char *prompts_rel,
                                      char **out_path) {
-    /* Walk up from methodology_path looking for "packages/" dir. */
-    char *p = strdup(methodology_path);
+    /* Walk up from methodology_path looking for the file
+     * "<root>/packages/bench/<prompts_rel>". methodology_path may be
+     * relative — absolute-ify via realpath so the parent walk works. */
+    char *abs = realpath(methodology_path, NULL);
+    char *p = abs ? strdup(abs) : strdup(methodology_path);
+    free(abs);
     char *slash;
     char *root = NULL;
     while ((slash = strrchr(p, '/'))) {
         *slash = 0;
-        /* Test if `<p>/packages` exists — if so, p is the repo root. */
         char test[1024];
-        snprintf(test, sizeof(test), "%s/packages/bench", p);
-        FILE *f = fopen(test, "r");
-        if (f) { fclose(f); root = strdup(p); break; }
-        /* On a directory test, fopen returns NULL so we instead try the
-         * actual prompts file under that path. */
         snprintf(test, sizeof(test), "%s/packages/bench/%s", p, prompts_rel);
-        f = fopen(test, "r");
+        FILE *f = fopen(test, "r");
         if (f) { fclose(f); root = strdup(p); break; }
     }
     free(p);
