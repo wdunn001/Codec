@@ -243,18 +243,27 @@ public final class MatrixRun {
         Path methodologyPath = Paths.get(args.methodology).toAbsolutePath();
         ObjectNode methodology = (ObjectNode) json.readTree(methodologyPath.toFile());
 
-        // Repo root from this class's location: target/classes/ai/codec/bench/MatrixRun.class
-        // → demo-java → packages → repo root. If running from a fat-jar, fallback to cwd.
+        // Repo root from this class's CodeSource. Two layouts to handle:
+        //   - fat jar at packages/demo-java/target/codec-bench.jar
+        //     → 3 getParent calls (target/ → demo-java/ → packages/ → root)
+        //   - exploded classes at packages/demo-java/target/classes/ai/codec/bench/...
+        //     → can be reached either way; we walk up looking for "packages".
         Path repoRoot;
         try {
             URI uri = MatrixRun.class.getProtectionDomain().getCodeSource().getLocation().toURI();
             Path codeSource = Paths.get(uri);
-            // jar or directory; for a Maven directory build it's target/classes
-            repoRoot = codeSource.getParent() // classes
-                    .getParent()              // target
-                    .getParent()              // demo-java
-                    .getParent()              // packages
-                    .getParent();             // repo root
+            Path candidate = codeSource;
+            // Walk up until we land on a directory whose child is "packages",
+            // which by convention is the repo root.
+            while (candidate != null && candidate.getParent() != null) {
+                if (candidate.getFileName() != null
+                        && "packages".equals(candidate.getFileName().toString())) {
+                    candidate = candidate.getParent();
+                    break;
+                }
+                candidate = candidate.getParent();
+            }
+            repoRoot = candidate != null ? candidate : Paths.get(".").toAbsolutePath();
         } catch (Exception e) {
             repoRoot = Paths.get(".").toAbsolutePath();
         }
