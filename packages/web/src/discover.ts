@@ -15,13 +15,20 @@
  */
 import type { MapCache, TokenizerMap } from './types.js';
 import { loadMap, validateMap } from './map.js';
+import type { LatentSpaceMap, LatentSpaceMapCache } from './latent-types.js';
+import { loadLatentMap, validateLatentMap } from './latent-map.js';
 
 /** Fixed base path under which Codec discovery documents live. */
 export const WELL_KNOWN_BASE = '/.well-known/codec';
 
-/** Per-map document URL for an origin + id. */
+/** Per-tokenizer-map document URL for an origin + id. */
 export function wellKnownMapUrl(origin: string, id: string): string {
   return `${stripTrailingSlash(origin)}${WELL_KNOWN_BASE}/maps/${encodeMapId(id)}.json`;
+}
+
+/** Per-latent-space-map document URL for an origin + id (v0.3+). */
+export function wellKnownLatentSpaceUrl(origin: string, id: string): string {
+  return `${stripTrailingSlash(origin)}${WELL_KNOWN_BASE}/latents/${encodeMapId(id)}.json`;
 }
 
 /** Index document URL for an origin. */
@@ -63,10 +70,27 @@ export interface MapPointer {
   readonly published_at?: string;
 }
 
-/** Index document: enumerates every map an origin publishes. */
+/**
+ * Pointer document for a latent-space map (v0.3+). Same shape as `MapPointer`;
+ * separate type so the two namespaces (tokenizer maps vs latent-space maps)
+ * don't get confused at call sites.
+ */
+export interface LatentSpacePointer {
+  readonly id: string;
+  readonly url: string;
+  readonly hash: string;
+  readonly published_at?: string;
+}
+
+/**
+ * Index document: enumerates every map an origin publishes. Carries one array
+ * per map kind. The `latents` field is v0.3-additive; v0.2 documents omit it.
+ */
 export interface MapIndex {
   readonly codec_version: string;
   readonly maps: ReadonlyArray<MapPointer>;
+  /** Latent-space maps published at this origin. v0.3+. */
+  readonly latents?: ReadonlyArray<LatentSpacePointer>;
 }
 
 // ── Errors ────────────────────────────────────────────────────────────────────
@@ -94,13 +118,29 @@ function isPointerShape(obj: unknown): obj is MapPointer {
     typeof o.id === 'string' &&
     typeof o.url === 'string' &&
     typeof o.hash === 'string' &&
-    // Inline maps always carry vocab/tokens; pointers never do.
+    // Inline tokenizer maps always carry vocab/tokens; pointers never do.
     o.vocab === undefined &&
     o.tokens === undefined
   );
 }
 
-function validatePointer(obj: MapPointer, expectedId: string): void {
+/**
+ * Latent-space pointer detection (v0.3+). Inline `LatentSpaceMap` documents
+ * always carry `decoder` (or `decoders`) and `space_kind`; pointers never do.
+ */
+function isLatentSpacePointerShape(obj: unknown): obj is LatentSpacePointer {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const o = obj as Record<string, unknown>;
+  return (
+    typeof o.id === 'string' &&
+    typeof o.url === 'string' &&
+    typeof o.hash === 'string' &&
+    o.decoders === undefined &&
+    o.space_kind === undefined
+  );
+}
+
+function validatePointer(obj: MapPointer | LatentSpacePointer, expectedId: string): void {
   if (obj.id !== expectedId) {
     throw new MapDiscoveryError(
       `Pointer id ${JSON.stringify(obj.id)} does not match requested id ${JSON.stringify(expectedId)}`,
@@ -201,6 +241,83 @@ export async function discoverMap(opts: DiscoverMapOptions): Promise<TokenizerMa
   return parsed;
 }
 
+// ── Latent-space discovery (v0.3+) ────────────────────────────────────────────
+
+export interface DiscoverLatentSpaceOptions {
+  /** HTTPS origin of the maintainer publishing the map (e.g. `https://stability.ai`). */
+  origin: string;
+
+  /** Codec latent-space ID (e.g. `stabilityai/sd-vae-ft-mse`). */
+  id: string;
+
+  /** Pluggable cache, shared with `loadLatentMap`. */
+  cache?: LatentSpaceMapCache;
+
+  /** AbortSignal forwarded to all underlying fetches. */
+  signal?: AbortSignal;
+
+  /** Custom fetch implementation. Defaults to `globalThis.fetch`. */
+  fetchImpl?: typeof fetch;
+}
+
+/**
+ * Resolve a latent-space map via the `.well-known/codec/` convention.
+ *
+ * Fetches `<origin>/.well-known/codec/latents/<id>.json`, then either follows
+ * the pointer's `url` + verifies its `hash` (Form A), or validates and
+ * returns the inline map directly (Form B).
+ *
+ *   const space = await discoverLatentSpace({
+ *     origin: 'https://stability.ai',
+ *     id: 'stabilityai/sd-vae-ft-mse',
+ *   });
+ *
+ * Throws `MapDiscoveryNotFoundError` for 404, `MapDiscoveryError` for
+ * malformed pointers, and `LatentSpaceMapHashMismatchError` if the CDN bytes
+ * don't match the pointer hash.
+ */
+export async function discoverLatentSpace(
+  opts: DiscoverLatentSpaceOptions,
+): Promise<LatentSpaceMap> {
+  const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
+  if (!fetchImpl) {
+    throw new MapDiscoveryError(
+      '@codecai/web: no global fetch available. Pass `fetchImpl` or upgrade to Node 18+.',
+    );
+  }
+
+  const url = wellKnownLatentSpaceUrl(opts.origin, opts.id);
+  const resp = await fetchImpl(url, { signal: opts.signal });
+  if (resp.status === 404) {
+    throw new MapDiscoveryNotFoundError(url, resp.status);
+  }
+  if (!resp.ok) {
+    throw new MapDiscoveryError(`Failed to fetch ${url}: HTTP ${resp.status}`);
+  }
+
+  const parsed: unknown = await resp.json();
+  if (isLatentSpacePointerShape(parsed)) {
+    validatePointer(parsed, opts.id);
+    return loadLatentMap({
+      url: parsed.url,
+      hash: parsed.hash,
+      cache: opts.cache,
+      signal: opts.signal,
+      fetchImpl: opts.fetchImpl,
+      cacheKey: `well-known:${opts.origin}#latent#${opts.id}#${parsed.hash}`,
+    });
+  }
+
+  // Otherwise: inline LatentSpaceMap. Validate, sanity-check id, return.
+  validateLatentMap(parsed);
+  if (parsed.id !== opts.id) {
+    throw new MapDiscoveryError(
+      `Inline latent-space map id ${JSON.stringify(parsed.id)} does not match requested id ${JSON.stringify(opts.id)}`,
+    );
+  }
+  return parsed;
+}
+
 export interface DiscoverIndexOptions {
   origin: string;
   signal?: AbortSignal;
@@ -241,8 +358,24 @@ export async function discoverIndex(opts: DiscoverIndexOptions): Promise<MapInde
   for (const entry of (parsed as MapIndex).maps) {
     if (!isPointerShape(entry)) {
       throw new MapDiscoveryError(
-        `Index entry at ${url} is missing required pointer fields`,
+        `Index entry (maps) at ${url} is missing required pointer fields`,
       );
+    }
+  }
+  // v0.3-additive: validate the optional latents[] array if present.
+  const latents = (parsed as MapIndex).latents;
+  if (latents !== undefined) {
+    if (!Array.isArray(latents)) {
+      throw new MapDiscoveryError(
+        `Index at ${url} has a non-array \`latents\` field`,
+      );
+    }
+    for (const entry of latents) {
+      if (!isLatentSpacePointerShape(entry)) {
+        throw new MapDiscoveryError(
+          `Index entry (latents) at ${url} is missing required pointer fields`,
+        );
+      }
     }
   }
   return parsed as MapIndex;

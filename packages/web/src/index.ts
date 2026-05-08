@@ -37,6 +37,16 @@ export type {
   Tokenizer,
 } from './types.js';
 
+export type {
+  LatentSpaceMap,
+  LatentSpaceMapCache,
+  LatentPipeline,
+  LatentDecoderRuntime,
+  LatentDecoder,
+  LatentZstdDictionaryEntry,
+  LatentVideoMetadata,
+} from './latent-types.js';
+
 export {
   loadMap,
   makeMap,
@@ -48,16 +58,30 @@ export {
 } from './map.js';
 
 export {
+  loadLatentMap,
+  makeLatentMap,
+  validateLatentMap,
+  MemoryLatentSpaceMapCache,
+  LatentSpaceMapValidationError,
+  LatentSpaceMapHashMismatchError,
+  type LoadLatentMapOptions,
+} from './latent-map.js';
+
+export {
   discoverMap,
+  discoverLatentSpace,
   discoverIndex,
   wellKnownMapUrl,
+  wellKnownLatentSpaceUrl,
   wellKnownIndexUrl,
   WELL_KNOWN_BASE,
   MapDiscoveryError,
   MapDiscoveryNotFoundError,
   type MapPointer,
+  type LatentSpacePointer,
   type MapIndex,
   type DiscoverMapOptions,
+  type DiscoverLatentSpaceOptions,
   type DiscoverIndexOptions,
 } from './discover.js';
 

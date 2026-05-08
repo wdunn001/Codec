@@ -1,0 +1,90 @@
+{
+  "$schema": "../latent-space-map.schema.json",
+  "id": "stabilityai/sd-vae-ft-mse",
+  "version": "1",
+  "space_kind": "vae",
+
+  "shape": [4, 64, 64],
+  "dtype": "fp16",
+  "vae_scale_factor": 0.18215,
+
+  "decoders": [
+    {
+      "runtime": "onnx-web",
+      "url":  "https://cdn.jsdelivr.net/gh/wdunn001/codec-latents-decoders/sd-vae-ft-mse/onnx-web/decoder.onnx",
+      "hash": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+      "size_bytes": 198341120,
+      "input_shape": [1, 4, 64, 64],
+      "input_dtype": "fp16",
+      "output": {
+        "format": "rgb_uint8",
+        "shape":  [1, 3, 512, 512],
+        "dtype":  "uint8"
+      },
+      "license": "CreativeML-Open-RAIL-M"
+    },
+    {
+      "runtime": "ggml",
+      "url":  "https://cdn.jsdelivr.net/gh/wdunn001/codec-latents-decoders/sd-vae-ft-mse/ggml/decoder-fp16.gguf",
+      "hash": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+      "size_bytes": 167772160,
+      "input_shape": [1, 4, 64, 64],
+      "input_dtype": "fp16",
+      "output": {
+        "format": "rgb_uint8",
+        "shape":  [1, 3, 512, 512],
+        "dtype":  "uint8"
+      },
+      "license": "CreativeML-Open-RAIL-M"
+    },
+    {
+      "runtime": "torch",
+      "url":  "https://huggingface.co/stabilityai/sd-vae-ft-mse/resolve/main/diffusion_pytorch_model.safetensors",
+      "hash": "sha256:0000000000000000000000000000000000000000000000000000000000000003",
+      "size_bytes": 334643268,
+      "input_shape": [1, 4, 64, 64],
+      "input_dtype": "fp16",
+      "output": {
+        "format": "rgb_uint8",
+        "shape":  [1, 3, 512, 512],
+        "dtype":  "uint8"
+      },
+      "license": "CreativeML-Open-RAIL-M"
+    }
+  ],
+
+  "pipelines": ["raw", "int8", "int4"],
+
+  "zstd_dictionaries": [
+    {
+      "format":   "msgpack",
+      "pipeline": "raw",
+      "url":      "https://cdn.jsdelivr.net/gh/wdunn001/codec-latents-dicts/sd-vae-ft-mse/msgpack-raw-v1.dict",
+      "hash":     "sha256:0000000000000000000000000000000000000000000000000000000000000010",
+      "size_bytes": 16384
+    },
+    {
+      "format":   "msgpack",
+      "pipeline": "int8",
+      "url":      "https://cdn.jsdelivr.net/gh/wdunn001/codec-latents-dicts/sd-vae-ft-mse/msgpack-int8-v1.dict",
+      "hash":     "sha256:0000000000000000000000000000000000000000000000000000000000000011",
+      "size_bytes": 16384
+    },
+    {
+      "format":   "protobuf",
+      "pipeline": "raw",
+      "url":      "https://cdn.jsdelivr.net/gh/wdunn001/codec-latents-dicts/sd-vae-ft-mse/protobuf-raw-v1.dict",
+      "hash":     "sha256:0000000000000000000000000000000000000000000000000000000000000012",
+      "size_bytes": 16384
+    },
+    {
+      "format":   "protobuf",
+      "pipeline": "int8",
+      "url":      "https://cdn.jsdelivr.net/gh/wdunn001/codec-latents-dicts/sd-vae-ft-mse/protobuf-int8-v1.dict",
+      "hash":     "sha256:0000000000000000000000000000000000000000000000000000000000000013",
+      "size_bytes": 16384
+    }
+  ],
+
+  "published_at": "2026-05-08T00:00:00Z"
+}

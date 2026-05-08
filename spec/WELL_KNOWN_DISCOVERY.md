@@ -1,11 +1,24 @@
 # Codec Map Discovery via `.well-known/codec/`
 
-Status: stable, additive to v0.2.
+Status: stable, additive to v0.2 and v0.3.
 
 This document specifies the convention by which a model maintainer publishes
-their tokenizer dialect map at a known location on a domain they control,
-so that any Codec client can discover it given only the maintainer's origin
+their **per-modality maps** at known locations on a domain they control,
+so that any Codec client can discover them given only the maintainer's origin
 and the map ID.
+
+The convention covers two map kinds, each living at its own path under
+`/.well-known/codec/`:
+
+- **Tokenizer maps** (text-tokens modality, v0.2) — `maps/<id>.json`
+- **Latent-space maps** (image-/video-latents modalities, v0.3) — `latents/<id>.json`
+
+Both kinds use the same Form A / Form B publication pattern, the same
+hash-pinned trust model, the same resolution algorithm, and the same CORS
+guidance. The two paths exist in parallel because the document schemas
+differ (tokenizer-map.schema.json vs latent-space-map.schema.json), but
+everything procedural in this document applies to both kinds unless
+stated otherwise.
 
 It is the decentralised counterpart to a future centralised registry. Both
 can coexist; the registry is a lookup service, this convention is a
@@ -38,8 +51,9 @@ current pinned hash without a code change.
 ## URL layout
 
 ```
-https://<origin>/.well-known/codec/maps/<id>.json    ← per-map document
-https://<origin>/.well-known/codec/index.json        ← directory (optional)
+https://<origin>/.well-known/codec/maps/<id>.json       ← tokenizer map (v0.2)
+https://<origin>/.well-known/codec/latents/<id>.json    ← latent-space map (v0.3)
+https://<origin>/.well-known/codec/index.json           ← directory of both (optional)
 ```
 
 `<id>` is the Codec map ID with `/` characters preserved as path separators.
@@ -49,20 +63,30 @@ For example, the ID `qwen/qwen2` resolves to:
 https://qwen.io/.well-known/codec/maps/qwen/qwen2.json
 ```
 
+The latent-space map ID `stabilityai/sd-vae-ft-mse` resolves to:
+
+```
+https://stability.ai/.well-known/codec/latents/stabilityai/sd-vae-ft-mse.json
+```
+
 IDs MUST be lowercase ASCII matching `[a-z0-9._/-]+`. Maintainers MUST NOT
 publish maps whose ID contains `..`, leading `/`, or any other path
-traversal sequence.
+traversal sequence. Tokenizer-map IDs and latent-space-map IDs share the
+same namespace rules but live in different paths and MAY collide (e.g. a
+maintainer could publish both `qwen/qwen2` as a tokenizer map and
+`qwen/qwen2-vae` as a latent-space map without conflict).
 
 ---
 
 ## Per-map document
 
-The document at `.well-known/codec/maps/<id>.json` is one of two shapes.
+The document at `.well-known/codec/maps/<id>.json` (tokenizer) or
+`.well-known/codec/latents/<id>.json` (latent-space) is one of two shapes.
 Clients distinguish them by inspecting the keys present.
 
 ### Form A — Pointer
 
-A pointer is small (typically <200 bytes) and references a tokenizer map
+A pointer is small (typically <200 bytes) and references a map
 hosted elsewhere — usually a CDN. This is the recommended shape: the
 `.well-known` document changes only when a new map version is published,
 the heavy map JSON sits behind a CDN's caching headers.
@@ -85,14 +109,21 @@ the heavy map JSON sits behind a CDN's caching headers.
 
 The pointer's `url` MAY be on any HTTPS origin (the maintainer's own,
 jsDelivr, R2, Hugging Face, etc.). Pointers MUST NOT chain — the loader
-fetches `url`, verifies its bytes hash to `hash`, parses as a TokenizerMap,
-and returns. A pointer whose `url` resolves to another pointer is rejected.
+fetches `url`, verifies its bytes hash to `hash`, parses as the appropriate
+map kind (TokenizerMap for `maps/`, LatentSpaceMap for `latents/`), and
+returns. A pointer whose `url` resolves to another pointer is rejected.
 
 ### Form B — Inline map
 
 If the map is small enough that the indirection isn't worth it, the
-document MAY be the full TokenizerMap directly. Detected by the presence
-of `vocab` (v2) or `tokens` (v1):
+document MAY be the full map directly. Clients detect by inspecting keys:
+
+| Path under `.well-known/codec/` | Detect inline by               | Validate against                  |
+|---------------------------------|--------------------------------|-----------------------------------|
+| `maps/<id>.json`                | presence of `vocab` (v2) or `tokens` (v1) | `tokenizer-map.schema.json`       |
+| `latents/<id>.json`             | presence of `decoder` and `space_kind`    | `latent-space-map.schema.json`    |
+
+Inline tokenizer map:
 
 ```json
 {
@@ -106,12 +137,32 @@ of `vocab` (v2) or `tokens` (v1):
 }
 ```
 
+Inline latent-space map (typically Form A in practice — VAE decoder
+references push the document over 10 KB even before the decoder bytes
+themselves):
+
+```json
+{
+  "id": "stabilityai/sd-vae-ft-mse",
+  "version": "1",
+  "space_kind": "vae",
+  "shape":  [4, 64, 64],
+  "dtype":  "fp16",
+  "vae_scale_factor": 0.18215,
+  "decoder": { "runtime": "onnx-web", "url": "...", "hash": "sha256:...", ... },
+  "pipelines": ["raw", "int8", "delta+int8"],
+  ...
+}
+```
+
 When the map is served inline, the integrity guarantee is the HTTPS
 connection itself. Clients that need a stable pin SHOULD compute the hash
 on first fetch and cache it; subsequent loads MAY be re-verified against
 the cached hash to detect tampering.
 
-Maintainers SHOULD prefer Form A for any map larger than ~10 KB.
+Maintainers SHOULD prefer Form A for any map larger than ~10 KB. Latent-space
+maps almost always exceed this threshold once the decoder reference is
+included, so Form A is the practical default for `latents/<id>.json`.
 
 ---
 
@@ -121,9 +172,12 @@ Maintainers SHOULD prefer Form A for any map larger than ~10 KB.
 origin publishes. Useful for clients that want to discover what's available
 without knowing IDs in advance, and for build tools that pre-warm caches.
 
+The directory carries one array per map kind. The `latents` array is
+v0.3-additive; clients on v0.2 ignore it.
+
 ```json
 {
-  "codec_version": "0.2",
+  "codec_version": "0.3",
   "maps": [
     {
       "id": "qwen/qwen2",
@@ -135,12 +189,26 @@ without knowing IDs in advance, and for build tools that pre-warm caches.
       "url": "https://cdn.jsdelivr.net/gh/qwen/codec-maps/qwen2.5.json",
       "hash": "sha256:7af1219c3e4…"
     }
+  ],
+  "latents": [
+    {
+      "id":   "stabilityai/sd-vae-ft-mse",
+      "url":  "https://cdn.jsdelivr.net/gh/wdunn001/codec-latents/sd-vae-ft-mse.json",
+      "hash": "sha256:a1b2c3d4e5…"
+    },
+    {
+      "id":   "stabilityai/sdxl-vae",
+      "url":  "https://cdn.jsdelivr.net/gh/wdunn001/codec-latents/sdxl-vae.json",
+      "hash": "sha256:f6e7d8c9b0…"
+    }
   ]
 }
 ```
 
 Each entry has the same fields as a pointer document. `codec_version`
-identifies the discovery protocol version (currently `"0.2"`).
+identifies the discovery protocol version: `"0.2"` indexes only carry
+`maps[]`; `"0.3"` indexes carry both `maps[]` and `latents[]` (either MAY
+be empty).
 
 The index document is advisory: a client MAY skip it and resolve the
 per-map document directly. A maintainer MAY skip publishing it if they
@@ -150,16 +218,27 @@ expose only one or two maps.
 
 ## Resolution algorithm
 
-Given `(origin, id)`:
+Given `(origin, kind, id)` — where `kind` is `"tokenizer"` or `"latent"`:
 
-1. Fetch `<origin>/.well-known/codec/maps/<id>.json`.
+1. Fetch the per-map document:
+   - `kind = "tokenizer"`  → `<origin>/.well-known/codec/maps/<id>.json`
+   - `kind = "latent"`     → `<origin>/.well-known/codec/latents/<id>.json`
 2. Parse as JSON.
-3. If the parsed object contains `vocab` or `tokens` → treat as an inline
-   map. Run the standard map validator and return.
+3. Detect inline-vs-pointer by inspecting keys:
+   - Tokenizer kind: presence of `vocab` (v2) or `tokens` (v1) → inline.
+     Validate against `tokenizer-map.schema.json` and return.
+   - Latent kind: presence of `decoder` and `space_kind` → inline.
+     Validate against `latent-space-map.schema.json` and return.
 4. Otherwise → treat as a pointer. Validate `id`, `url`, `hash`. Reject if
    the pointer's `id` doesn't match the requested `id`.
-5. Fetch `pointer.url`, verify its bytes hash to `pointer.hash`, parse as
-   TokenizerMap, validate, return.
+5. Fetch `pointer.url`, verify its bytes hash to `pointer.hash`, parse and
+   validate against the schema for the requested `kind`, return.
+
+A document fetched from `latents/` MUST validate against
+`latent-space-map.schema.json`. A document fetched from `maps/` MUST
+validate against `tokenizer-map.schema.json`. The path is the kind
+discriminator — a server cannot publish a tokenizer map under `latents/`
+or vice versa.
 
 Clients MUST NOT follow pointers across more than one hop. A pointer that
 resolves to another pointer is an error.
@@ -167,6 +246,11 @@ resolves to another pointer is an error.
 Resolution failures (404, hash mismatch, validation error) MUST surface as
 distinct error types so application code can fall back gracefully — e.g.
 to a hard-coded URL+hash pair or to a centralised registry lookup.
+
+For latent-space maps, resolution returns the map document; the client
+typically continues by fetching the decoder bytes referenced inside
+(`decoder.url` + `decoder.hash`). Decoder bytes are content-addressed and
+SHOULD be cached by hash indefinitely the same way map bytes are.
 
 ---
 
@@ -271,3 +355,64 @@ The pointer at `qwen.io/.well-known/codec/maps/qwen/qwen2.json` is fetched
 once (small file, well-cached), then the actual map is fetched from the
 CDN and verified against the hash. Subsequent calls hit the in-process
 map cache and skip the network entirely.
+
+---
+
+## Worked example — latent-space map (v0.3)
+
+A maintainer publishes the SD-1 VAE and SDXL VAE from `stability.ai`:
+
+```
+stability.ai/
+  .well-known/
+    codec/
+      index.json
+      latents/
+        stabilityai/
+          sd-vae-ft-mse.json      ← pointer
+          sdxl-vae.json           ← pointer
+```
+
+`latents/stabilityai/sd-vae-ft-mse.json`:
+```json
+{
+  "id":   "stabilityai/sd-vae-ft-mse",
+  "url":  "https://cdn.jsdelivr.net/gh/wdunn001/codec-latents/sd-vae-ft-mse.json",
+  "hash": "sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+}
+```
+
+The CDN-hosted map at `cdn.jsdelivr.net/.../sd-vae-ft-mse.json` is the
+full LatentSpaceMap document — see `spec/examples/sd-vae-ft-mse.latent-map.json`
+for the canonical reference shape.
+
+A client resolves it with:
+
+```ts
+import { discoverLatentSpace } from '@codecai/web';
+
+const space = await discoverLatentSpace({
+  origin: 'https://stability.ai',
+  id:     'stabilityai/sd-vae-ft-mse',
+});
+
+// space.decoder.{url,hash} carry the runtime-portable decoder reference;
+// space.pipelines lists the transform pipelines the server may negotiate.
+```
+
+```python
+from codecai import discover_latent_space
+
+space = await discover_latent_space(
+    origin="https://stability.ai",
+    id="stabilityai/sd-vae-ft-mse",
+)
+```
+
+Resolution proceeds in two hops the same way tokenizer maps do (pointer →
+hash-verified map JSON), but the LatentSpaceMap then references **decoder
+bytes** at `space.decoder.url` + `space.decoder.hash`. Clients that intend
+to do client-side decode fetch and verify those bytes once, cache them by
+hash, and load them into the runtime named in `space.decoder.runtime`.
+Clients that intend to fall back to server-side decode skip this step
+entirely and never download the decoder.

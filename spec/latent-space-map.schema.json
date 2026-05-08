@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://codec.ai/schemas/latent-space-map/v1",
+  "title": "Codec Latent-Space Map",
+  "description": "A per-model dialect for the Codec binary transport protocol's latent modalities (image-latents, video-latents, v0.3+). Describes the latent tensor shape and dtype, references one or more runtime-portable decoder graphs (ONNX / ggml / safetensors / WGSL) by content-addressed hash, lists the transform pipelines (raw / int8 / delta+int8 / ...) the latents may travel under, and optionally declares pre-trained zstd dictionaries for each (format, pipeline) pair. Maps are content-addressed and immutable — a new model version or decoder export publishes a new map at a new URL with a new sha256 hash.",
+  "type": "object",
+  "required": ["id", "version", "space_kind", "shape", "dtype", "decoders", "pipelines"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9._/-]+$",
+      "description": "Stable, globally unique latent-space identifier (convention: lowercase 'org/model-name', e.g. 'stabilityai/sd-vae-ft-mse'). Same ID + same hash means byte-identical map. Lives in the latent-space namespace, separate from tokenizer-map IDs."
+    },
+    "version": {
+      "type": "string",
+      "description": "Schema version. '1' for the current schema. Bumped only on backward-incompatible changes; additive fields land in additive point releases (1.1, 1.2, ...) without changing the major version."
+    },
+    "space_kind": {
+      "type": "string",
+      "enum": ["vae"],
+      "description": "What kind of learned compression produces latents in this space:\n  vae — variational autoencoder (continuous latent, a paired decoder reconstructs pixels). Covers Stable Diffusion VAEs, SDXL VAE, video-model VAEs.\n\nFuture kinds (audio-codec discrete tokens, neural-network-trained image codecs) will be added additively; clients MUST reject space_kind values they do not understand rather than silently treating them as 'vae'."
+    },
+    "shape": {
+      "type": "array",
+      "description": "Per-frame latent tensor shape, **excluding** the batch dimension. For SD-1 at 512×512 this is [4, 64, 64] (channels, height, width). For video models the shape is also per-frame; a video stream emits one LatentFrame per shape-sized tensor.",
+      "items": { "type": "integer", "minimum": 1 },
+      "minItems": 1
+    },
+    "dtype": {
+      "type": "string",
+      "enum": ["fp32", "fp16", "bf16", "int8", "int4"],
+      "description": "Element dtype of the **raw** latent — the dtype the model produces before any pipeline transform. This is the dtype seen under pipeline='raw'. Pipelines like 'int8' convert at the wire boundary; the canonical map dtype stays the model's native dtype."
+    },
+    "vae_scale_factor": {
+      "type": "number",
+      "description": "The model's known latent scale factor (e.g. 0.18215 for SD-1 / SD-2, 0.13025 for SDXL). Decoders multiply latents by this scale before the first conv block. Carrying it in the map lets clients build a complete decode pipeline from the map alone, without re-deriving the constant per model."
+    },
+    "decoders": {
+      "type": "array",
+      "description": "One or more runtime-portable decoder graph references. A client picks the entry whose 'runtime' it can execute (advertised in 'accept_decoders' at HELLO). Multiple entries let a single latent-space map serve clients across runtimes from one CDN pin. All entries MUST decode the same latent space — i.e. plug-compatible at the latent boundary.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["runtime", "url", "hash", "size_bytes", "input_shape", "input_dtype", "output"],
+        "additionalProperties": false,
+        "properties": {
+          "runtime": {
+            "type": "string",
+            "enum": ["onnx-web", "onnx", "torch", "ggml", "wgsl", "safetensors-pt"],
+            "description": "Decoder runtime:\n  onnx-web      — ONNX Runtime Web (browser, WebGPU/WebGL/wasm).\n  onnx          — ONNX Runtime native (Python / .NET / Java / Rust 'ort' crate).\n  torch         — torch + diffusers checkpoint, loaded by the Python client.\n  ggml          — ggml/gguf weights, used by libcodec via stable-diffusion.cpp.\n  wgsl          — WebGPU compute shader bundle for browsers without ONNX-Web.\n  safetensors-pt — raw .safetensors with a torch architecture descriptor."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Absolute HTTPS URL of the decoder graph bytes. MAY be on any HTTPS origin (the maintainer's own, jsDelivr, R2, Hugging Face, etc.)."
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "description": "sha256 digest of the decoder bytes at 'url'. Format 'sha256:<hex>'. The bytes are content-addressed; clients MUST verify the hash before loading the decoder, and SHOULD cache by hash indefinitely."
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Decoder size in bytes. Carried in the map so clients can budget bandwidth + memory before fetching."
+          },
+          "input_shape": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 1 },
+            "minItems": 1,
+            "description": "Decoder graph input shape including the batch dimension, e.g. [1, 4, 64, 64]. Per-batch-1 inference is the canonical form; servers that batch internally still emit per-frame latents."
+          },
+          "input_dtype": {
+            "type": "string",
+            "enum": ["fp32", "fp16", "bf16"],
+            "description": "Element dtype the decoder graph expects at its input. May differ from the latent-space 'dtype' (e.g. an int8 pipeline dequantizes to fp16 before the decoder)."
+          },
+          "output": {
+            "type": "object",
+            "required": ["format", "shape", "dtype"],
+            "additionalProperties": false,
+            "description": "What the decoder produces. Carried in the map so clients can wire the post-decode pipeline (e.g. tone-mapping, BGR→RGB swap) without runtime probing.",
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": ["rgb_uint8", "rgb_fp16", "bgr_uint8", "yuv420p_uint8"],
+                "description": "Pixel format of the decoder output. rgb_uint8 is the common case (HWC, 0–255). yuv420p_uint8 is video-decoder-style and skips the chroma upsample step on the GPU side."
+              },
+              "shape": {
+                "type": "array",
+                "items": { "type": "integer", "minimum": 1 },
+                "description": "Output tensor shape including batch dim, e.g. [1, 3, 512, 512] for CHW or [1, 512, 512, 3] for HWC. The 'format' field disambiguates channel order."
+              },
+              "dtype": {
+                "type": "string",
+                "enum": ["uint8", "fp16", "fp32"]
+              }
+            }
+          },
+          "license": {
+            "type": "string",
+            "description": "SPDX license identifier (or 'proprietary'). VAE checkpoint licenses vary; carrying the license in the map lets enterprise clients gate the fetch."
+          }
+        }
+      }
+    },
+    "pipelines": {
+      "type": "array",
+      "description": "Names of the transform pipelines this map supports on the wire. Each entry MUST appear in the normative pipeline registry defined by spec/PIPELINES.md. 'raw' is mandatory for every map and is the negotiation fallback — when client and server share no other pipeline, they MUST land on 'raw'. The server picks one of these at HELLO/READY based on the client's 'accept_pipelines' list. Adding a non-registry pipeline is a protocol violation; pipelines are not extensible per-deployment.",
+      "items": {
+        "type": "string",
+        "enum": ["raw", "int8", "int4", "int8-adaptive", "int4-adaptive", "delta+int8", "delta+int4"]
+      },
+      "minItems": 1,
+      "contains": { "const": "raw" }
+    },
+    "zstd_dictionaries": {
+      "type": "array",
+      "description": "Pre-trained zstd dictionaries for transport compression. Each entry is keyed by (format, pipeline) — the two axes that define the byte distribution the dict is trained against. A dict trained for one (format, pipeline) pair is meaningless against any other pair; servers MUST NOT respond with Content-Encoding: zstd unless they have loaded a dict whose (format, pipeline) matches the response.",
+      "items": {
+        "type": "object",
+        "required": ["format", "pipeline", "url", "hash", "size_bytes"],
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": ["msgpack", "protobuf"],
+            "description": "Codec wire format the dict is trained against."
+          },
+          "pipeline": {
+            "type": "string",
+            "enum": ["raw", "int8", "int4", "int8-adaptive", "int4-adaptive", "delta+int8", "delta+int4"],
+            "description": "Pipeline the dict is trained against. MUST be one of the pipelines listed in the parent 'pipelines' array."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "video": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional video-modality metadata. Present only on latent-space maps backed by video models. Image-only VAEs omit this block.",
+      "properties": {
+        "default_fps": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Default frame rate for streams from this latent-space when the request doesn't specify one."
+        },
+        "keyframe_interval": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Recommended distance between keyframes in delta-coded pipelines. Smaller = more keyframes = bigger wire, faster client recovery from packet loss."
+        },
+        "temporal_axis": {
+          "type": "string",
+          "enum": ["per-frame", "block"],
+          "description": "per-frame  — one LatentFrame per output frame (most VAEs).\nblock      — the latent encodes a fixed block of frames (e.g. some video-LDM variants); LatentFrame carries the whole block, decoder unrolls."
+        }
+      }
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp. Telemetry only — clients ignore it."
+    }
+  }
+}

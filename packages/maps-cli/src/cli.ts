@@ -33,6 +33,11 @@
  *     through the target tokenizer. Useful for analysis (vocab overlap,
  *     cost estimation). Output is a JSON object: { "<src_id>": [tgt_ids], ... }.
  *     Note: context-free; prefer the streaming `translate` for runtime use.
+ *
+ *   codecai-maps latents <subcommand> [args]                    (v0.3+)
+ *     Latent-space map subcommand group. Subcommands: validate, hash,
+ *     well-known. Mirrors the tokenizer-side commands but for image /
+ *     video VAE decoders. See `codecai-maps latents help` for details.
  */
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -41,6 +46,7 @@ import path from 'node:path';
 import { argv, exit, stdout, stderr } from 'node:process';
 import {
   validateMap,
+  validateLatentMap,
   BPETokenizer,
   Detokenizer,
   pickTokenizer,
@@ -49,11 +55,14 @@ import {
   WELL_KNOWN_BASE,
   type MapPointer,
   type MapIndex,
+  type LatentSpacePointer,
+  type LatentSpaceMap,
 } from '@codecai/web';
 import {
   convertHFTokenizer,
   fetchAndConvert,
   hashMap,
+  hashLatentMap,
   type HFTokenizerJson,
 } from './convert.js';
 import type { TokenizerMap } from '@codecai/web';
@@ -334,6 +343,144 @@ async function cmdWellKnown(_args: string[], flags: Flags): Promise<void> {
   }
 }
 
+// ── latents subcommand group (v0.3+) ──────────────────────────────────────────
+
+async function cmdLatentValidate(args: string[]): Promise<void> {
+  const path = args[0];
+  if (!path) fail('latents validate requires a path to a latent-space-map JSON file');
+  const map: unknown = JSON.parse(await readFile(path!, 'utf-8'));
+  validateLatentMap(map);
+  const m = map as LatentSpaceMap;
+  stdout.write(`✓ valid: ${m.id} (shape=[${m.shape.join(',')}], dtype=${m.dtype}, decoders=${m.decoders.length}, pipelines=${m.pipelines.join(',')})\n`);
+}
+
+async function cmdLatentHash(args: string[]): Promise<void> {
+  const path = args[0];
+  if (!path) fail('latents hash requires a path to a latent-space-map JSON file');
+  const map = JSON.parse(await readFile(path!, 'utf-8')) as LatentSpaceMap;
+  validateLatentMap(map);
+  stdout.write(await hashLatentMap(map) + '\n');
+}
+
+async function cmdLatentWellKnown(_args: string[], flags: Flags): Promise<void> {
+  if (!flags.map) fail('latents well-known requires --map=<path-to-latent-map.json>');
+  const outDir = flags['out-dir'] ?? '.';
+
+  const mapJson = await readFile(flags.map!, 'utf-8');
+  const map = JSON.parse(mapJson) as LatentSpaceMap;
+  validateLatentMap(map);
+  validateMapIdForWellKnown(map.id);
+
+  const inline = flags.inline === 'true';
+  if (!inline && !flags.url) {
+    fail('latents well-known requires either --url=<hosted-map-url> (Form A pointer) or --inline (Form B)');
+  }
+  if (inline && flags.url) {
+    fail('latents well-known: --inline and --url are mutually exclusive');
+  }
+
+  const hash = await hashLatentMap(map);
+  const targetPath = path.join(
+    outDir,
+    WELL_KNOWN_BASE,
+    'latents',
+    ...map.id.split('/'),
+  ) + '.json';
+  await mkdir(path.dirname(targetPath), { recursive: true });
+
+  let docBytes: string;
+  let pointer: LatentSpacePointer | null = null;
+  if (inline) {
+    docBytes = JSON.stringify(map, null, 2) + '\n';
+  } else {
+    pointer = {
+      id: map.id,
+      url: flags.url!,
+      hash,
+      published_at: map.published_at ?? new Date().toISOString(),
+    };
+    docBytes = JSON.stringify(pointer, null, 2) + '\n';
+  }
+  await writeFile(targetPath, docBytes, 'utf-8');
+
+  // Maintain index.json. The v0.3 index has a `latents` array alongside `maps`.
+  // Replace this id's entry if it exists; otherwise append. Inline-only
+  // publishes skip the index by default — the index is a pointer directory.
+  const indexPath = path.join(outDir, WELL_KNOWN_BASE, 'index.json');
+  if (pointer) {
+    let index: MapIndex = { codec_version: '0.3', maps: [], latents: [] };
+    if (existsSync(indexPath)) {
+      const raw = await readFile(indexPath, 'utf-8');
+      try {
+        index = JSON.parse(raw) as MapIndex;
+      } catch {
+        fail(`existing index at ${indexPath} is not valid JSON`);
+      }
+    }
+    const existingLatents = (index.latents ?? []).filter((e) => e.id !== pointer!.id);
+    const latents = [...existingLatents, pointer]
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const updated: MapIndex = {
+      codec_version: '0.3',
+      maps: [...(index.maps ?? [])],
+      latents,
+    };
+    await mkdir(path.dirname(indexPath), { recursive: true });
+    await writeFile(indexPath, JSON.stringify(updated, null, 2) + '\n', 'utf-8');
+  }
+
+  stdout.write(`✓ wrote   ${targetPath}\n`);
+  if (pointer) {
+    stdout.write(`✓ index   ${indexPath} (${pointer.id})\n`);
+    stdout.write(`  url           ${pointer.url}\n`);
+    stdout.write(`  hash          ${pointer.hash}\n`);
+  } else {
+    stdout.write(`  inline map (${(docBytes.length / 1024).toFixed(1)} KB)\n`);
+    stdout.write(`  hash          ${hash}\n`);
+  }
+}
+
+function latentsHelp(): void {
+  stdout.write(`codecai-maps latents — manage latent-space maps (v0.3+)
+
+Subcommands:
+  latents validate <map.json>
+    Validate a latent-space map against the v1 schema. Exit 0 if valid.
+
+  latents hash <map.json>
+    Print the canonical sha256 hash of a latent-space map.
+
+  latents well-known --map=<map.json> (--url=<hosted-url> | --inline) [--out-dir=<dir>]
+    Emit a .well-known/codec/latents/<id>.json document and update the
+    .well-known/codec/index.json directory under <out-dir>. Mirrors the
+    tokenizer-side \`well-known\` command.
+
+Note: \`latents convert\` (VAE checkpoint → ONNX/ggml decoder export) and
+\`latents train-dict\` (zstd dictionary training on quantized/delta'd
+latent corpora) live as Python siblings under packages/bench/scripts/,
+since they require torch + diffusers + onnx export tooling that isn't a
+TS fit. This CLI handles the JSON-side ergonomics only.
+`);
+}
+
+async function cmdLatents(args: string[], flags: Flags): Promise<void> {
+  const sub = args[0];
+  const rest = args.slice(1);
+  switch (sub) {
+    case 'validate':   return await cmdLatentValidate(rest);
+    case 'hash':       return await cmdLatentHash(rest);
+    case 'well-known': return await cmdLatentWellKnown(rest, flags);
+    case 'help':
+    case '--help':
+    case '-h':
+    case undefined:
+      latentsHelp();
+      return;
+    default:
+      fail(`unknown latents subcommand: ${sub}. Run 'codecai-maps latents help' for usage.`);
+  }
+}
+
 function help(): void {
   stdout.write(`codecai-maps — generate Codec tokenizer dialect maps
 
@@ -372,6 +519,11 @@ Commands:
     well-known location. Designed to be checked into a static site so
     clients can call discoverMap({ origin, id }) against your domain.
 
+  latents <subcommand> [args]   (v0.3+)
+    Latent-space map subcommand group. Run 'codecai-maps latents help'
+    for the list. Mirrors the tokenizer-side commands but operates on
+    LatentSpaceMap documents (image / video VAE decoders + pipelines).
+
 Examples:
   codecai-maps build Qwen/Qwen2.5-7B-Instruct --id=qwen/qwen2
   codecai-maps build meta-llama/Llama-3.1-8B --token=hf_xxx
@@ -384,6 +536,11 @@ Examples:
   codecai-maps well-known --map=./qwen_qwen2.json \\
                           --url=https://cdn.example/qwen2.json \\
                           --out-dir=./public
+  codecai-maps latents validate ./sd-vae-ft-mse.latent-map.json
+  codecai-maps latents hash ./sd-vae-ft-mse.latent-map.json
+  codecai-maps latents well-known --map=./sd-vae-ft-mse.latent-map.json \\
+                                  --url=https://cdn.example/sd-vae-ft-mse.json \\
+                                  --out-dir=./public
 `);
 }
 
@@ -401,6 +558,7 @@ async function main(): Promise<void> {
       case 'translate': return await cmdTranslate(positional, flags);
       case 'translation-table': return await cmdTranslationTable(positional, flags);
       case 'well-known': return await cmdWellKnown(positional, flags);
+      case 'latents': return await cmdLatents(positional, flags);
       case 'help':
       case '--help':
       case '-h':

@@ -933,10 +933,10 @@ message LatentStreamHeader {
   repeated uint32 shape  = 2;   // per-frame latent shape, e.g. [4, 64, 64]
   string dtype           = 3;   // "fp16" | "bf16" | "int8" | "int4"
   string pipeline        = 4;   // "raw" | "int8" | "delta+int8" | ...
-  optional float scale   = 5;   // dequantization scale (when dtype != fp16/bf16)
+  optional bytes  scales = 5;   // per-channel fp16 LE scale block (C × 2 bytes); required for static-scale pipelines (int8, int4); absent for raw / adaptive / delta+ (those carry scales in each keyframe LatentFrame)
   optional uint32 fps    = 6;   // video only; 0 or absent for image-latents
   optional uint32 total_frames = 7;  // video only; absent if unknown/streaming
-  optional float vae_scale_factor  = 8;  // model's known scale (e.g. 0.18215 for SD-1)
+  optional float vae_scale_factor  = 8;  // model's known constant (e.g. 0.18215 for SD-1)
 }
 ```
 
@@ -979,19 +979,38 @@ A pipeline is a named, deterministic byte-level transform. Every
 pipeline has a forward (server-side) and inverse (client-side) form, and
 the round-trip is bit-exact at the latent-byte boundary. Pipelines do
 not touch the decoder; they only restructure latent bytes for transport.
+Bit-level math for every pipeline is pinned in
+[`spec/PIPELINES.md`](./PIPELINES.md); reference vectors live in
+`packages/bench/golden/pipelines/<name>/`.
 
-| Pipeline       | Forward                                                                       | Wins                                                  |
-|----------------|-------------------------------------------------------------------------------|-------------------------------------------------------|
-| `raw`          | Pack tensor in row-major order.                                               | Bit-exact, no model contract assumptions.             |
-| `int8`         | Per-channel symmetric quantization to int8; scales travel in the header.      | 2× over fp16; minimal SSIM loss at typical SD scales. |
-| `int4`         | Per-channel symmetric quantization to int4 (packed 2-per-byte).               | 4× over fp16; lossy enough to require quality gating. |
-| `delta+int8`   | Subtract prior keyframe's int8 latent; transmit residual.                     | Video only. Collapses temporally redundant bytes.     |
-| `delta+int4`   | Same, with int4 residual.                                                     | Video only. Most aggressive lossy mode.               |
+| Pipeline         | Scale storage                            | Modality                      | Wins                                                          |
+|------------------|------------------------------------------|-------------------------------|---------------------------------------------------------------|
+| `raw`            | n/a (no quantization)                    | universal floor (mandatory)   | Bit-exact, no model contract assumptions.                     |
+| `int8`           | `LatentStreamHeader` (set once)          | image-latents                 | 2× over fp16; one-shot scale fits single-keyframe streams.    |
+| `int4`           | `LatentStreamHeader` (set once)          | image-latents                 | 4× over fp16; lossy enough to require quality gating.         |
+| `int8-adaptive`  | each keyframe `LatentFrame` (refreshed)  | video-latents                 | Tracks per-channel range drift across frames; +16 B/keyframe. |
+| `int4-adaptive`  | each keyframe `LatentFrame` (refreshed)  | video-latents                 | Same as int4 with adaptive scales.                            |
+| `delta+int8`     | each keyframe (adaptive implicit)        | video-latents                 | Collapses temporally redundant bytes; mostly-zero residuals.  |
+| `delta+int4`     | each keyframe (adaptive implicit)        | video-latents                 | Most aggressive lossy mode.                                   |
+
+`raw` is the **negotiation fallback**: if the client's `accept_pipelines`
+and the server's supported pipelines have no other pipeline in common,
+the server MUST pick `raw`. Both sides MUST always include `raw` in
+their support list — it has no quantization, no math, no scale storage,
+and works against any latent-space map. A client whose `accept_pipelines`
+omits `raw` is a protocol error.
 
 Implementations MUST advertise pipeline support in `accept_pipelines`
 during `HELLO` and reject any header whose `pipeline` they don't know.
 Adding a pipeline is a v0.3+ point release — the registry of named
 pipelines is normative, not extensible per-deployment.
+
+Static-scale pipelines (`int8`, `int4`) and adaptive-scale pipelines
+(`int8-adaptive`, `int4-adaptive`) produce **different byte streams**
+for the same latent input, so they are different pipeline names rather
+than one name with a parameter. The `delta+*` family always uses
+adaptive scales (the `static + delta` combination has no useful case),
+so adaptive is implicit in the name.
 
 ### Endpoints
 
@@ -1355,44 +1374,52 @@ map, the same way Wireshark decodes binary protocols.
 
 ## Open questions (v0.3)
 
-1. **Pipeline registry governance.** v0.3 ships five pipelines (`raw`,
-   `int8`, `int4`, `delta+int8`, `delta+int4`). Adding a sixth requires
-   a point release because the pipeline name encodes math, not just
-   serialization, and clients must invert it bit-exactly. Open: who
-   reviews pipeline proposals, and what reference test vectors does a
-   new pipeline have to ship with before it lands? Default plan: a
-   `packages/bench/golden/pipelines/<name>/` directory of fixtures
-   (latent in, post-pipeline bytes out) and a conformance test in every
-   client's bench harness.
+1. ~~**Pipeline byte-level math.**~~ **Resolved.** v0.3 ships seven
+   pipelines (`raw`, `int8`, `int4`, `int8-adaptive`, `int4-adaptive`,
+   `delta+int8`, `delta+int4`) with bit-exact transforms specified in
+   [`spec/PIPELINES.md`](./PIPELINES.md). `raw` is the mandatory
+   negotiation fallback. Cross-implementation conformance is enforced
+   by reference vectors at `packages/bench/golden/pipelines/<name>/`
+   (server emits latent → reads expected post-pipeline bytes; client
+   reads expected post-pipeline bytes → reconstructs latent), checked
+   in every client's bench harness.
 
-2. **`golden/` reference container.** Cross-runtime decoder drift
+2. **Pipeline registry governance (future).** Adding an eighth pipeline
+   requires a point release because the pipeline name encodes math, not
+   just serialization. Open: who reviews pipeline proposals, and what
+   reference test vectors does a new pipeline have to ship with before
+   it lands? Default plan: a new entry in `golden/pipelines/<name>/`
+   plus a conformance test in every client's bench harness, gated by
+   the same review process as the v0.3 set.
+
+3. **`golden/` reference container.** Cross-runtime decoder drift
    (torch vs ONNX-Web vs ggml vs WGSL) means perceptual conformance
    needs a frozen ground truth. Resolved direction (2026-05-08):
    `packages/bench/golden-builder/` ships a Dockerfile pinning torch +
    diffusers + CUDA + driver versions; the container's sha256 is the
    trust anchor referenced by every latent bench cell.
 
-3. **Multi-stream multiplexing within a session.** v0.3 negotiates one
+4. **Multi-stream multiplexing within a session.** v0.3 negotiates one
    modality per connection. A future revision may allow simultaneous
    token + latent streams within one `HELLO` (e.g. a multimodal model
    producing interleaved text and images), at the cost of frame-level
    stream tagging. Tracked alongside the existing v0.2 open question on
    batched/parallel streams.
 
-4. **Decoder weight distribution.** Tokenizer maps are kilobytes; VAE
+5. **Decoder weight distribution.** Tokenizer maps are kilobytes; VAE
    decoders are 50 MB–GB-scale. The discovery convention pins decoder
    bytes content-addressed by sha256, but caching strategy and
    air-gapped substitution remain client-side concerns. Pre-warming via
    the `index.json` directory document is the recommended pattern; a
    future registry mirror analogous to `codec-maps` is open.
 
-5. **Audio-latents.** Out of scope for v0.3 but architecturally
+6. **Audio-latents.** Out of scope for v0.3 but architecturally
    identical (audio-codec models like Encodec / SoundStream emit
    tokens that decode to waveforms via a learned function). The
    modality slot anticipates this; pipelines and frame schema can be
    added additively in a future release.
 
-6. **Streaming tool results.** `ToolResultFrame.done` allows multi-frame
+7. **Streaming tool results.** `ToolResultFrame.done` allows multi-frame
    results, but the canonical case (Time, Calculator, single-shot HTTP
    tools) emits one frame with `done=true`. Open: should agent-style
    tools that produce long generative output (a sub-LLM, a long-running
@@ -1402,14 +1429,14 @@ map, the same way Wireshark decodes binary protocols.
    affects whether tool results compose like sub-completions or stay
    atomic.
 
-7. **Tool-call cancellation.** A `ToolCallFrame` carries no abort
+8. **Tool-call cancellation.** A `ToolCallFrame` carries no abort
    signal; today cancelling means closing the underlying transport.
    Open: a per-call `CancelToolCallFrame { tool_call_id }` would let
    cancellation flow without tearing down the session, matching how
    completions handle `Connection: close` mid-stream. Tracked separately
    because it crosses into MCP session-management territory.
 
-8. **Chained sub-calls.** A tool that itself dispatches to other tools
+9. **Chained sub-calls.** A tool that itself dispatches to other tools
    (an agent-as-a-tool) needs a `parent_tool_call_id` field for tracing
    and policy enforcement. The current schema has none. Adding it is
    additive (optional protobuf field, optional msgpack key) but the

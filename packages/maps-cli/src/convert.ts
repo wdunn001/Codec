@@ -14,7 +14,7 @@
  * S3, …) and pinned by sha256 hash.
  */
 
-import type { TokenizerMap } from '@codecai/web';
+import type { TokenizerMap, LatentSpaceMap } from '@codecai/web';
 import { compilePreTokenizerRegex, metaspaceProgram } from './compile-pretok.js';
 
 // ── HuggingFace tokenizer.json shape ────────────────────────────────────────
@@ -226,7 +226,22 @@ export async function fetchAndConvert(
  * `loadMap({ url, hash })`.
  */
 export async function hashMap(map: TokenizerMap): Promise<string> {
-  const json = JSON.stringify(map, null, 2);
+  return hashJsonDocument(map);
+}
+
+/**
+ * Compute the canonical sha256 hash of a LatentSpaceMap. Use this when
+ * publishing a latent-space map so consumers can pin against it via
+ * `loadLatentMap({ url, hash })`. Same canonical form as `hashMap`
+ * (2-space pretty-printed JSON, UTF-8) so a single emitter produces the
+ * bytes both server and client agree on.
+ */
+export async function hashLatentMap(map: LatentSpaceMap): Promise<string> {
+  return hashJsonDocument(map);
+}
+
+async function hashJsonDocument(doc: object): Promise<string> {
+  const json = JSON.stringify(doc, null, 2);
   const bytes = new TextEncoder().encode(json);
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   const hex = Array.from(new Uint8Array(digest))
