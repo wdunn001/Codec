@@ -33,11 +33,15 @@ Source-available under [BSL 1.1](LICENSE). Patent posture in [PATENTS.md](PATENT
 
 ### Polyglot clients
 
+Six reference implementations, byte-identical Codec frames per cell across all of them on the [cross-stack matrix](packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md) (sglang + llama.cpp engines; vllm shows ~5–10 % chunker drift on its uvicorn proxy, frames decode to the same token stream).
+
 | Lang | Package | Registry | Surface |
 |---|---|---|---|
 | TypeScript / JS | [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) | npm 0.4.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · pretok-program runtime |
-| Python | [`codecai`](https://pypi.org/project/codecai/) | PyPI 0.2.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
-| .NET | [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) | NuGet 0.2.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
+| Python | [`codecai`](https://pypi.org/project/codecai/) | PyPI 0.1.0 (local 0.2.0) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
+| .NET | [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) | NuGet 0.1.0 (local 0.2.0) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
+| Rust | [`codec-rs`](packages/rust) | local 0.1.0 (crates.io publish queued) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
+| Java | [`ai.codec:codec`](packages/java) | local 0.1.0 (Maven Central publish queued) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
 | C99 | [`libcodec`](packages/c) | vcpkg / FetchContent 0.2.0 | Detokenizer · ToolWatcher · stream decoders (BPE + Translator pending Unicode tables) |
 
 ### Tooling and registry
@@ -105,7 +109,7 @@ All numbers are real measurements from `packages/bench/`. The headline data set 
 | `codec_detokenizer_render` | 60.4 | 16.6 |
 | **Speedup** | | **~100×** |
 
-These are reproducible. Bench drivers under [`packages/demo-python`](packages/demo-python), [`packages/demo-dotnet`](packages/demo-dotnet), [`packages/demo-c`](packages/demo-c), [`packages/demo-web`](packages/demo-web). Full methodology + raw numbers in [`packages/bench/RESULTS.md`](packages/bench/RESULTS.md).
+These are reproducible. Bench drivers under [`packages/demo-python`](packages/demo-python), [`packages/demo-dotnet`](packages/demo-dotnet), [`packages/demo-rust`](packages/demo-rust), [`packages/demo-java`](packages/demo-java), [`packages/demo-c`](packages/demo-c), [`packages/demo-web`](packages/demo-web). The cross-stack matrix runner is [`packages/bench/scripts/run-all-langs.sh`](packages/bench/scripts/run-all-langs.sh) and the aggregator is [`packages/bench/scripts/aggregate.py`](packages/bench/scripts/aggregate.py). Full methodology + raw numbers in [`packages/bench/RESULTS.md`](packages/bench/RESULTS.md) and the [cross-stack MATRIX.md](packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md).
 
 ---
 
@@ -129,7 +133,7 @@ for await (const frame of decodeStream(resp.body!)) {
 
 The watcher never touches the vocab, never allocates a string. ~100× faster than detokenizing the same stream (microbench in `packages/c/examples/bench_watcher.c`). Same primitive covers reasoning blocks, multimodal spans, code-interpreter regions — anything delimited by a `(start, end)` special pair.
 
-Available in: `@codecai/web` · `codecai` · `Codec.Net` · `libcodec`.
+Available in: `@codecai/web` · `codecai` · `Codec.Net` · `codec-rs` · `ai.codec:codec` (Java) · `libcodec`.
 
 ### `Translator` — cross-vocab agent handoff
 
@@ -145,7 +149,7 @@ for await (const frame of decodeStream(resp.body!)) {
 
 The text intermediate is purely local. Stateful word-boundary buffering so streaming chunks don't split BPE merges mid-word. Includes a `staticTranslationTable(A, B)` for context-free analysis (vocab overlap, cost estimation).
 
-Available in: `@codecai/web` · `codecai` · `Codec.Net`. C version pending the Unicode-tables work.
+Available in: `@codecai/web` · `codecai` · `Codec.Net` · `codec-rs` · `ai.codec:codec` (Java). C version pending the Unicode-tables work. The cross-vocab handoff has its own bench cell — measured 30 % less bridge CPU + 15× smaller wire on a Llama-3 → Qwen-2 round-trip at 2 K tokens, byte-identical Qwen-2 output asserted; data in [`packages/bench/results/2026-05-08T01-15-02Z/translator/`](packages/bench/results/2026-05-08T01-15-02Z/translator).
 
 ---
 
@@ -209,24 +213,42 @@ spec/
   PRETOKENIZER_PROGRAM.md      v2.1 regex-free pre-tokenizer recipe spec
   tokenizer-map.schema.json    JSON Schema for tokenizer maps
 packages/
-  web/         @codecai/web         isomorphic detokenizer + BPE tokenizer + ToolWatcher + Translator + pretok runtime
-  python/      codecai               Python twin of @codecai/web
-  dotnet/      Codec.Net             .NET (net8.0) twin
-  c/           libcodec              C99 detokenizer + ToolWatcher (no deps; vcpkg + FetchContent)
-  maps-cli/    @codecai/maps-cli     generate maps + cross-vocab translate / translation-table
-  bench/       benchmark suite (wire / handoff / live / compression / watcher / translator)
-  core/        legacy frame codec (kept for compatibility; @codecai/web supersedes)
-  client/      legacy TS client (kept for compatibility)
-  demo/        illustrative agent-to-agent demo
+  web/             @codecai/web         isomorphic detokenizer + BPE tokenizer + ToolWatcher + Translator + pretok runtime
+  python/          codecai               Python twin of @codecai/web
+  dotnet/          Codec.Net             .NET (net8.0) twin
+  rust/            codec-rs              Rust twin (crates.io publish queued)
+  java/            ai.codec:codec        Java twin (Maven Central publish queued)
+  c/               libcodec              C99 detokenizer + ToolWatcher (no deps; vcpkg + FetchContent)
+  maps-cli/        @codecai/maps-cli     generate maps + cross-vocab translate / translation-table
+  bench/           benchmark suite (cross-stack matrix, wire / handoff / live / compression / watcher / translator)
+  wire-compress/   standalone Accept-Encoding picker (zero-dep, framework-agnostic)
+  codec-tool-kit/  SDK for building Codec-native bolt-on tools (cached IDs in / cached IDs out)
+  demo-web/        TS / browser demo runner
+  demo-python/     Python demo runner
+  demo-dotnet/     .NET demo runner
+  demo-rust/       Rust demo runner
+  demo-java/       Java demo runner
+  demo-c/          C demo runner
+  demo/            high-level agent-to-agent walkthrough
+  core/            legacy frame codec (kept for compatibility; @codecai/web supersedes)
+  client/          legacy TS client (kept for compatibility)
+dictionaries/      pre-trained zstd dictionaries for the Codec wire (one per vocab × format)
 article/
   text-is-the-wrong-wire-format.md   the case for Codec
+PATENTS.md         patent posture
+LICENSE            BSL 1.1 (auto-Apache-2.0 four years post-publication)
+COMMERCIAL.md      commercial licensing terms above the $5M threshold
 ```
 
 Sister repos:
 
-- **[`codec-maps`](https://github.com/wdunn001/codec-maps)** — community registry of dialect maps for 14 model families. Served via jsDelivr.
+- **[`codec-maps`](https://github.com/wdunn001/codec-maps)** — pre-generated tokenizer dialect maps for common models (Llama, Qwen, Mistral, Phi, Gemma, DeepSeek, Falcon, SmolLM2, Codestral, etc.). Open registry — anyone with a HuggingFace `tokenizer.json` can `npx @codecai/maps-cli generate <tokenizer.json>` and ship a map for their model without waiting on a registry PR. Served via jsDelivr.
+- **[`codec-supervisor`](https://github.com/wdunn001/codec-supervisor)** — pre-built Docker images for the four engine + gateway integrations (`codec-sglang`, `codec-vllm`, `codec-llamacpp`, `codec-metamcp`). `docker run` and you're at the wire.
+- **[`codec-website`](https://github.com/wdunn001/codec-website)** — source for [codecai.net](https://codecai.net), the marketing + docs front door.
 - **[vLLM PR #41765](https://github.com/vllm-project/vllm/pull/41765)** — server-side encoder, two endpoint paths (`/v1/completions` + `stream_format`, and `/v1/completions/codec` for binary request bodies on huge prompts).
 - **[SGLang PR #24483](https://github.com/sgl-project/sglang/pull/24483)** — same surface in SGLang.
+- **[llama.cpp PR #22757](https://github.com/ggml-org/llama.cpp/pull/22757)** — same surface in `llama-server`.
+- **[MetaMCP PR #287](https://github.com/metatool-ai/metamcp/pull/287)** — gateway-side Codec + token-aware tool dispatch at the JSON-RPC seam.
 
 ---
 
@@ -376,7 +398,7 @@ What's validated end-to-end:
 - ✅ **Wire reduction.** sglang 485 KB → 354 B with full Codec stack at 2 K tokens (**1,404×**). vllm 479 KB → 3.9 KB with gzip alone (**126×**). llama.cpp 529 KB → 16 KB with gzip alone (**33×**). TTFB stays within 1 ms of JSON-SSE on the same engines.
 - ✅ **Tool-call dispatch on raw IDs.** `ToolWatcher` runs at 0.61 ms / 1 M tokens vs 60.4 ms for detokenize+regex (~100× faster). Available in every client.
 - ✅ **Cross-vocab agent handoff.** Llama-3 → Qwen-2 at 2 K tokens: 30 % less bridge CPU, 15.1× smaller wire, byte-identical Qwen-2 output asserted by the bench.
-- ✅ **Polyglot clients shipped** — TS, Python, .NET, C all on package registries. Frame format + Detokenizer everywhere; BPE encoder in TS / Python / .NET (C deferred until Unicode tables land).
+- ✅ **Polyglot clients shipped** — TS / Python / .NET / Rust / Java / C all built and tested in the matrix. Three on public registries today (`@codecai/web` on npm, `codecai` on PyPI, `Codec.Net` on NuGet); Rust + Java built locally with crates.io / Maven Central publishes queued. Frame format + Detokenizer + ToolWatcher + Translator + BPE encoder in TS / Python / .NET / Rust / Java; C has Detokenizer + ToolWatcher (BPE + Translator deferred until Unicode tables land).
 - ✅ **vLLM / SGLang / llama.cpp PRs open** — same wire surface across all three; engines tested in the cross-stack matrix.
 - ✅ **MetaMCP PR open** — gateway-side Codec + token-aware tool dispatch ([`metatool-ai/metamcp#287`](https://github.com/metatool-ai/metamcp/pull/287)). Image: `wdunn001/codec-metamcp:0.2.4`.
 - ✅ **Pretok program v2.1** — maps-cli compiles regex pre-tokenizers into a regex-free op list. Equivalence verified on 23 stress inputs against the real Qwen-2 / Llama-3 regexes.
@@ -384,11 +406,12 @@ What's validated end-to-end:
 
 What's still on the roadmap:
 
+- **Public-registry publishes for Rust + Java** — `codec-rs` to crates.io and `ai.codec:codec` to Maven Central. Both built and matrix-tested locally; the publish step is mechanical (CI workflow + signing key).
 - **C BPE encoder + Translator** — needs the pretok program runtime in C plus Unicode `\p{L}` / `\p{N}` interval-list tables (one-shot generator from UCD). The pretok-program work landed specifically to make this tractable.
-- **Java client (Maven Central)** — JDK has Unicode regex natively, so the port is straightforward. Queued.
-- **Pretok program runtime in Python + .NET** — both have `\p{L}` support today, so the regex path works fine; porting the program runtime gives ~10–30% encode-startup speedup.
-- **Server-side dictionary loading** — sglang/vLLM/llama.cpp middleware needs to pick the right dict for the (`tokenizer_id`, `stream_format`) pair before compressing. Dict artifacts and schema are in place; this is the wiring step.
-- **Map discovery** — formal registry vs `.well-known` URL convention. Not blocking; clients can pin URLs+hashes today.
+- **Pretok program runtime in Python + .NET** — both have `\p{L}` support today, so the regex path works fine; porting the program runtime gives ~10–30 % encode-startup speedup.
+- **Server-side dictionary loading** — sglang's `codec_compression.py` ships dict-zstd; the vllm fork has dicts pre-baked but the lifespan loader hook is in flight. llama.cpp's libcpp-httplib transport ships gzip only. Dict artifacts and schema are in place; the engine-side wiring is the next PR.
+- **Streaming chunked tokenization at the MetaMCP gateway** — today MCP `tools/call` results are tokenized whole at the response seam. Streaming chunks (incremental tokenize as the underlying tool produces text) is the next gateway PR; until then long file-read tools hold the response until completion before re-emitting Codec frames.
+- **Map discovery** — formal registry vs `.well-known` URL convention. Not blocking; clients can pin URLs + hashes today.
 - **Session protocol** — persistent connection variant for multiplexing. Stateless HTTP covers the common case.
 
 ---
