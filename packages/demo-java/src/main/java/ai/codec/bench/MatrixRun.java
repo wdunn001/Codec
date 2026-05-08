@@ -237,8 +237,12 @@ public final class MatrixRun {
     }
 
     public static void run(MatrixArgs args) throws Exception {
+        // Two mappers: one compact for HTTP request bodies (sglang's parser
+        // is strict about request formats); one indented for the SCHEMA-v1
+        // output JSON.
         ObjectMapper json = new ObjectMapper();
-        json.configure(SerializationFeature.INDENT_OUTPUT, true);
+        ObjectMapper jsonOut = new ObjectMapper();
+        jsonOut.configure(SerializationFeature.INDENT_OUTPUT, true);
 
         Path methodologyPath = Paths.get(args.methodology).toAbsolutePath();
         ObjectNode methodology = (ObjectNode) json.readTree(methodologyPath.toFile());
@@ -362,7 +366,7 @@ public final class MatrixRun {
 
         Path outPath = Paths.get(args.out).toAbsolutePath();
         Files.createDirectories(outPath.getParent());
-        json.writerWithDefaultPrettyPrinter().writeValue(outPath.toFile(), out);
+        jsonOut.writerWithDefaultPrettyPrinter().writeValue(outPath.toFile(), out);
         System.err.println("\nwrote " + outPath + " (" + rows.size() + " rows)");
     }
 }
