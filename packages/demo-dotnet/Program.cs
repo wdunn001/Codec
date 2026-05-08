@@ -17,6 +17,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Codec;
 
 namespace Codec.Bench;
@@ -52,6 +53,12 @@ internal static class Program
         public string Model = "Qwen/Qwen2.5-0.5B-Instruct";
         public string Prompt = "Explain entropy in one sentence:";
         public int MaxTokens = 64;
+
+        // SCHEMA-v1 matrix mode (mirrors matrix_run.py / matrix_run.ts).
+        public string? MethodologyPath = null;
+        public string? OutPath = null;
+        public int[] Sizes = new[] { 64, 512, 2048 };
+        public int Reps = 2;
     }
 
     static Args ParseArgs(string[] argv)
@@ -65,6 +72,18 @@ internal static class Program
                 case "--model":       a.Model = argv[++i]; break;
                 case "--prompt":      a.Prompt = argv[++i]; break;
                 case "--max-tokens":  a.MaxTokens = int.Parse(argv[++i]); break;
+                case "--methodology": a.MethodologyPath = argv[++i]; break;
+                case "--out":         a.OutPath = argv[++i]; break;
+                case "--reps":        a.Reps = int.Parse(argv[++i]); break;
+                case "--sizes":
+                    var sizes = new List<int>();
+                    while (i + 1 < argv.Length && int.TryParse(argv[i + 1], out var sz))
+                    {
+                        sizes.Add(sz);
+                        i++;
+                    }
+                    if (sizes.Count > 0) a.Sizes = sizes.ToArray();
+                    break;
             }
         }
         return a;
@@ -295,9 +314,202 @@ internal static class Program
         Console.Write(sb.ToString());
     }
 
+    // ── SCHEMA-v1 matrix mode (mirrors matrix_run.py / matrix_run.ts) ──────
+    //
+    // Consumes a methodology JSON written by capture_methodology.py and emits
+    // a SCHEMA-v1 result JSON keyed by (path, encoding, size, rep). Wire
+    // bytes are sums of raw socket reads BEFORE Content-Encoding decompression
+    // (HttpClientHandler.AutomaticDecompression = None). Decompression is
+    // best-effort for token counting only and never overrides wire/TTFB.
+
+    static string Sh(string cmd, string args)
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = cmd, Arguments = args,
+                RedirectStandardOutput = true, UseShellExecute = false,
+            };
+            using var p = System.Diagnostics.Process.Start(psi)!;
+            var s = p.StandardOutput.ReadToEnd().Trim();
+            p.WaitForExit(15_000);
+            return s;
+        }
+        catch { return ""; }
+    }
+
+    static double Median(List<double> xs)
+    {
+        if (xs.Count == 0) return double.NaN;
+        var s = xs.OrderBy(x => x).ToList();
+        var m = s.Count / 2;
+        return s.Count % 2 == 1 ? s[m] : (s[m - 1] + s[m]) / 2.0;
+    }
+
+    static int MedianInt(List<int> xs)
+    {
+        if (xs.Count == 0) return 0;
+        var s = xs.OrderBy(x => x).ToList();
+        var m = s.Count / 2;
+        return s.Count % 2 == 1 ? s[m] : (s[m - 1] + s[m]) / 2;
+    }
+
+    static async Task<int> RunMatrixAsync(Args args)
+    {
+        if (args.MethodologyPath is null || args.OutPath is null)
+        {
+            Console.Error.WriteLine("matrix mode requires --methodology and --out");
+            return 1;
+        }
+
+        var methodologyJson = await File.ReadAllTextAsync(args.MethodologyPath);
+        using var methodology = JsonDocument.Parse(methodologyJson);
+        var methodologyRoot = methodology.RootElement.Clone();
+
+        // Repo root: derive from this assembly's path. demo-dotnet/bin/.../codec-bench.dll
+        // → packages/demo-dotnet → repo root is up 2 from packages/demo-dotnet/.
+        // Caller can override with absolute paths in methodology if needed.
+        var asmDir = Path.GetDirectoryName(typeof(Program).Assembly.Location)!;
+        var repoRoot = Path.GetFullPath(Path.Combine(asmDir, "..", "..", "..", "..", ".."));
+
+        var promptsRel = methodologyRoot.GetProperty("workload").GetProperty("prompts_file").GetString()!;
+        var promptsPath = Path.Combine(repoRoot, "packages", "bench", promptsRel);
+        if (!File.Exists(promptsPath))
+        {
+            Console.Error.WriteLine($"prompts file not found: {promptsPath}");
+            return 1;
+        }
+        var promptsJson = await File.ReadAllTextAsync(promptsPath);
+        using var promptsDoc = JsonDocument.Parse(promptsJson);
+        var prompts = promptsDoc.RootElement.GetProperty("prompts").Clone();
+
+        var endpoint = methodologyRoot.GetProperty("engine").GetProperty("endpoint").GetString()!;
+        var model = methodologyRoot.GetProperty("model").GetProperty("id").GetString()!;
+
+        // Build the result object.
+        var commit = Sh("git", "rev-parse HEAD");
+        var clientBlock = new Dictionary<string, object?>
+        {
+            ["lang"] = "dotnet",
+            ["lib_name"] = "Codec.Net",
+            ["lib_version"] = typeof(Codec.StreamDecoder).Assembly.GetName().Version?.ToString() ?? "0.2.0",
+            ["lib_commit"] = commit,
+            ["runtime"] = $".NET {Environment.Version} / {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}",
+        };
+        var benchToolBlock = new Dictionary<string, object?>
+        {
+            ["name"] = "demo-dotnet/codec-bench MatrixRun",
+            ["version"] = "0.1.0",
+            ["commit"] = commit,
+            ["reps"] = args.Reps,
+            ["warmup_reps"] = 0,
+            ["aggregation"] = "median",
+            ["ttft_definition"] = "wall-clock from request POST to first received byte (HttpClient ResponseHeadersRead, before decompression)",
+            ["wire_bytes_definition"] = "raw socket bytes received before any Content-Encoding decompression (HttpClientHandler.AutomaticDecompression=None)",
+            ["total_ms_definition"] = "wall-clock from request POST to last byte",
+        };
+
+        // Replicate methodology with our blocks substituted (do NOT touch other fields).
+        var methodologyCopy = JsonNode.Parse(methodologyJson)!.AsObject();
+        methodologyCopy["client"] = JsonSerializer.SerializeToNode(clientBlock);
+        methodologyCopy["bench_tool"] = JsonSerializer.SerializeToNode(benchToolBlock);
+
+        var handler = new HttpClientHandler { AutomaticDecompression = System.Net.DecompressionMethods.None };
+        using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(180) };
+
+        var rows = new List<Dictionary<string, object?>>();
+        foreach (var size in args.Sizes)
+        {
+            if (!prompts.TryGetProperty(size.ToString(), out var promptElem))
+            {
+                Console.Error.WriteLine($"no canonical prompt defined for size={size}");
+                return 1;
+            }
+            var prompt = promptElem.GetString()!;
+            Console.Error.WriteLine($">>> size={size}  prompt: '{(prompt.Length > 60 ? prompt[..60] + "..." : prompt)}'");
+
+            foreach (var (label, fmt) in Paths)
+            {
+                foreach (var enc in Encodings)
+                {
+                    var repWire = new List<int>();
+                    var repTtft = new List<double>();
+                    var repTotal = new List<double>();
+                    int tokens = 0;
+                    string? error = null;
+                    for (int r = 0; r < args.Reps; r++)
+                    {
+                        var cell = new Cell
+                        {
+                            PathLabel = label, Format = fmt, Encoding = enc, Status = "pending",
+                        };
+                        var thisArgs = new Args
+                        {
+                            Url = endpoint, Model = model, Prompt = prompt, MaxTokens = size,
+                        };
+                        await RunOne(http, thisArgs, cell);
+                        if (cell.Status == "done" && cell.WireBytes is not null)
+                        {
+                            repWire.Add(cell.WireBytes.Value);
+                            if (cell.TtfbMs.HasValue) repTtft.Add(cell.TtfbMs.Value);
+                            if (cell.TotalMs.HasValue) repTotal.Add(cell.TotalMs.Value);
+                            tokens = Math.Max(tokens, cell.Tokens);
+                        }
+                        else
+                        {
+                            error = cell.Error;
+                        }
+                    }
+
+                    var row = new Dictionary<string, object?>
+                    {
+                        ["size"] = size,
+                        ["format"] = fmt,
+                        ["encoding"] = enc,
+                        ["wire_bytes"] = repWire.Count > 0 ? (int?)MedianInt(repWire) : null,
+                        ["ttft_ms"] = repTtft.Count > 0 ? (double?)Median(repTtft) : null,
+                        ["total_ms"] = repTotal.Count > 0 ? (double?)Median(repTotal) : null,
+                        ["tokens_emitted"] = tokens,
+                        ["rep_wire_bytes"] = repWire,
+                        ["rep_ttft_ms"] = repTtft,
+                        ["rep_total_ms"] = repTotal,
+                        ["error"] = error,
+                    };
+                    rows.Add(row);
+                    Console.Error.WriteLine(
+                        $"    {label,-25} {enc,-8} size={size,5}  wire={row["wire_bytes"]}  " +
+                        $"ttft={(repTtft.Count > 0 ? Median(repTtft).ToString("F1") : "-")}  " +
+                        $"total={(repTotal.Count > 0 ? Median(repTotal).ToString("F1") : "-")}  tokens={tokens}");
+                }
+            }
+        }
+
+        var output = new JsonObject
+        {
+            ["schema_version"] = "1",
+            ["methodology"] = methodologyCopy,
+            ["rows"] = JsonSerializer.SerializeToNode(rows),
+        };
+
+        Directory.CreateDirectory(Path.GetDirectoryName(args.OutPath)!);
+        await File.WriteAllTextAsync(args.OutPath,
+            output.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        Console.Error.WriteLine($"\nwrote {args.OutPath} ({rows.Count} rows)");
+        return 0;
+    }
+
     public static async Task<int> Main(string[] argv)
     {
         var args = ParseArgs(argv);
+
+        // Dispatch: if --methodology is given, run the SCHEMA-v1 matrix
+        // mode. Otherwise fall through to the legacy ad-hoc grid bench
+        // (kept for quick interactive use; not part of the cross-stack
+        // matrix harness).
+        if (args.MethodologyPath is not null)
+            return await RunMatrixAsync(args);
+
         Console.WriteLine($"target: {args.Url}");
         Console.WriteLine($"model:  {args.Model}");
         Console.WriteLine($"prompt: {args.Prompt}  (max_tokens={args.MaxTokens})");
