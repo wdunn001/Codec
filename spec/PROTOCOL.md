@@ -1,9 +1,11 @@
-# Codec Protocol Specification — v0.2
+# Codec Protocol Specification — v0.3
 
 Codec is a binary transport protocol for AI inference APIs. It replaces the
-UTF-8 / JSON wire format with a stream of token IDs, deferring text decoding
-to the presentation layer — and skipping it entirely when the caller is
-another model.
+UTF-8 / JSON wire format with a stream of the model's **native units**,
+deferring rendering to the presentation layer — and skipping it entirely
+when the caller is another model. v0.2 covered text generation (token IDs);
+v0.3 adds image and video generation (VAE latents) on the same negotiation
+fabric.
 
 ---
 
@@ -26,6 +28,42 @@ Codec separates the layers:
 
 The presentation layer is invoked only when a human is actually going to read
 the output. Agent-to-agent traffic skips it entirely.
+
+---
+
+## Modalities (v0.3)
+
+The same layer cake holds for image and video generation. The "model's
+native unit" is just different bytes:
+
+| Modality          | Native unit                | Wire frame type        | Presentation step       |
+|-------------------|----------------------------|------------------------|-------------------------|
+| `text-tokens`     | uint32 token IDs           | `CodecFrame`           | detokenize → UTF-8      |
+| `tool-calls`      | uint32 token IDs           | `ToolCallFrame` / `ToolResultFrame` | leaf-side detokenize/tokenize |
+| `image-latents`   | latent tensor              | `LatentFrame` (+header)| `vae_decode` → RGB      |
+| `video-latents`   | latent tensor stream       | `LatentFrame` (+delta) | `vae_decode` per frame  |
+
+The wire mode (msgpack vs protobuf), compression negotiation, content-addressed
+discovery, and `.well-known` publishing convention are **shared across
+modalities**. Only the per-frame schema and the per-modality map differ:
+
+- Text streams reference a **tokenizer map** (`spec/tokenizer-map.schema.json`).
+- Latent streams reference a **latent-space map** (`spec/latent-space-map.schema.json`),
+  which carries the latent shape/dtype, a runtime-portable decoder reference
+  (ONNX / ggml / safetensors / WGSL), and a list of supported transform
+  pipelines (raw / int8 / delta+int8 / ...).
+
+A connection negotiates exactly one modality at `HELLO`. Multi-modality
+multiplexing within a single connection is out of scope for v0.3 and tracked
+under Open Questions.
+
+**Why latents and not pixels.** A 512×512 RGB frame at fp16 is ~1.5 MB; the
+SD-1 latent that produced it is 4×64×64 fp16 = 32 KB — a 48× reduction
+*before* compression, and the decoder is a learned function the client can
+run once and reuse across frames. For agent-to-agent calls (e.g. a planner
+asking a vision model to inspect a generation), the receiving model often
+ingests latents directly and never needs the pixels at all — the same UTF-8
+round-trip elimination that motivates v0.2, applied to image bytes.
 
 ---
 
@@ -82,6 +120,14 @@ against HuggingFace's reference tokenizer for Qwen-2.
 Codec defines two wire modes. Both carry identical frame semantics; they
 differ only in serialization.
 
+The frame types below (`CodecFrame`) carry text-tokens flowing
+engine→client; the bidirectional tool-call wire (`ToolCallFrame` /
+`ToolResultFrame`) reuses the same framing for engine↔tool token-ID
+exchange — see [§ Bidirectional tool calls](#bidirectional-tool-calls-token-ids-in--token-ids-out)
+below. The latent modalities use `LatentStreamHeader` + `LatentFrame`
+over the same two wire modes — see [§ Latent Modality](#latent-modality-v03)
+below.
+
 ### Mode A — MessagePack (`application/x-msgpack`)
 
 Each frame is a MessagePack-encoded map:
@@ -130,6 +176,27 @@ message CodecRequest {
   float           temperature   = 3;
   repeated string stop          = 4;
   string          stream_format = 5;  // "msgpack" or "protobuf"
+}
+
+// Bidirectional tool-call wire — see § Endpoints / Bidirectional tool calls.
+// Same length-prefix framing and same compression rules as CodecFrame.
+// The gateway routes by tool_call_id and MUST NOT decode `ids`.
+
+message ToolCallFrame {
+  string          tool_call_id = 1;
+  string          tool_name    = 2;
+  string          vocab_id     = 3;
+  repeated uint32 ids          = 4 [packed = true];
+  bool            done         = 5;
+}
+
+message ToolResultFrame {
+  string          tool_call_id  = 1;
+  string          vocab_id      = 2;
+  repeated uint32 ids           = 3 [packed = true];
+  bool            done          = 4;
+  optional string finish_reason = 5;
+  optional string error_message = 6;
 }
 ```
 
@@ -238,6 +305,161 @@ the wire" guarantees. Servers MUST implement Path A (it's just OpenAI's
 existing `prompt: int[]` plus `stream_format`). Servers SHOULD implement
 Path B for the bandwidth case but MAY omit it; clients should fall back to
 Path A if a `/v1/completions/codec` request returns 404.
+
+### Bidirectional tool calls (token IDs in → token IDs out)
+
+Tool calls are the bidirectional twin of completions: the engine emits
+token IDs that name a tool and carry its arguments; the tool replies
+with token IDs that carry its result. Same wire shape as `CodecFrame`,
+same framing, same compression. The gateway between engine and tool
+routes frames by `tool_call_id` — it MUST NOT decode them.
+
+**Detokenize at the leaves, not the seams.** A tool that needs text to
+do its job (format a date, read a DOM) detokenizes its inbound
+arguments locally; a tool that produces text output (a transcript, a
+search result) tokenizes its outbound result locally with the
+session's negotiated vocab. Every other party on the path — engine,
+gateway, agent — operates on the raw IDs. UTF-8 exists only inside
+the tool's own logic.
+
+This is the architectural property that distinguishes Codec from
+"binary-wrapped JSON-RPC". Tokenize-at-the-gateway shims (like the one
+in MetaMCP today) are a back-compat fallback for tools that don't yet
+speak Codec; the target is leaf-tokenization with the gateway as a
+transparent ID pipe.
+
+#### Frame types (both modes)
+
+```protobuf
+message ToolCallFrame {
+  string          tool_call_id = 1;   // correlates to ToolResultFrame
+  string          tool_name    = 2;   // optional; for routing/auditing
+  string          vocab_id     = 3;   // sha256:… of the session vocab map
+  repeated uint32 ids          = 4 [packed = true];   // tokenized arguments
+  bool            done         = 5;   // true on the last frame of the call
+}
+
+message ToolResultFrame {
+  string          tool_call_id  = 1;   // matches the originating ToolCallFrame
+  string          vocab_id      = 2;   // sha256:… of the session vocab map
+  repeated uint32 ids           = 3 [packed = true];  // tokenized result
+  bool            done          = 4;
+  optional string finish_reason = 5;   // "ok" | "error" | "timeout"
+  optional string error_message = 6;   // populated when finish_reason="error"
+}
+```
+
+The msgpack form is the same map-of-fields as completions:
+
+```
+ToolCallFrame:    { "tool_call_id": str, "tool_name": str, "vocab_id": str,
+                    "ids": [uint32, ...], "done": bool }
+ToolResultFrame:  { "tool_call_id": str, "vocab_id": str,
+                    "ids": [uint32, ...], "done": bool,
+                    "finish_reason"?: str, "error_message"?: str }
+```
+
+Both frame types reuse the same 4-byte big-endian length-prefix
+framing as `CodecFrame`. The protobuf and msgpack modes are
+interchangeable per-session; the negotiated `frame_modes` array (see
+*Negotiation at session open* below) governs which the parties use.
+
+#### Vocab negotiation
+
+`vocab_id` is fixed at session-open and immutable for the session.
+Both engine and tool MUST verify that the `vocab_id` on every frame
+matches the negotiated value; mismatch is a protocol error. The
+gateway MAY check `vocab_id` for fast rejection but is not required
+to — it's a tool–engine contract, the gateway just routes.
+
+The vocab is the same kind of `tokenizer_id`/sha256 pair that
+completions use. The same map-distribution mechanism (`X-Codec-Map`
+header, sha256-content-addressed) applies. A tool that supports Codec
+caches the negotiated vocab once at session-open and uses it for
+every frame in that session.
+
+#### Routing model
+
+```
+engine ──ToolCallFrame──▶ gateway ──ToolCallFrame──▶ tool
+engine ◀─ToolResultFrame─ gateway ◀─ToolResultFrame─ tool
+```
+
+The gateway's job per frame is bounded:
+
+1. Read the 4-byte length prefix and the framing header to extract
+   `tool_call_id` (and `tool_name` if present).
+2. Look up the route for that `tool_call_id` (set by an earlier
+   control frame or by registration at session open).
+3. Forward the frame bytes verbatim to the next hop.
+
+The gateway MUST NOT decode `ids`, MUST NOT detokenize, MUST NOT
+re-tokenize, MUST NOT alter the frame body. Any value-add it offers
+(tracing, metrics, rate-limiting, auth) operates on `tool_call_id`
+and `tool_name` only.
+
+#### Backward compatibility (legacy text-mode tools)
+
+Tools that don't speak Codec stay on JSON-RPC over MCP's standard
+transport. The gateway detects this at session open (the tool's
+handshake omits `capabilities.codec`) and falls back to a
+**gateway-tokenize shim**:
+
+- Inbound: the gateway detokenizes `ToolCallFrame.ids` to text using
+  the session vocab and forwards the text as standard JSON-RPC.
+- Outbound: the gateway receives a JSON-RPC tool result, tokenizes
+  the text content with the session vocab, and emits a
+  `ToolResultFrame`.
+
+The shim exists so engines can use Codec uniformly without waiting
+for every MCP server to upgrade. It MUST be observable to operators
+(a session-level flag, a per-tool flag, and a metric counter) so the
+cost of legacy tools is visible. The shim's tokenization MUST use the
+same sha256-pinned vocab map the engine negotiated; a vocab mismatch
+between gateway shim and engine produces wrong KV-cache state on the
+engine side and is a fatal session error.
+
+#### Negotiation at session open
+
+Engines and tools advertise Codec support at MCP session
+initialization. A Codec-aware engine sends:
+
+```json
+{
+  "method": "initialize",
+  "params": {
+    "capabilities": {
+      "codec": {
+        "vocab_id": "sha256:79b707aea8...",
+        "frame_modes": ["msgpack", "protobuf"]
+      }
+    }
+  }
+}
+```
+
+A Codec-aware tool replies with the same `vocab_id` and the
+`frame_modes` it supports. A non-Codec tool omits
+`capabilities.codec`, triggering the shim path.
+
+`vocab_id` is the sha256 of the tokenizer map JSON (same content
+addressing as completions). Both sides MUST refuse to handshake
+across mismatched `vocab_id` — the only safe behavior is to fall
+back to text. There's no "transcode at the seam" path; that would
+require a per-frame tokenize/detokenize pair, which defeats the
+design.
+
+#### Why this isn't just JSON-RPC-over-msgpack
+
+The MetaMCP gateway today compresses MCP traffic by msgpack-encoding
+the JSON-RPC envelope. That's a wire-format optimization (~1.1× on
+small responses, 3.6× on `tools/list` with gzip). The bidirectional
+tool-call wire above is a different and deeper claim: **no party on
+the path between engine and tool ever holds the result as text**.
+The msgpack-of-JSON-RPC path is a stop-gap for tools that haven't
+upgraded; this path is the architectural target, and it makes the
+"text/token boundary" claim hold end-to-end rather than only on the
+engine→client direction.
 
 ### Schema endpoint
 
@@ -687,11 +909,230 @@ it and the implementation is identical across languages.
 
 ---
 
+## Latent Modality (v0.3)
+
+Image and video generation models emit **latent tensors**, not token IDs.
+A latent is a low-dimensional learned representation that a paired VAE
+decoder transforms back into pixels. Codec ships latents on the wire and
+defers `vae_decode` to the presentation layer — the same architectural
+move v0.2 makes for tokens.
+
+### Latent frames
+
+A latent stream begins with **one** `LatentStreamHeader` carrying the
+shape, dtype, latent-space identifier, and pipeline (transform) used to
+produce subsequent frames. Every frame after the header is a
+`LatentFrame`. Receivers MUST treat the first frame in a latent stream
+as the header.
+
+#### `LatentStreamHeader`
+
+```protobuf
+message LatentStreamHeader {
+  string latent_space_id = 1;   // e.g. "stabilityai/sd-vae-ft-mse"
+  repeated uint32 shape  = 2;   // per-frame latent shape, e.g. [4, 64, 64]
+  string dtype           = 3;   // "fp16" | "bf16" | "int8" | "int4"
+  string pipeline        = 4;   // "raw" | "int8" | "delta+int8" | ...
+  optional float scale   = 5;   // dequantization scale (when dtype != fp16/bf16)
+  optional uint32 fps    = 6;   // video only; 0 or absent for image-latents
+  optional uint32 total_frames = 7;  // video only; absent if unknown/streaming
+  optional float vae_scale_factor  = 8;  // model's known scale (e.g. 0.18215 for SD-1)
+}
+```
+
+`pipeline` names a deterministic transform applied server-side that the
+client reverses before feeding bytes into the decoder. The pipeline
+identifier MUST appear in the latent-space-map's `pipelines[]` list (see
+`spec/latent-space-map.schema.json`). Reference vectors for each named
+pipeline live in `packages/bench/golden/` and are the ground truth for
+cross-implementation conformance.
+
+#### `LatentFrame`
+
+```protobuf
+message LatentFrame {
+  bytes  data            = 1;   // packed latent bytes, post-pipeline
+  uint32 seq             = 2;   // monotonic frame index (0-based; image streams = 0)
+  bool   keyframe        = 3;   // true = self-contained; false = delta vs prior keyframe
+  bool   done            = 4;
+  optional string finish_reason = 5;   // "ok" | "length" | "stop" | "error"
+}
+```
+
+| Field           | Rules                                                                    |
+|-----------------|--------------------------------------------------------------------------|
+| `data`          | Packed bytes per the negotiated pipeline. Length = `prod(shape) × bytes_per_elem` for `pipeline="raw"`, smaller after quantization, smaller still after delta-coding. |
+| `seq`           | Image-latents: always 0. Video-latents: monotonic 0,1,2,... Receivers reject out-of-order or duplicate seq. |
+| `keyframe`      | Image-latents: always true. Video-latents: true on the first frame and at periodic keyframe intervals; false for delta frames. A delta frame's `data` is decoded against the most recent keyframe in this stream. |
+| `done`          | True on the terminal frame. No further frames follow.                    |
+| `finish_reason` | Set when `done=true`. `"error"` distinguishes a server-side failure from a clean termination. |
+
+**Why a separate header instead of repeating shape/dtype on every
+frame.** Per-frame metadata adds 30–60 bytes per `LatentFrame` versus
+the per-stream header which adds them exactly once. For a 24 fps video
+stream this is the difference between 1.4 KB/sec and 30 bytes/stream of
+overhead.
+
+### Pipelines
+
+A pipeline is a named, deterministic byte-level transform. Every
+pipeline has a forward (server-side) and inverse (client-side) form, and
+the round-trip is bit-exact at the latent-byte boundary. Pipelines do
+not touch the decoder; they only restructure latent bytes for transport.
+
+| Pipeline       | Forward                                                                       | Wins                                                  |
+|----------------|-------------------------------------------------------------------------------|-------------------------------------------------------|
+| `raw`          | Pack tensor in row-major order.                                               | Bit-exact, no model contract assumptions.             |
+| `int8`         | Per-channel symmetric quantization to int8; scales travel in the header.      | 2× over fp16; minimal SSIM loss at typical SD scales. |
+| `int4`         | Per-channel symmetric quantization to int4 (packed 2-per-byte).               | 4× over fp16; lossy enough to require quality gating. |
+| `delta+int8`   | Subtract prior keyframe's int8 latent; transmit residual.                     | Video only. Collapses temporally redundant bytes.     |
+| `delta+int4`   | Same, with int4 residual.                                                     | Video only. Most aggressive lossy mode.               |
+
+Implementations MUST advertise pipeline support in `accept_pipelines`
+during `HELLO` and reject any header whose `pipeline` they don't know.
+Adding a pipeline is a v0.3+ point release — the registry of named
+pipelines is normative, not extensible per-deployment.
+
+### Endpoints
+
+Latent endpoints follow the same shape as the v0.2 text endpoints,
+opted in via `stream_format`:
+
+```
+POST /v1/images/generations
+Content-Type: application/json
+Accept-Encoding: zstd, gzip
+
+{
+  "model": "...",
+  "prompt": "a wide-angle photograph of a snowy mountain at dusk",
+  "stream_format": "msgpack",
+  "modality":      "image-latents",
+  "latent_space":  "stabilityai/sd-vae-ft-mse",
+  "pipeline":      "int8",
+  "size": "512x512",
+  "steps": 30,
+  "seed": 42
+}
+
+→ 200 OK
+   Content-Type: application/x-msgpack
+   Content-Encoding: zstd
+   Codec-Zstd-Dict:  sha256:...
+   Codec-Latent-Map: sha256:...
+
+   <msgpack frame> LatentStreamHeader { latent_space_id, shape:[4,64,64], dtype:"int8", pipeline:"int8", ... }
+   <msgpack frame> LatentFrame        { data: <... int8 bytes ...>, seq:0, keyframe:true, done:true, finish_reason:"ok" }
+```
+
+Video uses the same shape with `modality: "video-latents"`. Frames stream
+as they are produced; `LatentFrame.seq` is monotonic, and `done=true`
+terminates the stream:
+
+```
+POST /v1/videos/generations
+{
+  ...,
+  "modality":     "video-latents",
+  "latent_space": "stabilityai/wan-vae-2.1",
+  "pipeline":     "delta+int8",
+  "fps": 24,
+  "duration_seconds": 5
+}
+```
+
+The `Codec-Latent-Map` response header is the latent-modality analogue
+of the existing `Codec-Zstd-Dict` header: it carries the sha256 of the
+latent-space-map document the server produced these bytes against, so a
+client can fail-fast if it hasn't loaded a matching map.
+
+### Compression and dictionaries
+
+Latent streams use the same `Accept-Encoding` / `Content-Encoding`
+negotiation as text streams. The trained-zstd-dict mechanism extends
+unchanged in shape, but the dict is keyed by `(latent_space_id, format,
+pipeline)` instead of `(tokenizer_id, format)`:
+
+```json
+"zstd_dictionaries": [
+  {
+    "format":    "msgpack",
+    "pipeline":  "delta+int8",
+    "url":       "https://.../sd-vae-ft-mse-msgpack-delta-int8-v1.dict",
+    "hash":      "sha256:...",
+    "size_bytes": 16384
+  }
+]
+```
+
+A server MUST NOT respond with `Content-Encoding: zstd` unless it has
+loaded a dict whose `(format, pipeline)` matches the response. The
+`Codec-Zstd-Dict` header carries the active dict's sha256 exactly as
+in v0.2; the client matches it against the latent-space-map's
+`zstd_dictionaries[]` to locate the bytes.
+
+**Why pipeline-keyed dicts.** Raw fp16 latents are near-Gaussian by
+construction (the VAE encoder is trained to produce a near-isotropic
+prior), so a dict trained on raw bytes wins only ~5–15% over no-dict
+zstd. The dict pays off only after a structural pre-pass:
+quantization concentrates bytes into a small alphabet, and (for video)
+delta-coding collapses temporally redundant values into mostly-zero
+residuals. A dict trained on the post-pipeline byte stream therefore
+captures the structure the pipeline produces — and is meaningless
+against any other pipeline. Mixing them is silently miscompressing.
+
+### Discovery
+
+Latent-space maps publish at:
+
+```
+https://<origin>/.well-known/codec/latents/<id>.json
+```
+
+Same pointer-or-inline convention, same hash-pinned trust model, same
+resolution algorithm as tokenizer maps. See
+[`WELL_KNOWN_DISCOVERY.md`](./WELL_KNOWN_DISCOVERY.md) for the document
+shape and resolution rules.
+
+### Validation contract
+
+The text modality's invariant is **bit-identity** against a reference
+tokenizer. The latent modality cannot make that claim across the
+decoder boundary — VAE decoders are floating-point and non-deterministic
+across runtimes (ONNX-Web vs torch vs ggml vs WGSL), so the contract
+splits in two:
+
+- **Latent-byte boundary: bit-identical.** Server-emitted bytes equal
+  client-received bytes after pipeline inversion. This invariant is
+  testable on every client without a decoder loaded.
+- **Pixel boundary: perceptual bound.** Decoded pixels match a frozen
+  reference (pinned torch + diffusers in a content-addressed Docker
+  image — `packages/bench/golden/`) within published SSIM / PSNR /
+  LPIPS thresholds per latent-space-map and pipeline. The threshold
+  list is part of the bench methodology, not the wire spec.
+
+The `latents validate` subcommand on `@codecai/maps-cli` enforces both
+halves on a fixture suite before a map can ship.
+
+### Fallback to server-side decode
+
+A client that receives a `LatentStreamHeader` for a latent-space whose
+decoder it has not loaded MAY downgrade by re-issuing the request
+without `modality: "image-latents"` (or `video-latents`); the server
+falls back to producing rendered pixels in the standard image/video
+response shape. Servers that do not support the rendered fallback
+SHOULD respond `415 Unsupported Media Type` with a body listing
+supported modalities, so the client can fail fast rather than silently
+hanging on a stream it cannot decode.
+
+---
+
 ## Session Protocol (future)
 
 The stateless HTTP mode covers the common case. A frame-based session
 protocol is sketched below for persistent connections, multiplexed streams,
-and dynamic tokenizer negotiation. Not yet implemented.
+dynamic tokenizer/latent-space negotiation, and transport upgrade. Not yet
+implemented.
 
 ### Frame Structure
 
@@ -706,37 +1147,123 @@ All multi-byte integers are **big-endian**.
 
 ### Frame Types
 
-| Value | Name     | Direction      | Description                          |
-|-------|----------|----------------|--------------------------------------|
-| 0x00  | `HELLO`  | Client → Server| Session init, declares capabilities  |
-| 0x01  | `READY`  | Server → Client| Confirms tokenizer, provides map URL |
-| 0x02  | `TOKENS` | Server → Client| Packed token ID array                |
-| 0x03  | `EOS`    | Server → Client| End of stream, empty payload         |
-| 0x04  | `ERROR`  | Either         | UTF-8 error message                  |
+| Value | Name             | Direction       | Description                                       |
+|-------|------------------|-----------------|---------------------------------------------------|
+| 0x00  | `HELLO`          | Client → Server | Session init, declares capabilities               |
+| 0x01  | `READY`          | Server → Client | Confirms modality + map, optionally upgrades transport |
+| 0x02  | `TOKENS`         | Server → Client | Packed token ID array (text-tokens modality)      |
+| 0x03  | `EOS`            | Server → Client | End of stream, empty payload                      |
+| 0x04  | `ERROR`          | Either          | UTF-8 error message                               |
+| 0x05  | `LATENT_HEADER`  | Server → Client | First frame of a latent stream (v0.3)             |
+| 0x06  | `LATENTS`        | Server → Client | Latent frame payload (v0.3)                       |
 
 ### Handshake
 
-**HELLO** — client opens session:
+**HELLO** — client opens session and declares the full capability surface:
 
 ```json
 {
-  "codec_version": "0.2",
-  "accept_tokenizers": ["meta-llama/llama-3", "qwen/qwen2"],
-  "accept_encoding": ["zstd", "gzip"]
+  "codec_version": "0.3",
+
+  "modalities":           ["text-tokens", "image-latents", "video-latents"],
+  "accept_tokenizers":    ["meta-llama/llama-3", "qwen/qwen2"],
+  "accept_latent_spaces": ["stabilityai/sd-vae-ft-mse", "stabilityai/sdxl-vae"],
+  "accept_decoders":      ["onnx-web", "torch", "ggml", "wgsl"],
+  "accept_pipelines":     ["raw", "int8", "delta+int8"],
+
+  "accept_transports":    ["http", "ws", "webrtc"],
+  "accept_encoding":      ["zstd", "br", "gzip"]
 }
 ```
 
-**READY** — server confirms tokenizer and provides map:
+**Capability axes.** A v0.3 client declares what it can *terminate*, not
+what it wants. The server picks one of each axis. A v0.2 client omits
+the latent fields entirely; servers negotiating with a v0.2 client behave
+as if `modalities: ["text-tokens"]` was sent.
+
+| Field                  | Meaning                                                                 |
+|------------------------|-------------------------------------------------------------------------|
+| `modalities`           | Which native units the client can decode. Server picks one.             |
+| `accept_tokenizers`    | Tokenizer maps the client has loaded (or can fetch). Required when text-tokens negotiated. |
+| `accept_latent_spaces` | Latent-space maps + decoders the client has loaded. Required when image-/video-latents negotiated. |
+| `accept_decoders`      | Decoder runtimes the client can execute. Server picks a decoder format compatible with this list. |
+| `accept_pipelines`     | Named transform pipelines the client can invert. `raw` is mandatory. Server MUST NOT pick a pipeline outside this list. |
+| `accept_transports`    | Wire transports the client can run. `http` is mandatory; `ws` / `webrtc` are optional. |
+| `accept_encoding`      | Compression encodings (existing v0.2 negotiation, unchanged).           |
+
+**READY (text-tokens)** — server confirms tokenizer, provides map, stays on HTTP:
 
 ```json
 {
-  "codec_version": "0.2",
+  "codec_version": "0.3",
+  "modality": "text-tokens",
+
   "tokenizer_id": "meta-llama/llama-3",
-  "map_url": "https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/meta-llama/llama-3.json",
+  "map_url":  "https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/meta-llama/llama-3.json",
   "map_hash": "sha256:79b707aea8c2b41c2883ec7913b0c4a0c880044ac844d89a9a03e779eb92db04",
+
+  "transport": "http",
+  "encoding":  "zstd"
+}
+```
+
+**READY (image-latents)** — server confirms the latent-space map, picks pipeline + decoder:
+
+```json
+{
+  "codec_version": "0.3",
+  "modality": "image-latents",
+
+  "latent_space_id":  "stabilityai/sd-vae-ft-mse",
+  "latent_map_url":   "https://qwen.io/.well-known/codec/latents/stabilityai/sd-vae-ft-mse.json",
+  "latent_map_hash":  "sha256:a1b2…",
+  "decoder_runtime":  "onnx-web",
+  "pipeline":         "int8",
+
+  "transport": "http",
+  "encoding":  "zstd"
+}
+```
+
+**READY (video-latents) with WebRTC transport upgrade** — server picks the
+WebRTC transport advertised in `accept_transports` and returns the upgrade
+metadata. The HTTP request that produced this `READY` ends; subsequent
+`LATENT_HEADER` and `LATENTS` frames flow over the WebRTC data channel:
+
+```json
+{
+  "codec_version": "0.3",
+  "modality": "video-latents",
+
+  "latent_space_id":  "stabilityai/wan-vae-2.1",
+  "latent_map_url":   "https://stability.ai/.well-known/codec/latents/stabilityai/wan-vae-2.1.json",
+  "latent_map_hash":  "sha256:c3d4…",
+  "decoder_runtime":  "ggml",
+  "pipeline":         "delta+int8",
+
+  "transport": "webrtc",
+  "upgrade": {
+    "sdp_offer_url": "https://server.example/codec/webrtc/offer/abc123",
+    "ice_servers":   [{ "urls": "stun:stun.example.com:19302" }],
+    "data_channel":  { "ordered": true, "max_retransmits": 0 }
+  },
+
   "encoding": "zstd"
 }
 ```
+
+### Transport selection
+
+| Transport | When to pick                                                                                    | Frame envelope            |
+|-----------|-------------------------------------------------------------------------------------------------|---------------------------|
+| `http`    | Default. Stateless request/response, no upgrade. Works for all text-token streams and image-latent streams. | Sequential msgpack/protobuf in the response body, as today. |
+| `ws`      | Persistent client/server with multiple stream requests, low-overhead bidirectional control. | Each WebSocket message is one Codec frame. |
+| `webrtc`  | Video-latents at interactive frame rates (≥24 fps), or any stream where jitter dominates total latency. | Each datagram is one Codec frame; ordering and partial reliability per `upgrade.data_channel`. |
+
+A server MAY downgrade the requested transport (e.g. answer `http` to a
+client that listed `webrtc`) if the upgrade isn't supported for the
+negotiated modality. Clients MUST handle the downgrade silently. Servers
+MUST NOT upgrade beyond what the client advertised.
 
 ---
 
@@ -761,6 +1288,7 @@ POST /v1/completions                              ← existing JSON/SSE path (un
 POST /v1/completions  + stream_format             ← opt-in binary output
 POST /v1/completions  + prompt:int[] + stream_format  ← bidirectional via JSON request
 POST /v1/completions/codec                        ← bidirectional via binary request (huge prompts)
+MCP   initialize  + capabilities.codec.vocab_id   ← bidirectional tool calls (ToolCallFrame ↔ ToolResultFrame)
 GET  /codec/schema                                ← proto schema for client codegen
 ```
 
@@ -822,3 +1350,68 @@ map, the same way Wireshark decodes binary protocols.
     that runtimes can execute without a Unicode regex engine. Unblocks
     BPE encoding in environments where pulling PCRE2 is non-trivial
     (libcodec, embedded, WASM).
+
+---
+
+## Open questions (v0.3)
+
+1. **Pipeline registry governance.** v0.3 ships five pipelines (`raw`,
+   `int8`, `int4`, `delta+int8`, `delta+int4`). Adding a sixth requires
+   a point release because the pipeline name encodes math, not just
+   serialization, and clients must invert it bit-exactly. Open: who
+   reviews pipeline proposals, and what reference test vectors does a
+   new pipeline have to ship with before it lands? Default plan: a
+   `packages/bench/golden/pipelines/<name>/` directory of fixtures
+   (latent in, post-pipeline bytes out) and a conformance test in every
+   client's bench harness.
+
+2. **`golden/` reference container.** Cross-runtime decoder drift
+   (torch vs ONNX-Web vs ggml vs WGSL) means perceptual conformance
+   needs a frozen ground truth. Resolved direction (2026-05-08):
+   `packages/bench/golden-builder/` ships a Dockerfile pinning torch +
+   diffusers + CUDA + driver versions; the container's sha256 is the
+   trust anchor referenced by every latent bench cell.
+
+3. **Multi-stream multiplexing within a session.** v0.3 negotiates one
+   modality per connection. A future revision may allow simultaneous
+   token + latent streams within one `HELLO` (e.g. a multimodal model
+   producing interleaved text and images), at the cost of frame-level
+   stream tagging. Tracked alongside the existing v0.2 open question on
+   batched/parallel streams.
+
+4. **Decoder weight distribution.** Tokenizer maps are kilobytes; VAE
+   decoders are 50 MB–GB-scale. The discovery convention pins decoder
+   bytes content-addressed by sha256, but caching strategy and
+   air-gapped substitution remain client-side concerns. Pre-warming via
+   the `index.json` directory document is the recommended pattern; a
+   future registry mirror analogous to `codec-maps` is open.
+
+5. **Audio-latents.** Out of scope for v0.3 but architecturally
+   identical (audio-codec models like Encodec / SoundStream emit
+   tokens that decode to waveforms via a learned function). The
+   modality slot anticipates this; pipelines and frame schema can be
+   added additively in a future release.
+
+6. **Streaming tool results.** `ToolResultFrame.done` allows multi-frame
+   results, but the canonical case (Time, Calculator, single-shot HTTP
+   tools) emits one frame with `done=true`. Open: should agent-style
+   tools that produce long generative output (a sub-LLM, a long-running
+   browse session) stream `ToolResultFrame`s with intermediate `done=false`
+   chunks, or open a nested completions session and reference its session
+   ID? Both work; the spec doesn't yet recommend one. The choice
+   affects whether tool results compose like sub-completions or stay
+   atomic.
+
+7. **Tool-call cancellation.** A `ToolCallFrame` carries no abort
+   signal; today cancelling means closing the underlying transport.
+   Open: a per-call `CancelToolCallFrame { tool_call_id }` would let
+   cancellation flow without tearing down the session, matching how
+   completions handle `Connection: close` mid-stream. Tracked separately
+   because it crosses into MCP session-management territory.
+
+8. **Chained sub-calls.** A tool that itself dispatches to other tools
+   (an agent-as-a-tool) needs a `parent_tool_call_id` field for tracing
+   and policy enforcement. The current schema has none. Adding it is
+   additive (optional protobuf field, optional msgpack key) but the
+   semantics of a partial parent chain (ancestor session closed
+   mid-call) need work.
