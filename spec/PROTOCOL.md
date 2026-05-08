@@ -39,7 +39,6 @@ native unit" is just different bytes:
 | Modality          | Native unit                | Wire frame type        | Presentation step       |
 |-------------------|----------------------------|------------------------|-------------------------|
 | `text-tokens`     | uint32 token IDs           | `CodecFrame`           | detokenize → UTF-8      |
-| `tool-calls`      | uint32 token IDs           | `ToolCallFrame` / `ToolResultFrame` | leaf-side detokenize/tokenize |
 | `image-latents`   | latent tensor              | `LatentFrame` (+header)| `vae_decode` → RGB      |
 | `video-latents`   | latent tensor stream       | `LatentFrame` (+delta) | `vae_decode` per frame  |
 
@@ -120,13 +119,9 @@ against HuggingFace's reference tokenizer for Qwen-2.
 Codec defines two wire modes. Both carry identical frame semantics; they
 differ only in serialization.
 
-The frame types below (`CodecFrame`) carry text-tokens flowing
-engine→client; the bidirectional tool-call wire (`ToolCallFrame` /
-`ToolResultFrame`) reuses the same framing for engine↔tool token-ID
-exchange — see [§ Bidirectional tool calls](#bidirectional-tool-calls-token-ids-in--token-ids-out)
-below. The latent modalities use `LatentStreamHeader` + `LatentFrame`
-over the same two wire modes — see [§ Latent Modality](#latent-modality-v03)
-below.
+The frame types below (`CodecFrame`) carry text-tokens. The latent
+modalities use `LatentStreamHeader` + `LatentFrame` over the same two
+wire modes — see [§ Latent Modality](#latent-modality-v03) below.
 
 ### Mode A — MessagePack (`application/x-msgpack`)
 
@@ -176,27 +171,6 @@ message CodecRequest {
   float           temperature   = 3;
   repeated string stop          = 4;
   string          stream_format = 5;  // "msgpack" or "protobuf"
-}
-
-// Bidirectional tool-call wire — see § Endpoints / Bidirectional tool calls.
-// Same length-prefix framing and same compression rules as CodecFrame.
-// The gateway routes by tool_call_id and MUST NOT decode `ids`.
-
-message ToolCallFrame {
-  string          tool_call_id = 1;
-  string          tool_name    = 2;
-  string          vocab_id     = 3;
-  repeated uint32 ids          = 4 [packed = true];
-  bool            done         = 5;
-}
-
-message ToolResultFrame {
-  string          tool_call_id  = 1;
-  string          vocab_id      = 2;
-  repeated uint32 ids           = 3 [packed = true];
-  bool            done          = 4;
-  optional string finish_reason = 5;
-  optional string error_message = 6;
 }
 ```
 
@@ -305,161 +279,6 @@ the wire" guarantees. Servers MUST implement Path A (it's just OpenAI's
 existing `prompt: int[]` plus `stream_format`). Servers SHOULD implement
 Path B for the bandwidth case but MAY omit it; clients should fall back to
 Path A if a `/v1/completions/codec` request returns 404.
-
-### Bidirectional tool calls (token IDs in → token IDs out)
-
-Tool calls are the bidirectional twin of completions: the engine emits
-token IDs that name a tool and carry its arguments; the tool replies
-with token IDs that carry its result. Same wire shape as `CodecFrame`,
-same framing, same compression. The gateway between engine and tool
-routes frames by `tool_call_id` — it MUST NOT decode them.
-
-**Detokenize at the leaves, not the seams.** A tool that needs text to
-do its job (format a date, read a DOM) detokenizes its inbound
-arguments locally; a tool that produces text output (a transcript, a
-search result) tokenizes its outbound result locally with the
-session's negotiated vocab. Every other party on the path — engine,
-gateway, agent — operates on the raw IDs. UTF-8 exists only inside
-the tool's own logic.
-
-This is the architectural property that distinguishes Codec from
-"binary-wrapped JSON-RPC". Tokenize-at-the-gateway shims (like the one
-in MetaMCP today) are a back-compat fallback for tools that don't yet
-speak Codec; the target is leaf-tokenization with the gateway as a
-transparent ID pipe.
-
-#### Frame types (both modes)
-
-```protobuf
-message ToolCallFrame {
-  string          tool_call_id = 1;   // correlates to ToolResultFrame
-  string          tool_name    = 2;   // optional; for routing/auditing
-  string          vocab_id     = 3;   // sha256:… of the session vocab map
-  repeated uint32 ids          = 4 [packed = true];   // tokenized arguments
-  bool            done         = 5;   // true on the last frame of the call
-}
-
-message ToolResultFrame {
-  string          tool_call_id  = 1;   // matches the originating ToolCallFrame
-  string          vocab_id      = 2;   // sha256:… of the session vocab map
-  repeated uint32 ids           = 3 [packed = true];  // tokenized result
-  bool            done          = 4;
-  optional string finish_reason = 5;   // "ok" | "error" | "timeout"
-  optional string error_message = 6;   // populated when finish_reason="error"
-}
-```
-
-The msgpack form is the same map-of-fields as completions:
-
-```
-ToolCallFrame:    { "tool_call_id": str, "tool_name": str, "vocab_id": str,
-                    "ids": [uint32, ...], "done": bool }
-ToolResultFrame:  { "tool_call_id": str, "vocab_id": str,
-                    "ids": [uint32, ...], "done": bool,
-                    "finish_reason"?: str, "error_message"?: str }
-```
-
-Both frame types reuse the same 4-byte big-endian length-prefix
-framing as `CodecFrame`. The protobuf and msgpack modes are
-interchangeable per-session; the negotiated `frame_modes` array (see
-*Negotiation at session open* below) governs which the parties use.
-
-#### Vocab negotiation
-
-`vocab_id` is fixed at session-open and immutable for the session.
-Both engine and tool MUST verify that the `vocab_id` on every frame
-matches the negotiated value; mismatch is a protocol error. The
-gateway MAY check `vocab_id` for fast rejection but is not required
-to — it's a tool–engine contract, the gateway just routes.
-
-The vocab is the same kind of `tokenizer_id`/sha256 pair that
-completions use. The same map-distribution mechanism (`X-Codec-Map`
-header, sha256-content-addressed) applies. A tool that supports Codec
-caches the negotiated vocab once at session-open and uses it for
-every frame in that session.
-
-#### Routing model
-
-```
-engine ──ToolCallFrame──▶ gateway ──ToolCallFrame──▶ tool
-engine ◀─ToolResultFrame─ gateway ◀─ToolResultFrame─ tool
-```
-
-The gateway's job per frame is bounded:
-
-1. Read the 4-byte length prefix and the framing header to extract
-   `tool_call_id` (and `tool_name` if present).
-2. Look up the route for that `tool_call_id` (set by an earlier
-   control frame or by registration at session open).
-3. Forward the frame bytes verbatim to the next hop.
-
-The gateway MUST NOT decode `ids`, MUST NOT detokenize, MUST NOT
-re-tokenize, MUST NOT alter the frame body. Any value-add it offers
-(tracing, metrics, rate-limiting, auth) operates on `tool_call_id`
-and `tool_name` only.
-
-#### Backward compatibility (legacy text-mode tools)
-
-Tools that don't speak Codec stay on JSON-RPC over MCP's standard
-transport. The gateway detects this at session open (the tool's
-handshake omits `capabilities.codec`) and falls back to a
-**gateway-tokenize shim**:
-
-- Inbound: the gateway detokenizes `ToolCallFrame.ids` to text using
-  the session vocab and forwards the text as standard JSON-RPC.
-- Outbound: the gateway receives a JSON-RPC tool result, tokenizes
-  the text content with the session vocab, and emits a
-  `ToolResultFrame`.
-
-The shim exists so engines can use Codec uniformly without waiting
-for every MCP server to upgrade. It MUST be observable to operators
-(a session-level flag, a per-tool flag, and a metric counter) so the
-cost of legacy tools is visible. The shim's tokenization MUST use the
-same sha256-pinned vocab map the engine negotiated; a vocab mismatch
-between gateway shim and engine produces wrong KV-cache state on the
-engine side and is a fatal session error.
-
-#### Negotiation at session open
-
-Engines and tools advertise Codec support at MCP session
-initialization. A Codec-aware engine sends:
-
-```json
-{
-  "method": "initialize",
-  "params": {
-    "capabilities": {
-      "codec": {
-        "vocab_id": "sha256:79b707aea8...",
-        "frame_modes": ["msgpack", "protobuf"]
-      }
-    }
-  }
-}
-```
-
-A Codec-aware tool replies with the same `vocab_id` and the
-`frame_modes` it supports. A non-Codec tool omits
-`capabilities.codec`, triggering the shim path.
-
-`vocab_id` is the sha256 of the tokenizer map JSON (same content
-addressing as completions). Both sides MUST refuse to handshake
-across mismatched `vocab_id` — the only safe behavior is to fall
-back to text. There's no "transcode at the seam" path; that would
-require a per-frame tokenize/detokenize pair, which defeats the
-design.
-
-#### Why this isn't just JSON-RPC-over-msgpack
-
-The MetaMCP gateway today compresses MCP traffic by msgpack-encoding
-the JSON-RPC envelope. That's a wire-format optimization (~1.1× on
-small responses, 3.6× on `tools/list` with gzip). The bidirectional
-tool-call wire above is a different and deeper claim: **no party on
-the path between engine and tool ever holds the result as text**.
-The msgpack-of-JSON-RPC path is a stop-gap for tools that haven't
-upgraded; this path is the architectural target, and it makes the
-"text/token boundary" claim hold end-to-end rather than only on the
-engine→client direction.
 
 ### Schema endpoint
 
@@ -907,6 +726,88 @@ format already exposes raw IDs, so any client can re-implement the
 detection. We ship it in every client because every orchestrator needs
 it and the implementation is identical across languages.
 
+### Tool-call calling conventions in the map
+
+Detection (above) is the easy half — the markers travel as plain IDs.
+The hard half is the **calling convention**: how the model expects a
+tool call to be packaged inside those markers (Llama 3.1 wraps a JSON
+object after `<|python_tag|>`; Qwen 2.5 wraps a JSON object inside
+`<tool_call>...</tool_call>`; Mistral-Nemo wraps a list of objects
+inside `[TOOL_CALLS]...[/TOOL_CALLS]`; etc.) and how it expects results
+to come back.
+
+That convention is **per-model data** — it's encoded in the model's
+chat template, the same Jinja string HuggingFace ships in
+`tokenizer_config.json` next to the vocabulary. The convention belongs
+in the existing tokenizer map, distributed by the same content-
+addressed `.well-known` / jsDelivr fabric as the vocab itself. Adding
+it as a first-class manifest field eliminates the out-of-band coupling
+where every consumer has to re-derive it from the spec table above.
+
+The map carries an optional `tool_calling` block (see
+`spec/tokenizer-map.schema.json`):
+
+```json
+"tool_calling": {
+  "convention": "llama3" | "qwen25" | "phi4" | "mistral_nemo" |
+                "deepseek_v3" | "deepseek_r1" | "custom",
+  "markers": {
+    "start": "<|python_tag|>",
+    "end":   "<|eom_id|>"
+  },
+  "args_format":   "json" | "python_args",
+  "result_format": "text" | "json"
+}
+```
+
+The `markers` strings MUST appear as keys in the map's `special_tokens`
+object — the values they resolve to are the IDs ToolWatcher compares
+against. `convention` names a normative entry in a registry that
+governs how arguments and results are packed inside the marker pair;
+`custom` opts out of the registry and pins the layout in
+implementer-supplied prose.
+
+`@codecai/maps-cli` populates this block when it sees a known chat
+template signature in `tokenizer_config.json`. Maps generated before
+the block existed simply omit it — readers MUST treat absence as
+"convention not declared; behave per the prose table above" rather
+than as an error.
+
+#### Leaf-tokenization is the architectural target
+
+A Codec-aware MCP server reads the `tool_calling` block from the
+session's negotiated map and tokenizes its result accordingly,
+emitting token IDs in the existing `_codec_meta` content-block shape
+(see codec-content.ts in any Codec-aware gateway implementation).
+Engine, gateway, and agent operate on the IDs end-to-end; UTF-8 lives
+only inside the leaf tool's own logic. **No new wire frame types are
+introduced for tool calls** — the payload is uint32 token IDs, same
+as completions, and `CodecFrame` carries them.
+
+Tools that don't yet speak Codec stay on JSON-RPC. The gateway falls
+back to a **gateway-tokenize shim** that does the leaf's work on the
+tool's behalf — observable to operators, named explicitly as a back-
+compat path, and meant to disappear from any given session as MCP
+servers upgrade. Reference implementation:
+`apps/backend/src/lib/metamcp/codec/codec-content.ts` in
+`wdunn001/metamcp`.
+
+#### `Codec-Tokenizer-Map` response header
+
+When a Codec-aware tool returns ID-tokenized result content, it
+SHOULD emit a `Codec-Tokenizer-Map` response header naming the
+tokenizer map it tokenized against:
+
+```
+Codec-Tokenizer-Map: sha256:79b707aea8c2b41c2883ec7913b0c4a0c880044ac844d89a9a03e779eb92db04
+```
+
+Symmetric to `Codec-Latent-Map` for v0.3 latents. A client receiving
+this header MUST verify the hash matches a tokenizer map it has
+loaded (the same map the request's `X-Codec-Map` pinned) and fail
+fast on mismatch. Mismatch produces wrong KV-cache state on the
+engine side and is a fatal session error.
+
 ---
 
 ## Latent Modality (v0.3)
@@ -1288,7 +1189,6 @@ POST /v1/completions                              ← existing JSON/SSE path (un
 POST /v1/completions  + stream_format             ← opt-in binary output
 POST /v1/completions  + prompt:int[] + stream_format  ← bidirectional via JSON request
 POST /v1/completions/codec                        ← bidirectional via binary request (huge prompts)
-MCP   initialize  + capabilities.codec.vocab_id   ← bidirectional tool calls (ToolCallFrame ↔ ToolResultFrame)
 GET  /codec/schema                                ← proto schema for client codegen
 ```
 
@@ -1391,27 +1291,3 @@ map, the same way Wireshark decodes binary protocols.
    tokens that decode to waveforms via a learned function). The
    modality slot anticipates this; pipelines and frame schema can be
    added additively in a future release.
-
-6. **Streaming tool results.** `ToolResultFrame.done` allows multi-frame
-   results, but the canonical case (Time, Calculator, single-shot HTTP
-   tools) emits one frame with `done=true`. Open: should agent-style
-   tools that produce long generative output (a sub-LLM, a long-running
-   browse session) stream `ToolResultFrame`s with intermediate `done=false`
-   chunks, or open a nested completions session and reference its session
-   ID? Both work; the spec doesn't yet recommend one. The choice
-   affects whether tool results compose like sub-completions or stay
-   atomic.
-
-7. **Tool-call cancellation.** A `ToolCallFrame` carries no abort
-   signal; today cancelling means closing the underlying transport.
-   Open: a per-call `CancelToolCallFrame { tool_call_id }` would let
-   cancellation flow without tearing down the session, matching how
-   completions handle `Connection: close` mid-stream. Tracked separately
-   because it crosses into MCP session-management territory.
-
-8. **Chained sub-calls.** A tool that itself dispatches to other tools
-   (an agent-as-a-tool) needs a `parent_tool_call_id` field for tracing
-   and policy enforcement. The current schema has none. Adding it is
-   additive (optional protobuf field, optional msgpack key) but the
-   semantics of a partial parent chain (ancestor session closed
-   mid-call) need work.

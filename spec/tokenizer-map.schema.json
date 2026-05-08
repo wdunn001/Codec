@@ -113,6 +113,45 @@
           }
         }
       }
+    },
+    "tool_calling": {
+      "type": "object",
+      "description": "Optional. Per-model calling convention for tool calls — how the model expects tool invocations to be packaged inside the marker pair, and how it expects results to come back. Derived by @codecai/maps-cli from `tokenizer_config.json`'s `chat_template` (or supplied via --convention). Absent on maps generated before this block existed; readers MUST treat absence as 'convention not declared; behave per the spec's Tool-call detection prose table' rather than as an error. The detection markers themselves (single-token specials like `<|python_tag|>`, `<tool_call>`) live in `special_tokens` regardless; this block carries the structure that wraps them. See spec/PROTOCOL.md § Tool-call calling conventions in the map.",
+      "additionalProperties": false,
+      "required": ["convention", "markers", "args_format", "result_format"],
+      "properties": {
+        "convention": {
+          "type": "string",
+          "enum": ["llama3", "qwen25", "phi4", "mistral_nemo", "deepseek_v3", "deepseek_r1", "custom"],
+          "description": "Normative name of the calling convention. Each value pins a specific argument layout, marker placement, and result framing. 'custom' opts out of the registry; implementations using 'custom' MUST pin the layout in implementer-supplied prose and MUST NOT assume registry semantics. New conventions are added in additive point releases of the schema, not extensible per-deployment."
+        },
+        "markers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start", "end"],
+          "description": "Start and end marker tokens that delimit a tool call (or tool result, when symmetric) in the model's output stream. Both strings MUST appear as keys in the parent `special_tokens` object — the values they resolve to are the IDs ToolWatcher compares against. Same-named-token-different-ID across map versions is allowed (vocab can shift); the binding is by name within this map.",
+          "properties": {
+            "start": {
+              "type": "string",
+              "description": "Name of the special token that opens a tool call, e.g. '<|python_tag|>' (Llama-3) or '<tool_call>' (Qwen-2.5). MUST exist in `special_tokens`."
+            },
+            "end": {
+              "type": "string",
+              "description": "Name of the special token that closes a tool call, e.g. '<|eom_id|>' (Llama-3) or '</tool_call>' (Qwen-2.5). MUST exist in `special_tokens`."
+            }
+          }
+        },
+        "args_format": {
+          "type": "string",
+          "enum": ["json", "python_args"],
+          "description": "How tool-call arguments are packed inside the marker pair on the engine's output side.\n  json          — a single JSON object, e.g. {\"location\":\"NYC\"}.\n  python_args   — a Python-style call expression, e.g. get_weather(location=\"NYC\"). Llama-3 uses this with `<|python_tag|>`."
+        },
+        "result_format": {
+          "type": "string",
+          "enum": ["text", "json"],
+          "description": "How tool results come back into the model's input.\n  text — opaque UTF-8 text returned verbatim.\n  json — a JSON value (object, array, or scalar) the model parses. Most modern conventions accept either and dispatch by content sniffing; this field is the primary form the convention expects."
+        }
+      }
     }
   },
   "anyOf": [
@@ -143,7 +182,15 @@
       "special_tokens": {
         "<|endoftext|>": 151643,
         "<|im_start|>": 151644,
-        "<|im_end|>": 151645
+        "<|im_end|>": 151645,
+        "<tool_call>": 151657,
+        "</tool_call>": 151658
+      },
+      "tool_calling": {
+        "convention": "qwen25",
+        "markers": { "start": "<tool_call>", "end": "</tool_call>" },
+        "args_format": "json",
+        "result_format": "json"
       },
       "published_at": "2026-05-06T00:00:00Z",
       "zstd_dictionaries": [
