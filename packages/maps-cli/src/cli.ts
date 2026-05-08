@@ -55,8 +55,35 @@ import {
   fetchAndConvert,
   hashMap,
   type HFTokenizerJson,
+  type HFTokenizerConfig,
 } from './convert.js';
-import type { TokenizerMap } from '@codecai/web';
+import type { TokenizerMap, ToolCallingBlock } from '@codecai/web';
+
+/** Closed-enum guard for the --convention CLI flag. Returns the
+ *  validated value or exits with a clear error if unknown. The
+ *  registry here MUST stay in sync with CONVENTIONS in convert.ts;
+ *  adding a new convention is a coordinated change. */
+function validateConventionFlag(
+  raw: string | undefined,
+): ToolCallingBlock['convention'] | undefined {
+  if (!raw) return undefined;
+  const known: ReadonlyArray<ToolCallingBlock['convention']> = [
+    'llama3',
+    'qwen25',
+    'phi4',
+    'mistral_nemo',
+    'deepseek_v3',
+    'deepseek_r1',
+    'custom',
+  ];
+  if (!known.includes(raw as ToolCallingBlock['convention'])) {
+    fail(
+      `--convention=${raw}: unknown. Known values: ${known.join(', ')}.\n` +
+        `Use --convention=custom and post-process the map if you need a layout outside the registry.`,
+    );
+  }
+  return raw as ToolCallingBlock['convention'];
+}
 
 interface Flags {
   id?: string;
@@ -70,6 +97,10 @@ interface Flags {
   url?: string;
   inline?: string;
   'out-dir'?: string;
+  /** --convention=<name>: override the auto-detected tool-calling convention. */
+  convention?: string;
+  /** --tokenizer-config=<path>: explicit tokenizer_config.json (for `convert`). */
+  'tokenizer-config'?: string;
 }
 
 function parseFlags(args: string[]): { positional: string[]; flags: Flags } {
@@ -108,7 +139,13 @@ async function cmdBuild(args: string[], flags: Flags): Promise<void> {
   const out = flags.out ?? `${id.replace(/\//g, '_')}.json`;
 
   stdout.write(`▶ fetching ${hfModel} from HuggingFace…\n`);
-  const map = await fetchAndConvert({ hfModel: hfModel!, id, hfToken: flags.token });
+  const convention = validateConventionFlag(flags.convention);
+  const map = await fetchAndConvert({
+    hfModel: hfModel!,
+    id,
+    hfToken: flags.token,
+    convention,
+  });
   const json = JSON.stringify(map, null, 2);
   await writeFile(out, json + '\n', 'utf-8');
   const hash = await hashMap(map);
@@ -121,6 +158,9 @@ async function cmdBuild(args: string[], flags: Flags): Promise<void> {
   if (map.byte_fallback_start !== undefined) {
     stdout.write(`  byte_fallback ${map.byte_fallback_start}–${map.byte_fallback_end}\n`);
   }
+  stdout.write(
+    `  tool_calling ${map.tool_calling ? map.tool_calling.convention : 'omitted (no chat_template signature matched)'}\n`,
+  );
   stdout.write(`  hash         ${hash}\n`);
 }
 
@@ -132,12 +172,35 @@ async function cmdConvert(args: string[], flags: Flags): Promise<void> {
   const out = flags.out ?? `${id.replace(/\//g, '_')}.json`;
 
   const hf = JSON.parse(await readFile(inPath!, 'utf-8')) as HFTokenizerJson;
-  const map = convertHFTokenizer(hf, { id });
+
+  // Optional tokenizer_config.json — explicit path wins, else look
+  // for a sibling `tokenizer_config.json` next to the input file
+  // (HuggingFace ships them together; this is the natural local layout).
+  let tokenizerConfig: HFTokenizerConfig | undefined;
+  const explicitConfig = flags['tokenizer-config'];
+  if (explicitConfig) {
+    tokenizerConfig = JSON.parse(await readFile(explicitConfig, 'utf-8')) as HFTokenizerConfig;
+  } else {
+    const sibling = inPath!.replace(/tokenizer\.json$/, 'tokenizer_config.json');
+    if (sibling !== inPath) {
+      try {
+        tokenizerConfig = JSON.parse(await readFile(sibling, 'utf-8')) as HFTokenizerConfig;
+      } catch {
+        // No sibling — the map will simply omit tool_calling.
+      }
+    }
+  }
+
+  const convention = validateConventionFlag(flags.convention);
+  const map = convertHFTokenizer(hf, { id, tokenizerConfig, convention });
   const json = JSON.stringify(map, null, 2);
   await writeFile(out, json + '\n', 'utf-8');
   const hash = await hashMap(map);
 
   stdout.write(`✓ written  ${out}\n`);
+  stdout.write(
+    `  tool_calling ${map.tool_calling ? map.tool_calling.convention : 'omitted'}\n`,
+  );
   stdout.write(`  hash       ${hash}\n`);
 }
 
@@ -339,10 +402,17 @@ function help(): void {
 
 Commands:
   build <hf-model> [--id=<id>] [--out=<path>] [--token=<hf-token>]
+                   [--convention=<llama3|qwen25|phi4|mistral_nemo|deepseek_v3|deepseek_r1|custom>]
     Fetch tokenizer.json from HuggingFace and convert to a TokenizerMap.
+    Also fetches tokenizer_config.json (best-effort) and derives a
+    'tool_calling' block from the chat template signature. Pass
+    --convention=<name> to override the auto-detection.
 
   convert <tokenizer.json> --id=<id> [--out=<path>]
-    Convert a local tokenizer.json file to a TokenizerMap.
+                           [--tokenizer-config=<path>] [--convention=<name>]
+    Convert a local tokenizer.json file to a TokenizerMap. If a sibling
+    tokenizer_config.json exists next to <tokenizer.json> it is read
+    automatically; pass --tokenizer-config=<path> to override.
 
   validate <map.json>
     Validate a map file against the schema.

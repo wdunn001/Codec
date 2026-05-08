@@ -14,7 +14,7 @@
  * S3, …) and pinned by sha256 hash.
  */
 
-import type { TokenizerMap } from '@codecai/web';
+import type { TokenizerMap, ToolCallingBlock } from '@codecai/web';
 import { compilePreTokenizerRegex, metaspaceProgram } from './compile-pretok.js';
 
 // ── HuggingFace tokenizer.json shape ────────────────────────────────────────
@@ -53,6 +53,24 @@ export interface ConvertOptions {
   version?: string;
   /** ISO timestamp. Defaults to `new Date().toISOString()`. */
   publishedAt?: string;
+  /**
+   * Optional `tokenizer_config.json` content. When supplied, the
+   * converter inspects `chat_template` and emits a `tool_calling`
+   * block on the resulting map per the registry of known calling
+   * conventions. Pass undefined to skip — the resulting map simply
+   * omits the block, which readers treat per the spec's prose table.
+   */
+  tokenizerConfig?: HFTokenizerConfig;
+  /**
+   * Override the auto-detected calling convention. Useful when a
+   * model uses a known convention but with a non-standard chat
+   * template, or to opt into a convention the detector doesn't
+   * recognize yet. `"custom"` is reserved for callers that pin the
+   * layout in implementer-supplied prose; using it currently produces
+   * no `tool_calling` block — wire your own block in via post-
+   * processing after `convertHFTokenizer` returns.
+   */
+  convention?: ToolCallingBlock['convention'];
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -96,6 +114,187 @@ function normalizeMerges(hf: HFTokenizerJson): string[] | undefined {
 }
 
 const BYTE_FALLBACK_RE = /^<0x([0-9A-Fa-f]{2})>$/;
+
+// ── Tool-calling convention derivation ──────────────────────────────────────
+//
+// Per spec/PROTOCOL.md § Tool-call calling conventions in the map, the
+// per-model calling convention (markers, args/result format) lives in the
+// tokenizer map's optional `tool_calling` block. We derive it from the
+// model's `chat_template` Jinja string (shipped in `tokenizer_config.json`
+// next to `tokenizer.json` on HuggingFace).
+//
+// The detector is intentionally substring-based and conservative: it
+// looks for the unique start marker of each known convention and returns
+// the FIRST match. If multiple markers somehow appear in a template
+// (shouldn't happen in practice — a template encodes one convention)
+// the first entry in CONVENTIONS wins.
+//
+// Both marker names MUST resolve to entries in the map's `special_tokens`
+// before the block is emitted; if either is absent the detector returns
+// undefined and the caller falls back to omitting the block. The map
+// reader then treats absence per the spec ("convention not declared;
+// behave per the prose table") rather than as an error.
+
+interface ChatTemplateBearing {
+  /** Top-level chat_template string. Some configs use a list of
+   *  {name, template} objects instead — we accept both shapes. */
+  readonly chat_template?:
+    | string
+    | ReadonlyArray<{ readonly name: string; readonly template: string }>;
+}
+
+/**
+ * The shape of `tokenizer_config.json` we care about. Other fields
+ * (model_max_length, bos_token, etc.) are ignored — only chat_template
+ * carries the calling-convention signature.
+ */
+export type HFTokenizerConfig = ChatTemplateBearing;
+
+interface ConventionEntry {
+  readonly convention: ToolCallingBlock['convention'];
+  /** The unique substring of the model's chat_template that disambiguates
+   *  this convention from every other. Order in the CONVENTIONS array
+   *  matters for tie-breaking. */
+  readonly templateSignature: string;
+  readonly markers: { readonly start: string; readonly end: string };
+  readonly args_format: ToolCallingBlock['args_format'];
+  readonly result_format: ToolCallingBlock['result_format'];
+}
+
+const CONVENTIONS: readonly ConventionEntry[] = [
+  // Llama 3.1+ — `<|python_tag|>get_weather(location="NYC")<|eom_id|>`.
+  // Detected by the unique python_tag marker; args_format is python_args
+  // because the convention emits a Python-style call expression after the
+  // tag rather than a JSON object.
+  {
+    convention: 'llama3',
+    templateSignature: '<|python_tag|>',
+    markers: { start: '<|python_tag|>', end: '<|eom_id|>' },
+    args_format: 'python_args',
+    result_format: 'json',
+  },
+  // Qwen 2.5+ — `<tool_call>{"name":"x","arguments":{}}</tool_call>`.
+  {
+    convention: 'qwen25',
+    templateSignature: '<tool_call>',
+    markers: { start: '<tool_call>', end: '</tool_call>' },
+    args_format: 'json',
+    result_format: 'json',
+  },
+  // Phi-4 — `<|tool|>{...}<|/tool|>`.
+  {
+    convention: 'phi4',
+    templateSignature: '<|tool|>',
+    markers: { start: '<|tool|>', end: '<|/tool|>' },
+    args_format: 'json',
+    result_format: 'json',
+  },
+  // Mistral-Nemo — `[TOOL_CALLS][{...}, {...}][/TOOL_CALLS]`.
+  {
+    convention: 'mistral_nemo',
+    templateSignature: '[TOOL_CALLS]',
+    markers: { start: '[TOOL_CALLS]', end: '[/TOOL_CALLS]' },
+    args_format: 'json',
+    result_format: 'json',
+  },
+  // DeepSeek-V3 — full-width unicode markers from the V3 chat template.
+  {
+    convention: 'deepseek_v3',
+    templateSignature: '<｜tool▁calls▁begin｜>',
+    markers: {
+      start: '<｜tool▁calls▁begin｜>',
+      end: '<｜tool▁calls▁end｜>',
+    },
+    args_format: 'json',
+    result_format: 'json',
+  },
+];
+
+/** Pull the chat_template string out of a tokenizer_config.json,
+ *  handling both the legacy "single string" form and the newer
+ *  "list of named templates" form. Returns the concatenation when
+ *  multiple templates are present (sufficient for substring detection). */
+function extractChatTemplate(cfg: HFTokenizerConfig | undefined): string | undefined {
+  const t = cfg?.chat_template;
+  if (!t) return undefined;
+  if (typeof t === 'string') return t;
+  if (Array.isArray(t)) return t.map((e) => e.template).join('\n');
+  return undefined;
+}
+
+/**
+ * Inspect a tokenizer_config + the map's vocab/special_tokens. If the
+ * chat_template carries a known convention's signature AND both
+ * markers resolve to IDs (in special_tokens or in the broader vocab),
+ * return the matching ToolCallingBlock and also PROMOTE the markers
+ * into the supplied `specialTokens` object (in-place) so the spec
+ * contract holds — the spec requires markers to appear as keys in
+ * special_tokens because that's what ToolWatcher reads.
+ *
+ * The promotion is necessary because some model families (e.g.
+ * Qwen2.5) ship their tool-call markers as `added_tokens` with
+ * `special: false`. They're real tokens with stable IDs, just not
+ * flagged as "skip during rendering" — but they ARE control tokens
+ * for the tool-calling protocol. The chat template is the
+ * authoritative signal that they're being used as such; once we've
+ * matched a known convention by template signature, we know the
+ * markers are control tokens and lift them into special_tokens.
+ *
+ * Returns undefined (and does NOT mutate specialTokens) if either
+ * marker can't be resolved. Better to omit the block than emit one
+ * with marker names a downstream tool can't look up.
+ */
+export function deriveToolCalling(
+  cfg: HFTokenizerConfig | undefined,
+  vocab: Record<string, number>,
+  specialTokens: Record<string, number>,
+  override?: ToolCallingBlock['convention'],
+): ToolCallingBlock | undefined {
+  const resolveMarker = (name: string): number | undefined => {
+    if (name in specialTokens) return specialTokens[name];
+    if (name in vocab) return vocab[name];
+    return undefined;
+  };
+
+  const tryEntry = (entry: ConventionEntry): ToolCallingBlock | undefined => {
+    const startId = resolveMarker(entry.markers.start);
+    const endId = resolveMarker(entry.markers.end);
+    if (startId === undefined || endId === undefined) return undefined;
+    // Promote into special_tokens if absent — keeps the spec contract
+    // ("markers MUST appear as keys in special_tokens") satisfied.
+    if (!(entry.markers.start in specialTokens)) {
+      specialTokens[entry.markers.start] = startId;
+    }
+    if (!(entry.markers.end in specialTokens)) {
+      specialTokens[entry.markers.end] = endId;
+    }
+    return {
+      convention: entry.convention,
+      markers: entry.markers,
+      args_format: entry.args_format,
+      result_format: entry.result_format,
+    };
+  };
+
+  // Explicit override path (CLI flag --convention=<name>).
+  if (override && override !== 'custom') {
+    const entry = CONVENTIONS.find((c) => c.convention === override);
+    if (!entry) return undefined;
+    return tryEntry(entry);
+  }
+
+  // Auto-detect from chat_template signature.
+  const template = extractChatTemplate(cfg);
+  if (!template) return undefined;
+
+  for (const entry of CONVENTIONS) {
+    if (!template.includes(entry.templateSignature)) continue;
+    const block = tryEntry(entry);
+    if (block) return block;
+  }
+
+  return undefined;
+}
 
 // ── Core conversion ──────────────────────────────────────────────────────────
 
@@ -178,6 +377,26 @@ export function convertHFTokenizer(
     (result as { special_tokens?: Record<string, number> }).special_tokens = special_tokens;
   }
 
+  // Optional tool-calling convention block. The deriver looks up
+  // markers in vocab + special_tokens, and promotes vocab-only markers
+  // into special_tokens (in-place) when a convention matches — the
+  // spec contract "markers MUST be keys in special_tokens" stays
+  // satisfied. A partial match still returns undefined and the block
+  // is omitted; the spec lets readers handle absence per the prose
+  // table.
+  const toolCalling = deriveToolCalling(
+    opts.tokenizerConfig,
+    vocab,
+    special_tokens,
+    opts.convention,
+  );
+  if (toolCalling) {
+    // Re-assign special_tokens onto the result in case deriveToolCalling
+    // promoted markers and Object.keys went from 0 to non-zero.
+    (result as { special_tokens?: Record<string, number> }).special_tokens = special_tokens;
+    (result as { tool_calling?: ToolCallingBlock }).tool_calling = toolCalling;
+  }
+
   return result;
 }
 
@@ -193,29 +412,58 @@ export interface FetchAndConvertOptions extends ConvertOptions {
 }
 
 /**
- * Fetch a tokenizer.json from HuggingFace and convert it. Useful for one-off
- * generation; for bulk conversion across many models, fetch the JSON yourself
- * and call `convertHFTokenizer` directly.
+ * Fetch a tokenizer.json from HuggingFace and convert it. Also fetches
+ * `tokenizer_config.json` (best-effort) so the converter can derive a
+ * `tool_calling` block from the model's chat template; a missing config
+ * is not an error, the block is simply omitted in that case.
+ *
+ * Useful for one-off generation; for bulk conversion across many models,
+ * fetch both JSON files yourself and call `convertHFTokenizer` directly
+ * with `tokenizerConfig` supplied.
  */
 export async function fetchAndConvert(
   opts: FetchAndConvertOptions,
 ): Promise<TokenizerMap> {
-  const url =
+  const tokenizerUrl =
     opts.url ?? `https://huggingface.co/${opts.hfModel}/resolve/main/tokenizer.json`;
   const headers: Record<string, string> = {
     'User-Agent': '@codecai/maps-cli',
   };
   if (opts.hfToken) headers.Authorization = `Bearer ${opts.hfToken}`;
 
-  const resp = await fetch(url, { headers });
+  const resp = await fetch(tokenizerUrl, { headers });
   if (!resp.ok) {
     throw new Error(
-      `fetchAndConvert: HTTP ${resp.status} for ${url}` +
+      `fetchAndConvert: HTTP ${resp.status} for ${tokenizerUrl}` +
         (resp.status === 401 ? ' (gated model — pass hfToken)' : ''),
     );
   }
   const hf = (await resp.json()) as HFTokenizerJson;
-  return convertHFTokenizer(hf, opts);
+
+  // Best-effort fetch of tokenizer_config.json. The chat_template lives
+  // there (not in tokenizer.json), and we need it to derive the
+  // tool_calling block. A 404 here means "no chat template published" —
+  // we proceed without and the map simply omits the block. Network
+  // errors propagate normally.
+  let tokenizerConfig: HFTokenizerConfig | undefined;
+  if (!opts.tokenizerConfig) {
+    const cfgUrl = tokenizerUrl.replace(/tokenizer\.json$/, 'tokenizer_config.json');
+    try {
+      const cfgResp = await fetch(cfgUrl, { headers });
+      if (cfgResp.ok) {
+        tokenizerConfig = (await cfgResp.json()) as HFTokenizerConfig;
+      }
+    } catch {
+      // Network error — leave undefined and continue. The CLI surfaces
+      // this gap via "tool_calling: omitted" in its output banner so
+      // operators know to investigate if they expected a block.
+    }
+  }
+
+  return convertHFTokenizer(hf, {
+    ...opts,
+    tokenizerConfig: opts.tokenizerConfig ?? tokenizerConfig,
+  });
 }
 
 // ── sha256 helper ────────────────────────────────────────────────────────────

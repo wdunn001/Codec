@@ -32,6 +32,7 @@
  */
 export type {
   TokenizerMap,
+  ToolCallingBlock,
   CodecFrame,
   MapCache,
   Tokenizer,
