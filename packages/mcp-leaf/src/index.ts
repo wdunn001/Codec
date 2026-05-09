@@ -36,3 +36,15 @@ export {
   type MakeMetaTokenizerOptions,
   type WrapToolCallOptions,
 } from './leaf.js';
+
+// Reader side — symmetric helper for clients receiving Codec-aware results.
+// See `reader.ts` for usage examples.
+export {
+  hasCodecMeta,
+  findCodecMeta,
+  readCodecMeta,
+  takeIds,
+  stripCodecMeta,
+  CodecMetaMapMismatchError,
+  type CodecMetaPairing,
+} from './reader.js';
