@@ -43,17 +43,21 @@ export type ContentBlock =
   | { readonly type: 'text'; readonly text: string;[k: string]: unknown }
   | { readonly type: 'image' | 'audio' | 'resource' | string;[k: string]: unknown };
 
-/** Codec-aware gateways look for these blocks alongside text content. */
+/**
+ * @deprecated Pre-v0.3.2 sibling-block shape. Replaced by per-block
+ * `_meta['ai.codec/leaf-tokenization']` (see `CODEC_META_KEY` /
+ * `CodecMetaPayload`). The MCP SDK rejects custom-typed content
+ * blocks at the SERVER (not just the gateway), so the sibling-block
+ * design crashed time-server itself with -32602. Kept exported only
+ * so the reader-side helper's type guards stay backwards compatible
+ * with results emitted by older Codec-aware tools — new tools should
+ * use `CODEC_META_KEY` / `CodecMetaPayload`.
+ */
 export interface CodecMetaBlock {
   readonly type: '_codec_meta';
-  /** sha256 hex of the tokenizer map (matches gateway-side cache key). */
   readonly map_id: string;
-  /** Token IDs for the sibling `text` block. */
   readonly ids: readonly number[];
-  /** Optional 1-based sibling index (the `text` block this meta refers to). */
   readonly sibling_index?: number;
-  /** Index signature kept symmetric with ContentBlock so meta blocks can sit
-   *  alongside the existing union members in `result.content`. */
   readonly [k: string]: unknown;
 }
 
@@ -130,6 +134,35 @@ function normaliseHash(input: string): string {
 
 // ── Wrapper ──────────────────────────────────────────────────────────────────
 
+/**
+ * The MCP-spec namespace key under which a Codec-aware tool stores its
+ * pre-tokenized IDs on a TextContent block's `_meta` field.
+ *
+ * Per the MCP spec, every content block can carry a `_meta:
+ * Record<string, unknown>` with namespaced application metadata. We use
+ * a single, stable, reverse-DNS-style key that the gateway recognizes.
+ *
+ * Why per-block `_meta` instead of a sibling content block: the original
+ * v0.3 design used a `{ type: '_codec_meta', map_id, ids }` SIBLING
+ * block in the content array. The MCP SDK's `ContentBlockSchema` is a
+ * discriminated union over `text|image|audio|resource|resource_link`,
+ * and the SDK validates outbound results in the SERVER (not just the
+ * gateway) — so a custom-typed block crashes the time-server itself
+ * with -32602 before it ever leaves the process. The per-block `_meta`
+ * field is a first-class MCP spec slot that the SDK passes through
+ * without complaint, lets the codec metadata travel cleanly, and
+ * survives across SDK versions that may add stricter validation.
+ */
+export const CODEC_META_KEY = 'ai.codec/leaf-tokenization' as const;
+
+/** Per-block meta payload the gateway looks for. */
+export interface CodecMetaPayload {
+  /** sha256 of the canonical map JSON, prefixed with `sha256:`. */
+  readonly map_id: string;
+  /** Token IDs tokenized from the sibling text block by the tool. */
+  readonly ids: readonly number[];
+}
+
 export interface WrapToolCallOptions {
   /**
    * Skip text blocks shorter than this many characters. Default 0 (wrap all).
@@ -140,14 +173,28 @@ export interface WrapToolCallOptions {
 }
 
 /**
- * Add `_codec_meta` siblings to every text block in `result.content` whose
- * length is at least `minTextLength` (default 0). Returns a NEW result; the
- * input is not mutated.
+ * Annotate every text block in `result.content` with a `_meta` field
+ * carrying its Codec tokenization, when the block is at least
+ * `minTextLength` characters. Returns a NEW result; the input is not
+ * mutated.
  *
- * Idempotent: if a content block is already `_codec_meta`, it's left alone.
- * If a text block already has a `_codec_meta` sibling immediately following
- * it (same map_id), nothing is added — running this twice produces the same
- * tree as running it once.
+ * Wire shape (per text block):
+ * ```ts
+ * {
+ *   type: 'text',
+ *   text: '<original text>',
+ *   _meta: {
+ *     'ai.codec/leaf-tokenization': {
+ *       map_id: 'sha256:...',
+ *       ids: [123, 456, ...],
+ *     }
+ *   }
+ * }
+ * ```
+ *
+ * Idempotent: if the text block already has a matching tokenization
+ * under the same `map_id`, nothing is added — running this twice
+ * produces the same tree as once.
  */
 export function wrapToolCall(
   result: CallToolResult,
@@ -157,32 +204,35 @@ export function wrapToolCall(
   const minLen = options.minTextLength ?? 0;
   const newContent: ContentBlock[] = [];
 
-  for (let i = 0; i < result.content.length; i++) {
-    const block = result.content[i]!;
-    newContent.push(block);
+  for (const block of result.content) {
+    if (!isTextBlock(block)) {
+      newContent.push(block);
+      continue;
+    }
+    if (block.text.length < minLen) {
+      newContent.push(block);
+      continue;
+    }
 
-    if (!isTextBlock(block)) continue;
-    if (block.text.length < minLen) continue;
-
-    // Idempotence: if the next block is a matching meta sibling, don't add
-    // another. Tools that wrap twice (e.g. retry with a different layer)
-    // produce the same tree as wrapping once.
-    const next = result.content[i + 1];
-    if (
-      isCodecMetaBlock(next) &&
-      next.map_id === meta.mapHash &&
-      next.sibling_index === undefined
-    ) {
+    // Idempotence: if a matching tokenization is already attached for the
+    // same map_id, leave the block untouched.
+    const existing = readCodecMetaFromBlock(block);
+    if (existing && existing.map_id === meta.mapHash) {
+      newContent.push(block);
       continue;
     }
 
     const ids = meta.encode(block.text);
-    const metaBlock: CodecMetaBlock = {
-      type: '_codec_meta',
-      map_id: meta.mapHash,
-      ids,
+    const existingMeta =
+      (block as { _meta?: Record<string, unknown> })._meta ?? {};
+    const augmented = {
+      ...block,
+      _meta: {
+        ...existingMeta,
+        [CODEC_META_KEY]: { map_id: meta.mapHash, ids } satisfies CodecMetaPayload,
+      },
     };
-    newContent.push(metaBlock);
+    newContent.push(augmented as ContentBlock);
   }
 
   return { ...result, content: newContent };
@@ -190,7 +240,7 @@ export function wrapToolCall(
 
 // ── Type guards ──────────────────────────────────────────────────────────────
 
-function isTextBlock(b: unknown): b is { type: 'text'; text: string } {
+function isTextBlock(b: unknown): b is { type: 'text'; text: string; _meta?: Record<string, unknown> } {
   return (
     typeof b === 'object' && b !== null &&
     (b as Record<string, unknown>).type === 'text' &&
@@ -198,28 +248,41 @@ function isTextBlock(b: unknown): b is { type: 'text'; text: string } {
   );
 }
 
-function isCodecMetaBlock(b: unknown): b is CodecMetaBlock {
-  if (typeof b !== 'object' || b === null) return false;
-  const o = b as Record<string, unknown>;
-  return (
-    o.type === '_codec_meta' &&
-    typeof o.map_id === 'string' &&
-    Array.isArray(o.ids)
-  );
+function isCodecMetaPayload(p: unknown): p is CodecMetaPayload {
+  if (typeof p !== 'object' || p === null) return false;
+  const o = p as Record<string, unknown>;
+  return typeof o.map_id === 'string' && Array.isArray(o.ids);
 }
 
 /**
- * Standalone factory that returns a `_codec_meta` block for a given text +
- * meta tokenizer. Useful for callers that build their own content arrays
- * outside of the wrapToolCall convenience.
+ * Read the Codec tokenization off a single content block, if present.
+ * Returns `null` if the block isn't a text block, doesn't have `_meta`,
+ * or doesn't carry a valid Codec payload.
+ */
+export function readCodecMetaFromBlock(
+  block: unknown,
+): CodecMetaPayload | null {
+  if (typeof block !== 'object' || block === null) return null;
+  const meta = (block as { _meta?: unknown })._meta;
+  if (typeof meta !== 'object' || meta === null) return null;
+  const payload = (meta as Record<string, unknown>)[CODEC_META_KEY];
+  return isCodecMetaPayload(payload) ? payload : null;
+}
+
+/**
+ * Build a fresh text content block with a Codec tokenization attached.
+ * Convenience for callers that build their own content arrays outside
+ * of the `wrapToolCall` flow.
  */
 export function buildMetaBlock(
   text: string,
   meta: MetaTokenizer,
-): CodecMetaBlock {
+): { type: 'text'; text: string; _meta: { [K in typeof CODEC_META_KEY]: CodecMetaPayload } } {
   return {
-    type: '_codec_meta',
-    map_id: meta.mapHash,
-    ids: meta.encode(text),
+    type: 'text',
+    text,
+    _meta: {
+      [CODEC_META_KEY]: { map_id: meta.mapHash, ids: meta.encode(text) } as CodecMetaPayload,
+    } as { [K in typeof CODEC_META_KEY]: CodecMetaPayload },
   };
 }

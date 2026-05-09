@@ -123,7 +123,7 @@ describe('mcp-leaf reader', () => {
     assert.equal(findCodecMeta(wrapped, 99), null);
   });
 
-  it('stripCodecMeta removes meta blocks and leaves the rest untouched', async () => {
+  it('stripCodecMeta drops the per-block _meta payload, keeps everything else', async () => {
     const meta = await buildMeta();
     const wrapped = wrapToolCall(
       {
@@ -134,13 +134,58 @@ describe('mcp-leaf reader', () => {
       },
       meta,
     );
-    assert.equal(wrapped.content.length, 3); // text + meta + image
+    assert.equal(wrapped.content.length, 2); // text (with _meta) + image
+    assert.ok(
+      ((wrapped.content[0] as { _meta?: unknown })._meta as Record<string, unknown> | undefined)?.[
+        'ai.codec/leaf-tokenization'
+      ],
+      'pre-strip: codec _meta present',
+    );
     const stripped = stripCodecMeta(wrapped);
     assert.equal(stripped.content.length, 2);
     assert.equal((stripped.content[0] as { type: string }).type, 'text');
+    assert.equal(
+      (stripped.content[0] as { _meta?: unknown })._meta,
+      undefined,
+      'post-strip: _meta gone (was the only key)',
+    );
     assert.equal((stripped.content[1] as { type: string }).type, 'image');
     // Original unchanged.
-    assert.equal(wrapped.content.length, 3);
+    assert.ok(
+      ((wrapped.content[0] as { _meta?: unknown })._meta as Record<string, unknown> | undefined)?.[
+        'ai.codec/leaf-tokenization'
+      ],
+      'original wrapped result unchanged',
+    );
+  });
+
+  it('stripCodecMeta keeps unrelated _meta keys', async () => {
+    const meta = await buildMeta();
+    const wrapped = wrapToolCall(
+      {
+        content: [
+          { type: 'text', text: 'hello', _meta: { 'app/trace': 'abc' } },
+        ],
+      },
+      meta,
+    );
+    const stripped = stripCodecMeta(wrapped);
+    const block = stripped.content[0] as { _meta?: Record<string, unknown> };
+    assert.equal(block._meta?.['app/trace'], 'abc');
+    assert.equal(block._meta?.['ai.codec/leaf-tokenization'], undefined);
+  });
+
+  it('stripCodecMeta also strips legacy v0.3.0/0.3.1 _codec_meta sibling blocks', () => {
+    const result: CallToolResult = {
+      content: [
+        { type: 'text', text: 'hello' },
+        // Legacy sibling block — older Codec-aware tools shipped this.
+        { type: '_codec_meta' as 'text', map_id: 'sha256:abc', ids: [1, 2, 3] } as unknown as { type: 'text'; text: string },
+      ],
+    };
+    const stripped = stripCodecMeta(result);
+    assert.equal(stripped.content.length, 1);
+    assert.equal((stripped.content[0] as { type: string }).type, 'text');
   });
 
   it('stripCodecMeta is a no-op identity when no meta is present', () => {
@@ -149,5 +194,21 @@ describe('mcp-leaf reader', () => {
     };
     const out = stripCodecMeta(plain);
     assert.equal(out, plain);
+  });
+
+  it('reads legacy sibling-block shape too (back-compat)', () => {
+    // Legacy v0.3.0/0.3.1 wire: sibling content block with type === '_codec_meta'.
+    const legacy: CallToolResult = {
+      content: [
+        { type: 'text', text: 'hello' },
+        { type: '_codec_meta' as 'text', map_id: 'sha256:abc', ids: [42, 43] } as unknown as { type: 'text'; text: string },
+      ],
+    };
+    assert.equal(hasCodecMeta(legacy), true);
+    const pairings = readCodecMeta(legacy);
+    assert.equal(pairings.length, 1);
+    assert.equal(pairings[0]!.mapId, 'sha256:abc');
+    assert.deepEqual(pairings[0]!.ids, [42, 43]);
+    assert.equal(pairings[0]!.source, 'sibling');
   });
 });

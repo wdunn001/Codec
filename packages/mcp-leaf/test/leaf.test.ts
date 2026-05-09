@@ -63,7 +63,7 @@ describe('makeMetaTokenizer', () => {
 });
 
 describe('wrapToolCall', () => {
-  it('appends a _codec_meta sibling to every text block', async () => {
+  it('attaches _meta payload to every text block (no sibling blocks)', async () => {
     const meta = await buildMeta();
     const result = {
       content: [
@@ -73,15 +73,26 @@ describe('wrapToolCall', () => {
     };
 
     const wrapped = wrapToolCall(result, meta);
-    assert.equal(wrapped.content.length, 4);
+    // Per-block _meta — no extra sibling blocks. Length stays 2.
+    assert.equal(wrapped.content.length, 2);
     assert.equal(wrapped.content[0]!.type, 'text');
-    assert.equal(wrapped.content[1]!.type, '_codec_meta');
-    assert.equal(wrapped.content[2]!.type, 'text');
-    assert.equal(wrapped.content[3]!.type, '_codec_meta');
+    assert.equal(wrapped.content[1]!.type, 'text');
 
-    const meta1 = wrapped.content[1] as { type: string; map_id: string; ids: number[] };
-    assert.equal(meta1.map_id, `sha256:${MAP_HASH_HEX}`);
-    assert.ok(Array.isArray(meta1.ids));
+    const block0 = wrapped.content[0] as { _meta?: Record<string, unknown> };
+    const payload0 = (block0._meta as Record<string, unknown> | undefined)?.[
+      'ai.codec/leaf-tokenization'
+    ] as { map_id: string; ids: number[] } | undefined;
+    assert.ok(payload0, 'block 0 has codec _meta');
+    assert.equal(payload0!.map_id, `sha256:${MAP_HASH_HEX}`);
+    assert.ok(Array.isArray(payload0!.ids));
+
+    const block1 = wrapped.content[1] as { _meta?: Record<string, unknown> };
+    assert.ok(
+      (block1._meta as Record<string, unknown> | undefined)?.[
+        'ai.codec/leaf-tokenization'
+      ],
+      'block 1 has codec _meta',
+    );
   });
 
   it('leaves non-text blocks alone (image, audio, resource)', async () => {
@@ -94,7 +105,7 @@ describe('wrapToolCall', () => {
       ],
     };
     const wrapped = wrapToolCall(result, meta);
-    assert.equal(wrapped.content.length, 3, 'no meta blocks added for non-text content');
+    assert.equal(wrapped.content.length, 3, 'no meta added for non-text content');
     assert.deepEqual(wrapped.content, result.content);
   });
 
@@ -107,11 +118,21 @@ describe('wrapToolCall', () => {
       ],
     };
     const wrapped = wrapToolCall(result, meta, { minTextLength: 16 });
-    // Short text gets no meta sibling; long text does.
-    assert.equal(wrapped.content.length, 3);
-    assert.equal(wrapped.content[0]!.type, 'text');
-    assert.equal(wrapped.content[1]!.type, 'text');
-    assert.equal(wrapped.content[2]!.type, '_codec_meta');
+    assert.equal(wrapped.content.length, 2);
+    // Short text: no _meta added.
+    assert.equal(
+      (wrapped.content[0] as { _meta?: unknown })._meta,
+      undefined,
+      'short text has no _meta',
+    );
+    // Long text: _meta with codec payload.
+    const long = wrapped.content[1] as { _meta?: Record<string, unknown> };
+    assert.ok(
+      (long._meta as Record<string, unknown> | undefined)?.[
+        'ai.codec/leaf-tokenization'
+      ],
+      'long text has _meta',
+    );
   });
 
   it('is idempotent — wrapping twice produces the same tree as once', async () => {
@@ -147,14 +168,29 @@ describe('wrapToolCall', () => {
     assert.equal(wrapped.isError, true);
     assert.equal((wrapped as Record<string, unknown>)._trace, 'abc123');
   });
+
+  it('preserves an existing _meta on the text block (merges keys)', async () => {
+    const meta = await buildMeta();
+    const result = {
+      content: [
+        { type: 'text' as const, text: 'hello world!', _meta: { 'app/trace': 'abc' } },
+      ],
+    };
+    const wrapped = wrapToolCall(result, meta);
+    const block = wrapped.content[0] as { _meta?: Record<string, unknown> };
+    assert.equal(block._meta?.['app/trace'], 'abc');
+    assert.ok(block._meta?.['ai.codec/leaf-tokenization']);
+  });
 });
 
 describe('buildMetaBlock', () => {
-  it('produces a valid _codec_meta block', async () => {
+  it('produces a text block with the codec _meta payload attached', async () => {
     const meta = await buildMeta();
     const block = buildMetaBlock('hello', meta);
-    assert.equal(block.type, '_codec_meta');
-    assert.equal(block.map_id, `sha256:${MAP_HASH_HEX}`);
-    assert.ok(Array.isArray(block.ids));
+    assert.equal(block.type, 'text');
+    assert.equal(block.text, 'hello');
+    const payload = block._meta['ai.codec/leaf-tokenization'];
+    assert.equal(payload.map_id, `sha256:${MAP_HASH_HEX}`);
+    assert.ok(Array.isArray(payload.ids));
   });
 });
