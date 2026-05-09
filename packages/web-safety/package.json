@@ -28,6 +28,11 @@
       "types": "./dist/types/registry.d.ts",
       "import": "./dist/esm/registry.js",
       "require": "./dist/cjs/registry.cjs"
+    },
+    "./classifiers/prompt-guard-86m": {
+      "types": "./dist/types/classifiers/prompt-guard-86m.d.ts",
+      "import": "./dist/esm/classifiers/prompt-guard-86m.js",
+      "require": "./dist/cjs/classifiers/prompt-guard-86m.cjs"
     }
   },
   "files": [
@@ -47,7 +52,16 @@
   "dependencies": {
     "@codecai/web": "^0.4.0"
   },
+  "peerDependencies": {
+    "@huggingface/transformers": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@huggingface/transformers": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@huggingface/transformers": "^3.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   },
