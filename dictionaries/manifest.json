@@ -42,6 +42,27 @@
         "gain_pct": 16.67
       },
       "training_level": 3
+    },
+    "mcp-msgpack-msgpack-v1": {
+      "model": "metamcp/mcp-msgpack",
+      "codec_format": "msgpack",
+      "dict_size_bytes": 16384,
+      "file": "mcp-msgpack-msgpack-v1.dict",
+      "sha256": "sha256:ecc9410a63c834343041b0ded7774d2f575b36453209014feb86d7f77571194f",
+      "trained_at": "2026-05-09T01:12:21Z",
+      "corpus": {
+        "n_samples": 303,
+        "median_bytes": 1162,
+        "source": "mcp-bench-replay",
+        "corpus_dir": "corpora/mcp-synth"
+      },
+      "holdout": {
+        "n_samples": 60,
+        "baseline_avg_bytes": 793.3,
+        "with_dict_avg_bytes": 168.3,
+        "gain_pct": 78.78
+      },
+      "training_level": 3
     }
   }
 }
