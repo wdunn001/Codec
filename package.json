@@ -4,7 +4,8 @@
   "description": "Token-native binary transport protocol for AI APIs",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/mcp-leaf/examples/time-server"
   ],
   "scripts": {
     "demo": "tsx packages/demo/src/benchmark.ts",
