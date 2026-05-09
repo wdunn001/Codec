@@ -4,8 +4,8 @@ This directory holds the **canonical Python bodies** that the latent-aware engin
 
 | Fork | Branch | Vendors | Image |
 |---|---|---|---|
-| [`wdunn001/ComfyUI`](https://github.com/wdunn001/ComfyUI) | `feat/codec-latent-transport` | [`comfyui/`](./comfyui/) | `codec/comfyui:dev` (built by [`Dockerfile.comfyui`](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.comfyui)) |
-| [`wdunn001/diffusers`](https://github.com/wdunn001/diffusers) | `feat/codec-latent-transport` | [`diffusers/codec_server/`](./diffusers/codec_server/) | `codec/diffusers:dev` (built by [`Dockerfile.diffusers`](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.diffusers)) |
+| [`wdunn001/ComfyUI`](https://github.com/wdunn001/ComfyUI) | `feat/codec-latent-transport` | [`comfyui/`](./comfyui/) | [`wdunn001/codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui) — `:vX.Y.Z` + `:latest` + `:sha-<git7>` (built by [`Dockerfile.comfyui`](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.comfyui), auto-pushed by [`release.yml`](https://github.com/wdunn001/codec-supervisor/blob/main/.github/workflows/release.yml) on every `v*` git tag) |
+| [`wdunn001/diffusers`](https://github.com/wdunn001/diffusers) | `feat/codec-latent-transport` | [`diffusers/codec_server/`](./diffusers/codec_server/) | [`wdunn001/codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers) — `:vX.Y.Z` + `:latest` + `:sha-<git7>` (built by [`Dockerfile.diffusers`](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.diffusers), same release workflow) |
 
 Why "fork-only", not upstream PRs:
 

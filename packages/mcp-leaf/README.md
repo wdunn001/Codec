@@ -1,6 +1,11 @@
-# `@codecai/mcp-leaf` — leaf-mode helper for Codec-aware MCP tools
+# `@codecai/mcp-leaf` — both sides of the Codec leaf-mode contract
 
-This is the **tool-author side** of the Codec leaf-mode contract specified in [`spec/PROTOCOL.md`](../../spec/PROTOCOL.md) §"Tool-call calling conventions in the map." A tool author drops this package into their MCP server, wraps their `CallToolResult`s on the way out, and the result graduates to leaf-mode tokenization — a Codec-aware gateway (metamcp) detects the pre-tokenized output and skips its back-compat shim, becoming a transparent ID pipe for the hop.
+This package implements **both halves** of the Codec leaf-mode contract specified in [`spec/PROTOCOL.md`](../../spec/PROTOCOL.md) §"Tool-call calling conventions in the map":
+
+- **Writer side** (`makeMetaTokenizer`, `wrapToolCall`, `buildMetaBlock`) — for MCP tool authors. Drop this package into your MCP server, wrap `CallToolResult`s on the way out, and the result graduates to leaf-mode tokenization. A Codec-aware gateway ([`codec-metamcp`](https://hub.docker.com/r/wdunn001/codec-metamcp)) detects the pre-tokenized output and skips its back-compat shim, becoming a transparent ID pipe for the hop.
+- **Reader side** (`hasCodecMeta`, `findCodecMeta`, `readCodecMeta`, `takeIds`, `stripCodecMeta`) — for client code that receives wrapped `CallToolResult`s. Lifts the IDs back out without re-tokenizing, validates `Codec-Tokenizer-Map` agreement (throws `CodecMetaMapMismatchError` on divergence — KV-cache poisoning is a fail-fast condition), and offers a strip helper for forwarding to non-Codec-aware downstream clients.
+
+The canonical Codec-aware MCP server, [`codec-time-leaf`](./examples/time-server/), is published to [npm](https://www.npmjs.com/package/@codecai/codec-time-leaf) and [Docker Hub](https://hub.docker.com/r/wdunn001/codec-time-leaf) as the reference + bench workload (variant 5 of the [MCP-live bench](../bench/src/mcp-live.ts) — `msgpack-both+gzip+map`).
 
 ## Why it exists
 

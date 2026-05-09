@@ -7,6 +7,8 @@ Codec ships token IDs over the wire instead of UTF-8 text. `@codecai/web` is the
 - **Detokenizer** (IDs → text) for rendering binary streams in the browser, lazily, only when a human needs to read them.
 - **BPETokenizer** (text → IDs) — pure-JS, exact, no wasm — so the browser can send token-ID prompts upstream and skip the JSON-text round trip entirely.
 - **Stream decoder** for both Codec wire modes (msgpack, protobuf) plus the future zstd/gzip-compressed variants (handled transparently by `fetch()`).
+- **`LatentStreamEncoder` / `LatentStreamDecoder`** (v0.3) for the latent modality — VAE latents on the wire across the seven [pipelines](https://github.com/wdunn001/Codec/blob/main/spec/PIPELINES.md) (`raw` / `int8` / `int4` / `int8-adaptive` / `int4-adaptive` / `delta+int8` / `delta+int4`). TypeScript twin of the Python reference encoder; works against [`codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui) and [`codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers).
+- **`tool_calling` block** on `TokenizerMap` — per-model tool-calling convention auto-derived from chat templates. Same field exposed in the Python / Rust / Java / .NET / C clients.
 
 Works in browsers, Node 18+, Cloudflare Workers, Deno, Bun. No Node-only imports. Only runtime dep is `@msgpack/msgpack` for stream decoding (~5 kB).
 

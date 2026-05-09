@@ -23,13 +23,17 @@ Source-available under [BSL 1.1](LICENSE). Patent posture in [PATENTS.md](PATENT
 
 ## What ships today
 
+> **Latest release: [v0.3.0](https://github.com/wdunn001/Codec/releases/tag/v0.3.0)** — Codec-aware MCP gateway (leaf-mode bypass, ~4.7× wire-byte reduction on tool calls), v0.3 latent modality (VAE latents on the wire for image + video diffusion, 48× smaller than pixels), and `tool_calling` block in tokenizer maps. Customer-facing release notes: [What's new](https://codecai.net/changelog/) · engineering changelog: [GitHub Releases](https://github.com/wdunn001/Codec/releases). Visual map of all three pathways: [/protocol-map](https://codecai.net/protocol-map).
+
 ### Spec
 
 | Surface | Where | What it is |
 |---|---|---|
-| **Wire spec** | [`spec/PROTOCOL.md`](spec/PROTOCOL.md) | v0.2 — msgpack/protobuf frames, transport compression, both endpoint paths |
-| **Map schema** | [`spec/tokenizer-map.schema.json`](spec/tokenizer-map.schema.json) | v2.1 — vocab + merges + encoder + optional `pre_tokenizer_program` (regex-free pre-tokenizer for runtimes without `\p{L}` regex) |
+| **Wire spec** | [`spec/PROTOCOL.md`](spec/PROTOCOL.md) | v0.3 — msgpack/protobuf frames, transport compression, text + latent modalities, MCP leaf-mode contract |
+| **Map schema (text)** | [`spec/tokenizer-map.schema.json`](spec/tokenizer-map.schema.json) | v2.1 — vocab + merges + encoder + optional `pre_tokenizer_program` + `tool_calling` block (auto-derived from chat templates) |
+| **Map schema (latent)** | [`spec/latent-space-map.schema.json`](spec/latent-space-map.schema.json) | v0.3 — latent-space identity, shape/dtype, `vae_scale_factor`, accepted pipelines, decoder reference, per-pipeline zstd dicts |
 | **Pretok program spec** | [`spec/PRETOKENIZER_PROGRAM.md`](spec/PRETOKENIZER_PROGRAM.md) | v1 op-list form the maps-cli compiles regex pre-tokenizers into; unblocks the C BPE encoder |
+| **Pipelines spec** | [`spec/PIPELINES.md`](spec/PIPELINES.md) | v0.3 — normative forward + inverse math for the 7 latent transforms (raw / int8 / int4 / int8-adaptive / int4-adaptive / delta+int8 / delta+int4) |
 
 ### Polyglot clients
 
@@ -37,7 +41,7 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 
 | Lang | Package | Registry | Surface |
 |---|---|---|---|
-| TypeScript / JS | [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) | npm 0.4.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · pretok-program runtime |
+| TypeScript / JS | [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) | npm 0.4.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · pretok-program runtime · `LatentStreamEncoder` / `Decoder` (v0.3) · `tool_calling` block |
 | Python | [`codecai`](https://pypi.org/project/codecai/) | PyPI 0.1.0 (local 0.2.0) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
 | .NET | [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) | NuGet 0.1.0 (local 0.2.0) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
 | Rust | [`codec-rs`](packages/rust) | local 0.1.0 (crates.io publish queued) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
@@ -53,18 +57,22 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 
 ### Inference engines
 
-| Engine | Where | What it is |
-|---|---|---|
-| **vLLM** | [PR #41765](https://github.com/vllm-project/vllm/pull/41765) | `stream_format` on `/v1/completions` + dedicated `/v1/completions/codec` |
-| **SGLang** | [PR #24483](https://github.com/sgl-project/sglang/pull/24483) | Same surface, mirrored into SGLang |
-| **llama.cpp** | [PR #22757](https://github.com/ggml-org/llama.cpp/pull/22757) | Same surface in `llama-server` (covers Ollama too) |
+| Engine | Where | Modality | What it is |
+|---|---|---|---|
+| **vLLM** | [PR #41765](https://github.com/vllm-project/vllm/pull/41765) | text | `stream_format` on `/v1/completions` + dedicated `/v1/completions/codec` |
+| **SGLang** | [PR #24483](https://github.com/sgl-project/sglang/pull/24483) | text | Same surface, mirrored into SGLang |
+| **llama.cpp** | [PR #22757](https://github.com/ggml-org/llama.cpp/pull/22757) | text | Same surface in `llama-server` (covers Ollama too) |
+| **ComfyUI** | [`wdunn001/ComfyUI`](https://github.com/wdunn001/ComfyUI/tree/feat/codec-latent-transport) (fork) | latent (v0.3) | VAE latents on the wire; image + video. Image: [`wdunn001/codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui). |
+| **diffusers** | [`wdunn001/diffusers`](https://github.com/wdunn001/diffusers/tree/feat/codec-latent-transport) (fork) | latent (v0.3) | Reference latent server + bench/golden perceptual-conformance reference. Image: [`wdunn001/codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers). |
 
 ### Gateway / control-plane
 
 | Surface | Where | What it is |
 |---|---|---|
-| **MetaMCP** | [PR #287](https://github.com/metatool-ai/metamcp/pull/287) | Codec wire framing + token-aware tool dispatch at the JSON-RPC seam. Detokenize runs once at the MCP-server boundary; everything upstream stays token-native. Image: `wdunn001/codec-metamcp:latest`. |
-| **Pre-built images** | [`wdunn001/codec-supervisor`](https://github.com/wdunn001/codec-supervisor) | One Docker image per engine + the gateway: `codec-sglang`, `codec-vllm`, `codec-llamacpp`, `codec-metamcp`. `docker run` and you're at the wire. |
+| **MetaMCP** | [PR #287](https://github.com/metatool-ai/metamcp/pull/287) | Codec wire framing + token-aware tool dispatch at the JSON-RPC seam. v0.3+ also runs the leaf-mode bypass for Codec-aware tools (sees `_codec_meta`, forwards IDs verbatim) and the MCP-shaped zstd dict (~4.7× wire-byte reduction). Image: `wdunn001/codec-metamcp:latest`. |
+| **mcp-leaf** | [`@codecai/mcp-leaf`](https://www.npmjs.com/package/@codecai/mcp-leaf) | Tool-author-side helper for the leaf-mode contract. `wrapToolCall(result, meta)` adds the `_codec_meta` siblings the gateway recognizes; `readCodecMeta(result)` is the receive-side companion. |
+| **codec-time-leaf** | [`wdunn001/codec-time-leaf`](https://hub.docker.com/r/wdunn001/codec-time-leaf) (Docker) + [`@codecai/codec-time-leaf`](https://www.npmjs.com/package/@codecai/codec-time-leaf) (npm) | Reference Codec-aware MCP server (canonical demo of leaf mode). `get_current_time` + `convert_time` tools. |
+| **Pre-built images** | [`wdunn001/codec-supervisor`](https://github.com/wdunn001/codec-supervisor) | One Docker image per engine + the gateway: `codec-sglang`, `codec-vllm`, `codec-llamacpp`, `codec-metamcp`, `codec-comfyui` (v0.3), `codec-diffusers` (v0.3), `codec-time-leaf` (v0.3). Released on `v*` tags via the supervisor's `release.yml` workflow. |
 
 ---
 
@@ -209,30 +217,30 @@ await fetch('http://localhost:8000/v1/completions', {
 
 ```
 spec/
-  PROTOCOL.md                  wire format, endpoints, compression negotiation
-  PRETOKENIZER_PROGRAM.md      v2.1 regex-free pre-tokenizer recipe spec
-  tokenizer-map.schema.json    JSON Schema for tokenizer maps
+  PROTOCOL.md                       wire format, endpoints, compression negotiation, leaf-mode contract, latent modality
+  PRETOKENIZER_PROGRAM.md           v2.1 regex-free pre-tokenizer recipe spec
+  PIPELINES.md                      v0.3 latent transport pipelines (forward + inverse math, conformance fixtures)
+  tokenizer-map.schema.json         JSON Schema for tokenizer maps (v2.1, with tool_calling block)
+  latent-space-map.schema.json      JSON Schema for v0.3 latent-space maps
+  WELL_KNOWN_DISCOVERY.md           .well-known/codec/ map publishing protocol
 packages/
-  web/             @codecai/web         isomorphic detokenizer + BPE tokenizer + ToolWatcher + Translator + pretok runtime
-  python/          codecai               Python twin of @codecai/web
-  dotnet/          Codec.Net             .NET (net8.0) twin
-  rust/            codec-rs              Rust twin (crates.io publish queued)
-  java/            ai.codec:codec        Java twin (Maven Central publish queued)
-  c/               libcodec              C99 detokenizer + ToolWatcher (no deps; vcpkg + FetchContent)
-  maps-cli/        @codecai/maps-cli     generate maps + cross-vocab translate / translation-table
-  bench/           benchmark suite (cross-stack matrix, wire / handoff / live / compression / watcher / translator)
-  wire-compress/   standalone Accept-Encoding picker (zero-dep, framework-agnostic)
-  codec-tool-kit/  SDK for building Codec-native bolt-on tools (cached IDs in / cached IDs out)
-  demo-web/        TS / browser demo runner
-  demo-python/     Python demo runner
-  demo-dotnet/     .NET demo runner
-  demo-rust/       Rust demo runner
-  demo-java/       Java demo runner
-  demo-c/          C demo runner
+  web/             @codecai/web                       isomorphic detokenizer + BPE tokenizer + ToolWatcher + Translator + pretok runtime + LatentStreamEncoder/Decoder
+  python/          codecai                            Python twin of @codecai/web; codecai.server submodule carries the latent forward encoder
+  dotnet/          Codec.Net                          .NET (net8.0) twin
+  rust/            codec-rs                           Rust twin (crates.io publish queued)
+  java/            ai.codec:codec                     Java twin (Maven Central publish queued)
+  c/               libcodec                           C99 detokenizer + ToolWatcher (no deps; vcpkg + FetchContent)
+  maps-cli/        @codecai/maps-cli                  generate maps + cross-vocab translate / translation-table; tool_calling auto-derivation
+  mcp-leaf/        @codecai/mcp-leaf                  MCP tool-author SDK — wrapToolCall (writer) + readCodecMeta (reader) for the leaf-mode bypass
+    examples/time-server/                              reference Codec-aware MCP server (codec-time-leaf), shipped to npm + Docker Hub
+  bench/           benchmark suite                    cross-stack matrix · wire / handoff / live / mcp-live / latent-live / compression / watcher / translator
+  wire-compress/   standalone Accept-Encoding picker  (zero-dep, framework-agnostic)
+  codec-tool-kit/  SDK for Codec-native bolt-on tools (cached IDs in / cached IDs out)
+  demo-{web,python,dotnet,rust,java,c}                per-language demo runners
   demo/            high-level agent-to-agent walkthrough
-  core/            legacy frame codec (kept for compatibility; @codecai/web supersedes)
-  client/          legacy TS client (kept for compatibility)
-dictionaries/      pre-trained zstd dictionaries for the Codec wire (one per vocab × format)
+  core/            legacy frame codec                 (kept for compatibility; @codecai/web supersedes)
+  client/          legacy TS client                   (kept for compatibility)
+dictionaries/      pre-trained zstd dictionaries for the Codec wire (per (vocab, format) for text; per (latent_space, format, pipeline) for v0.3 latents)
 article/
   text-is-the-wrong-wire-format.md   the case for Codec
 PATENTS.md         patent posture
