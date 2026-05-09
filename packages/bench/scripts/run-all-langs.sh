@@ -50,14 +50,20 @@ mkdir -p "$OUTDIR"
 # shellcheck disable=SC2206
 SIZES_ARR=($SIZES)
 
-echo "=== run_id=$RUN_ID engine=$ENGINE sizes=$SIZES ==="
+# Reps default to 2 (sglang + llama.cpp are stable at 2). Override via env
+# for noisier engines — vllm at 2K tokens has ~10–20 % wire-byte variance
+# from non-deterministic batching/scheduling even at temperature=0; bumping
+# REPS=4 stabilises the median. See packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md §7.
+REPS="${REPS:-2}"
+
+echo "=== run_id=$RUN_ID engine=$ENGINE sizes=$SIZES reps=$REPS ==="
 
 # 1. Python
 echo
 echo "--- python ---"
 .venv/bin/python -m codec_demo.matrix_run \
     --methodology "$METHODOLOGY" \
-    --sizes "${SIZES_ARR[@]}" --reps 2 \
+    --sizes "${SIZES_ARR[@]}" --reps "$REPS" \
     --out "$OUTDIR/python.json"
 
 # 2. TypeScript / Node
@@ -65,7 +71,7 @@ echo
 echo "--- web ---"
 ( cd packages/demo && npx -y tsx src/matrix_run.ts \
     --methodology "../../$METHODOLOGY" \
-    --sizes "${SIZES_ARR[@]}" --reps 2 \
+    --sizes "${SIZES_ARR[@]}" --reps "$REPS" \
     --out "../../$OUTDIR/web.json" )
 
 # 3. .NET
@@ -73,7 +79,7 @@ echo
 echo "--- dotnet ---"
 PATH="$HOME/.dotnet:$PATH" dotnet run --project packages/demo-dotnet -c Release --no-build -- \
     --methodology "$METHODOLOGY" \
-    --sizes "${SIZES_ARR[@]}" --reps 2 \
+    --sizes "${SIZES_ARR[@]}" --reps "$REPS" \
     --out "$OUTDIR/dotnet.json"
 
 # 4. Rust
@@ -81,7 +87,7 @@ echo
 echo "--- rust ---"
 ./packages/demo-rust/target/release/codec-bench \
     --methodology "$METHODOLOGY" \
-    --sizes "${SIZES_ARR[@]}" --reps 2 \
+    --sizes "${SIZES_ARR[@]}" --reps "$REPS" \
     --out "$OUTDIR/rust.json"
 
 # 5. Java
@@ -89,7 +95,7 @@ echo
 echo "--- java ---"
 PATH="$HOME/jdk/bin:$PATH" java -jar packages/demo-java/target/codec-bench.jar \
     --methodology "$METHODOLOGY" \
-    --sizes "${SIZES_ARR[@]}" --reps 2 \
+    --sizes "${SIZES_ARR[@]}" --reps "$REPS" \
     --out "$OUTDIR/java.json"
 
 # 6. C
@@ -97,7 +103,7 @@ echo
 echo "--- c ---"
 ./packages/demo-c/build/codec-matrix \
     --methodology "$METHODOLOGY" \
-    --sizes "${SIZES_ARR[@]}" --reps 2 \
+    --sizes "${SIZES_ARR[@]}" --reps "$REPS" \
     --out "$OUTDIR/c.json"
 
 echo
