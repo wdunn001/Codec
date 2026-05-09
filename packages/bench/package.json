@@ -9,11 +9,14 @@
     "handoff": "tsx src/handoff.ts",
     "live": "tsx src/live.ts",
     "mcp:live": "tsx src/mcp-live.ts",
+    "latent:live": "tsx src/latent-live.ts",
     "compression": "tsx src/compression.ts",
     "compression:dict": "tsx src/compression-dict.ts",
     "dict:capture": "python scripts/capture-codec-samples.py",
+    "dict:capture:latents": "python scripts/capture-latent-samples.py",
     "dict:synth": "python scripts/synth-codec-samples.py",
     "dict:train": "python scripts/train-zstd-dict.py",
+    "dict:train:latents": "python scripts/train-zstd-dict-latents.py",
     "all": "tsx src/index.ts"
   },
   "dependencies": {

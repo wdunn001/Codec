@@ -339,3 +339,143 @@ TTFT/total/crossover charts:
 Both scripts read the same `results/{run_id}/` tree the matrix builder
 does. Cells without `ssim` (parse-only) are excluded from the curves
 but still contribute to the wire-cost columns of the main table.
+
+## Negotiation headers (v0.3+)
+
+Three response headers are part of the wire contract and SHOULD be
+recorded on every measured cell. They identify the content-addressed
+artifacts that produced the response bytes. A bench cell whose recorded
+header value doesn't match the artifact the client loaded fails closed
+(KV-cache divergence on text, decoder-output divergence on latents) —
+the aggregator quarantines those cells regardless of fingerprint match.
+
+| Header                  | Modality                | Body                                         | Validation                                                                                                                                       |
+|-------------------------|-------------------------|----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Codec-Tokenizer-Map`   | text-tokens             | `sha256:<hex>` of the active tokenizer map   | Must equal the sha256 of the map the client loaded via `loadMap` (after the `sha256:` prefix). Mismatch → quarantine.                            |
+| `Codec-Latent-Map`      | image-latents / video-latents | `sha256:<hex>` of the active latent-space map | Must equal the sha256 of the latent-space map the client loaded. Mismatch → quarantine.                                                          |
+| `Codec-Zstd-Dict`       | any modality (when `Content-Encoding: zstd`) | `sha256:<hex>` of the active dict body | Must equal a dict the client has loaded matching this `(format, pipeline)` pair (latent) or `(format)` (text). Mismatch → wire-format error.     |
+
+### Where they show up in the result row
+
+Every cell row gets three optional string fields next to `wire_bytes`:
+
+```jsonc
+{
+  "size": "512",
+  "format": "msgpack",
+  "encoding": "zstd",
+  "wire_bytes": 14336,
+  // … existing fields …
+  "codec_tokenizer_map": null,                   // set on text cells; null on latent cells
+  "codec_latent_map":   "sha256:8b3f…",          // set on latent cells; null on text cells
+  "codec_zstd_dict":    "sha256:ecc9…"           // set when Content-Encoding == "zstd"
+}
+```
+
+The aggregator's quarantine pass adds a fourth case beyond fingerprint
+divergence: header-value divergence within an otherwise-matching fingerprint.
+Cells where `codec_tokenizer_map` (text) or `codec_latent_map` (latent)
+varies across language clients are quarantined with a "header divergence"
+diff — typically the result of a stale cache on one client, occasionally a
+genuine spec violation by the engine.
+
+## MCP-live methodology (v0.3+)
+
+`src/mcp-live.ts` measures the gateway+downstream-MCP wire cost in
+isolation (no inference engine in the loop). Five variants are
+exercised per JSON-RPC method group; the variants are NORMATIVE for
+the MCP-live cell shape and MUST be reproduced verbatim by any
+alternative-language port (none exist yet).
+
+| Variant                  | reqMsgpack | respMsgpack | Accept-Encoding | X-Codec-Map | What it measures                                              |
+|--------------------------|:----------:|:-----------:|:----------------:|:-----------:|---------------------------------------------------------------|
+| `json`                   |     ✗      |      ✗      |      —           |      ✗      | SDK default (the JSON-RPC baseline every other variant beats) |
+| `msgpack-resp`           |     ✗      |      ✓      |      —           |      ✗      | Cheapest opt-in: response only, request stays JSON            |
+| `msgpack-both`           |     ✓      |      ✓      |      —           |      ✗      | Symmetric Codec; the default Codec-aware client shape          |
+| `msgpack-both+gzip`      |     ✓      |      ✓      |      gzip        |      ✗      | Production-shape lane (compression on top of msgpack)         |
+| `msgpack-both+gzip+map`  |     ✓      |      ✓      |      gzip        |      ✓      | Deep-compression lane: tool-call text → ID arrays via the     |
+|                          |            |             |                  |             | leaf-mode bypass (gateway sees `_codec_meta` and forwards as is). |
+
+### Method groups
+
+Each variant is exercised against the three JSON-RPC methods every MCP
+session uses:
+
+- `initialize` — handshake; minimal payload
+- `tools/list` — registry enumeration; medium-large response when many
+  tools are mounted
+- `tools/call` — actual tool invocation; small request, response
+  varies by tool (file-read tools dominate the wire)
+
+Per-(variant, method) cells produce four numbers:
+
+```jsonc
+{
+  "method":  "tools/list",
+  "variant": "msgpack-both+gzip+map",
+  "reqBytes":      612,
+  "respWireBytes": 5824,                  // raw socket bytes received
+  "ttfbMs":        57,
+  "totalMs":       195,
+  // Cells where variant uses "+map" record the leaf-mode bypass count
+  // (incremented on each downstream MCP server that returned _codec_meta).
+  "leafBypasses":  3,                     // number of pre-tokenized result blocks the gateway forwarded
+  "mapHash":       "sha256:0549cbec…"     // matches Codec-Tokenizer-Map response header
+}
+```
+
+### Variant-5 (leaf-mode) preconditions
+
+Variant 5 (`msgpack-both+gzip+map`) is meaningful only when at least one
+downstream MCP server in the active namespace is Codec-aware. The
+canonical workload is `wdunn001/codec-time-leaf:vX.Y.Z` (the reference
+Codec-aware MCP server — `get_current_time` + `convert_time` tools
+wrapped via `@codecai/mcp-leaf`'s `wrapToolCall`). Without it, the
+gateway logs `[Codec][shim]` warnings on every result and variant 5's
+numbers regress to variant-4-equivalent (the gateway tokenizes on the
+seam instead of forwarding pre-tokenized IDs).
+
+### Result file layout
+
+MCP-live results land under `results/{run_id}/mcp/`:
+
+```
+results/{run_id}/mcp/
+  mcp-live.json          # all (method × variant) cells + the methodology fingerprint
+  mcp-live.md            # human-readable matrix table
+  SUMMARY.md             # narrative summary (headline numbers + interpretation)
+```
+
+The `methodology` block on these runs has `modality.kind = "mcp-rpc"`
+(a sentinel; not an enum value on the v0.3 schema's text/latent split)
+and an additional `gateway` block under the engine slot:
+
+```jsonc
+{
+  "engine": {
+    "name": "metamcp",
+    "version": "v0.2.8+",
+    "branch": "feat/codec-binary-transport",
+    "commit": "<full git sha of wdunn001/metamcp at run time>",
+    "container_image": "wdunn001/codec-metamcp:vX.Y.Z@sha256:…",
+    "endpoint": "http://lab.local:12008/metamcp/<namespace-uuid>/mcp",
+    "gateway": {
+      "namespace_uuid":      "<uuid>",
+      "downstream_servers":  ["mcp-server-time", "codec-time-leaf"],
+      "zstd_dict_loaded":    "sha256:ecc9410a…",
+      "zstd_dict_size_bytes": 16384
+    }
+  }
+}
+```
+
+`engine.name = "metamcp"` is the only MCP-live engine name today; new
+gateways add additional values to the closed list as additive
+point-release schema changes.
+
+### Aggregator behaviour for MCP-live runs
+
+Beyond the standard fingerprint-grouped matrix, the aggregator emits a
+`MCP-WIRE.md` showing each variant's wire-bytes ratio against the `json`
+baseline per-method. This is the table the launch What's New entry
+quotes — variant 5 / variant 1 ratio is the headline number.
