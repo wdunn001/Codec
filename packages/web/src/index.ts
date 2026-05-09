@@ -112,3 +112,29 @@ export {
   type PreTokOp,
   type PreTokProgram,
 } from './pretok-program.js';
+
+// Latent modality (v0.3) — TypeScript twin of
+// packages/python/src/codecai/server/latent_frame.py. Forward encoder +
+// inverse decoder + msgpack codec for all 7 pipelines (raw / int8 / int4 /
+// int8-adaptive / int4-adaptive / delta+int8 / delta+int4). Pin: spec/
+// PIPELINES.md is the normative reference; conformance fixtures live at
+// packages/bench/golden/pipelines/<name>/.
+export {
+  PIPELINE_NAMES,
+  LatentStreamEncoder,
+  LatentStreamDecoder,
+  encodeLatentHeaderMsgpack,
+  encodeLatentFrameMsgpack,
+  decodeLatentHeaderMsgpack,
+  decodeLatentFrameMsgpack,
+  scalesToBytes,
+  scalesFromBytes,
+  packInt4LowFirst,
+  unpackInt4LowFirst,
+  computeScales,
+  type PipelineName,
+  type LatentDtype,
+  type LatentStreamHeader,
+  type LatentFrame,
+  type LatentStreamEncoderOptions,
+} from './latent-frame.js';
