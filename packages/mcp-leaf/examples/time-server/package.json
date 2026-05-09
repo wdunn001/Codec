@@ -1,12 +1,16 @@
 {
-  "name": "@codecai/mcp-leaf-example-time",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Reference Codec-aware MCP server. Demonstrates leaf-mode tokenization via @codecai/mcp-leaf — a downstream Codec-aware gateway (metamcp at feat/codec-binary-transport) detects the pre-tokenized tool result and skips its back-compat shim.",
+  "name": "@codecai/codec-time-leaf",
+  "version": "0.3.0",
+  "description": "Reference Codec-aware MCP server. Demonstrates leaf-mode tokenization via @codecai/mcp-leaf — a downstream Codec-aware gateway (metamcp at feat/codec-binary-transport) detects the pre-tokenized tool result and skips its back-compat shim. Exposes get_current_time + convert_time as canonical demo tools and is the workload variant 5 (msgpack-both+gzip+map) of the MCP-live bench.",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "codec-time-leaf": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node -e \"require('fs').chmodSync('dist/index.js', 0o755)\"",
     "start": "node dist/index.js",
@@ -24,5 +28,19 @@
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wdunn001/Codec.git",
+    "directory": "packages/mcp-leaf/examples/time-server"
+  },
+  "homepage": "https://github.com/wdunn001/Codec/tree/main/packages/mcp-leaf/examples/time-server",
+  "keywords": [
+    "codec",
+    "mcp",
+    "tokenizer",
+    "leaf",
+    "mcp-server",
+    "time"
+  ]
 }
