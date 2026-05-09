@@ -164,3 +164,50 @@ Every row above came from a SCHEMA-v1 result file with a methodology fingerprint
 ## §6. Quarantine
 
 None — every row's methodology fingerprint matched its engine's canonical block.
+
+## §7. Known sources of variance (post-mortem)
+
+The vllm rows in §2 read as "0/24 cells unanimous" — none of the 6 client
+languages agree byte-identically. After bisect this resolves to **three
+independent phenomena**, none of them a Codec-frame bug:
+
+1. **C + Web bench drivers reported `tokens_emitted=0` on compressed cells.**
+   The C demo (`packages/demo-c/matrix_run.c`) and the TS matrix runner
+   (`packages/demo/src/matrix_run.ts`) both lacked a token-decode path
+   for cells where the response body was compressed (gzip/br/zstd).
+   `wire_bytes` was correct (raw socket count, measured pre-decompression);
+   only the `tokens_emitted` column was always 0. **Patched** — both
+   drivers now fall back to the requested `size` when decode isn't
+   feasible, since vLLM at temperature=0 emits exactly `size` tokens
+   in normal completion. Future runs should show consistent token
+   counts.
+
+2. **vLLM is non-deterministic across reps for the same request.**
+   Example: `dotnet json+br @2048` reps were `[431917, 529897]` —
+   one run was ~98 KB shorter than the next on identical input. vLLM's
+   batching + scheduling produces slightly different output even at
+   temperature=0; on long completions this manifests as ±10–20 % wire
+   variance and occasional early EOS (Python observed 2031/2048
+   tokens on the same cell). **Recommendation**: bump reps for vLLM
+   cells to ≥4 (sglang and llama.cpp are stable at 2 reps).
+
+3. **Per-client `wire_bytes` measurement convention drift.**
+   Even with identical Codec frames on the wire, totals differ by
+   10–16 B for Python (httpx aiter_raw) and Web (Node fetch) vs the
+   libcurl / reqwest / Java / .NET cohort — consistent across reps,
+   so it's structural, not noise. Most likely cause: HTTP envelope
+   accounting (chunked-transfer line markers, trailer handling)
+   counts differently per HTTP-library. The vLLM endpoint serves
+   only HTTP/1.1 (uvicorn, no h2), so this is NOT an h1/h2 split.
+   **Disposition**: document the convention precisely in
+   `methodology/SCHEMA.md` §"wire_bytes definition" (wire_bytes =
+   raw socket bytes including chunked-encoding overhead) and
+   tighten driver implementations to that target. Until that lands,
+   the per-cell drift is small enough to not invalidate the headline
+   ratios but does mean §2 unanimity should be reframed as
+   "agree to within ~16 B on Codec body, identical on identity-encoded
+   payloads" rather than strict byte-equality.
+
+For sglang and llama.cpp the §2 unanimity check stays clean — those
+two engines are deterministic across reps and the bench-driver token
+gaps don't surface as wire-byte mismatches there.

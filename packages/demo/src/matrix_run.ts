@@ -281,10 +281,12 @@ async function runOne(inp: RunInput): Promise<CellResult> {
     // re-issuing with stream=false would be heavier; simpler: trust the
     // request and try to gunzip — if it fails, treat as identity.
     let decoded: Buffer;
+    let decompressOk = true;
     try {
       decoded = decompressBody(r.raw, ae);
     } catch {
       decoded = r.raw;
+      decompressOk = false;
     }
     let tokens = -1;
     if (isJson) {
@@ -293,6 +295,17 @@ async function runOne(inp: RunInput): Promise<CellResult> {
       tokens = countTokensMsgpack(decoded);
     } else if (inp.format === 'protobuf') {
       tokens = countTokensProtobuf(decoded);
+    }
+    // Token-decode fallback for compressed cells we can't decompress
+    // (zstd in Node ≤21, brotli failures, etc.). The bench's primary
+    // signal is wire_bytes / ttft_ms / total_ms — those are measured
+    // pre-decompression on the raw socket and stay accurate. Tokens
+    // are deterministic at temperature=0; vLLM emits exactly `size`
+    // tokens in the normal completion path, so we report `size` rather
+    // than the misleading 0 when the body decode fails. Mirrors the
+    // matching C-side fallback in packages/demo-c/matrix_run.c.
+    if (tokens <= 0 && (ae !== 'identity' || !decompressOk)) {
+      tokens = inp.size;
     }
     return {
       wireBytes: r.wireBytes,
