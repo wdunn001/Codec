@@ -28,7 +28,7 @@
     "test": "node --test --import tsx test/*.test.ts"
   },
   "dependencies": {
-    "@codecai/web": "^0.3.0"
+    "@codecai/web": "^0.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

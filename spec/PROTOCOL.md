@@ -230,11 +230,20 @@ message CodecRequest {
 |-----------------|---------------|----------------------------------------------------------|
 | `ids`           | uint32[]      | Raw model token IDs for this chunk. Empty only on the terminal frame when `done=true` and no final token was produced. |
 | `done`          | bool          | `true` on the last frame. No further frames follow.      |
-| `finish_reason` | string (opt.) | Set when `done=true`. Values: `"length"`, `"eos_token"`, `"stop_sequence"`, `"error"`. |
+| `finish_reason` | string (opt.) | Set when `done=true`. Values: `"length"`, `"eos_token"`, `"stop_sequence"`, `"error"`, `"policy_violation"`. |
 
 `finish_reason: "error"` is emitted on the terminal frame when the server
 encountered an error mid-generation. Clients use this to distinguish a
 genuine error from a clean stream truncation.
+
+`finish_reason: "policy_violation"` is emitted on the terminal frame when
+the server stopped generation because the negotiated safety policy fired
+(see [Safety Policy Negotiation](#safety-policy-negotiation)). Clients
+distinguish this from `"error"` so they can render a meaningful "filtered"
+UI rather than a generic failure. Tokens emitted before the terminal frame
+are still valid output up to the policy boundary; the server MAY redact a
+trailing span (replacing it with policy-defined placeholder token IDs)
+before emitting the terminal frame.
 
 ---
 
@@ -1128,6 +1137,8 @@ All multi-byte integers are **big-endian**.
   "accept_decoders":      ["onnx-web", "torch", "ggml", "wgsl"],
   "accept_pipelines":     ["raw", "int8", "delta+int8"],
 
+  "accept_safety_policies": ["acme/strict-v3", "*"],
+
   "accept_transports":    ["http", "ws", "webrtc"],
   "accept_encoding":      ["zstd", "br", "gzip"]
 }
@@ -1135,18 +1146,21 @@ All multi-byte integers are **big-endian**.
 
 **Capability axes.** A v0.3 client declares what it can *terminate*, not
 what it wants. The server picks one of each axis. A v0.2 client omits
-the latent fields entirely; servers negotiating with a v0.2 client behave
-as if `modalities: ["text-tokens"]` was sent.
+the latent and safety fields entirely; servers negotiating with a v0.2
+client behave as if `modalities: ["text-tokens"]` was sent and as if no
+safety negotiation was requested (the server's deployment-default policy,
+if any, applies regardless).
 
-| Field                  | Meaning                                                                 |
-|------------------------|-------------------------------------------------------------------------|
-| `modalities`           | Which native units the client can decode. Server picks one.             |
-| `accept_tokenizers`    | Tokenizer maps the client has loaded (or can fetch). Required when text-tokens negotiated. |
-| `accept_latent_spaces` | Latent-space maps + decoders the client has loaded. Required when image-/video-latents negotiated. |
-| `accept_decoders`      | Decoder runtimes the client can execute. Server picks a decoder format compatible with this list. |
-| `accept_pipelines`     | Named transform pipelines the client can invert. `raw` is mandatory. Server MUST NOT pick a pipeline outside this list. |
-| `accept_transports`    | Wire transports the client can run. `http` is mandatory; `ws` / `webrtc` are optional. |
-| `accept_encoding`      | Compression encodings (existing v0.2 negotiation, unchanged).           |
+| Field                    | Meaning                                                                 |
+|--------------------------|-------------------------------------------------------------------------|
+| `modalities`             | Which native units the client can decode. Server picks one.             |
+| `accept_tokenizers`      | Tokenizer maps the client has loaded (or can fetch). Required when text-tokens negotiated. |
+| `accept_latent_spaces`   | Latent-space maps + decoders the client has loaded. Required when image-/video-latents negotiated. |
+| `accept_decoders`        | Decoder runtimes the client can execute. Server picks a decoder format compatible with this list. |
+| `accept_pipelines`       | Named transform pipelines the client can invert. `raw` is mandatory. Server MUST NOT pick a pipeline outside this list. |
+| `accept_safety_policies` | Safety policy IDs the client requires the server to enforce. Optional. The literal `"*"` means "any policy is fine; just tell me which." Server picks one from the intersection or aborts. See [Safety Policy Negotiation](#safety-policy-negotiation). |
+| `accept_transports`      | Wire transports the client can run. `http` is mandatory; `ws` / `webrtc` are optional. |
+| `accept_encoding`        | Compression encodings (existing v0.2 negotiation, unchanged).           |
 
 **READY (text-tokens)** — server confirms tokenizer, provides map, stays on HTTP:
 
@@ -1158,6 +1172,9 @@ as if `modalities: ["text-tokens"]` was sent.
   "tokenizer_id": "meta-llama/llama-3",
   "map_url":  "https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/meta-llama/llama-3.json",
   "map_hash": "sha256:79b707aea8c2b41c2883ec7913b0c4a0c880044ac844d89a9a03e779eb92db04",
+
+  "safety_policy_id":   "acme/strict-v3",
+  "safety_policy_hash": "sha256:ab12cd34ef56...",
 
   "transport": "http",
   "encoding":  "zstd"
@@ -1221,6 +1238,83 @@ A server MAY downgrade the requested transport (e.g. answer `http` to a
 client that listed `webrtc`) if the upgrade isn't supported for the
 negotiated modality. Clients MUST handle the downgrade silently. Servers
 MUST NOT upgrade beyond what the client advertised.
+
+---
+
+## Safety Policy Negotiation
+
+Status: stable, additive. Mirrors the tokenizer/latent-space negotiation
+shape exactly — clients declare what they require, the server picks one
+or aborts, and the chosen policy is content-addressed by sha256 the same
+way maps are.
+
+Safety enforcement happens at the deployment edge — clients prefilter
+inputs, servers run logits processors and classifiers on outputs. The
+wire is unaffected; what *is* affected is whether two parties can agree
+their session is being filtered to a known standard. This is the role
+of the `accept_safety_policies` capability axis.
+
+### What's negotiated
+
+`accept_safety_policies` is a list of safety policy IDs the **client
+requires the server to enforce**. Like `accept_tokenizers`, it's a
+client-side preference list — the server picks one from the intersection
+or aborts the connection. The literal entry `"*"` means "any enforcement
+is acceptable; just tell me which one." A client that doesn't care about
+safety enforcement omits the field entirely (servers behave as if no
+constraint was sent — the deployment's default policy, if any, applies).
+
+| HELLO field              | Meaning                                                                                                  |
+|--------------------------|----------------------------------------------------------------------------------------------------------|
+| `accept_safety_policies` | Closed list of policy IDs the client will accept enforcement under. `"*"` accepts whatever the server runs. |
+
+| READY field           | Meaning                                                                                                          |
+|-----------------------|------------------------------------------------------------------------------------------------------------------|
+| `safety_policy_id`    | The policy ID the server is enforcing for this session. MUST appear in the client's `accept_safety_policies`, or be the default if the client sent `"*"` (or omitted the field). |
+| `safety_policy_hash`  | sha256 of the **published, sanitized** policy descriptor at the corresponding `.well-known/codec/policies/` location. Format `sha256:<hex>`. Pins the descriptor bytes. |
+
+If a server cannot enforce any policy from a client's non-empty
+`accept_safety_policies` list (and the client did not include `"*"`),
+the server MUST abort with an explicit `ERROR` frame whose payload is a
+short reason like `"no acceptable safety policy"`. Servers MUST NOT
+silently downgrade to a less strict policy than what the client requested.
+
+### Sanitized published descriptor
+
+The document at `.well-known/codec/policies/<id>.json` (or the
+content-addressed `.well-known/codec/policies/<hash>.json`) is a
+**sanitized** descriptor — it carries the *shape* of enforcement, never
+the contents. Specifically:
+
+  - **Disclosed:** policy id, version, content hash, supported tokenizer
+    IDs the policy is bound to, list of categories enforced (e.g.
+    `secrets`, `pii`, `hate`, `jailbreak`), action types per category
+    (`stop` / `redact` / `regenerate` / `flag`), classifier model family
+    (e.g. `llama-guard-3-1b`), and summary statistics (banned-id-list
+    size, regex count, grammar count).
+  - **Never disclosed:** individual banned token IDs (would form an
+    enumeration map for evasion), classifier thresholds (would help
+    calibrate evasion), classifier weights, or the full text of regex
+    patterns.
+
+The full-detail policy lives operator-side (e.g. inside the
+codec-supervisor admin) and is never published. The CLI's `policies
+sanitize` subcommand transforms an operator's internal config into the
+publishable descriptor.
+
+See [`safety-policy.schema.json`](./safety-policy.schema.json) for the
+descriptor schema, and [`WELL_KNOWN_DISCOVERY.md`](./WELL_KNOWN_DISCOVERY.md)
+for the discovery URL layout.
+
+### Mid-stream signaling
+
+When enforcement fires mid-generation, the server sets `done=true` and
+`finish_reason="policy_violation"` on the terminal frame. The server MAY
+emit one or more redaction-token IDs (defined by the policy) in the
+final `ids` array before terminating, so clients can distinguish "the
+last token was filtered" from "the whole tail was dropped." Richer
+structured signaling (which category fired, span boundaries) is reserved
+for a future additive frame type — it does not block v0.3+ adoption.
 
 ---
 

@@ -34,9 +34,35 @@ export type {
   TokenizerMap,
   ToolCallingBlock,
   CodecFrame,
+  FinishReason,
   MapCache,
   Tokenizer,
+  SafetyPolicyDescriptor,
+  SafetyPolicyCategory,
+  SafetyPolicyClassifier,
+  SafetyPolicyRulesSummary,
+  SafetyPolicyClientHooks,
+  SafetyPolicyPublisher,
+  SafetyPolicyCache,
 } from './types.js';
+
+export {
+  validateSafetyPolicy,
+  hashSafetyPolicy,
+  loadSafetyPolicy,
+  discoverSafetyPolicy,
+  wellKnownPolicyUrl,
+  wellKnownPolicyHashUrl,
+  POLICY_WELL_KNOWN_BASE,
+  MemorySafetyPolicyCache,
+  SafetyPolicyValidationError,
+  SafetyPolicyHashMismatchError,
+  SafetyPolicyDiscoveryError,
+  SafetyPolicyDiscoveryNotFoundError,
+  type LoadSafetyPolicyOptions,
+  type DiscoverSafetyPolicyOptions,
+  type SafetyPolicyPointer,
+} from './safety-policy.js';
 
 export {
   loadMap,
