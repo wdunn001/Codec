@@ -12,6 +12,7 @@ set(CODEC_TESTS
     test_map
     test_stream
     test_tool_watcher
+    test_tool_calling
     test_pretok_program
     test_bpe
     test_translator

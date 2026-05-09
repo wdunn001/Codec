@@ -72,6 +72,15 @@ public final class TokenizerMap {
     @JsonProperty("special_tokens")
     public Map<String, Integer> specialTokens;
 
+    /**
+     * Per-model tool-calling convention. Optional; populated by
+     * {@code @codecai/maps-cli} when it detects a known chat-template
+     * signature. Absence means "convention not declared in this map" — see
+     * {@code spec/PROTOCOL.md} § "Tool-call calling conventions in the map".
+     */
+    @JsonProperty("tool_calling")
+    public ToolCallingBlock toolCalling;
+
     /** ISO 8601 publish timestamp. Informational. */
     @JsonProperty("published_at")
     public String publishedAt;
@@ -128,6 +137,26 @@ public final class TokenizerMap {
         if ((map.byteFallbackStart != null) != (map.byteFallbackEnd != null))
             throw new TokenizerMapValidationException(
                     "byte_fallback_start and byte_fallback_end must both be set or both omitted");
+        if (map.toolCalling != null) {
+            ToolCallingBlock tc = map.toolCalling;
+            if (tc.convention == null)
+                throw new TokenizerMapValidationException("tool_calling.convention is required");
+            if (tc.argsFormat == null)
+                throw new TokenizerMapValidationException("tool_calling.args_format is required");
+            if (tc.resultFormat == null)
+                throw new TokenizerMapValidationException("tool_calling.result_format is required");
+            if (tc.markers == null
+                    || tc.markers.start == null || tc.markers.start.isEmpty()
+                    || tc.markers.end == null || tc.markers.end.isEmpty())
+                throw new TokenizerMapValidationException(
+                        "tool_calling.markers.start/.end must both be non-empty strings");
+            if (map.specialTokens == null
+                    || !map.specialTokens.containsKey(tc.markers.start)
+                    || !map.specialTokens.containsKey(tc.markers.end))
+                throw new TokenizerMapValidationException(
+                        "tool_calling.markers.start (\"" + tc.markers.start + "\") and .end (\""
+                        + tc.markers.end + "\") must both exist as keys in special_tokens");
+        }
     }
 
     /** Compute sha256 of a payload as lowercase hex (utility). */

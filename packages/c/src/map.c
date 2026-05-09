@@ -210,6 +210,11 @@ void codec_map_free(codec_tokenizer_map_t *map) {
         free(map->bpe_merges);
     }
     free_pretok_program(map->pretok_program);
+    if (map->tool_calling) {
+        free((void *)map->tool_calling->marker_start_name);
+        free((void *)map->tool_calling->marker_end_name);
+        free(map->tool_calling);
+    }
     free(map);
 }
 
@@ -473,6 +478,152 @@ static codec_status_t parse_pretok_program(
     return CODEC_OK;
 }
 
+/* ── Tool-calling block (v2.1, optional) ────────────────────────────────── */
+/*
+ * Mirror of the spec/PROTOCOL.md § "Tool-call calling conventions in the
+ * map" block. Validates: convention/args_format/result_format are members
+ * of their closed enums; markers.start and .end are non-empty AND appear
+ * as keys in special_tokens.
+ */
+
+static int specials_contains(const codec_tokenizer_map_t *m, const char *name) {
+    if (!m || !m->specials || !name) return 0;
+    for (size_t i = 0; i < m->special_count; i++)
+        if (strcmp(m->specials[i].name, name) == 0) return 1;
+    return 0;
+}
+
+static int parse_convention(const char *s, size_t n,
+                            codec_tool_calling_convention_t *out) {
+    if (n == 6 && strncmp(s, "llama3", 6) == 0) {
+        *out = CODEC_TOOL_CALLING_CONVENTION_LLAMA3; return 1;
+    }
+    if (n == 6 && strncmp(s, "qwen25", 6) == 0) {
+        *out = CODEC_TOOL_CALLING_CONVENTION_QWEN25; return 1;
+    }
+    if (n == 4 && strncmp(s, "phi4", 4) == 0) {
+        *out = CODEC_TOOL_CALLING_CONVENTION_PHI4; return 1;
+    }
+    if (n == 12 && strncmp(s, "mistral_nemo", 12) == 0) {
+        *out = CODEC_TOOL_CALLING_CONVENTION_MISTRAL_NEMO; return 1;
+    }
+    if (n == 11 && strncmp(s, "deepseek_v3", 11) == 0) {
+        *out = CODEC_TOOL_CALLING_CONVENTION_DEEPSEEK_V3; return 1;
+    }
+    if (n == 11 && strncmp(s, "deepseek_r1", 11) == 0) {
+        *out = CODEC_TOOL_CALLING_CONVENTION_DEEPSEEK_R1; return 1;
+    }
+    if (n == 6 && strncmp(s, "custom", 6) == 0) {
+        *out = CODEC_TOOL_CALLING_CONVENTION_CUSTOM; return 1;
+    }
+    return 0;
+}
+
+static int parse_args_format(const char *s, size_t n,
+                             codec_tool_calling_args_format_t *out) {
+    if (n == 4 && strncmp(s, "json", 4) == 0) {
+        *out = CODEC_TOOL_CALLING_ARGS_JSON; return 1;
+    }
+    if (n == 11 && strncmp(s, "python_args", 11) == 0) {
+        *out = CODEC_TOOL_CALLING_ARGS_PYTHON_ARGS; return 1;
+    }
+    return 0;
+}
+
+static int parse_result_format(const char *s, size_t n,
+                               codec_tool_calling_result_format_t *out) {
+    if (n == 4 && strncmp(s, "text", 4) == 0) {
+        *out = CODEC_TOOL_CALLING_RESULT_TEXT; return 1;
+    }
+    if (n == 4 && strncmp(s, "json", 4) == 0) {
+        *out = CODEC_TOOL_CALLING_RESULT_JSON; return 1;
+    }
+    return 0;
+}
+
+static codec_status_t parse_tool_calling(
+    codec_tokenizer_map_t *m,
+    const char *json,
+    const jsmntok_t *toks, size_t tc_idx)
+{
+    const jsmntok_t *obj = &toks[tc_idx];
+    if (obj->type != JSMN_OBJECT) return CODEC_ERR_PARSE;
+
+    codec_tool_calling_convention_t    convention   = 0;
+    codec_tool_calling_args_format_t   args_format  = 0;
+    codec_tool_calling_result_format_t result_fmt   = 0;
+    int have_conv = 0, have_args = 0, have_result = 0;
+    char *start_name = NULL, *end_name = NULL;
+
+    size_t pos = tc_idx + 1;
+    for (int j = 0; j < obj->size; j++) {
+        const jsmntok_t *key = &toks[pos];
+        const jsmntok_t *val = &toks[pos + 1];
+        size_t next_pos = skip_subtree(toks, pos + 1);
+
+        if (tok_eq(json, key, "convention") && val->type == JSMN_STRING) {
+            if (!parse_convention(json + val->start,
+                                  (size_t)(val->end - val->start), &convention))
+                goto bad_value;
+            have_conv = 1;
+        } else if (tok_eq(json, key, "args_format") && val->type == JSMN_STRING) {
+            if (!parse_args_format(json + val->start,
+                                   (size_t)(val->end - val->start), &args_format))
+                goto bad_value;
+            have_args = 1;
+        } else if (tok_eq(json, key, "result_format") && val->type == JSMN_STRING) {
+            if (!parse_result_format(json + val->start,
+                                     (size_t)(val->end - val->start), &result_fmt))
+                goto bad_value;
+            have_result = 1;
+        } else if (tok_eq(json, key, "markers") && val->type == JSMN_OBJECT) {
+            /* Inner object: { "start": "...", "end": "..." } */
+            size_t inner = pos + 2;
+            for (int k = 0; k < val->size; k++) {
+                const jsmntok_t *mk = &toks[inner];
+                const jsmntok_t *mv = &toks[inner + 1];
+                if (mv->type != JSMN_STRING) goto bad_value;
+                size_t L = (size_t)(mv->end - mv->start), uL;
+                if (tok_eq(json, mk, "start")) {
+                    free(start_name);
+                    start_name = json_unescape(json + mv->start, L, &uL);
+                    if (!start_name) goto oom;
+                } else if (tok_eq(json, mk, "end")) {
+                    free(end_name);
+                    end_name = json_unescape(json + mv->start, L, &uL);
+                    if (!end_name) goto oom;
+                }
+                inner += 2;
+            }
+        }
+        pos = next_pos;
+    }
+
+    if (!have_conv || !have_args || !have_result || !start_name || !end_name) goto bad_value;
+    if (start_name[0] == '\0' || end_name[0] == '\0') goto bad_value;
+    /* Spec: marker names MUST exist as keys in special_tokens. */
+    if (!specials_contains(m, start_name) || !specials_contains(m, end_name)) goto bad_value;
+
+    codec_tool_calling_t *tc = (codec_tool_calling_t *)calloc(1, sizeof(*tc));
+    if (!tc) goto oom;
+    tc->convention         = convention;
+    tc->args_format        = args_format;
+    tc->result_format      = result_fmt;
+    tc->marker_start_name  = start_name;
+    tc->marker_end_name    = end_name;
+    m->tool_calling = tc;
+    return CODEC_OK;
+
+bad_value:
+    free(start_name);
+    free(end_name);
+    return CODEC_ERR_VALIDATION;
+oom:
+    free(start_name);
+    free(end_name);
+    return CODEC_ERR_OUT_OF_MEMORY;
+}
+
 /* ── Process one vocab entry into the id→bytes table ────────────────────── */
 
 static codec_status_t install_entry(codec_tokenizer_map_t *m,
@@ -580,7 +731,7 @@ codec_status_t codec_map_from_json(const char *json, size_t len,
     size_t i = 1;
     /* Save indices of the deferred fields. */
     size_t idx_vocab = 0, idx_tokens = 0, idx_added = 0, idx_specials = 0;
-    size_t idx_merges = 0, idx_pretok_program = 0;
+    size_t idx_merges = 0, idx_pretok_program = 0, idx_tool_calling = 0;
 
     for (int field = 0; field < root_size; field++) {
         if (i >= (size_t)n) { codec_map_free(m); free(toks); return CODEC_ERR_PARSE; }
@@ -625,6 +776,8 @@ codec_status_t codec_map_from_json(const char *json, size_t len,
         } else if (tok_eq(json, key, "pre_tokenizer_program")
                    && val->type == JSMN_OBJECT) {
             idx_pretok_program = val_idx;
+        } else if (tok_eq(json, key, "tool_calling") && val->type == JSMN_OBJECT) {
+            idx_tool_calling = val_idx;
         } else {
             (void)idx_added; /* reserved for future fields */
         }
@@ -728,6 +881,12 @@ codec_status_t codec_map_from_json(const char *json, size_t len,
         if (pst != CODEC_OK) { codec_map_free(m); free(toks); return pst; }
     }
 
+    /* ── Process tool_calling (v2.1, optional) ─────────────────────────── */
+    if (idx_tool_calling != 0) {
+        codec_status_t tst = parse_tool_calling(m, json, toks, idx_tool_calling);
+        if (tst != CODEC_OK) { codec_map_free(m); free(toks); return tst; }
+    }
+
     free(toks);
     *out = m;
     return CODEC_OK;
@@ -795,4 +954,9 @@ int32_t codec_map_byte_fallback_start(const codec_tokenizer_map_t *m) {
 }
 int32_t codec_map_byte_fallback_end(const codec_tokenizer_map_t *m) {
     return m ? m->byte_fallback_end : -1;
+}
+
+const codec_tool_calling_t *codec_map_tool_calling(
+    const codec_tokenizer_map_t *m) {
+    return m ? m->tool_calling : NULL;
 }

@@ -109,6 +109,64 @@ codec_status_t codec_map_special_id(const codec_tokenizer_map_t *map,
                                     const char *name,
                                     uint32_t *out_id);
 
+/* ── Tool-calling convention block (optional map field) ─────────────────── */
+/*
+ * Per-model tool-calling convention. Optional on a TokenizerMap; populated
+ * by @codecai/maps-cli when it detects a known chat-template signature.
+ * Mirror of `tool_calling` in the v2.1 tokenizer-map schema. See
+ * spec/PROTOCOL.md § "Tool-call calling conventions in the map".
+ *
+ * Each `convention` value pins a specific argument layout, marker placement,
+ * and result framing — the registry of valid values is closed (additive
+ * point releases of the schema).
+ */
+typedef enum codec_tool_calling_convention {
+    CODEC_TOOL_CALLING_CONVENTION_LLAMA3       = 1,
+    CODEC_TOOL_CALLING_CONVENTION_QWEN25       = 2,
+    CODEC_TOOL_CALLING_CONVENTION_PHI4         = 3,
+    CODEC_TOOL_CALLING_CONVENTION_MISTRAL_NEMO = 4,
+    CODEC_TOOL_CALLING_CONVENTION_DEEPSEEK_V3  = 5,
+    CODEC_TOOL_CALLING_CONVENTION_DEEPSEEK_R1  = 6,
+    CODEC_TOOL_CALLING_CONVENTION_CUSTOM       = 7,
+} codec_tool_calling_convention_t;
+
+typedef enum codec_tool_calling_args_format {
+    CODEC_TOOL_CALLING_ARGS_JSON        = 1,
+    CODEC_TOOL_CALLING_ARGS_PYTHON_ARGS = 2,
+} codec_tool_calling_args_format_t;
+
+typedef enum codec_tool_calling_result_format {
+    CODEC_TOOL_CALLING_RESULT_TEXT = 1,
+    CODEC_TOOL_CALLING_RESULT_JSON = 2,
+} codec_tool_calling_result_format_t;
+
+/*
+ * Tool-calling block. Strings are owned by the map; lifetime is tied to
+ * the map. `marker_start_name` and `marker_end_name` MUST appear as keys
+ * in the map's `special_tokens` table — codec_map_from_json() returns
+ * CODEC_ERR_VALIDATION on a tool_calling block whose markers don't
+ * resolve.
+ */
+typedef struct codec_tool_calling {
+    codec_tool_calling_convention_t    convention;
+    codec_tool_calling_args_format_t   args_format;
+    codec_tool_calling_result_format_t result_format;
+    const char *marker_start_name;
+    const char *marker_end_name;
+} codec_tool_calling_t;
+
+/*
+ * Returns a pointer to the map's tool-calling block, or NULL if the map
+ * doesn't declare one (the legacy/un-annotated case). The pointer is
+ * valid for the lifetime of the map.
+ *
+ * Most callers will resolve the marker names to IDs via
+ * codec_map_special_id() and then bind a codec_tool_watcher with the
+ * resulting (start_id, end_id) pair.
+ */
+const codec_tool_calling_t *codec_map_tool_calling(
+    const codec_tokenizer_map_t *map);
+
 /* ── Codec frames ───────────────────────────────────────────────────────── */
 
 /*

@@ -75,6 +75,15 @@ public sealed class TokenizerMap
     [JsonPropertyName("special_tokens")]
     public Dictionary<string, int>? SpecialTokens { get; init; }
 
+    /// <summary>
+    /// Per-model tool-calling convention. Optional; populated by
+    /// <c>@codecai/maps-cli</c> when it detects a known chat-template
+    /// signature. Absence means "convention not declared in this map" — see
+    /// <c>spec/PROTOCOL.md</c> § "Tool-call calling conventions in the map".
+    /// </summary>
+    [JsonPropertyName("tool_calling")]
+    public ToolCallingBlock? ToolCalling { get; init; }
+
     /// <summary>ISO 8601 publish timestamp. Informational.</summary>
     [JsonPropertyName("published_at")]
     public string? PublishedAt { get; init; }
@@ -117,6 +126,20 @@ public sealed class TokenizerMap
         if (map.ByteFallbackStart.HasValue != map.ByteFallbackEnd.HasValue)
             throw new TokenizerMapValidationException(
                 "byte_fallback_start and byte_fallback_end must both be set or both omitted");
+        if (map.ToolCalling is { } tc)
+        {
+            if (tc.Markers is null
+                || string.IsNullOrEmpty(tc.Markers.Start)
+                || string.IsNullOrEmpty(tc.Markers.End))
+                throw new TokenizerMapValidationException(
+                    "tool_calling.markers.start/.end must both be non-empty strings");
+            if (map.SpecialTokens is null
+                || !map.SpecialTokens.ContainsKey(tc.Markers.Start)
+                || !map.SpecialTokens.ContainsKey(tc.Markers.End))
+                throw new TokenizerMapValidationException(
+                    $"tool_calling.markers.start (\"{tc.Markers.Start}\") and .end "
+                    + $"(\"{tc.Markers.End}\") must both exist as keys in special_tokens");
+        }
     }
 }
 
@@ -125,4 +148,86 @@ public sealed class TokenizerMapValidationException : Exception
 {
     public TokenizerMapValidationException(string message)
         : base($"TokenizerMap validation failed: {message}") { }
+}
+
+/// <summary>
+/// Per-model tool-calling convention block on a <see cref="TokenizerMap"/>.
+/// Each <see cref="Convention"/> value pins a specific argument layout, marker
+/// placement, and result framing — see <c>spec/PROTOCOL.md</c> §
+/// "Tool-call calling conventions in the map" for the normative table.
+/// </summary>
+public sealed class ToolCallingBlock
+{
+    /// <summary>Closed enum naming the calling convention.</summary>
+    [JsonPropertyName("convention")]
+    public ToolCallingConvention Convention { get; init; }
+
+    /// <summary>
+    /// Start/end marker token names. Both names MUST exist as keys in the
+    /// parent map's <c>special_tokens</c> table.
+    /// </summary>
+    [JsonPropertyName("markers")]
+    public ToolCallingMarkers? Markers { get; init; }
+
+    /// <summary>How tool-call arguments are packed inside the marker pair.</summary>
+    [JsonPropertyName("args_format")]
+    public ToolCallingArgsFormat ArgsFormat { get; init; }
+
+    /// <summary>How tool results come back into the model's input.</summary>
+    [JsonPropertyName("result_format")]
+    public ToolCallingResultFormat ResultFormat { get; init; }
+}
+
+/// <summary>Start/end marker token names for a tool call.</summary>
+public sealed class ToolCallingMarkers
+{
+    [JsonPropertyName("start")]
+    public string Start { get; init; } = string.Empty;
+
+    [JsonPropertyName("end")]
+    public string End { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Closed enum of tool-calling conventions. Wire form is the snake_case
+/// version of the enum name (e.g. <c>MistralNemo</c> ↔ <c>"mistral_nemo"</c>);
+/// applied via the <see cref="JsonSnakeCaseEnumConverter"/> on
+/// <see cref="TokenizerMap"/>'s deserialization options.
+/// </summary>
+[JsonConverter(typeof(JsonSnakeCaseEnumConverter))]
+public enum ToolCallingConvention
+{
+    Llama3,
+    Qwen25,
+    Phi4,
+    MistralNemo,
+    DeepseekV3,
+    DeepseekR1,
+    Custom,
+}
+
+[JsonConverter(typeof(JsonSnakeCaseEnumConverter))]
+public enum ToolCallingArgsFormat
+{
+    Json,
+    PythonArgs,
+}
+
+[JsonConverter(typeof(JsonSnakeCaseEnumConverter))]
+public enum ToolCallingResultFormat
+{
+    Text,
+    Json,
+}
+
+/// <summary>
+/// .NET 8-compatible snake_case enum converter. Subclasses
+/// <see cref="JsonStringEnumConverter"/> with <see cref="JsonNamingPolicy.SnakeCaseLower"/>
+/// so PascalCase enum members serialise as <c>snake_case</c> on the wire
+/// (matches the spec's enum values).
+/// </summary>
+internal sealed class JsonSnakeCaseEnumConverter : JsonStringEnumConverter
+{
+    public JsonSnakeCaseEnumConverter()
+        : base(JsonNamingPolicy.SnakeCaseLower) { }
 }

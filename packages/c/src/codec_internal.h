@@ -75,6 +75,12 @@ struct codec_tokenizer_map {
      * which libcodec doesn't support — BPE construction fails on
      * such maps. */
     codec_pretok_program_t  *pretok_program;
+
+    /* Tool-calling convention (optional, v2 maps and later). Owned by
+     * the map; the marker-name strings are duplicated from the JSON
+     * input so the parsed token buffer can be freed. NULL when the map
+     * doesn't declare a tool_calling block. */
+    codec_tool_calling_t    *tool_calling;
 };
 
 /* GPT-2 byte ↔ unicode helpers used by both map.c and BPE. */

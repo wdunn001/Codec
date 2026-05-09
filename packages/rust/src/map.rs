@@ -61,9 +61,76 @@ pub struct TokenizerMap {
     /// Named special tokens. Skipped during text rendering by default.
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "special_tokens")]
     pub special_tokens: Option<HashMap<String, u32>>,
+    /// Per-model tool-calling convention. Optional; populated by
+    /// `@codecai/maps-cli` when it detects a known chat-template signature.
+    /// Absent on maps generated before this block existed; readers MUST treat
+    /// absence as "convention not declared" rather than as an error. See
+    /// `spec/PROTOCOL.md` § "Tool-call calling conventions in the map".
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "tool_calling")]
+    pub tool_calling: Option<ToolCallingBlock>,
     /// ISO 8601 publish timestamp. Informational.
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "published_at")]
     pub published_at: Option<String>,
+}
+
+/// Per-model tool-calling convention block carried inside a [`TokenizerMap`].
+/// Each `convention` value pins a specific argument layout, marker placement,
+/// and result framing — see `spec/PROTOCOL.md` § "Tool-call calling
+/// conventions in the map" for the normative table.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCallingBlock {
+    /// Closed enum naming the convention. New values are additive point
+    /// releases of the schema; per-deployment extension is not supported.
+    /// Use `"custom"` to opt out of the registry.
+    pub convention: ToolCallingConvention,
+    /// Start/end marker token names. Both names MUST appear as keys in the
+    /// parent map's `special_tokens` table.
+    pub markers: ToolCallingMarkers,
+    /// How tool-call arguments are packed inside the marker pair on the
+    /// engine's output side.
+    pub args_format: ToolCallingArgsFormat,
+    /// How tool results come back into the model's input.
+    pub result_format: ToolCallingResultFormat,
+}
+
+/// Start/end marker token names for a tool call.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCallingMarkers {
+    pub start: String,
+    pub end: String,
+}
+
+/// Closed enum of tool-calling conventions. See `spec/PROTOCOL.md` for the
+/// normative behaviour pinned to each value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolCallingConvention {
+    Llama3,
+    Qwen25,
+    Phi4,
+    MistralNemo,
+    DeepseekV3,
+    DeepseekR1,
+    /// Opt-out; layout is implementer-supplied and not pinned by the spec.
+    Custom,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolCallingArgsFormat {
+    /// Single JSON object, e.g. `{"location":"NYC"}`.
+    Json,
+    /// Python-style call expression. Llama-3 with `<|python_tag|>` uses this.
+    PythonArgs,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolCallingResultFormat {
+    /// Opaque UTF-8 text returned verbatim.
+    Text,
+    /// JSON value the model parses.
+    Json,
 }
 
 fn default_version() -> String {
@@ -135,6 +202,22 @@ impl TokenizerMap {
                 "byte_fallback_start and byte_fallback_end must both be set or both omitted"
                     .into(),
             ));
+        }
+        if let Some(tc) = &map.tool_calling {
+            if tc.markers.start.is_empty() || tc.markers.end.is_empty() {
+                return Err(TokenizerMapError::Validation(
+                    "tool_calling.markers.start/.end must both be non-empty strings".into(),
+                ));
+            }
+            // The spec requires both marker names to exist as keys in special_tokens.
+            let st = map.special_tokens.as_ref();
+            let in_st = |name: &str| st.is_some_and(|m| m.contains_key(name));
+            if !in_st(&tc.markers.start) || !in_st(&tc.markers.end) {
+                return Err(TokenizerMapError::Validation(format!(
+                    "tool_calling.markers.start (\"{}\") and .end (\"{}\") must both exist as keys in special_tokens",
+                    tc.markers.start, tc.markers.end,
+                )));
+            }
         }
         Ok(())
     }

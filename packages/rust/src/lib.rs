@@ -46,7 +46,10 @@ pub use byte_encoder::{decode_byte_level_token, encode_byte_level_chars, METASPA
 pub use detokenize::{Detokenizer, DetokenizeOptions};
 pub use frame::{CodecFrame, IMapCache, MapCache, MemoryMapCache};
 pub use longest_match::{LongestMatchTokenizer, Tokenize};
-pub use map::{TokenizerMap, TokenizerMapError};
+pub use map::{
+    TokenizerMap, TokenizerMapError, ToolCallingArgsFormat, ToolCallingBlock,
+    ToolCallingConvention, ToolCallingMarkers, ToolCallingResultFormat,
+};
 #[cfg(feature = "http")]
 pub use map_loader::{LoadError, LoadOptions, MapLoader, TokenizerMapHashMismatchError};
 pub use stream::{
