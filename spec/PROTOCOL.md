@@ -881,13 +881,19 @@ pipeline has a forward (server-side) and inverse (client-side) form, and
 the round-trip is bit-exact at the latent-byte boundary. Pipelines do
 not touch the decoder; they only restructure latent bytes for transport.
 
-| Pipeline       | Forward                                                                       | Wins                                                  |
-|----------------|-------------------------------------------------------------------------------|-------------------------------------------------------|
-| `raw`          | Pack tensor in row-major order.                                               | Bit-exact, no model contract assumptions.             |
-| `int8`         | Per-channel symmetric quantization to int8; scales travel in the header.      | 2× over fp16; minimal SSIM loss at typical SD scales. |
-| `int4`         | Per-channel symmetric quantization to int4 (packed 2-per-byte).               | 4× over fp16; lossy enough to require quality gating. |
-| `delta+int8`   | Subtract prior keyframe's int8 latent; transmit residual.                     | Video only. Collapses temporally redundant bytes.     |
-| `delta+int4`   | Same, with int4 residual.                                                     | Video only. Most aggressive lossy mode.               |
+The full registry, with normative forward/inverse math, lives in
+[`spec/PIPELINES.md`](./PIPELINES.md). The table below is an informative
+digest:
+
+| Pipeline          | Forward                                                                       | Wins                                                  |
+|-------------------|-------------------------------------------------------------------------------|-------------------------------------------------------|
+| `raw`             | Pack tensor in row-major order.                                               | Bit-exact, no model contract assumptions.             |
+| `int8`            | Per-channel symmetric quantization to int8; scales travel in the header.      | 2× over fp16; minimal SSIM loss at typical SD scales. |
+| `int4`            | Per-channel symmetric quantization to int4 (packed 2-per-byte).               | 4× over fp16; lossy enough to require quality gating. |
+| `int8-adaptive`   | int8 with per-keyframe scales prepended to frame bytes.                       | 2×; preferred when latents drift across frames.       |
+| `int4-adaptive`   | int4 with per-keyframe scales prepended to frame bytes.                       | 4×; same use case as `int8-adaptive`, more lossy.     |
+| `delta+int8`      | Subtract prior keyframe's int8 latent; transmit residual.                     | Video only. Collapses temporally redundant bytes.     |
+| `delta+int4`      | Same, with int4 residual.                                                     | Video only. Most aggressive lossy mode.               |
 
 Implementations MUST advertise pipeline support in `accept_pipelines`
 during `HELLO` and reject any header whose `pipeline` they don't know.
