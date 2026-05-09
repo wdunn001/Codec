@@ -64,6 +64,56 @@ asking a vision model to inspect a generation), the receiving model often
 ingests latents directly and never needs the pixels at all — the same UTF-8
 round-trip elimination that motivates v0.2, applied to image bytes.
 
+### Negotiation pathways at a glance
+
+The same client/gateway/engine triangle handles all three modalities;
+only the wire frame, the per-modality map, and the response headers
+differ. The diagrams below show what's on the wire for each pathway —
+the polished SVG twin lives at [/protocol-map](https://codecai.net/protocol-map)
+on the website.
+
+#### Text-tokens (v0.2)
+
+```mermaid
+flowchart LR
+  C["Codec client<br/>(@codecai/web · codecai · …)"]
+  G["Inference gateway<br/>(metamcp · supervisor)"]
+  E["Engine fork<br/>(sglang · vLLM · llama.cpp)"]
+  C -- "POST /v1/completions<br/>Accept: application/x-codec-msgpack<br/>X-Codec-Map: sha256:…" --> G
+  G -- "Codec-Tokenizer-Map: sha256:…<br/>Codec-Zstd-Dict: sha256:…<br/>CodecFrame stream (uint32 IDs)" --> C
+  G <-- "stream_format=msgpack" --> E
+```
+
+#### MCP tool-calls (leaf-mode bypass)
+
+```mermaid
+flowchart LR
+  C["Codec client"]
+  G["codec-metamcp gateway"]
+  L["Codec-aware MCP tool<br/>(wraps with _codec_meta<br/>via @codecai/mcp-leaf)"]
+  S["Legacy MCP tool<br/>(plain text result)"]
+  C -- "POST /mcp<br/>Accept: application/x-codec-msgpack<br/>X-Codec-Map: sha256:…" --> G
+  G -- "tools/call → JSON-RPC" --> L
+  G -- "tools/call → JSON-RPC" --> S
+  L -- "CallToolResult.content[]<br/>+ {_codec_meta: {ids:[…]}}" --> G
+  S -- "CallToolResult.content[]<br/>(plain text)" --> G
+  G -- "leaf-mode bypass:<br/>forward IDs verbatim<br/>[Codec][leaf] log fires" --> C
+  G -- "shim: gateway tokenizes,<br/>then forwards IDs<br/>[Codec][shim] log fires" --> C
+```
+
+#### Latents (v0.3)
+
+```mermaid
+flowchart LR
+  C["Codec client<br/>(LatentStreamDecoder)"]
+  G["Inference gateway"]
+  E["Latent engine fork<br/>(codec-comfyui · codec-diffusers)"]
+  C -- "POST /v1/images/generations<br/>Accept: application/x-codec-msgpack<br/>X-Codec-Map: sha256:… (latent-space-map)" --> G
+  G -- "stream_format=msgpack<br/>pipeline=int8" --> E
+  E -- "LatentStreamHeader<br/>+ LatentFrame stream" --> G
+  G -- "Codec-Latent-Map: sha256:…<br/>Codec-Zstd-Dict: sha256:…<br/>+ vae_decode runs at the leaf" --> C
+```
+
 ---
 
 ## Implementations
