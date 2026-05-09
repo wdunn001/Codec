@@ -1,0 +1,453 @@
+{
+  "schema_version": "1",
+  "methodology": {
+    "schema_version": "1",
+    "captured_at": "2026-05-09T13:08:07.715Z",
+    "run_id": "2026-05-09T13-01-55Z",
+    "workload": {
+      "fixtures_file": "methodology/latent-fixtures.json"
+    },
+    "modality": {
+      "kind": "image-latents",
+      "latent_space_id": "stabilityai/sd-vae-ft-mse"
+    },
+    "engine": {
+      "endpoint": "http://192.168.1.88:8181/v1/images/generations"
+    },
+    "bench_tool": {
+      "name": "latent-live.ts",
+      "version": "0.1.0",
+      "reps": 1,
+      "aggregation": "median",
+      "ttff_definition": "wall-clock from request POST to first response body chunk (approximates first LatentFrame on engines that emit header+frame in one TCP segment)",
+      "wire_bytes_definition": "raw socket bytes received before any Content-Encoding decompression",
+      "total_ms_definition": "wall-clock from request POST to last byte"
+    }
+  },
+  "rows": [
+    {
+      "size": "256",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "identity",
+      "pipeline": "raw",
+      "wire_bytes": 8565,
+      "ttff_ms": 363008.226841,
+      "total_ms": 363008.54802600003,
+      "frames_emitted": 0,
+      "rep_wire_bytes": [
+        8565
+      ],
+      "rep_ttff_ms": [
+        363008.226841
+      ],
+      "rep_total_ms": [
+        363008.54802600003
+      ],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": null
+    },
+    {
+      "size": "256",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "identity",
+      "pipeline": "int8",
+      "wire_bytes": 4487,
+      "ttff_ms": 661.3981119999662,
+      "total_ms": 661.48496599996,
+      "frames_emitted": 0,
+      "rep_wire_bytes": [
+        4487
+      ],
+      "rep_ttff_ms": [
+        661.3981119999662
+      ],
+      "rep_total_ms": [
+        661.48496599996
+      ],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": null
+    },
+    {
+      "size": "256",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "identity",
+      "pipeline": "int4",
+      "wire_bytes": 2439,
+      "ttff_ms": 631.5869070000481,
+      "total_ms": 631.6603060000343,
+      "frames_emitted": 0,
+      "rep_wire_bytes": [
+        2439
+      ],
+      "rep_ttff_ms": [
+        631.5869070000481
+      ],
+      "rep_total_ms": [
+        631.6603060000343
+      ],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": null
+    },
+    {
+      "size": "256",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "identity",
+      "pipeline": "int8-adaptive",
+      "wire_bytes": null,
+      "ttff_ms": null,
+      "total_ms": null,
+      "frames_emitted": null,
+      "rep_wire_bytes": [],
+      "rep_ttff_ms": [],
+      "rep_total_ms": [],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": "HTTP 400: {\"detail\":\"pipeline 'int8-adaptive' not supported for image-latents; this engine supports ['raw', 'int8', 'int4']. (`raw` is always supported as the negotiation fallback.)\"}"
+    },
+    {
+      "size": "256",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "identity",
+      "pipeline": "int4-adaptive",
+      "wire_bytes": null,
+      "ttff_ms": null,
+      "total_ms": null,
+      "frames_emitted": null,
+      "rep_wire_bytes": [],
+      "rep_ttff_ms": [],
+      "rep_total_ms": [],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": "HTTP 400: {\"detail\":\"pipeline 'int4-adaptive' not supported for image-latents; this engine supports ['raw', 'int8', 'int4']. (`raw` is always supported as the negotiation fallback.)\"}"
+    },
+    {
+      "size": "256",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "gzip",
+      "pipeline": "int8",
+      "wire_bytes": 4487,
+      "ttff_ms": 644.6262780000106,
+      "total_ms": 644.7830529999919,
+      "frames_emitted": 0,
+      "rep_wire_bytes": [
+        4487
+      ],
+      "rep_ttff_ms": [
+        644.6262780000106
+      ],
+      "rep_total_ms": [
+        644.7830529999919
+      ],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": null
+    },
+    {
+      "size": "256",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "zstd",
+      "pipeline": "int8",
+      "wire_bytes": 4487,
+      "ttff_ms": 648.8301099999808,
+      "total_ms": 648.9021959999809,
+      "frames_emitted": 0,
+      "rep_wire_bytes": [
+        4487
+      ],
+      "rep_ttff_ms": [
+        648.8301099999808
+      ],
+      "rep_total_ms": [
+        648.9021959999809
+      ],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": null
+    },
+    {
+      "size": "512",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "identity",
+      "pipeline": "raw",
+      "wire_bytes": 33142,
+      "ttff_ms": 1224.9376219999976,
+      "total_ms": 1226.8978249999927,
+      "frames_emitted": 0,
+      "rep_wire_bytes": [
+        33142
+      ],
+      "rep_ttff_ms": [
+        1224.9376219999976
+      ],
+      "rep_total_ms": [
+        1226.8978249999927
+      ],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": null
+    },
+    {
+      "size": "512",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "identity",
+      "pipeline": "int8",
+      "wire_bytes": 16776,
+      "ttff_ms": 1204.483076000004,
+      "total_ms": 1205.1724809999578,
+      "frames_emitted": 0,
+      "rep_wire_bytes": [
+        16776
+      ],
+      "rep_ttff_ms": [
+        1204.483076000004
+      ],
+      "rep_total_ms": [
+        1205.1724809999578
+      ],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": null
+    },
+    {
+      "size": "512",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "identity",
+      "pipeline": "int4",
+      "wire_bytes": 8584,
+      "ttff_ms": 1205.130455000035,
+      "total_ms": 1205.3117860000348,
+      "frames_emitted": 0,
+      "rep_wire_bytes": [
+        8584
+      ],
+      "rep_ttff_ms": [
+        1205.130455000035
+      ],
+      "rep_total_ms": [
+        1205.3117860000348
+      ],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": null
+    },
+    {
+      "size": "512",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "identity",
+      "pipeline": "int8-adaptive",
+      "wire_bytes": null,
+      "ttff_ms": null,
+      "total_ms": null,
+      "frames_emitted": null,
+      "rep_wire_bytes": [],
+      "rep_ttff_ms": [],
+      "rep_total_ms": [],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": "HTTP 400: {\"detail\":\"pipeline 'int8-adaptive' not supported for image-latents; this engine supports ['raw', 'int8', 'int4']. (`raw` is always supported as the negotiation fallback.)\"}"
+    },
+    {
+      "size": "512",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "identity",
+      "pipeline": "int4-adaptive",
+      "wire_bytes": null,
+      "ttff_ms": null,
+      "total_ms": null,
+      "frames_emitted": null,
+      "rep_wire_bytes": [],
+      "rep_ttff_ms": [],
+      "rep_total_ms": [],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": "HTTP 400: {\"detail\":\"pipeline 'int4-adaptive' not supported for image-latents; this engine supports ['raw', 'int8', 'int4']. (`raw` is always supported as the negotiation fallback.)\"}"
+    },
+    {
+      "size": "512",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "gzip",
+      "pipeline": "int8",
+      "wire_bytes": 16776,
+      "ttff_ms": 1200.833822000015,
+      "total_ms": 1201.5670180000016,
+      "frames_emitted": 0,
+      "rep_wire_bytes": [
+        16776
+      ],
+      "rep_ttff_ms": [
+        1200.833822000015
+      ],
+      "rep_total_ms": [
+        1201.5670180000016
+      ],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": null
+    },
+    {
+      "size": "512",
+      "kind": "image",
+      "format": "msgpack",
+      "encoding": "zstd",
+      "pipeline": "int8",
+      "wire_bytes": 16776,
+      "ttff_ms": 1216.3172159999958,
+      "total_ms": 1217.199993999966,
+      "frames_emitted": 0,
+      "rep_wire_bytes": [
+        16776
+      ],
+      "rep_ttff_ms": [
+        1216.3172159999958
+      ],
+      "rep_total_ms": [
+        1217.199993999966
+      ],
+      "decode_cold_ms": null,
+      "decode_steady_ms": null,
+      "decode_peak_mem_mb": null,
+      "ssim": null,
+      "psnr": null,
+      "lpips": null,
+      "vmaf": null,
+      "temporal_ssim": null,
+      "codec_tokenizer_map": null,
+      "codec_latent_map": null,
+      "codec_zstd_dict": null,
+      "error": null
+    }
+  ]
+}
