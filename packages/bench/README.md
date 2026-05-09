@@ -13,9 +13,18 @@ Three independent measurements, each runnable in isolation:
 | `compression` | Compression scaling sweep: each encoder × {identity, gzip, br, zstd} at small/medium/large | No |
 | `live` | Real wire bytes against a streaming OpenAI-compatible endpoint (set `BENCH_SWEEP=1` for sizes) | Yes |
 | `mcp:live` (v0.3) | 5-variant MCP wire matrix against a live MetaMCP gateway: `json` → `msgpack-resp` → `msgpack-both` → `+gzip` → `+gzip+map` (the leaf-mode bypass with [`codec-time-leaf`](https://hub.docker.com/r/wdunn001/codec-time-leaf) in-namespace) | Yes |
-| `latent:live` (v0.3) | Latent-modality wire matrix against [`codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui) / [`codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers): per-(format, encoding, pipeline, fixture) cells. Currently a planning stub — Phase 6 of the v0.3 release wires `runOneCell()` against live infra. | Yes |
+| `latent:live` (v0.3) | Latent-modality wire matrix against [`codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui) / [`codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers): per-(format, encoding, pipeline, fixture) cells. **Live as of 2026-05-09** — first end-to-end run validates pipeline math byte-for-byte (results: [`results/2026-05-09T13-01-55Z/latent/`](results/2026-05-09T13-01-55Z/latent/)). | Yes |
 
 The methodology spec — including the v0.3 negotiation-headers requirements (Codec-Tokenizer-Map / Codec-Latent-Map / Codec-Zstd-Dict) and the MCP-live + latent-modality result-row schemas — lives in [`methodology/SCHEMA.md`](methodology/SCHEMA.md).
+
+### v0.3.x lab results (committed)
+
+| Run | Pathway | Headline |
+|---|---|---|
+| [`2026-05-09T09-26-54Z/mcp/`](results/2026-05-09T09-26-54Z/mcp/) | MCP, baseline | `tools/list` 38 tools: **3.6×** (msgpack-both+gzip vs JSON) |
+| [`2026-05-09T11-10-48Z/mcp/`](results/2026-05-09T11-10-48Z/mcp/) | MCP, validator-fix | First codec-time-leaf integration; bug discovery (CodecAwareCallToolResultSchema) |
+| [`2026-05-09T12-17-48Z/mcp/`](results/2026-05-09T12-17-48Z/mcp/) | MCP, leaf-mode bypass | `[Codec][leaf]` log fires end-to-end on real lab traffic |
+| [`2026-05-09T13-01-55Z/latent/`](results/2026-05-09T13-01-55Z/latent/) | Latent, first run | Pipeline math validates byte-for-byte; int4 = **3.9×** vs raw on 512×512 |
 
 Plus full agent-loop benches (prompt → tool call → dispatch → final answer) live under `packages/demo-python` — see [`RESULTS.md`](RESULTS.md) §4–§6 for numbers.
 

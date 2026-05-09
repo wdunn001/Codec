@@ -23,7 +23,19 @@ Source-available under [BSL 1.1](LICENSE). Patent posture in [PATENTS.md](PATENT
 
 ## What ships today
 
-> **Latest release: [v0.3.0](https://github.com/wdunn001/Codec/releases/tag/v0.3.0)** — Codec-aware MCP gateway (leaf-mode bypass, ~4.7× wire-byte reduction on tool calls), v0.3 latent modality (VAE latents on the wire for image + video diffusion, 48× smaller than pixels), and `tool_calling` block in tokenizer maps. Customer-facing release notes: [What's new](https://codecai.net/changelog/) · engineering changelog: [GitHub Releases](https://github.com/wdunn001/Codec/releases). Visual map of all three pathways: [/protocol-map](https://codecai.net/protocol-map).
+> **Latest release: v0.3.x — all three pathways measured end-to-end on the lab.**
+>
+> | Pathway | Wire reduction | Image |
+> |---|---:|---|
+> | **Text-tokens** (sglang / vLLM / llama.cpp) | **13–18×** vs JSON-SSE | `wdunn001/codec-{sglang,vllm,llamacpp}:latest` |
+> | **MCP tool calls** (metamcp + leaf-mode bypass) | **3.6×** on `tools/list` (40 tools) | `wdunn001/codec-metamcp:v0.3.2` + [`codec-time-leaf`](https://hub.docker.com/r/wdunn001/codec-time-leaf) |
+> | **Latents** (diffusers / ComfyUI) | **3.9×** int4 vs raw, ~5–10× vs JPEG | `wdunn001/codec-diffusers:v0.3.4` |
+>
+> The `[Codec][leaf]` log line fires end-to-end — the architectural target
+> (gateway as transparent ID pipe, tokenizer at the leaf) is observable on real
+> wire traffic. Customer-facing release notes: [What's new](https://codecai.net/changelog/)
+> · engineering changelog: [GitHub Releases](https://github.com/wdunn001/Codec/releases)
+> · visual diagram of all three pathways: [/protocol-map](https://codecai.net/protocol-map).
 
 ### Spec
 
@@ -69,8 +81,8 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 
 | Surface | Where | What it is |
 |---|---|---|
-| **MetaMCP** | [PR #287](https://github.com/metatool-ai/metamcp/pull/287) | Codec wire framing + token-aware tool dispatch at the JSON-RPC seam. v0.3+ also runs the leaf-mode bypass for Codec-aware tools (sees `_codec_meta`, forwards IDs verbatim) and the MCP-shaped zstd dict (~4.7× wire-byte reduction). Image: `wdunn001/codec-metamcp:latest`. |
-| **mcp-leaf** | [`@codecai/mcp-leaf`](https://www.npmjs.com/package/@codecai/mcp-leaf) | Tool-author-side helper for the leaf-mode contract. `wrapToolCall(result, meta)` adds the `_codec_meta` siblings the gateway recognizes; `readCodecMeta(result)` is the receive-side companion. |
+| **MetaMCP** | [PR #287](https://github.com/metatool-ai/metamcp/pull/287) | Codec wire framing + token-aware tool dispatch at the JSON-RPC seam. v0.3.2+ ships the leaf-mode bypass for Codec-aware tools — recognizes the per-block `_meta['ai.codec/leaf-tokenization']` payload, forwards IDs verbatim, fires `[Codec][leaf]` log. Also loads the MCP-shaped zstd dict at startup. Image: `wdunn001/codec-metamcp:latest` (v0.3.2 currently). |
+| **mcp-leaf** | [`@codecai/mcp-leaf`](https://www.npmjs.com/package/@codecai/mcp-leaf) | Tool-author-side helper for the leaf-mode contract. `wrapToolCall(result, meta)` annotates each text block with the per-block `_meta` payload the gateway recognizes; `readCodecMeta(result)` is the receive-side companion (accepts both v0.3.2+ `_meta` shape and the v0.3.0/v0.3.1 legacy sibling-block shape). |
 | **codec-time-leaf** | [`wdunn001/codec-time-leaf`](https://hub.docker.com/r/wdunn001/codec-time-leaf) (Docker) + [`@codecai/codec-time-leaf`](https://www.npmjs.com/package/@codecai/codec-time-leaf) (npm) | Reference Codec-aware MCP server (canonical demo of leaf mode). `get_current_time` + `convert_time` tools. |
 | **Pre-built images** | [`wdunn001/codec-supervisor`](https://github.com/wdunn001/codec-supervisor) | One Docker image per engine + the gateway: `codec-sglang`, `codec-vllm`, `codec-llamacpp`, `codec-metamcp`, `codec-comfyui` (v0.3), `codec-diffusers` (v0.3), `codec-time-leaf` (v0.3). Released on `v*` tags via the supervisor's `release.yml` workflow. |
 

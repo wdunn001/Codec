@@ -38,17 +38,23 @@ That returns:
 ```jsonc
 {
   "content": [
-    { "type": "text", "text": "It is currently 14:30 UTC." },
     {
-      "type": "_codec_meta",
-      "map_id": "sha256:0549cbec9d451832f9f8c9dcd2553210fdf4e6f4ff64feebe64d3a09950a5022",
-      "ids": [2132, 374, 5023, 220, 16, 19, 25, 18, 15, 27269, 13]
+      "type": "text",
+      "text": "It is currently 14:30 UTC.",
+      "_meta": {
+        "ai.codec/leaf-tokenization": {
+          "map_id": "sha256:0549cbec9d451832f9f8c9dcd2553210fdf4e6f4ff64feebe64d3a09950a5022",
+          "ids": [2132, 374, 5023, 220, 16, 19, 25, 18, 15, 27269, 13]
+        }
+      }
     }
   ]
 }
 ```
 
-The `_codec_meta` block is **additive** — non-Codec-aware clients on the same MCP namespace ignore it and see the original `text` block exactly as before. No protocol change, no MCP version bump.
+The Codec payload is **additive** — non-Codec-aware clients on the same MCP namespace ignore the `_meta` field and see the original `text` block exactly as before. No protocol change, no MCP version bump.
+
+> **Wire shape change in v0.3.2.** Earlier v0.3.0 / v0.3.1 builds emitted Codec metadata as a SIBLING content block (`{ type: "_codec_meta", map_id, ids }`). The MCP SDK's `ContentBlockSchema` is a strict discriminated union over `text | image | audio | resource | resource_link`, so the sibling form crashed time-server itself with `MCP error -32602: Invalid tools/call result` before the result ever left the process. v0.3.2 moves the payload onto the text block's per-block `_meta` field — a first-class MCP spec slot that the SDK validator passes through. The reader-side helpers (`readCodecMeta`, `takeIds`, `stripCodecMeta`) accept BOTH wire shapes for back-compat with results from older Codec-aware tools.
 
 ## What the gateway sees
 
