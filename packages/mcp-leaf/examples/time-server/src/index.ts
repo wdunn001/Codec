@@ -186,10 +186,10 @@ async function main() {
     try {
       switch (req.params.name) {
         case 'get_current_time':
-          text = getCurrentTime(args as CurrentTimeArgs);
+          text = getCurrentTime(args as unknown as CurrentTimeArgs);
           break;
         case 'convert_time':
-          text = convertTime(args as ConvertTimeArgs);
+          text = convertTime(args as unknown as ConvertTimeArgs);
           break;
         default:
           throw new Error(`unknown tool: ${req.params.name}`);
