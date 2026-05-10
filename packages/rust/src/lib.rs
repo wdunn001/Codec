@@ -36,6 +36,7 @@ pub mod longest_match;
 pub mod map;
 #[cfg(feature = "http")]
 pub mod map_loader;
+pub mod safety_policy;
 pub mod stream;
 pub mod tokenize;
 pub mod tool_watcher;
@@ -52,6 +53,15 @@ pub use map::{
 };
 #[cfg(feature = "http")]
 pub use map_loader::{LoadError, LoadOptions, MapLoader, TokenizerMapHashMismatchError};
+pub use safety_policy::{
+    Category as SafetyCategory, CategoryAction, ClassifierBlock as SafetyClassifierBlock,
+    ClassifierHost, ClientHooksBlock as SafetyClientHooksBlock, EngineFeature,
+    PublisherBlock as SafetyPublisherBlock, RulesSummary as SafetyRulesSummary,
+    SafetyPolicyDescriptor, SafetyPolicyError, SafetyPolicyPointer,
+    POLICY_WELL_KNOWN_BASE,
+};
+#[cfg(feature = "http")]
+pub use safety_policy::{discover_safety_policy, load_safety_policy};
 pub use stream::{
     decode_msgpack_stream, decode_protobuf_frame, decode_protobuf_stream, MsgpackFrameIter,
     ProtobufFrameIter, StreamError,
