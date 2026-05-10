@@ -123,4 +123,29 @@ class BPETokenizerTests {
             assertEquals(s, d.render(ids));
         }
     }
+
+    @Test
+    void chatTemplateAndFimSpecialsEmitAtomicIds() throws IOException {
+        // Regression guard for the special-token pre-scan. Reference IDs
+        // come from HuggingFace `tokenizers` 0.23.1 reading
+        // Qwen-2.5-0.5B-Instruct's tokenizer.json — the encoder must emit
+        // each `<|...|>` delimiter as a single atomic vocab ID, not as 6
+        // byte-level tokens.
+        String path = Fixtures.findQwenMap();
+        if (path == null) return;
+
+        byte[] data = Files.readAllBytes(Paths.get(path));
+        TokenizerMap m = TokenizerMap.fromJson(data);
+        BPETokenizer tok = new BPETokenizer(m);
+
+        assertArrayEquals(
+                new int[]{151644, 872, 198, 3838, 374, 220, 17, 10, 17, 30, 151645},
+                tok.encode("<|im_start|>user\nWhat is 2+2?<|im_end|>"));
+        assertArrayEquals(
+                new int[]{151659, 750, 15229, 2075, 1648, 151661, 262, 470, 856, 151660, 198},
+                tok.encode("<|fim_prefix|>def foo(x):<|fim_suffix|>    return x<|fim_middle|>\n"));
+        assertArrayEquals(
+                new int[]{151644, 8948, 198, 2610, 525, 10950, 13, 151645, 198, 151644, 872, 198, 9707, 151645},
+                tok.encode("<|im_start|>system\nYou are helpful.<|im_end|>\n<|im_start|>user\nHello<|im_end|>"));
+    }
 }

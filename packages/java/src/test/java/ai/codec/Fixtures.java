@@ -46,6 +46,7 @@ final class Fixtures {
     static String findQwenMap() {
         String[] candidates = {
                 "H:\\dev\\codec-maps\\maps\\qwen\\qwen2.json",
+                "/mnt/h/dev/codec-maps/maps/qwen/qwen2.json",
                 System.getProperty("user.dir") + File.separator + ".." + File.separator + ".."
                         + File.separator + "codec-maps" + File.separator + "maps"
                         + File.separator + "qwen" + File.separator + "qwen2.json",

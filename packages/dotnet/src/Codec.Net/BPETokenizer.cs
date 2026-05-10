@@ -28,6 +28,33 @@ public sealed class BPETokenizer : ITokenizer
     private readonly string _encoder;
     private readonly int _byteFallbackStart;
     private readonly Dictionary<string, int[]> _cache = new();
+    /// <summary>
+    /// Special-token scanner. Built from <c>map.SpecialTokens</c> plus any
+    /// vocab key in <c>&lt;|body|&gt;</c> shape with a non-empty
+    /// identifier-like body. HF's reference tokenizer splits input on
+    /// registered specials BEFORE running BPE — emit each match as the
+    /// atomic vocab ID, BPE the surrounding text. Required for chat
+    /// templates (<c>&lt;|im_start|&gt;...&lt;|im_end|&gt;</c>), tool-call
+    /// delimiters, FIM markers, etc. to round-trip with HF.
+    /// </summary>
+    private readonly Dictionary<string, int> _specialIds;
+    private readonly Regex? _specialRegex;
+
+    private static readonly Regex DelimiterBodyRegex = new("^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Match <c>&lt;|body|&gt;</c> where body is non-empty and identifier-like
+    /// (letters/digits/_/-). Catches every shipped chat-template and tool-call
+    /// delimiter while excluding pathological vocab BPE tokens like Falcon's
+    /// <c>&lt;|&gt;</c> (id 61799) that share the start/end pair.
+    /// </summary>
+    private static bool IsDelimiterShape(string tok)
+    {
+        if (tok.Length <= 4) return false;
+        if (!tok.StartsWith("<|", StringComparison.Ordinal) ||
+            !tok.EndsWith("|>", StringComparison.Ordinal)) return false;
+        return DelimiterBodyRegex.IsMatch(tok.Substring(2, tok.Length - 4));
+    }
 
     /// <summary>True if the map has the data BPETokenizer needs.</summary>
     public static bool Supports(TokenizerMap map) =>
@@ -66,6 +93,27 @@ public sealed class BPETokenizer : ITokenizer
             // — .NET's regex engine supports them natively.
             _preTokRegex = new Regex(map.PreTokenizerPattern, RegexOptions.Compiled);
         }
+
+        // Build the special-token scanner. Accept entries from map.SpecialTokens
+        // AND any vocab key in `<|body|>` shape — older maps shipped before a
+        // chat-template revision may carry the delimiters in vocab but not in
+        // SpecialTokens. Length-descending order so longer delimiters match
+        // before shorter prefixes. Without this pre-scan, `<|im_start|>` would
+        // tokenise byte-by-byte instead of as the single atomic vocab ID.
+        _specialIds = new Dictionary<string, int>();
+        if (map.SpecialTokens is { Count: > 0 } specials)
+            foreach (var (name, id) in specials) _specialIds[name] = id;
+        foreach (var (tok, id) in _vocab)
+        {
+            if (_specialIds.ContainsKey(tok)) continue;
+            if (IsDelimiterShape(tok)) _specialIds[tok] = id;
+        }
+        if (_specialIds.Count > 0)
+        {
+            var keys = _specialIds.Keys.OrderByDescending(k => k.Length);
+            var alt = string.Join("|", keys.Select(Regex.Escape));
+            _specialRegex = new Regex(alt, RegexOptions.Compiled);
+        }
     }
 
     /// <summary>Encode text → token IDs.</summary>
@@ -73,8 +121,29 @@ public sealed class BPETokenizer : ITokenizer
     {
         if (string.IsNullOrEmpty(text)) return Array.Empty<int>();
 
+        if (_specialRegex is not null)
+        {
+            var ids = new List<int>();
+            var cursor = 0;
+            foreach (Match m in _specialRegex.Matches(text))
+            {
+                if (m.Index > cursor) EncodeChunk(text.AsSpan(cursor, m.Index - cursor).ToString(), ids);
+                ids.Add(_specialIds[m.Value]);
+                cursor = m.Index + m.Length;
+            }
+            if (cursor < text.Length) EncodeChunk(text[cursor..], ids);
+            return ids.ToArray();
+        }
+
+        var idsAll = new List<int>();
+        EncodeChunk(text, idsAll);
+        return idsAll.ToArray();
+    }
+
+    private void EncodeChunk(string text, List<int> ids)
+    {
+        if (string.IsNullOrEmpty(text)) return;
         var pieces = PreTokenize(text);
-        var ids = new List<int>(pieces.Count * 2);
         foreach (var piece in pieces)
         {
             if (_cache.TryGetValue(piece, out var cached))
@@ -88,7 +157,6 @@ public sealed class BPETokenizer : ITokenizer
             _cache[piece] = pieceIds;
             ids.AddRange(pieceIds);
         }
-        return ids.ToArray();
     }
 
     // ── Pre-tokenization ────────────────────────────────────────────────────

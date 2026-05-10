@@ -43,6 +43,7 @@ internal static class Fixtures
         var candidates = new[]
         {
             @"H:\dev\codec-maps\maps\qwen\qwen2.json",
+            "/mnt/h/dev/codec-maps/maps/qwen/qwen2.json",
             Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "..", "codec-maps", "maps", "qwen", "qwen2.json"),
         };
         foreach (var c in candidates)

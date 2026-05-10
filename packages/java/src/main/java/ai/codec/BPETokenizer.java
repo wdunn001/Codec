@@ -30,6 +30,31 @@ public final class BPETokenizer implements ITokenizer {
     private final String encoder;
     private final int byteFallbackStart;
     private final Map<String, int[]> cache = new HashMap<>();
+    /**
+     * Special-token scanner. Built from {@code map.specialTokens} plus any
+     * vocab key in {@code <|body|>} shape with non-empty identifier-like
+     * body. HF's reference tokenizer splits input on registered specials
+     * BEFORE running BPE — emit each match as the atomic vocab ID, BPE
+     * the surrounding text. Required for chat templates
+     * ({@code <|im_start|>...<|im_end|>}), tool-call delimiters, FIM
+     * markers, etc. to round-trip with HF.
+     */
+    private final Map<String, Integer> specialIds;
+    private final Pattern specialRegex;
+
+    private static final Pattern DELIMITER_BODY = Pattern.compile("^[A-Za-z0-9_-]+$");
+
+    /**
+     * Match {@code <|body|>} where body is non-empty and identifier-like
+     * (letters/digits/_/-). Catches every shipped chat-template and tool-
+     * call delimiter while excluding pathological vocab BPE tokens like
+     * Falcon's {@code <|>} (id 61799) that share the start/end pair.
+     */
+    private static boolean isDelimiterShape(String tok) {
+        if (tok.length() <= 4) return false;
+        if (!tok.startsWith("<|") || !tok.endsWith("|>")) return false;
+        return DELIMITER_BODY.matcher(tok.substring(2, tok.length() - 2)).matches();
+    }
 
     /** True if the map has the data BPETokenizer needs. */
     public static boolean supports(TokenizerMap map) {
@@ -64,6 +89,33 @@ public final class BPETokenizer implements ITokenizer {
         } else {
             this.preTokRegex = null;
         }
+
+        // Build the special-token scanner. Accept entries from
+        // map.specialTokens AND any vocab key in `<|body|>` shape — older
+        // maps shipped before a chat-template revision may carry the
+        // delimiters in vocab but not in specialTokens. Length-descending
+        // alternation order so longer delimiters match before shorter
+        // prefixes. Without this pre-scan, `<|im_start|>` would tokenise
+        // byte-by-byte instead of as the single atomic vocab ID.
+        Map<String, Integer> specials = new HashMap<>();
+        if (map.specialTokens != null) specials.putAll(map.specialTokens);
+        for (Map.Entry<String, Integer> e : this.vocab.entrySet()) {
+            if (specials.containsKey(e.getKey())) continue;
+            if (isDelimiterShape(e.getKey())) specials.put(e.getKey(), e.getValue());
+        }
+        this.specialIds = specials;
+        if (specials.isEmpty()) {
+            this.specialRegex = null;
+        } else {
+            List<String> keys = new ArrayList<>(specials.keySet());
+            keys.sort((a, b) -> Integer.compare(b.length(), a.length()));
+            StringBuilder alt = new StringBuilder();
+            for (int i = 0; i < keys.size(); i++) {
+                if (i > 0) alt.append('|');
+                alt.append(Pattern.quote(keys.get(i)));
+            }
+            this.specialRegex = Pattern.compile(alt.toString());
+        }
     }
 
     @Override public String getId() { return id; }
@@ -72,8 +124,31 @@ public final class BPETokenizer implements ITokenizer {
     public int[] encode(String text) {
         if (text == null || text.isEmpty()) return new int[0];
 
+        if (specialRegex != null) {
+            List<Integer> ids = new ArrayList<>();
+            Matcher m = specialRegex.matcher(text);
+            int cursor = 0;
+            while (m.find()) {
+                if (m.start() > cursor) encodeChunk(text.substring(cursor, m.start()), ids);
+                ids.add(specialIds.get(m.group()));
+                cursor = m.end();
+            }
+            if (cursor < text.length()) encodeChunk(text.substring(cursor), ids);
+            int[] out = new int[ids.size()];
+            for (int i = 0; i < out.length; i++) out[i] = ids.get(i);
+            return out;
+        }
+
+        List<Integer> ids = new ArrayList<>();
+        encodeChunk(text, ids);
+        int[] out = new int[ids.size()];
+        for (int i = 0; i < out.length; i++) out[i] = ids.get(i);
+        return out;
+    }
+
+    private void encodeChunk(String text, List<Integer> ids) {
+        if (text == null || text.isEmpty()) return;
         List<String> pieces = preTokenize(text);
-        List<Integer> ids = new ArrayList<>(pieces.size() * 2);
         for (String piece : pieces) {
             int[] cached = cache.get(piece);
             if (cached != null) {
@@ -86,9 +161,6 @@ public final class BPETokenizer implements ITokenizer {
             cache.put(piece, pieceIds);
             for (int v : pieceIds) ids.add(v);
         }
-        int[] out = new int[ids.size()];
-        for (int i = 0; i < out.length; i++) out[i] = ids.get(i);
-        return out;
     }
 
     // ── Pre-tokenization ────────────────────────────────────────────────────
