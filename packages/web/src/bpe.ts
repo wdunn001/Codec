@@ -102,20 +102,19 @@ export class BPETokenizer implements Tokenizer {
         this.preTokProgram = map.pre_tokenizer_program as unknown as PreTokProgram;
         this.preTokRegex = null;
       } else if (map.pre_tokenizer_pattern) {
-        // Try the `'gv'` flag first — Unicode-sets mode, supports
-        // ES2025 inline-flag groups like `(?i:...)` that some
-        // pre-tokenizer patterns (e.g. qwen2's contraction handler)
-        // depend on. Fall back to legacy `'gu'` when the runtime's
-        // V8 is too old for `v` flag, OR when the pattern uses
-        // syntax that's valid under `u` but not under the stricter
-        // `v` (some character class escapes differ). Either flag
-        // alone is wrong for some maps; the try/catch is the
-        // straightforward way to cover both.
-        try {
-          this.preTokRegex = new RegExp(map.pre_tokenizer_pattern, 'gv');
-        } catch {
-          this.preTokRegex = new RegExp(map.pre_tokenizer_pattern, 'gu');
-        }
+        // Try `'gv'` first (Unicode-sets mode, ES2025), then `'gu'`,
+        // then a desugared form. The `(?i:...)` inline-flag group used
+        // by every GPT-2-family pre-tokenizer (qwen2, llama-3, phi-4,
+        // tiktoken cl100k/o200k, …) is the ES2025 RegExp Pattern
+        // Modifiers feature: Chrome <125 (June 2024), iOS Safari <18,
+        // Firefox <132, and Node <23 all throw on it. The desugar
+        // fallback rewrites `(?i:abc)` → `(?:[aA][bB][cC])` so encoding
+        // works on those runtimes. Maps with `pre_tokenizer_program`
+        // bypass this path entirely.
+        this.preTokRegex = compilePreTokRegexWithFallback(
+          map.pre_tokenizer_pattern,
+          map.id,
+        );
         this.preTokProgram = null;
       } else {
         throw new Error(
@@ -269,4 +268,96 @@ export class BPETokenizer implements Tokenizer {
 /** Convenience one-shot encoder. */
 export function bpeEncode(map: TokenizerMap, text: string): number[] {
   return new BPETokenizer(map).encode(text);
+}
+
+// ── pre-tokenizer regex compilation with runtime-fallback ──────────────────
+
+/**
+ * Compile a `pre_tokenizer_pattern` to a RegExp across the runtime matrix
+ * we ship to. Three escalating attempts:
+ *
+ *   1. `'gv'` (Unicode-sets, ES2024) — preferred for newer maps.
+ *   2. `'gu'` (Unicode, ES2018) — covers maps that don't need set notation.
+ *   3. Desugar `(?i:...)` inline-flag groups, then retry `'gu'`.
+ *
+ * The third step is what unblocks older runtimes: Chrome <125, iOS Safari
+ * <18, Firefox <132, and Node <23 all throw on the ES2025 RegExp Pattern
+ * Modifiers syntax that every GPT-2-family pre-tokenizer uses for its
+ * contractions group. Desugaring rewrites it to a portable form.
+ *
+ * Maps that carry `pre_tokenizer_program` skip this path entirely.
+ */
+export function compilePreTokRegexWithFallback(
+  pattern: string,
+  mapId: string,
+): RegExp {
+  // 1. gv (Unicode-sets)
+  try {
+    return new RegExp(pattern, 'gv');
+  } catch { /* fall through */ }
+
+  // 2. gu (Unicode)
+  try {
+    return new RegExp(pattern, 'gu');
+  } catch { /* fall through */ }
+
+  // 3. Desugar `(?i:...)` and retry with `gu`. If the runtime still
+  //    rejects, throw with a clear error pointing at the durable fix.
+  const desugared = desugarInlineFlagGroups(pattern);
+  try {
+    return new RegExp(desugared, 'gu');
+  } catch (err) {
+    throw new Error(
+      `BPETokenizer: cannot compile pre_tokenizer_pattern for "${mapId}" ` +
+        `on this runtime even after desugaring inline-flag groups. ` +
+        `Original error: ${(err as Error).message}. ` +
+        `Durable fix: regenerate the map with \`codecai-maps build\` so it ` +
+        `carries a \`pre_tokenizer_program\` and skips the regex path.`,
+    );
+  }
+}
+
+/**
+ * Rewrite `(?i:body)` → `(?:body')` where `body'` replaces every cased
+ * letter `x` with `[xX]`. Used to make GPT-2-family contractions groups
+ * compile on runtimes without ES2025 RegExp Pattern Modifiers.
+ *
+ * Limitations (acceptable for tokenizer pre-tokenizers, which never
+ * exercise these shapes):
+ *   - assumes the body has no nested groups or unescaped `)`.
+ *   - leaves character classes `[...]` and escapes `\x` alone — only
+ *     bare letters are expanded.
+ */
+export function desugarInlineFlagGroups(pattern: string): string {
+  return pattern.replace(/\(\?i:([^)]*)\)/g, (_, body: string) => {
+    let out = '';
+    let i = 0;
+    while (i < body.length) {
+      const ch = body[i]!;
+      if (ch === '\\' && i + 1 < body.length) {
+        // Pass `\x` escapes through unchanged.
+        out += ch + body[i + 1];
+        i += 2;
+        continue;
+      }
+      if (ch === '[') {
+        // Pass character classes through; expanding cased letters inside
+        // them would change semantics (a `[a-z]` range is not `[aA-zZ]`).
+        const end = body.indexOf(']', i);
+        if (end === -1) { out += body.slice(i); break; }
+        out += body.slice(i, end + 1);
+        i = end + 1;
+        continue;
+      }
+      const upper = ch.toUpperCase();
+      const lower = ch.toLowerCase();
+      if (upper !== lower) {
+        out += '[' + lower + upper + ']';
+      } else {
+        out += ch;
+      }
+      i++;
+    }
+    return '(?:' + out + ')';
+  });
 }

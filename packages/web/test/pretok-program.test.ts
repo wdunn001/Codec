@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { runPreTokProgram, type PreTokProgram } from '../src/pretok-program.ts';
+import { compilePreTokRegexWithFallback } from '../src/bpe.ts';
 import {
   compilePreTokenizerRegex,
   metaspaceProgram,
@@ -187,7 +188,11 @@ const STRESS_INPUTS = [
 ];
 
 function runRegex(re: string, input: string): string[] {
-  const r = new RegExp(re, 'gu');
+  // The patterns under test use ES2025 `(?i:...)` inline-flag groups which
+  // not every runtime supports — go through the same fallback ladder that
+  // BPETokenizer uses (gv → gu → desugared gu) so this equivalence test
+  // exercises whichever code path the runtime actually takes.
+  const r = compilePreTokRegexWithFallback(re, 'test-equivalence');
   const out: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = r.exec(input)) !== null) {
