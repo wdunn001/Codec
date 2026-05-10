@@ -211,3 +211,19 @@ independent phenomena**, none of them a Codec-frame bug:
 For sglang and llama.cpp the §2 unanimity check stays clean — those
 two engines are deterministic across reps and the bench-driver token
 gaps don't surface as wire-byte mismatches there.
+
+### Resolution — re-run on `2026-05-09T17-09-35Z`
+
+All three sources of variance addressed. See
+`packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md` §2:
+
+| engine    | unanimity (Codec cells) | notes |
+|-----------|---|---|
+| sglang    | 24 / 24 | clean |
+| llama.cpp | 24 / 24 | clean; only ≤5 B drift remains on JSON-SSE rows |
+| vllm      | 24 / 24 | **was 0 / 24 here** — fixed by REPS≥2 + token-decode patch |
+
+Fixes shipped: token-decode fallback for compressed cells (C
+`packages/demo-c/matrix_run.c`, TS `packages/demo/src/matrix_run.ts`,
+commit `7c12286`), REPS env var for `run-all-langs.sh` (commit
+`eb574b6`).
