@@ -49,7 +49,7 @@ Source-available under [BSL 1.1](LICENSE). Patent posture in [PATENTS.md](PATENT
 
 ### Polyglot clients
 
-Six reference implementations, byte-identical Codec frames per cell across all of them on the [cross-stack matrix](packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md) (sglang + llama.cpp engines; vllm shows ~5–10 % chunker drift on its uvicorn proxy, frames decode to the same token stream).
+Six reference implementations, byte-identical Codec frames per cell across all of them on the [cross-stack matrix](packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md) — sglang, vllm, and llama.cpp all report 24/24 unanimous on every Codec cell.
 
 | Lang | Package | Registry | Surface |
 |---|---|---|---|
@@ -90,7 +90,7 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 
 ## Measured impact (cross-stack)
 
-All numbers are real measurements from `packages/bench/`. The headline data set is the cross-stack matrix: three real inference engines × six client languages × 36 cells × 3 payload sizes = 648 SCHEMA-v1 result rows, captured against `wdunn001/codec-{sglang,vllm,llamacpp}` containers on RTX 3090 + Qwen2.5-0.5B-Instruct, temperature 0.0. Full table: [`packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md`](packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md).
+All numbers are real measurements from `packages/bench/`. The headline data set is the cross-stack matrix: three real inference engines × six client languages × 36 cells × 3 payload sizes = 648 SCHEMA-v1 result rows, captured against `wdunn001/codec-{sglang,vllm,llamacpp}` containers on RTX 3090 + Qwen2.5-0.5B-Instruct, temperature 0.0. Full table: [`packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md`](packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md).
 
 **Headline at 2 K tokens** (Python row, Codec msgpack):
 
@@ -129,7 +129,7 @@ All numbers are real measurements from `packages/bench/`. The headline data set 
 | `codec_detokenizer_render` | 60.4 | 16.6 |
 | **Speedup** | | **~100×** |
 
-These are reproducible. Bench drivers under [`packages/demo-python`](packages/demo-python), [`packages/demo-dotnet`](packages/demo-dotnet), [`packages/demo-rust`](packages/demo-rust), [`packages/demo-java`](packages/demo-java), [`packages/demo-c`](packages/demo-c), [`packages/demo-web`](packages/demo-web). The cross-stack matrix runner is [`packages/bench/scripts/run-all-langs.sh`](packages/bench/scripts/run-all-langs.sh) and the aggregator is [`packages/bench/scripts/aggregate.py`](packages/bench/scripts/aggregate.py). Full methodology + raw numbers in [`packages/bench/RESULTS.md`](packages/bench/RESULTS.md) and the [cross-stack MATRIX.md](packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md).
+These are reproducible. Bench drivers under [`packages/demo-python`](packages/demo-python), [`packages/demo-dotnet`](packages/demo-dotnet), [`packages/demo-rust`](packages/demo-rust), [`packages/demo-java`](packages/demo-java), [`packages/demo-c`](packages/demo-c), [`packages/demo-web`](packages/demo-web). The cross-stack matrix runner is [`packages/bench/scripts/run-all-langs.sh`](packages/bench/scripts/run-all-langs.sh) and the aggregator is [`packages/bench/scripts/aggregate.py`](packages/bench/scripts/aggregate.py). Full methodology + raw numbers in [`packages/bench/RESULTS.md`](packages/bench/RESULTS.md) and the [cross-stack MATRIX.md](packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md).
 
 ---
 
