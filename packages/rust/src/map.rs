@@ -49,9 +49,18 @@ pub struct TokenizerMap {
     /// BPE merges in priority order (lower index = higher priority).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub merges: Option<Vec<String>>,
-    /// Pre-tokenizer regex pattern. Required for byte_level BPE.
+    /// Pre-tokenizer regex pattern. Required for byte_level BPE when
+    /// `pre_tokenizer_program` is absent.
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "pre_tokenizer_pattern")]
     pub pre_tokenizer_pattern: Option<String>,
+    /// Compiled pre-tokenizer program. Preferred over `pre_tokenizer_pattern`
+    /// when present — the runtime executes the ops directly with no regex
+    /// engine, which unblocks the GPT-2-family maps whose `(?i:...)` and
+    /// `(?!\S)` syntax the `regex` crate doesn't support. See
+    /// [`crate::pretok_program::PreTokProgram`] and
+    /// [`spec/PRETOKENIZER_PROGRAM.md`](https://github.com/wdunn001/Codec/blob/main/spec/PRETOKENIZER_PROGRAM.md).
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "pre_tokenizer_program")]
+    pub pre_tokenizer_program: Option<crate::pretok_program::PreTokProgram>,
     /// First ID in the byte-fallback range (inclusive). SentencePiece only.
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "byte_fallback_start")]
     pub byte_fallback_start: Option<i64>,

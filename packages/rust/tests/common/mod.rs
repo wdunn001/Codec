@@ -34,6 +34,7 @@ pub fn tiny_map() -> TokenizerMap {
         encoder: None,
         merges: None,
         pre_tokenizer_pattern: None,
+        pre_tokenizer_program: None,
         byte_fallback_start: Some(10),
         byte_fallback_end: Some(265),
         special_tokens: Some(specials),

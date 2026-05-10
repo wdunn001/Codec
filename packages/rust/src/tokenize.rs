@@ -44,6 +44,10 @@ pub struct BPETokenizer {
     /// Map of `"left right"` → priority rank (lower = higher priority).
     merge_ranks: HashMap<String, u32>,
     pre_tok_regex: Option<Regex>,
+    /// Compiled pre-tokenizer program; preferred over the regex when present.
+    /// Bypasses the regex engine entirely — unblocks GPT-2-family maps whose
+    /// `(?i:...)` and `(?!\S)` syntax the `regex` crate doesn't support.
+    pre_tok_program: Option<crate::pretok_program::PreTokProgram>,
     encoder: String,
     /// `i64` so a missing fallback (-1) is comparable safely against IDs.
     byte_fallback_start: i64,
@@ -92,19 +96,31 @@ impl BPETokenizer {
             merge_ranks.insert(m.clone(), i as u32);
         }
 
-        let pre_tok_regex = if encoder == "byte_level" {
-            let pat = map.pre_tokenizer_pattern.as_ref().ok_or_else(|| {
-                format!(
-                    "BPETokenizer: byte_level map \"{}\" missing pre_tokenizer_pattern.",
+        // Pre-tokenizer: prefer the compiled program when present, otherwise
+        // fall back to the legacy regex. Programs bypass the regex engine
+        // entirely — required for GPT-2-family maps because `regex` doesn't
+        // support `(?i:...)` inline-flag groups or `(?!\S)` lookaround.
+        let (pre_tok_regex, pre_tok_program) = if encoder == "byte_level" {
+            if let Some(prog) = map.pre_tokenizer_program.as_ref() {
+                if prog.ops.is_empty() {
+                    return Err(format!(
+                        "BPETokenizer: byte_level map \"{}\" has empty pre_tokenizer_program.",
+                        map.id
+                    ));
+                }
+                (None, Some(prog.clone()))
+            } else if let Some(pat) = map.pre_tokenizer_pattern.as_ref() {
+                let re = Regex::new(pat)
+                    .map_err(|e| format!("BPETokenizer: invalid pre_tokenizer_pattern: {e}"))?;
+                (Some(re), None)
+            } else {
+                return Err(format!(
+                    "BPETokenizer: byte_level map \"{}\" missing both pre_tokenizer_program and pre_tokenizer_pattern.",
                     map.id
-                )
-            })?;
-            Some(
-                Regex::new(pat)
-                    .map_err(|e| format!("BPETokenizer: invalid pre_tokenizer_pattern: {e}"))?,
-            )
+                ));
+            }
         } else {
-            None
+            (None, None)
         };
 
         // Build the special-token scanner. Accept entries from
@@ -151,6 +167,7 @@ impl BPETokenizer {
             vocab,
             merge_ranks,
             pre_tok_regex,
+            pre_tok_program,
             encoder,
             byte_fallback_start,
             cache: RefCell::new(HashMap::new()),
@@ -213,7 +230,10 @@ impl BPETokenizer {
 
     fn pre_tokenize(&self, text: &str) -> Vec<String> {
         if self.encoder == "byte_level" {
-            let re = self.pre_tok_regex.as_ref().expect("byte_level requires regex");
+            if let Some(prog) = self.pre_tok_program.as_ref() {
+                return crate::pretok_program::run_pretok_program(prog, text);
+            }
+            let re = self.pre_tok_regex.as_ref().expect("byte_level requires regex or program");
             return re.find_iter(text).map(|m| m.as_str().to_string()).collect();
         }
 

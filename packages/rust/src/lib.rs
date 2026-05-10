@@ -36,6 +36,7 @@ pub mod longest_match;
 pub mod map;
 #[cfg(feature = "http")]
 pub mod map_loader;
+pub mod pretok_program;
 pub mod safety_policy;
 pub mod stream;
 pub mod tokenize;
@@ -66,6 +67,7 @@ pub use stream::{
     decode_msgpack_stream, decode_protobuf_frame, decode_protobuf_stream, MsgpackFrameIter,
     ProtobufFrameIter, StreamError,
 };
+pub use pretok_program::{run_pretok_program, PreTokOp, PreTokProgram};
 pub use tokenize::{BPETokenizer, ITokenizer};
 pub use tool_watcher::{ToolWatcher, ToolWatcherError, WatcherEvent, WatcherEventKind};
 pub use translator::{static_translation_table, translate_one_shot, Translator};
