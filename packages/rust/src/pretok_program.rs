@@ -116,13 +116,27 @@ fn is_ws(cp: char) -> bool {
 
 fn match_literals_ci(patterns: &[String], text: &str, i: usize) -> usize {
     let rest = &text[i..];
+    let rest_bytes = rest.as_bytes();
     let mut best = 0;
     for p in patterns {
         if p.len() <= best || rest.len() < p.len() {
             continue;
         }
-        let head = &rest[..p.len()];
-        if head.eq_ignore_ascii_case(p) {
+        // Byte-wise ASCII case-fold compare. Avoids slicing `rest` at a
+        // potentially-non-char-boundary when `p.len()` falls inside a
+        // multibyte codepoint (CJK / emoji).
+        let p_bytes = p.as_bytes();
+        let mut ok = true;
+        for k in 0..p.len() {
+            let a = rest_bytes[k];
+            let b = p_bytes[k];
+            if a == b { continue; }
+            if a.is_ascii_uppercase() && a + 32 == b { continue; }
+            if a.is_ascii_lowercase() && a - 32 == b { continue; }
+            ok = false;
+            break;
+        }
+        if ok {
             best = p.len();
         }
     }
@@ -131,12 +145,17 @@ fn match_literals_ci(patterns: &[String], text: &str, i: usize) -> usize {
 
 fn match_literals(patterns: &[String], text: &str, i: usize) -> usize {
     let rest = &text[i..];
+    let bytes = rest.as_bytes();
     let mut best = 0;
     for p in patterns {
         if p.len() <= best || rest.len() < p.len() {
             continue;
         }
-        if &rest[..p.len()] == p.as_str() {
+        // Byte-wise compare avoids slicing rest at a non-char-boundary —
+        // the patterns are ASCII so it's safe even when `rest` starts with
+        // a multibyte codepoint like a CJK char. Without this, `&rest[..p.len()]`
+        // panics when `p.len()` falls inside a multibyte codepoint.
+        if bytes[..p.len()] == p.as_bytes()[..] {
             best = p.len();
         }
     }
