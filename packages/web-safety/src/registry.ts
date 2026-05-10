@@ -49,6 +49,23 @@ export function register(entry: RegistryEntry): void {
   REGISTRY.set(entry.modelId, entry);
 }
 
+/**
+ * Drop a previously registered classifier. Idempotent: unknown ids
+ * silently no-op. Drops the cached instance too — hosts that want to
+ * release weights / GPU memory should `await classifier.unload()` first
+ * (the registry doesn't because unregistration must stay synchronous
+ * for predictable UI toggling). Returns `true` when something was
+ * removed, `false` when the id wasn't registered.
+ *
+ * Used by runtime toggles (e.g. an admin UI flipping the opt-in tier-2
+ * classifier on/off).
+ */
+export function unregister(modelId: string): boolean {
+  const had = REGISTRY.delete(modelId);
+  INSTANCE_CACHE.delete(modelId);
+  return had;
+}
+
 /** Test-only: drop a registration (or all registrations if no id given). */
 export function _unregisterForTest(modelId?: string): void {
   if (modelId) {

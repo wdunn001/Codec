@@ -58,6 +58,7 @@ export {
 
 export {
   register,
+  unregister,
   listClassifiers,
   hasClassifier,
   resolveClassifier,
