@@ -36,16 +36,33 @@ Source-available under [BSL 1.1](LICENSE). Patent posture in [PATENTS.md](PATENT
 > wire traffic. Customer-facing release notes: [What's new](https://codecai.net/changelog/)
 > · engineering changelog: [GitHub Releases](https://github.com/wdunn001/Codec/releases)
 > · visual diagram of all three pathways: [/protocol-map](https://codecai.net/protocol-map).
+>
+> **v0.4 in flight** — safety-policy negotiation as a TLS-style
+> capability axis + per-version documentation framework + the
+> formal [versioning policy](spec/versions/v0.4.md#versioning-policy)
+> — minor versions are wire-additive; breaking changes require a
+> major bump. Six client languages ship descriptor-parity. Operator-
+> side enforcement primitives (banned-token logits processor,
+> multi-token Aho-Corasick matcher, embedding-space classifier
+> scaffolding, classifier registry, delay-k streaming decisioning)
+> live in [`codec-supervisor`](https://github.com/wdunn001/codec-supervisor).
+> Publish gated on [the release checklist](docs/RELEASE_CHECKLIST.md).
 
 ### Spec
 
 | Surface | Where | What it is |
 |---|---|---|
-| **Wire spec** | [`spec/PROTOCOL.md`](spec/PROTOCOL.md) | v0.3 — msgpack/protobuf frames, transport compression, text + latent modalities, MCP leaf-mode contract |
+| **Wire spec (index)** | [`spec/PROTOCOL.md`](spec/PROTOCOL.md) | Navigation index — lists each shipped version + companion docs |
+| **— v0.4** | [`spec/versions/v0.4.md`](spec/versions/v0.4.md) | Latest. v0.3 surface + safety-policy negotiation + versioning policy |
+| **— v0.3** | [`spec/versions/v0.3.md`](spec/versions/v0.3.md) | v0.2 surface + image/video latent modality |
+| **— v0.2** | [`spec/versions/v0.2.md`](spec/versions/v0.2.md) | Initial — text-token modality, msgpack/protobuf frames |
 | **Map schema (text)** | [`spec/tokenizer-map.schema.json`](spec/tokenizer-map.schema.json) | v2.1 — vocab + merges + encoder + optional `pre_tokenizer_program` + `tool_calling` block (auto-derived from chat templates) |
 | **Map schema (latent)** | [`spec/latent-space-map.schema.json`](spec/latent-space-map.schema.json) | v0.3 — latent-space identity, shape/dtype, `vae_scale_factor`, accepted pipelines, decoder reference, per-pipeline zstd dicts |
+| **Safety policy schema** | [`spec/safety-policy.schema.json`](spec/safety-policy.schema.json) | v0.4 — sanitized publishable descriptor (categories + actions + classifier family + summary stats; never operator-internal banned-id lists or thresholds) |
 | **Pretok program spec** | [`spec/PRETOKENIZER_PROGRAM.md`](spec/PRETOKENIZER_PROGRAM.md) | v1 op-list form the maps-cli compiles regex pre-tokenizers into; unblocks the C BPE encoder |
 | **Pipelines spec** | [`spec/PIPELINES.md`](spec/PIPELINES.md) | v0.3 — normative forward + inverse math for the 7 latent transforms (raw / int8 / int4 / int8-adaptive / int4-adaptive / delta+int8 / delta+int4) |
+| **Release checklist** | [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) | v0.4 — gate every release passes through (validation → coverage → benches → docs → READMEs → website → tags → publishes) |
+| **Version history convention** | [`docs/PROTOCOL_VERSION_HISTORY.md`](docs/PROTOCOL_VERSION_HISTORY.md) | v0.4 — how per-version `## Open questions (v0.X)` sections evolve across releases |
 
 ### Polyglot clients
 
@@ -53,19 +70,21 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 
 | Lang | Package | Registry | Surface |
 |---|---|---|---|
-| TypeScript / JS | [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) | npm 0.4.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · pretok-program runtime · `LatentStreamEncoder` / `Decoder` (v0.3) · `tool_calling` block |
-| Python | [`codecai`](https://pypi.org/project/codecai/) | PyPI 0.1.0 (local 0.2.0) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
-| .NET | [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) | NuGet 0.1.0 (local 0.2.0) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
-| Rust | [`codec-rs`](packages/rust) | local 0.1.0 (crates.io publish queued) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
-| Java | [`ai.codec:codec`](packages/java) | local 0.1.0 (Maven Central publish queued) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders |
-| C99 | [`libcodec`](packages/c) | vcpkg / FetchContent 0.2.0 | Detokenizer · ToolWatcher · stream decoders (BPE + Translator pending Unicode tables) |
+| TypeScript / JS | [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) | npm 0.4.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · pretok-program runtime · `LatentStreamEncoder` / `Decoder` (v0.3) · `tool_calling` block · `SafetyPolicyDescriptor` + `discoverSafetyPolicy` (v0.4) |
+| TypeScript / JS | [`@codecai/web-safety`](packages/web-safety) | npm 0.4.0 (v0.4 candidate) | Optional sibling — `scanText` prefilter (secrets/PII regex + Shannon entropy) · `SafetyGate` state machine · `SafetyClassifier` interface + registry · Prompt Guard 86M (Transformers.js) + Llama Guard 3 1B (codec-web-llm) classifiers (v0.4) |
+| Python | [`codecai`](https://pypi.org/project/codecai/) | PyPI 0.1.0 (local 0.2.0) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `discover_safety_policy` (v0.4) |
+| .NET | [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) | NuGet 0.1.0 (local 0.2.0) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `SafetyPolicy.{Validate,Hash,Load,Discover}Async` (v0.4) |
+| Rust | [`codec-rs`](packages/rust) | local 0.1.0 (crates.io publish queued) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `discover_safety_policy` (v0.4, `http` feature) |
+| Java | [`ai.codec:codec`](packages/java) | local 0.1.0 (Maven Central publish queued) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `SafetyPolicy.{validate,hash,load,discover}` (v0.4) |
+| C99 | [`libcodec`](packages/c) | vcpkg / FetchContent 0.2.0 | Detokenizer · ToolWatcher · stream decoders (BPE + Translator pending Unicode tables) · `codec_safety_policy_{from_json,verify_sha256,well_known_url}` (v0.4, parser + URL + hash-verify only — descriptor publishing is in the higher-level languages) |
 
 ### Tooling and registry
 
 | Surface | Where | What it is |
 |---|---|---|
-| **Map generator** | [`@codecai/maps-cli`](https://www.npmjs.com/package/@codecai/maps-cli) | npm 0.3.0 — generate maps from HF `tokenizer.json`, plus `translate` / `translation-table` for cross-vocab analysis |
+| **Map generator** | [`@codecai/maps-cli`](https://www.npmjs.com/package/@codecai/maps-cli) | npm 0.3.0 — generate maps from HF `tokenizer.json`, plus `translate` / `translation-table` for cross-vocab analysis; v0.4 adds `policies-{validate,hash,sanitize,well-known}` subcommands for safety-policy descriptors |
 | **Map registry** | [`codec-maps`](https://github.com/wdunn001/codec-maps) | 14 model families / 70+ aliases, served via jsDelivr |
+| **Safety supervisor** | [`codec-supervisor`](https://github.com/wdunn001/codec-supervisor) (v0.4 admin app + classifier registry, in flight) | Operator-side policy admin (FastAPI REST at `/admin/policies/*` + Vite/React admin UI), per-policy `BannedTokenLogitsProcessor`, multi-token Aho-Corasick matcher, Llama Guard 3 1B + ShieldGemma 2B classifier sidecars (optional `classifiers` extra), embedding-space classifier scaffolding |
 
 ### Inference engines
 
