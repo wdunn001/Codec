@@ -59,6 +59,22 @@ pub enum PreTokOp {
         lead_space: Option<bool>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         trailing_newlines: Option<bool>,
+        /// Override `trailing_newlines` with an explicit charset string.
+        /// Each character is accepted in the trailing run. Used by
+        /// o200k_base / mistral-nemo whose trailing is `[\r\n/]`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        trailing_chars: Option<String>,
+    },
+    /// Cased-letter run with optional trailing case-insensitive contractions.
+    /// Used by o200k_base / mistral-nemo, which split on case boundaries.
+    /// `kind: "title"` matches `[Lu Lt Lm Lo M]* [Ll Lm Lo M]+`,
+    /// `kind: "upper"` matches `[Lu Lt Lm Lo M]+ [Ll Lm Lo M]*`.
+    LettersCased {
+        kind: CasedKind,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        lead_other: Option<bool>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        trailing_ci: Option<Vec<String>>,
     },
     /// `\s*[\r\n]+` — paragraph break with leading indentation.
     NewlineBlock {},
@@ -71,6 +87,16 @@ pub enum PreTokOp {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         prefix_first: Option<bool>,
     },
+}
+
+/// "Title" or "upper" cased-letter shape — see [`PreTokOp::LettersCased`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CasedKind {
+    /// `[Lu Lt Lm Lo M]* [Ll Lm Lo M]+` — zero-or-more upper, then 1+ lower.
+    Title,
+    /// `[Lu Lt Lm Lo M]+ [Ll Lm Lo M]*` — one-or-more upper, then 0+ lower.
+    Upper,
 }
 
 /// A compiled pre-tokenizer program. Carried alongside the legacy
@@ -96,6 +122,14 @@ fn re_ws() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| Regex::new(r"\s").unwrap())
 }
+fn re_letter_upper() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]").unwrap())
+}
+fn re_letter_lower() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"[\p{Ll}\p{Lm}\p{Lo}\p{M}]").unwrap())
+}
 
 fn is_letter(cp: char) -> bool {
     let mut buf = [0u8; 4];
@@ -108,6 +142,14 @@ fn is_number(cp: char) -> bool {
 fn is_ws(cp: char) -> bool {
     let mut buf = [0u8; 4];
     re_ws().is_match(cp.encode_utf8(&mut buf))
+}
+fn is_letter_upper(cp: char) -> bool {
+    let mut buf = [0u8; 4];
+    re_letter_upper().is_match(cp.encode_utf8(&mut buf))
+}
+fn is_letter_lower(cp: char) -> bool {
+    let mut buf = [0u8; 4];
+    re_letter_lower().is_match(cp.encode_utf8(&mut buf))
 }
 
 // ── Per-op matchers ────────────────────────────────────────────────────────
@@ -221,6 +263,7 @@ fn match_numbers(max_run: u32, lead_space: bool, text: &str, i: usize) -> usize 
 fn match_punct_run(
     lead_space: bool,
     trailing_newlines: bool,
+    trailing_chars: Option<&str>,
     text: &str,
     i: usize,
 ) -> usize {
@@ -240,12 +283,111 @@ fn match_punct_run(
     if p == run_start {
         return 0;
     }
-    if trailing_newlines {
+    // Trailing chars: prefer explicit charset when set, otherwise legacy
+    // boolean → `\r\n` only.
+    if let Some(chars) = trailing_chars {
+        loop {
+            let Some(c) = text[p..].chars().next() else { break };
+            if !chars.contains(c) {
+                break;
+            }
+            p += c.len_utf8();
+        }
+    } else if trailing_newlines {
         while p < bytes.len() && (bytes[p] == b'\n' || bytes[p] == b'\r') {
             p += 1;
         }
     }
     p - i
+}
+
+fn match_letters_cased(
+    kind: CasedKind,
+    lead_other: bool,
+    trailing_ci: Option<&[String]>,
+    text: &str,
+    i: usize,
+) -> usize {
+    let mut p = i;
+    if lead_other {
+        if let Some(c) = text[p..].chars().next() {
+            if c != '\r' && c != '\n' && !is_letter(c) && !is_number(c) {
+                p += c.len_utf8();
+            }
+        }
+    }
+
+    // Greedy prefix run; record each step as a candidate suffix-start.
+    // Lm/Lo/M are in BOTH sets so the longest overall match may need
+    // to back off the prefix run to let the suffix consume them.
+    let mut checkpoints: Vec<usize> = vec![p];
+    while let Some(c) = text[p..].chars().next() {
+        if !is_letter_upper(c) {
+            break;
+        }
+        p += c.len_utf8();
+        checkpoints.push(p);
+    }
+
+    let (min_prefix, min_suffix): (usize, usize) = match kind {
+        CasedKind::Upper => (1, 0),
+        CasedKind::Title => (0, 1),
+    };
+
+    // Try suffix from each checkpoint, longest-prefix first. First success wins.
+    for k in (0..checkpoints.len()).rev() {
+        if k < min_prefix {
+            break;
+        }
+        let mut q = checkpoints[k];
+        let mut suffix_count = 0usize;
+        while let Some(c) = text[q..].chars().next() {
+            if !is_letter_lower(c) {
+                break;
+            }
+            q += c.len_utf8();
+            suffix_count += 1;
+        }
+        if suffix_count < min_suffix {
+            continue;
+        }
+
+        // Optional case-insensitive trailing-contractions match, longest wins.
+        if let Some(patterns) = trailing_ci {
+            let rest = &text[q..];
+            let rest_bytes = rest.as_bytes();
+            let mut best = 0usize;
+            for pat in patterns {
+                if pat.len() <= best || rest.len() < pat.len() {
+                    continue;
+                }
+                let p_bytes = pat.as_bytes();
+                let mut ok = true;
+                for k in 0..pat.len() {
+                    let a = rest_bytes[k];
+                    let b = p_bytes[k];
+                    if a == b {
+                        continue;
+                    }
+                    if a.is_ascii_uppercase() && a + 32 == b {
+                        continue;
+                    }
+                    if a.is_ascii_lowercase() && a - 32 == b {
+                        continue;
+                    }
+                    ok = false;
+                    break;
+                }
+                if ok {
+                    best = pat.len();
+                }
+            }
+            q += best;
+        }
+
+        return q - i;
+    }
+    0
 }
 
 fn match_newline_block(text: &str, i: usize) -> usize {
@@ -360,9 +502,22 @@ pub fn run_pretok_program(program: &PreTokProgram, text: &str) -> Vec<String> {
                 PreTokOp::PunctRun {
                     lead_space,
                     trailing_newlines,
+                    trailing_chars,
                 } => match_punct_run(
                     lead_space.unwrap_or(false),
                     trailing_newlines.unwrap_or(false),
+                    trailing_chars.as_deref(),
+                    text,
+                    i,
+                ),
+                PreTokOp::LettersCased {
+                    kind,
+                    lead_other,
+                    trailing_ci,
+                } => match_letters_cased(
+                    *kind,
+                    lead_other.unwrap_or(false),
+                    trailing_ci.as_deref(),
                     text,
                     i,
                 ),
@@ -468,6 +623,7 @@ mod tests {
                 PreTokOp::PunctRun {
                     lead_space: Some(true),
                     trailing_newlines: Some(true),
+                    trailing_chars: None,
                 },
                 PreTokOp::NewlineBlock {},
                 PreTokOp::TrailingWs {},

@@ -213,6 +213,30 @@ function findP50kMap(): string | null {
 const P50K_MAP_PATH = findP50kMap();
 const haveP50k = P50K_MAP_PATH !== null;
 
+function findO200kMap(): string | null {
+  for (const c of [
+    path.resolve(import.meta.dirname, '../../../../codec-maps/maps/openai/o200k_base.json'),
+    path.resolve(import.meta.dirname, '../../../../../codec-maps/maps/openai/o200k_base.json'),
+    '/mnt/h/dev/codec-maps/maps/openai/o200k_base.json',
+    'H:/dev/codec-maps/maps/openai/o200k_base.json',
+  ]) if (fs.existsSync(c)) return c;
+  return null;
+}
+const O200K_MAP_PATH = findO200kMap();
+const haveO200k = O200K_MAP_PATH !== null;
+
+function findNemoMap(): string | null {
+  for (const c of [
+    path.resolve(import.meta.dirname, '../../../../codec-maps/maps/mistralai/mistral-nemo.json'),
+    path.resolve(import.meta.dirname, '../../../../../codec-maps/maps/mistralai/mistral-nemo.json'),
+    '/mnt/h/dev/codec-maps/maps/mistralai/mistral-nemo.json',
+    'H:/dev/codec-maps/maps/mistralai/mistral-nemo.json',
+  ]) if (fs.existsSync(c)) return c;
+  return null;
+}
+const NEMO_MAP_PATH = findNemoMap();
+const haveNemo = NEMO_MAP_PATH !== null;
+
 test(
   'BPE byte_level: round-trips real Qwen-2 map for ASCII text',
   { skip: !haveRealMap && 'codec-maps/qwen2.json not present locally' },
@@ -296,5 +320,45 @@ test(
       [16, 362, 1105, 17031, 1105, 2682, 17031, 2231],
     );
     assert.deepEqual(tok.encode('   spaces'), [50257, 9029]);
+  },
+);
+
+test(
+  'BPE byte_level: o200k_base case-aware splits via letters_cased program (HF parity)',
+  { skip: !haveO200k && 'codec-maps/openai/o200k_base.json not present locally' },
+  () => {
+    // Reference IDs from HuggingFace `tokenizers` 0.23.1 reading
+    // Xenova/gpt-4o. The o200k_base regex has two cased-letter branches
+    // (title-then-lower / upper-then-lower) with an optional `(?i:)`
+    // contractions suffix per branch, plus `\p{N}{1,3}` digits and a
+    // punct_run trailing on `[\r\n/]`. The new `letters_cased` op +
+    // `punct_run.trailing_chars` field cover this shape.
+    const map = JSON.parse(fs.readFileSync(O200K_MAP_PATH!, 'utf-8')) as TokenizerMap;
+    const tok = new BPETokenizer(map);
+    assert.deepEqual(tok.encode('MyCamelCase'), [5444, 137910, 6187]);
+    assert.deepEqual(tok.encode('iPhone'), [72, 7081]);
+    assert.deepEqual(tok.encode("isn't"), [276, 3023]);
+    assert.deepEqual(tok.encode('1234567'), [7633, 19354, 22]);
+    assert.deepEqual(tok.encode('XMLHttpRequest'), [13836, 4682, 2303]);
+  },
+);
+
+test(
+  'BPE byte_level: mistral-nemo case-aware splits via letters_cased program (HF parity)',
+  { skip: !haveNemo && 'codec-maps/mistralai/mistral-nemo.json not present locally' },
+  () => {
+    // Reference IDs from HuggingFace `tokenizers` 0.23.1 against
+    // mistralai/Mistral-Nemo-Instruct-2407. Same shape as o200k_base
+    // minus the per-branch contractions suffix, with `\p{N}` single-
+    // digit numbers instead of `\p{N}{1,3}`. Tests the no-trailing-ci
+    // form of the letters_cased op.
+    const map = JSON.parse(fs.readFileSync(NEMO_MAP_PATH!, 'utf-8')) as TokenizerMap;
+    const tok = new BPETokenizer(map);
+    assert.deepEqual(tok.encode('MyCamelCase'), [6720, 38487, 1299, 11139]);
+    assert.deepEqual(tok.encode('iPhone'), [1105, 16742]);
+    assert.deepEqual(
+      tok.encode('1234567'),
+      [1049, 1050, 1051, 1052, 1053, 1054, 1055],
+    );
   },
 );

@@ -49,6 +49,27 @@ export interface OpPunctRun {
   readonly op: 'punct_run';
   readonly lead_space?: boolean;
   readonly trailing_newlines?: boolean;
+  /** Override `trailing_newlines` with an explicit charset. Each character
+   * in the string is accepted in the trailing run. Used by o200k_base /
+   * mistral-nemo which trail on `[\r\n/]` (note the `/`) rather than
+   * just `[\r\n]`. */
+  readonly trailing_chars?: string;
+}
+/** Cased-letter run with optional trailing case-insensitive contractions.
+ * Used by o200k_base / mistral-nemo, which split words on case boundaries
+ * (e.g. "MyCamelCase" → ["My", "Camel", "Case"]).
+ *
+ *   kind: "title"  →  [Lu Lt Lm Lo M]* [Ll Lm Lo M]+   (zero-or-more upper, then 1+ lower)
+ *   kind: "upper"  →  [Lu Lt Lm Lo M]+ [Ll Lm Lo M]*   (one-or-more upper, then 0+ lower)
+ *
+ * `lead_other: true` prepends `[^\r\n\p{L}\p{N}]?` (the conventional GPT-2
+ * lead-other guard). `trailing_ci`, when set, is the same as the legacy
+ * `literals_ci` ASCII case-fold semantics. */
+export interface OpLettersCased {
+  readonly op: 'letters_cased';
+  readonly kind: 'title' | 'upper';
+  readonly lead_other?: boolean;
+  readonly trailing_ci?: readonly string[];
 }
 export interface OpNewlineBlock { readonly op: 'newline_block' }
 export interface OpTrailingWs   { readonly op: 'trailing_ws' }
@@ -59,8 +80,8 @@ export interface OpMetaspace {
 }
 
 export type PreTokOp =
-  | OpLiteralsCi | OpLiterals | OpLetters | OpNumbers | OpPunctRun
-  | OpNewlineBlock | OpTrailingWs | OpWsRun | OpMetaspace;
+  | OpLiteralsCi | OpLiterals | OpLetters | OpLettersCased | OpNumbers
+  | OpPunctRun | OpNewlineBlock | OpTrailingWs | OpWsRun | OpMetaspace;
 
 export interface PreTokProgram {
   readonly version: number;
@@ -74,9 +95,18 @@ const RE_NUMBER = /\p{N}/u;
 /* The pre-tok regex's `\s` is broader than ASCII space — matches Unicode
  * White_Space. We use the same `\s` semantics native regex provides. */
 const RE_WS = /\s/u;
+/** "Upper cluster" of the o200k_base / mistral-nemo `letters_cased` op.
+ * `\p{Lu}` (uppercase) + `\p{Lt}` (titlecase) + the shared `\p{Lm}` /
+ * `\p{Lo}` / `\p{M}` set that's also valid in the lower cluster. */
+const RE_LETTER_UPPER = /[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]/u;
+/** "Lower cluster" — `\p{Ll}` + the shared modifier / other-letter / mark
+ * categories. */
+const RE_LETTER_LOWER = /[\p{Ll}\p{Lm}\p{Lo}\p{M}]/u;
 const isLetter = (cp: string): boolean => RE_LETTER.test(cp);
 const isNumber = (cp: string): boolean => RE_NUMBER.test(cp);
 const isWs     = (cp: string): boolean => RE_WS.test(cp);
+const isLetterUpper = (cp: string): boolean => RE_LETTER_UPPER.test(cp);
+const isLetterLower = (cp: string): boolean => RE_LETTER_LOWER.test(cp);
 
 /** Returns the next code point at index `i` and the index after it. */
 function nextCp(s: string, i: number): { cp: string; next: number } {
@@ -183,7 +213,14 @@ function matchPunctRun(op: OpPunctRun, s: string, i: number): number {
     /* No punct run; the lead space alone doesn't constitute a match. */
     return 0;
   }
-  if (op.trailing_newlines) {
+  // Trailing chars: prefer explicit `trailing_chars` charset (used by
+  // o200k_base / mistral-nemo, which trail on `[\r\n/]`). Fall back to
+  // the legacy `trailing_newlines: true` boolean → `\r\n`.
+  if (op.trailing_chars !== undefined) {
+    while (p < s.length && op.trailing_chars.indexOf(s.charAt(p)) >= 0) {
+      p++;
+    }
+  } else if (op.trailing_newlines) {
     while (p < s.length) {
       const c = s.charCodeAt(p);
       if (c === 0x0A || c === 0x0D) p++;
@@ -191,6 +228,67 @@ function matchPunctRun(op: OpPunctRun, s: string, i: number): number {
     }
   }
   return p - i;
+}
+
+function matchLettersCased(op: OpLettersCased, s: string, i: number): number {
+  let p = i;
+  if (op.lead_other) {
+    const { cp, next } = nextCp(s, p);
+    if (next > p && cp !== '\r' && cp !== '\n' && !isLetter(cp) && !isNumber(cp)) {
+      p = next;
+    }
+  }
+
+  // Greedily consume prefix-set chars and record each step as a candidate
+  // suffix-start checkpoint. Lm/Lo/M are in BOTH sets so the longest
+  // match may need to backtrack one or more chars from the greedy run
+  // to let the suffix consume them. We try suffix from each checkpoint
+  // longest-first; first match wins.
+  const checkpoints: number[] = [p];
+  while (p < s.length) {
+    const { cp, next } = nextCp(s, p);
+    if (!isLetterUpper(cp)) break;
+    p = next;
+    checkpoints.push(p);
+  }
+
+  const minPrefix = op.kind === 'upper' ? 1 : 0;
+  const minSuffix = op.kind === 'title' ? 1 : 0;
+
+  for (let k = checkpoints.length - 1; k >= 0; k--) {
+    if (k < minPrefix) break; // not enough prefix chars, regardless of suffix
+    let q = checkpoints[k]!;
+    let suffixCount = 0;
+    while (q < s.length) {
+      const { cp, next } = nextCp(s, q);
+      if (!isLetterLower(cp)) break;
+      q = next;
+      suffixCount++;
+    }
+    if (suffixCount < minSuffix) continue;
+
+    // Optional case-insensitive trailing contractions, longest match wins.
+    if (op.trailing_ci && op.trailing_ci.length > 0) {
+      let best = 0;
+      for (const pat of op.trailing_ci) {
+        if (pat.length <= best || q + pat.length > s.length) continue;
+        let ok = true;
+        for (let m = 0; m < pat.length; m++) {
+          const a = s.charCodeAt(q + m);
+          const b = pat.charCodeAt(m);
+          if (a === b) continue;
+          if (a >= 65 && a <= 90  && a + 32 === b) continue;
+          if (a >= 97 && a <= 122 && a - 32 === b) continue;
+          ok = false; break;
+        }
+        if (ok) best = pat.length;
+      }
+      q += best;
+    }
+
+    return q - i;
+  }
+  return 0;
 }
 
 function matchNewlineBlock(_op: OpNewlineBlock, s: string, i: number): number {
@@ -306,6 +404,7 @@ export function runPreTokProgram(
         case 'literals_ci':   span = matchLiteralsCi(op, text, i);  break;
         case 'literals':      span = matchLiterals(op, text, i);    break;
         case 'letters':       span = matchLetters(op, text, i);     break;
+        case 'letters_cased': span = matchLettersCased(op, text, i); break;
         case 'numbers':       span = matchNumbers(op, text, i);     break;
         case 'punct_run':     span = matchPunctRun(op, text, i);    break;
         case 'newline_block': span = matchNewlineBlock(op, text, i); break;

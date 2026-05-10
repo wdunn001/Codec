@@ -34,6 +34,16 @@ fn find_p50k_map() -> Option<PathBuf> {
     None
 }
 
+fn find_codec_map(rel: &str) -> Option<PathBuf> {
+    for base in ["/mnt/h/dev/codec-maps/maps", r"H:\dev\codec-maps\maps"] {
+        let p = PathBuf::from(format!("{base}/{rel}"));
+        if p.exists() {
+            return Some(p);
+        }
+    }
+    None
+}
+
 fn make_byte_level_fixture() -> TokenizerMap {
     let space = encode_byte_level_chars(&[0x20]);
     let mut vocab: HashMap<String, u32> = HashMap::new();
@@ -220,6 +230,65 @@ fn p50k_base_round_trips_via_lead_space_program_ops() {
             &got[..],
             *expected,
             "mismatch on {text:?}: expected {expected:?}, got {got:?}"
+        );
+    }
+}
+
+#[test]
+fn o200k_base_case_aware_splits_via_letters_cased() {
+    // o200k_base uses two cased-letter branches with optional `(?i:'s|...)?`
+    // contractions suffix and a punct_run trailing on `[\r\n/]`. Reference
+    // IDs from HuggingFace `tokenizers` 0.23.1 against Xenova/gpt-4o.
+    let Some(path) = find_codec_map("openai/o200k_base.json") else {
+        eprintln!("skipping — codec-maps/openai/o200k_base.json not present locally");
+        return;
+    };
+    let bytes = std::fs::read(&path).expect("read map");
+    let map = TokenizerMap::from_json(&bytes).expect("parse map");
+    let tok = BPETokenizer::new(&map).expect("supports");
+
+    let cases: &[(&str, &[u32])] = &[
+        ("MyCamelCase", &[5444, 137910, 6187]),
+        ("iPhone", &[72, 7081]),
+        ("isn't", &[276, 3023]),
+        ("1234567", &[7633, 19354, 22]),
+        ("XMLHttpRequest", &[13836, 4682, 2303]),
+    ];
+    for (text, expected) in cases {
+        let got = ITokenizer::encode(&tok, text);
+        assert_eq!(
+            &got[..],
+            *expected,
+            "o200k mismatch on {text:?}: expected {expected:?}, got {got:?}"
+        );
+    }
+}
+
+#[test]
+fn mistral_nemo_case_aware_splits_via_letters_cased() {
+    // mistral-nemo shares o200k_base's cased-letter structure but omits
+    // the per-branch contractions suffix and uses single-digit `\p{N}`
+    // numbers. Reference IDs from HuggingFace `tokenizers` 0.23.1
+    // against mistralai/Mistral-Nemo-Instruct-2407.
+    let Some(path) = find_codec_map("mistralai/mistral-nemo.json") else {
+        eprintln!("skipping — codec-maps/mistralai/mistral-nemo.json not present locally");
+        return;
+    };
+    let bytes = std::fs::read(&path).expect("read map");
+    let map = TokenizerMap::from_json(&bytes).expect("parse map");
+    let tok = BPETokenizer::new(&map).expect("supports");
+
+    let cases: &[(&str, &[u32])] = &[
+        ("MyCamelCase", &[6720, 38487, 1299, 11139]),
+        ("iPhone", &[1105, 16742]),
+        ("1234567", &[1049, 1050, 1051, 1052, 1053, 1054, 1055]),
+    ];
+    for (text, expected) in cases {
+        let got = ITokenizer::encode(&tok, text);
+        assert_eq!(
+            &got[..],
+            *expected,
+            "nemo mismatch on {text:?}: expected {expected:?}, got {got:?}"
         );
     }
 }

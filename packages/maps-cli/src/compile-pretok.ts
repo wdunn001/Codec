@@ -22,8 +22,9 @@ export type PreTokOp =
   | { op: 'literals_ci'; patterns: string[] }
   | { op: 'literals'; patterns: string[] }
   | { op: 'letters'; lead_other?: boolean; lead_space?: boolean }
+  | { op: 'letters_cased'; kind: 'title' | 'upper'; lead_other?: boolean; trailing_ci?: string[] }
   | { op: 'numbers'; max_run?: number; lead_space?: boolean }
-  | { op: 'punct_run'; lead_space?: boolean; trailing_newlines?: boolean }
+  | { op: 'punct_run'; lead_space?: boolean; trailing_newlines?: boolean; trailing_chars?: string }
   | { op: 'newline_block' }
   | { op: 'trailing_ws' }
   | { op: 'ws_run' }
@@ -59,6 +60,13 @@ export function compilePreTokenizerRegex(regex: string): PreTokProgram | null {
   // letters/numbers.
   const oldOpenAi = tryCompileOldOpenAi(r);
   if (oldOpenAi) return oldOpenAi;
+
+  // Cased-letter form: two `[Lu Lt Lm Lo M]` / `[Ll Lm Lo M]` letter
+  // branches with optional `(?i:'s|...)?` suffix per branch. Used by
+  // o200k_base and mistral-nemo. The contractions suffix is per-branch
+  // and OPTIONAL, distinguishing this from older tokenizer shapes.
+  const cased = tryCompileCasedLetters(r);
+  if (cased) return cased;
 
   // GPT-2-family alternation. We split on top-level `|` (the regex has no
   // nested groups that would contain unescaped `|` aside from the
@@ -234,4 +242,105 @@ function tryCompileOldOpenAi(r: string): PreTokProgram | null {
       { op: 'ws_run' },
     ],
   };
+}
+
+/**
+ * Recognise the cased-letter shape used by `o200k_base` and
+ * `mistralai/mistral-nemo`. Both regexes have:
+ *
+ *   - 2 cased-letter branches (title-then-lower / upper-then-lower)
+ *     with optional `(?i:'s|...)?` contractions suffix per branch
+ *   - `\p{N}{1,K}` or `\p{N}` (single digit) numbers branch
+ *   - ` ?[^\s\p{L}\p{N}]+[\r\n/]*` punct_run with trailing `[\r\n/]`
+ *   - `\s*[\r\n]+`, `\s+(?!\S)`, `\s+`
+ *
+ * 7 top-level alts. The two letter branches start with the same
+ * `[^\r\n\p{L}\p{N}]?` lead-other guard.
+ */
+function tryCompileCasedLetters(r: string): PreTokProgram | null {
+  const parts = splitTopLevelAlt(r);
+  if (parts.length !== 7) return null;
+
+  // 1. Title kind: [^...]? [Lu Lt Lm Lo M]* [Ll Lm Lo M]+ (?i:'s|...)?
+  const titleCi = parseCasedLetterBranch(parts[0]!, 'title');
+  if (titleCi === null) return null;
+
+  // 2. Upper kind: [^...]? [Lu Lt Lm Lo M]+ [Ll Lm Lo M]* (?i:'s|...)?
+  const upperCi = parseCasedLetterBranch(parts[1]!, 'upper');
+  if (upperCi === null) return null;
+
+  // Both branches must agree on whether they carry trailing_ci (the
+  // o200k_base case) or not (the mistral-nemo case).
+  if ((titleCi.length > 0) !== (upperCi.length > 0)) return null;
+
+  // 3. Numbers: `\p{N}{1,K}`, `\p{N}+`, or bare `\p{N}` (single digit).
+  const nMatch = parts[2]!.match(/^\\p\{N\}(?:(\+)|\{1,(\d+)\}\??)?$/);
+  if (!nMatch) return null;
+  let maxRun: number;
+  if (nMatch[1] === '+') maxRun = 0;
+  else if (nMatch[2]) maxRun = parseInt(nMatch[2], 10);
+  else maxRun = 1;
+
+  // 4. Punct run with lead-space and trailing `[\r\n/]*`.
+  if (!matchEq(parts[3]!, [' ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*'])) return null;
+
+  // 5-7. newline_block, trailing_ws, ws_run.
+  if (!matchEq(parts[4]!, ['\\s*[\\r\\n]+'])) return null;
+  if (!matchEq(parts[5]!, ['\\s+(?!\\S)'])) return null;
+  if (!matchEq(parts[6]!, ['\\s+'])) return null;
+
+  const titleOp: PreTokOp = { op: 'letters_cased', kind: 'title', lead_other: true };
+  const upperOp: PreTokOp = { op: 'letters_cased', kind: 'upper', lead_other: true };
+  if (titleCi.length > 0) (titleOp as { trailing_ci?: string[] }).trailing_ci = titleCi;
+  if (upperCi.length > 0) (upperOp as { trailing_ci?: string[] }).trailing_ci = upperCi;
+
+  const numbersOp: PreTokOp = maxRun > 0
+    ? { op: 'numbers', max_run: maxRun }
+    : { op: 'numbers' };
+
+  return {
+    version: 1,
+    ops: [
+      titleOp,
+      upperOp,
+      numbersOp,
+      { op: 'punct_run', lead_space: true, trailing_chars: '\r\n/' },
+      { op: 'newline_block' },
+      { op: 'trailing_ws' },
+      { op: 'ws_run' },
+    ],
+  };
+}
+
+/**
+ * Parse one cased-letter branch. Returns the contraction list (empty when
+ * no `(?i:...)?` suffix is present), or null if the shape doesn't match.
+ *
+ *   title kind:
+ *     [^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+(?i:p1|p2|...)?
+ *   upper kind:
+ *     [^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]+[\p{Ll}\p{Lm}\p{Lo}\p{M}]*(?i:p1|p2|...)?
+ */
+function parseCasedLetterBranch(s: string, kind: 'title' | 'upper'): string[] | null {
+  const LEAD  = '\\[\\^\\\\r\\\\n\\\\p\\{L\\}\\\\p\\{N\\}\\]\\?'; // [^\r\n\p{L}\p{N}]?
+  const UPPER = '\\[\\\\p\\{Lu\\}\\\\p\\{Lt\\}\\\\p\\{Lm\\}\\\\p\\{Lo\\}\\\\p\\{M\\}\\]';
+  const LOWER = '\\[\\\\p\\{Ll\\}\\\\p\\{Lm\\}\\\\p\\{Lo\\}\\\\p\\{M\\}\\]';
+  const upperQ = kind === 'title' ? '\\*' : '\\+';
+  const lowerQ = kind === 'title' ? '\\+' : '\\*';
+  const prefix = `^${LEAD}${UPPER}${upperQ}${LOWER}${lowerQ}`;
+
+  const m = new RegExp(prefix + '(.*)$').exec(s);
+  if (!m) return null;
+  const rest = m[1]!;
+  if (rest === '') return [];
+
+  // Optional trailing `(?i:p1|p2|...)?`.
+  const ciMatch = /^\(\?i:(.+)\)\?$/.exec(rest);
+  if (!ciMatch) return null;
+  const inner = ciMatch[1]!;
+  const patterns = splitTopLevelAlt(inner);
+  for (const p of patterns) {
+    if (/[\\\[\](){}^$.*+?|]/.test(p)) return null;
+  }
+  return patterns;
 }
