@@ -20,8 +20,9 @@
 
 export type PreTokOp =
   | { op: 'literals_ci'; patterns: string[] }
-  | { op: 'letters'; lead_other?: boolean }
-  | { op: 'numbers'; max_run?: number }
+  | { op: 'literals'; patterns: string[] }
+  | { op: 'letters'; lead_other?: boolean; lead_space?: boolean }
+  | { op: 'numbers'; max_run?: number; lead_space?: boolean }
   | { op: 'punct_run'; lead_space?: boolean; trailing_newlines?: boolean }
   | { op: 'newline_block' }
   | { op: 'trailing_ws' }
@@ -50,6 +51,14 @@ export interface PreTokProgram {
 export function compilePreTokenizerRegex(regex: string): PreTokProgram | null {
   // Normalise whitespace and any escape variants.
   const r = canonicalize(regex);
+
+  // Try the older OpenAI shape first (p50k_base, r50k_base): case-
+  // sensitive literal contractions, ` ?\p{L}+`, ` ?\p{N}+`, ` ?[^...]`,
+  // trailing_ws, ws_run. Distinguishable from the GPT-2 canonical shape
+  // by the absence of a `(?i:...)` group and the lead-space variants on
+  // letters/numbers.
+  const oldOpenAi = tryCompileOldOpenAi(r);
+  if (oldOpenAi) return oldOpenAi;
 
   // GPT-2-family alternation. We split on top-level `|` (the regex has no
   // nested groups that would contain unescaped `|` aside from the
@@ -179,4 +188,50 @@ function parseContractionsGroup(s: string): string[] | null {
 
 function matchEq(actual: string, candidates: string[]): boolean {
   return candidates.includes(actual);
+}
+
+/**
+ * Recognise the older OpenAI shape used by `p50k_base`, `p50k_edit`, and
+ * `r50k_base` — the pre-tokenizer that `ByteLevel.use_regex: true` invokes
+ * internally before the (?i:) inline-flag group was added in cl100k_base.
+ *
+ *   's|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+
+ *
+ * Top-level alts: 7 contractions (literal, case-sensitive) + 5 rules
+ * (letters_lead_space, numbers_lead_space, punct_lead_space, trailing_ws,
+ * ws_run) = 12 parts. The earlier GPT-2 alt-form has 7-8 parts because its
+ * contractions are wrapped in `(?i:...)` as a single alt.
+ */
+function tryCompileOldOpenAi(r: string): PreTokProgram | null {
+  const parts = splitTopLevelAlt(r);
+  if (parts.length !== 12) return null;
+
+  // 1-7. Plain literal contractions, in canonical order.
+  const expectedContractions = ["'s", "'t", "'re", "'ve", "'m", "'ll", "'d"];
+  for (let i = 0; i < 7; i++) {
+    if (parts[i] !== expectedContractions[i]) return null;
+  }
+
+  // 8. ` ?\p{L}+`
+  if (!matchEq(parts[7]!, [' ?\\p{L}+'])) return null;
+  // 9. ` ?\p{N}+`
+  if (!matchEq(parts[8]!, [' ?\\p{N}+'])) return null;
+  // 10. ` ?[^\s\p{L}\p{N}]+`
+  if (!matchEq(parts[9]!, [' ?[^\\s\\p{L}\\p{N}]+'])) return null;
+  // 11. `\s+(?!\S)`
+  if (!matchEq(parts[10]!, ['\\s+(?!\\S)'])) return null;
+  // 12. `\s+`
+  if (!matchEq(parts[11]!, ['\\s+'])) return null;
+
+  return {
+    version: 1,
+    ops: [
+      { op: 'literals', patterns: [...expectedContractions] },
+      { op: 'letters', lead_space: true },
+      { op: 'numbers', lead_space: true },
+      { op: 'punct_run', lead_space: true },
+      { op: 'trailing_ws' },
+      { op: 'ws_run' },
+    ],
+  };
 }

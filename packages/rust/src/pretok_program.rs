@@ -31,15 +31,26 @@ use crate::byte_encoder::METASPACE;
 pub enum PreTokOp {
     /// `(?i:p1|p2|...)` — match the longest case-insensitive literal.
     LiteralsCi { patterns: Vec<String> },
-    /// `\p{L}+` or `[^\r\n\p{L}\p{N}]?\p{L}+` when `lead_other`.
+    /// Case-sensitive literal alternatives — like `LiteralsCi` but matches
+    /// case-exact. Used by older OpenAI tokenizers (p50k_base, r50k_base).
+    Literals { patterns: Vec<String> },
+    /// `\p{L}+`, `[^\r\n\p{L}\p{N}]?\p{L}+` when `lead_other`, or
+    /// ` ?\p{L}+` when `lead_space`. The two lead flags are mutually
+    /// exclusive — `lead_space` is the older-OpenAI shape, `lead_other`
+    /// is the GPT-2 / Qwen / Llama-3 shape.
     Letters {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         lead_other: Option<bool>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        lead_space: Option<bool>,
     },
-    /// `\p{N}+` (unbounded) or `\p{N}{1,K}` when `max_run > 0`.
+    /// `\p{N}+` (unbounded) or `\p{N}{1,K}` when `max_run > 0`; with optional
+    /// ` ?` literal-space lead for older OpenAI tokenizers.
     Numbers {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         max_run: Option<u32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        lead_space: Option<bool>,
     },
     /// `[ ?][^\s\p{L}\p{N}]+[\r\n]*` with toggleable lead-space and
     /// trailing-newlines.
@@ -118,7 +129,21 @@ fn match_literals_ci(patterns: &[String], text: &str, i: usize) -> usize {
     best
 }
 
-fn match_letters(lead_other: bool, text: &str, i: usize) -> usize {
+fn match_literals(patterns: &[String], text: &str, i: usize) -> usize {
+    let rest = &text[i..];
+    let mut best = 0;
+    for p in patterns {
+        if p.len() <= best || rest.len() < p.len() {
+            continue;
+        }
+        if &rest[..p.len()] == p.as_str() {
+            best = p.len();
+        }
+    }
+    best
+}
+
+fn match_letters(lead_other: bool, lead_space: bool, text: &str, i: usize) -> usize {
     let rest = &text[i..];
     let mut chars = rest.char_indices().peekable();
     let mut p = 0usize;
@@ -126,6 +151,14 @@ fn match_letters(lead_other: bool, text: &str, i: usize) -> usize {
         // `[^\r\n\p{L}\p{N}]?` — at most one char that is none of those.
         if let Some(&(_off, c)) = chars.peek() {
             if c != '\r' && c != '\n' && !is_letter(c) && !is_number(c) {
+                p = c.len_utf8();
+                chars.next();
+            }
+        }
+    } else if lead_space {
+        // ` ?` — at most one literal space.
+        if let Some(&(_off, c)) = chars.peek() {
+            if c == ' ' {
                 p = c.len_utf8();
                 chars.next();
             }
@@ -147,18 +180,23 @@ fn match_letters(lead_other: bool, text: &str, i: usize) -> usize {
     }
 }
 
-fn match_numbers(max_run: u32, text: &str, i: usize) -> usize {
+fn match_numbers(max_run: u32, lead_space: bool, text: &str, i: usize) -> usize {
     let max = if max_run == 0 { u32::MAX } else { max_run };
     let mut p = 0usize;
+    let bytes = text.as_bytes();
+    if lead_space && i + p < bytes.len() && bytes[i + p] == b' ' {
+        p += 1;
+    }
+    let run_start = p;
     let mut count = 0u32;
-    for c in text[i..].chars() {
+    for c in text[i + p..].chars() {
         if count >= max || !is_number(c) {
             break;
         }
         p += c.len_utf8();
         count += 1;
     }
-    p
+    if p == run_start { 0 } else { p }
 }
 
 fn match_punct_run(
@@ -281,12 +319,25 @@ pub fn run_pretok_program(program: &PreTokProgram, text: &str) -> Vec<String> {
         for op in &program.ops {
             let span = match op {
                 PreTokOp::LiteralsCi { patterns } => match_literals_ci(patterns, text, i),
-                PreTokOp::Letters { lead_other } => {
-                    match_letters(lead_other.unwrap_or(false), text, i)
-                }
-                PreTokOp::Numbers { max_run } => {
-                    match_numbers(max_run.unwrap_or(0), text, i)
-                }
+                PreTokOp::Literals { patterns } => match_literals(patterns, text, i),
+                PreTokOp::Letters {
+                    lead_other,
+                    lead_space,
+                } => match_letters(
+                    lead_other.unwrap_or(false),
+                    lead_space.unwrap_or(false),
+                    text,
+                    i,
+                ),
+                PreTokOp::Numbers {
+                    max_run,
+                    lead_space,
+                } => match_numbers(
+                    max_run.unwrap_or(0),
+                    lead_space.unwrap_or(false),
+                    text,
+                    i,
+                ),
                 PreTokOp::PunctRun {
                     lead_space,
                     trailing_newlines,
@@ -389,8 +440,12 @@ mod tests {
                 },
                 PreTokOp::Letters {
                     lead_other: Some(true),
+                    lead_space: None,
                 },
-                PreTokOp::Numbers { max_run: None },
+                PreTokOp::Numbers {
+                    max_run: None,
+                    lead_space: None,
+                },
                 PreTokOp::PunctRun {
                     lead_space: Some(true),
                     trailing_newlines: Some(true),

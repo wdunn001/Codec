@@ -21,6 +21,19 @@ fn find_qwen_map() -> Option<PathBuf> {
     None
 }
 
+fn find_p50k_map() -> Option<PathBuf> {
+    for c in [
+        "/mnt/h/dev/codec-maps/maps/openai/p50k_base.json",
+        r"H:\dev\codec-maps\maps\openai\p50k_base.json",
+    ] {
+        let p = PathBuf::from(c);
+        if p.exists() {
+            return Some(p);
+        }
+    }
+    None
+}
+
 fn make_byte_level_fixture() -> TokenizerMap {
     let space = encode_byte_level_chars(&[0x20]);
     let mut vocab: HashMap<String, u32> = HashMap::new();
@@ -166,6 +179,40 @@ fn chat_template_and_fim_specials_emit_atomic_ids() {
                 151645,
             ],
         ),
+    ];
+    for (text, expected) in cases {
+        let got = ITokenizer::encode(&tok, text);
+        assert_eq!(
+            &got[..],
+            *expected,
+            "mismatch on {text:?}: expected {expected:?}, got {got:?}"
+        );
+    }
+}
+
+#[test]
+fn p50k_base_round_trips_via_lead_space_program_ops() {
+    // The older-OpenAI pre-tokenizer (p50k_base, r50k_base) was previously
+    // unbuildable in Rust because the regex `\s+(?!\S)` lookahead isn't
+    // supported by the `regex` crate. With the new
+    // `literals` + lead_space variants on `letters`/`numbers`, the maps-cli
+    // emits a program for these maps and the Rust BPE bypasses the regex
+    // path entirely. Reference IDs from HuggingFace `tokenizers` 0.23.1.
+    let Some(path) = find_p50k_map() else {
+        eprintln!("skipping — codec-maps/openai/p50k_base.json not present locally");
+        return;
+    };
+    let bytes = std::fs::read(&path).expect("read map");
+    let map = TokenizerMap::from_json(&bytes).expect("parse map");
+    let tok = BPETokenizer::new(&map).expect("supports");
+
+    let cases: &[(&str, &[u32])] = &[
+        ("Hello, world!", &[15496, 11, 995, 0]),
+        (
+            "1 2 12 123 1234 12345",
+            &[16, 362, 1105, 17031, 1105, 2682, 17031, 2231],
+        ),
+        ("   spaces", &[50257, 9029]),
     ];
     for (text, expected) in cases {
         let got = ITokenizer::encode(&tok, text);

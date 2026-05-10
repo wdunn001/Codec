@@ -21,14 +21,29 @@ export interface OpLiteralsCi {
   readonly op: 'literals_ci';
   readonly patterns: readonly string[];
 }
+/** Case-sensitive literal alternatives — like `literals_ci` but matches
+ * case-exact. Used by older OpenAI tokenizers (p50k_base, r50k_base) whose
+ * contractions group `'s|'t|'re|'ve|'m|'ll|'d` is not wrapped in `(?i:)`. */
+export interface OpLiterals {
+  readonly op: 'literals';
+  readonly patterns: readonly string[];
+}
 export interface OpLetters {
   readonly op: 'letters';
+  /** Match `[^\r\n\p{L}\p{N}]?\p{L}+` — at most one lead char that's none of
+   * those. Mutually exclusive with `lead_space`. */
   readonly lead_other?: boolean;
+  /** Match ` ?\p{L}+` — at most one literal-space lead. Used by older OpenAI
+   * tokenizers. Mutually exclusive with `lead_other`. */
+  readonly lead_space?: boolean;
 }
 export interface OpNumbers {
   readonly op: 'numbers';
   /** Max digit run length. Omit / 0 for unbounded. */
   readonly max_run?: number;
+  /** Match ` ?\p{N}+` (or ` ?\p{N}{1,K}`) — at most one literal-space lead.
+   * Used by older OpenAI tokenizers. */
+  readonly lead_space?: boolean;
 }
 export interface OpPunctRun {
   readonly op: 'punct_run';
@@ -44,7 +59,7 @@ export interface OpMetaspace {
 }
 
 export type PreTokOp =
-  | OpLiteralsCi | OpLetters | OpNumbers | OpPunctRun
+  | OpLiteralsCi | OpLiterals | OpLetters | OpNumbers | OpPunctRun
   | OpNewlineBlock | OpTrailingWs | OpWsRun | OpMetaspace;
 
 export interface PreTokProgram {
@@ -96,19 +111,34 @@ function matchLiteralsCi(op: OpLiteralsCi, s: string, i: number): number {
   return best;
 }
 
+function matchLiterals(op: OpLiterals, s: string, i: number): number {
+  let best = 0;
+  for (const p of op.patterns) {
+    if (p.length <= best) continue;
+    if (i + p.length > s.length) continue;
+    let ok = true;
+    for (let k = 0; k < p.length; k++) {
+      if (s.charCodeAt(i + k) !== p.charCodeAt(k)) { ok = false; break; }
+    }
+    if (ok) best = p.length;
+  }
+  return best;
+}
+
 function matchLetters(op: OpLetters, s: string, i: number): number {
   let p = i;
-  let leadConsumed = 0;
   if (op.lead_other) {
     /* `[^\r\n\p{L}\p{N}]?` — at most one char that's none of those. */
     const { cp, next } = nextCp(s, p);
     if (next > p && cp !== '\r' && cp !== '\n' && !isLetter(cp) && !isNumber(cp)) {
       p = next;
-      leadConsumed = next - i;
     }
+  } else if (op.lead_space) {
+    /* ` ?` — at most one literal space. */
+    if (s.charCodeAt(p) === 0x20) p += 1;
   }
   /* `\p{L}+` */
-  let runStart = p;
+  const runStart = p;
   while (p < s.length) {
     const { cp, next } = nextCp(s, p);
     if (!isLetter(cp)) break;
@@ -118,12 +148,13 @@ function matchLetters(op: OpLetters, s: string, i: number): number {
     /* No letter run — back out the lead char. */
     return 0;
   }
-  return (p - i);
-  void leadConsumed;
+  return p - i;
 }
 
 function matchNumbers(op: OpNumbers, s: string, i: number): number {
   let p = i;
+  if (op.lead_space && s.charCodeAt(p) === 0x20) p += 1;
+  const runStart = p;
   let count = 0;
   const max = op.max_run && op.max_run > 0 ? op.max_run : Infinity;
   while (p < s.length && count < max) {
@@ -132,6 +163,7 @@ function matchNumbers(op: OpNumbers, s: string, i: number): number {
     p = next;
     count++;
   }
+  if (p === runStart) return 0;
   return p - i;
 }
 
@@ -272,6 +304,7 @@ export function runPreTokProgram(
       let span = 0;
       switch (op.op) {
         case 'literals_ci':   span = matchLiteralsCi(op, text, i);  break;
+        case 'literals':      span = matchLiterals(op, text, i);    break;
         case 'letters':       span = matchLetters(op, text, i);     break;
         case 'numbers':       span = matchNumbers(op, text, i);     break;
         case 'punct_run':     span = matchPunctRun(op, text, i);    break;

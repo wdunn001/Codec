@@ -192,12 +192,26 @@ function findQwenMap(): string | null {
     path.resolve(import.meta.dirname, '../../../../codec-maps/maps/qwen/qwen2.json'),
     path.resolve(import.meta.dirname, '../../../../../codec-maps/maps/qwen/qwen2.json'),
     'H:/dev/codec-maps/maps/qwen/qwen2.json',
+    '/mnt/h/dev/codec-maps/maps/qwen/qwen2.json',
   ];
   for (const c of candidates) if (fs.existsSync(c)) return c;
   return null;
 }
 const QWEN_MAP_PATH = findQwenMap();
 const haveRealMap = QWEN_MAP_PATH !== null;
+
+function findP50kMap(): string | null {
+  const candidates = [
+    path.resolve(import.meta.dirname, '../../../../codec-maps/maps/openai/p50k_base.json'),
+    path.resolve(import.meta.dirname, '../../../../../codec-maps/maps/openai/p50k_base.json'),
+    '/mnt/h/dev/codec-maps/maps/openai/p50k_base.json',
+    'H:/dev/codec-maps/maps/openai/p50k_base.json',
+  ];
+  for (const c of candidates) if (fs.existsSync(c)) return c;
+  return null;
+}
+const P50K_MAP_PATH = findP50kMap();
+const haveP50k = P50K_MAP_PATH !== null;
 
 test(
   'BPE byte_level: round-trips real Qwen-2 map for ASCII text',
@@ -262,5 +276,25 @@ test(
       tok.encode('<|im_start|>system\nYou are helpful.<|im_end|>\n<|im_start|>user\nHello<|im_end|>'),
       [151644, 8948, 198, 2610, 525, 10950, 13, 151645, 198, 151644, 872, 198, 9707, 151645],
     );
+  },
+);
+
+test(
+  'BPE byte_level: p50k_base round-trips via the new lead_space program ops (HF parity)',
+  { skip: !haveP50k && 'codec-maps/openai/p50k_base.json not present locally' },
+  () => {
+    // Reference IDs from running HuggingFace tokenizers 0.23.1 against
+    // Xenova/text-davinci-002 (p50k_base mirror). The map carries the new
+    // older-OpenAI-form pre_tokenizer_program emitted by the maps-cli's
+    // `tryCompileOldOpenAi` path — `letters` and `numbers` ops with
+    // `lead_space: true`, `literals` (case-sensitive) for contractions.
+    const map = JSON.parse(fs.readFileSync(P50K_MAP_PATH!, 'utf-8')) as TokenizerMap;
+    const tok = new BPETokenizer(map);
+    assert.deepEqual(tok.encode('Hello, world!'), [15496, 11, 995, 0]);
+    assert.deepEqual(
+      tok.encode('1 2 12 123 1234 12345'),
+      [16, 362, 1105, 17031, 1105, 2682, 17031, 2231],
+    );
+    assert.deepEqual(tok.encode('   spaces'), [50257, 9029]);
   },
 );
