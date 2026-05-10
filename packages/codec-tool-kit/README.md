@@ -190,10 +190,10 @@ export const tool: CodecTool = {
 
 ## How a gateway uses this
 
-A Codec-aware gateway (sglang with PR #24557, vLLM with PR #41765, etc.) registers a tool by reading its manifest. The gateway:
+A Codec-aware gateway (codec-sglang, codec-vllm, codec-llamacpp, codec-metamcp) registers a tool by reading its manifest. The gateway:
 
 1. **Advertises the tool's `argumentsSchema`** to the model in whatever way it normally does (system prompt, tool catalog, etc.).
-2. **Detects tool calls** with the in-stream ToolWatcher (uint32 compare on token IDs — see PR #24557).
+2. **Detects tool calls** with the in-stream ToolWatcher (uint32 compare on token IDs — see [tool-calling docs](https://codecai.net/docs/tool-calling/)).
 3. **Routes the raw argument token IDs** to the tool over MCP-style HTTP/IPC, with the active `modelId` in the call envelope.
 4. **Reinjects the response token IDs** into the generation context. If the tool returned `text` instead, the gateway tokenizes it itself first.
 

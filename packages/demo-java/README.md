@@ -38,7 +38,7 @@ per cell: wire_bytes / tokens / B-per-tok / ttfb / total / ratio-vs-json
 
 ## Why this exists
 
-Same-shaped numbers across all language clients (TS, Python, .NET, C, Rust, Java) is the polyglot interop proof: the wire contract is language-agnostic, so the bytes-on-wire don't change between clients. Verified against Qwen/Qwen2.5-0.5B-Instruct on sglang (PR #24483 + ToolWatcher PR #24557) — Java emits the same `975 B` / `652 B` identity-msgpack / identity-protobuf as every other client.
+Same-shaped numbers across all language clients (TS, Python, .NET, C, Rust, Java) is the polyglot interop proof: the wire contract is language-agnostic, so the bytes-on-wire don't change between clients. Verified against Qwen/Qwen2.5-0.5B-Instruct on `codec-sglang` (token-native binary transport + server-side ToolWatcher) — Java emits the same `975 B` / `652 B` identity-msgpack / identity-protobuf as every other client.
 
 ## Notes
 

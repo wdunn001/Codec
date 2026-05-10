@@ -13,7 +13,7 @@ Codec stack:     model → uint32 IDs → binary frames → wire → uint32 IDs 
 
 Three primitives fall out of the layering:
 
-- **Wire-native streaming.** Length-prefixed binary frames over plain HTTP, the same wire on every engine in the [cross-stack matrix](packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md). Compression is a layer on top: 67× smaller on a short chat reply, **1,404×** on a 2 K-token agent stream, TTFB within 1 ms of JSON-SSE. *Receipts, not pitch.*
+- **Wire-native streaming.** Length-prefixed binary frames over plain HTTP, the same wire on every engine in the [cross-stack matrix](packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md). Compression is a layer on top: 71× smaller on a short chat reply, **1,707×** on a 2 K-token agent stream (msgpack + dict-zstd), TTFB within 1 ms of JSON-SSE. *Receipts, not pitch.*
 - **Tool-call dispatch without detokenization.** `ToolWatcher` matches reserved control IDs in the raw token stream — single 32-bit compare per token, ~100× faster than detokenize+regex. Lives canonically in the [MetaMCP gateway](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.metamcp) but the primitive works in any inference proxy, agent runtime, or middleware.
 - **Cross-vocab agent handoff.** `Translator` carries one model's stream into another's vocabulary via one in-process detokenize/retokenize step. UTF-8 never crosses the wire. Llama-3 → Qwen-2 at 2 K tokens: 30 % less bridge CPU on 15× fewer wire bytes; both paths emit byte-identical Qwen-2 IDs.
 
@@ -71,9 +71,9 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 
 | Engine | Where | Modality | What it is |
 |---|---|---|---|
-| **vLLM** | [PR #41765](https://github.com/vllm-project/vllm/pull/41765) | text | `stream_format` on `/v1/completions` + dedicated `/v1/completions/codec` |
-| **SGLang** | [PR #24483](https://github.com/sgl-project/sglang/pull/24483) | text | Same surface, mirrored into SGLang |
-| **llama.cpp** | [PR #22757](https://github.com/ggml-org/llama.cpp/pull/22757) | text | Same surface in `llama-server` (covers Ollama too) |
+| **vLLM** | [`wdunn001/codec-vllm`](https://hub.docker.com/r/wdunn001/codec-vllm) (Docker) | text | `stream_format` on `/v1/completions` + dedicated `/v1/completions/codec` |
+| **SGLang** | [`wdunn001/codec-sglang`](https://hub.docker.com/r/wdunn001/codec-sglang) (Docker) | text | Same surface, mirrored into SGLang |
+| **llama.cpp** | [`wdunn001/codec-llamacpp`](https://hub.docker.com/r/wdunn001/codec-llamacpp) (Docker) | text | Same surface in `llama-server` (covers Ollama too) |
 | **ComfyUI** | [`wdunn001/ComfyUI`](https://github.com/wdunn001/ComfyUI/tree/feat/codec-latent-transport) (fork) | latent (v0.3) | VAE latents on the wire; image + video. Image: [`wdunn001/codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui). |
 | **diffusers** | [`wdunn001/diffusers`](https://github.com/wdunn001/diffusers/tree/feat/codec-latent-transport) (fork) | latent (v0.3) | Reference latent server + bench/golden perceptual-conformance reference. Image: [`wdunn001/codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers). |
 
@@ -81,7 +81,7 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 
 | Surface | Where | What it is |
 |---|---|---|
-| **MetaMCP** | [PR #287](https://github.com/metatool-ai/metamcp/pull/287) | Codec wire framing + token-aware tool dispatch at the JSON-RPC seam. v0.3.2+ ships the leaf-mode bypass for Codec-aware tools — recognizes the per-block `_meta['ai.codec/leaf-tokenization']` payload, forwards IDs verbatim, fires `[Codec][leaf]` log. Also loads the MCP-shaped zstd dict at startup. Image: `wdunn001/codec-metamcp:latest` (v0.3.2 currently). |
+| **MetaMCP** | [`wdunn001/codec-metamcp`](https://hub.docker.com/r/wdunn001/codec-metamcp) (Docker) | Codec wire framing + token-aware tool dispatch at the JSON-RPC seam. v0.3.2+ ships the leaf-mode bypass for Codec-aware tools — recognizes the per-block `_meta['ai.codec/leaf-tokenization']` payload, forwards IDs verbatim, fires `[Codec][leaf]` log. Also loads the MCP-shaped zstd dict at startup. Image: `wdunn001/codec-metamcp:latest` (v0.3.2 currently). |
 | **mcp-leaf** | [`@codecai/mcp-leaf`](https://www.npmjs.com/package/@codecai/mcp-leaf) | Tool-author-side helper for the leaf-mode contract. `wrapToolCall(result, meta)` annotates each text block with the per-block `_meta` payload the gateway recognizes; `readCodecMeta(result)` is the receive-side companion (accepts both v0.3.2+ `_meta` shape and the v0.3.0/v0.3.1 legacy sibling-block shape). |
 | **codec-time-leaf** | [`wdunn001/codec-time-leaf`](https://hub.docker.com/r/wdunn001/codec-time-leaf) (Docker) + [`@codecai/codec-time-leaf`](https://www.npmjs.com/package/@codecai/codec-time-leaf) (npm) | Reference Codec-aware MCP server (canonical demo of leaf mode). `get_current_time` + `convert_time` tools. |
 | **Pre-built images** | [`wdunn001/codec-supervisor`](https://github.com/wdunn001/codec-supervisor) | One Docker image per engine + the gateway: `codec-sglang`, `codec-vllm`, `codec-llamacpp`, `codec-metamcp`, `codec-comfyui` (v0.3), `codec-diffusers` (v0.3), `codec-time-leaf` (v0.3). Released on `v*` tags via the supervisor's `release.yml` workflow. |
@@ -96,16 +96,16 @@ All numbers are real measurements from `packages/bench/`. The headline data set 
 
 | Engine | JSON-SSE baseline | Best Codec wire | Reduction | TTFB |
 |---|---:|---:|---:|---:|
-| sglang | 485 KB | 354 B (dict-zstd) | **1,404×** | 45.6 ms |
-| vllm | 479 KB | 3.9 KB (gzip) | **126×** | 67.3 ms |
-| llama.cpp | 529 KB | 16 KB (gzip) | **33×** | 40.7 ms |
+| sglang | 485 KB | 291 B (msgpack+dict-zstd) | **1,707×** | 44.7 ms |
+| vllm | 518 KB | 3.9 KB (msgpack+gzip) | **137×** | 59.0 ms |
+| llama.cpp | 529 KB | 16 KB (msgpack+gzip) | **33×** | 40.8 ms |
 
-**Live A/B against sglang main vs PR #24483** (3 wire formats × 4 encodings, same prompt, 64-token completion):
+**Live A/B against sglang upstream vs Codec patches** (3 wire formats × 4 encodings, same prompt, 64-token completion):
 
 | Path | identity | gzip | br | zstd |
 |---|---:|---:|---:|---:|
-| JSON-SSE (vanilla main) | 15.2 KB | 15.2 KB | 15.2 KB | 15.2 KB |
-| JSON-SSE (PR #24483) | 15.2 KB | 15.2 KB | 15.2 KB | 15.2 KB |
+| JSON-SSE (vanilla upstream) | 15.2 KB | 15.2 KB | 15.2 KB | 15.2 KB |
+| JSON-SSE (Codec-patched) | 15.2 KB | 15.2 KB | 15.2 KB | 15.2 KB |
 | Codec msgpack | **16.0×** | **68.8×** | 13.4× | 61.5× |
 | Codec protobuf | **23.9×** | **69.5×** | 16.8× | 57.4× |
 
@@ -265,10 +265,10 @@ Sister repos:
 - **[`codec-maps`](https://github.com/wdunn001/codec-maps)** — pre-generated tokenizer dialect maps for common models (Llama, Qwen, Mistral, Phi, Gemma, DeepSeek, Falcon, SmolLM2, Codestral, etc.). Open registry — anyone with a HuggingFace `tokenizer.json` can `npx @codecai/maps-cli generate <tokenizer.json>` and ship a map for their model without waiting on a registry PR. Served via jsDelivr.
 - **[`codec-supervisor`](https://github.com/wdunn001/codec-supervisor)** — pre-built Docker images for the four engine + gateway integrations (`codec-sglang`, `codec-vllm`, `codec-llamacpp`, `codec-metamcp`). `docker run` and you're at the wire.
 - **[`codec-website`](https://github.com/wdunn001/codec-website)** — source for [codecai.net](https://codecai.net), the marketing + docs front door.
-- **[vLLM PR #41765](https://github.com/vllm-project/vllm/pull/41765)** — server-side encoder, two endpoint paths (`/v1/completions` + `stream_format`, and `/v1/completions/codec` for binary request bodies on huge prompts).
-- **[SGLang PR #24483](https://github.com/sgl-project/sglang/pull/24483)** — same surface in SGLang.
-- **[llama.cpp PR #22757](https://github.com/ggml-org/llama.cpp/pull/22757)** — same surface in `llama-server`.
-- **[MetaMCP PR #287](https://github.com/metatool-ai/metamcp/pull/287)** — gateway-side Codec + token-aware tool dispatch at the JSON-RPC seam.
+- **[`wdunn001/vllm`](https://github.com/wdunn001/vllm)** — server-side Codec patches: two endpoint paths (`/v1/completions` + `stream_format`, and `/v1/completions/codec` for binary request bodies on huge prompts). Shipped as [`wdunn001/codec-vllm`](https://hub.docker.com/r/wdunn001/codec-vllm).
+- **[`wdunn001/sglang`](https://github.com/wdunn001/sglang)** — same surface in SGLang. Shipped as [`wdunn001/codec-sglang`](https://hub.docker.com/r/wdunn001/codec-sglang).
+- **[`wdunn001/llama.cpp`](https://github.com/wdunn001/llama.cpp)** — same surface in `llama-server`. Shipped as [`wdunn001/codec-llamacpp`](https://hub.docker.com/r/wdunn001/codec-llamacpp).
+- **[`wdunn001/metamcp`](https://github.com/wdunn001/metamcp)** — gateway-side Codec + token-aware tool dispatch at the JSON-RPC seam. Shipped as [`wdunn001/codec-metamcp`](https://hub.docker.com/r/wdunn001/codec-metamcp).
 
 ---
 
@@ -414,8 +414,8 @@ All bench output is deterministic given a fixed RNG seed. If a number in this RE
 
 What's validated end-to-end:
 
-- ✅ **Cross-stack matrix.** Three engines (sglang, vllm, llama.cpp) × six client languages (TS, Python, .NET, Rust, Java, C) × all 12 wire-format/encoding cells × 3 sizes = 648 SCHEMA-v1 result rows. Same prompt, same model, byte-identical Codec frames per cell on sglang and llama.cpp. Full data in [`packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md`](packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md).
-- ✅ **Wire reduction.** sglang 485 KB → 354 B with full Codec stack at 2 K tokens (**1,404×**). vllm 479 KB → 3.9 KB with gzip alone (**126×**). llama.cpp 529 KB → 16 KB with gzip alone (**33×**). TTFB stays within 1 ms of JSON-SSE on the same engines.
+- ✅ **Cross-stack matrix.** Three engines (sglang, vllm, llama.cpp) × six client languages (TS, Python, .NET, Rust, Java, C) × all 12 wire-format/encoding cells × 3 sizes = 648 SCHEMA-v1 result rows. Same prompt, same model, byte-identical Codec frames per cell on every engine. Full data in [`packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md`](packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md).
+- ✅ **Wire reduction.** sglang 485 KB → 291 B with full Codec stack at 2 K tokens (**1,707×**). vllm 518 KB → 3.9 KB with gzip alone (**137×**). llama.cpp 529 KB → 16 KB with gzip alone (**33×**). TTFB stays within 1 ms of JSON-SSE on the same engines.
 - ✅ **Tool-call dispatch on raw IDs.** `ToolWatcher` runs at 0.61 ms / 1 M tokens vs 60.4 ms for detokenize+regex (~100× faster). Available in every client.
 - ✅ **Cross-vocab agent handoff.** Llama-3 → Qwen-2 at 2 K tokens: 30 % less bridge CPU, 15.1× smaller wire, byte-identical Qwen-2 output asserted by the bench.
 - ✅ **Polyglot clients shipped** — TS / Python / .NET / Rust / Java / C all built and tested in the matrix. Three on public registries today (`@codecai/web` on npm, `codecai` on PyPI, `Codec.Net` on NuGet); Rust + Java built locally with crates.io / Maven Central publishes queued. Frame format + Detokenizer + ToolWatcher + Translator + BPE encoder in TS / Python / .NET / Rust / Java; C has Detokenizer + ToolWatcher (BPE + Translator deferred until Unicode tables land).
