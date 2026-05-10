@@ -16,6 +16,7 @@ set(CODEC_TESTS
     test_pretok_program
     test_bpe
     test_translator
+    test_safety_policy
 )
 
 foreach(t ${CODEC_TESTS})
