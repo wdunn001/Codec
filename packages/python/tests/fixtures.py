@@ -39,6 +39,7 @@ def find_qwen_map() -> str | None:
     """Locate a real Qwen-2 map for round-trip testing if available locally."""
     candidates = [
         r"H:\dev\codec-maps\maps\qwen\qwen2.json",
+        "/mnt/h/dev/codec-maps/maps/qwen/qwen2.json",
         os.path.join(
             os.path.dirname(__file__),
             "..",

@@ -117,6 +117,30 @@ def test_qwen_round_trips_unicode():
 # ── HF reference comparison (if tokenizers package is installed) ────────────
 
 
+def _load_qwen25_hf_tokenizer():
+    """Find a cached Qwen-2.5 tokenizer.json and load it directly. Falls
+    back to `Tokenizer.from_pretrained` (which goes online) only when no
+    cached snapshot is found."""
+    from pathlib import Path
+    from tokenizers import Tokenizer
+
+    cache = Path.home() / ".cache/huggingface/hub"
+    # Also try the Windows-side cache when we're in WSL — common dev setup.
+    win_cache = Path("/mnt/c/Users/willi/.cache/huggingface/hub")
+    bases = [c for c in (cache, win_cache) if c.exists()]
+    for base in bases:
+        for model in ("Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct"):
+            snap_dir = base / f"models--{model.replace('/', '--')}" / "snapshots"
+            if not snap_dir.exists():
+                continue
+            for snap in snap_dir.iterdir():
+                tj = snap / "tokenizer.json"
+                if tj.exists():
+                    return Tokenizer.from_file(str(tj))
+    # Last-ditch: hit the network. Will be skipped above if offline.
+    return Tokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+
+
 def _have_hf() -> bool:
     try:
         import tokenizers  # noqa: F401
@@ -136,12 +160,24 @@ def test_qwen_matches_hf_reference():
         m = TokenizerMap.from_json(f.read())
     tok = BPETokenizer(m)
 
-    hf = Tokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+    # Prefer a locally-cached tokenizer.json over `from_pretrained`, which
+    # tries to hit the network. CI / offline dev should be able to run the
+    # parity test as long as either the 0.5B or 7B Qwen-2.5 snapshot is in
+    # the HF cache (both share the same tokenizer).
+    hf = _load_qwen25_hf_tokenizer()
     samples = [
         "Hello, world!",
         "def add(a, b):\n    return a + b",
         "🚀 launch",
         "日本語",
+        # Chat-template and FIM specials — must round-trip as atomic vocab
+        # IDs (151644/151645/151659/151660/151661), not as 6 byte-level
+        # tokens per delimiter. Regression guard for the special-token
+        # pre-scan: prior to its introduction, Qwen-2.5 chat-template
+        # inputs tokenised wrong on every BPETokenizer caller.
+        "<|im_start|>user\nWhat is 2+2?<|im_end|>",
+        "<|fim_prefix|>def foo(x):<|fim_suffix|>    return x<|fim_middle|>\n",
+        "<|im_start|>system\nYou are helpful.<|im_end|>\n<|im_start|>user\nHello<|im_end|>",
     ]
     for s in samples:
         ours = tok.encode(s)

@@ -23,6 +23,22 @@ import regex
 from .encoder import METASPACE, encode_byte_level_chars
 from .types import TokenizerMap
 
+_DELIMITER_BODY = _stdlib_re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def _is_delimiter_shape(tok: str) -> bool:
+    """Match ``<|body|>`` where body is non-empty and identifier-like.
+
+    Catches every shipped chat-template and tool-call delimiter while
+    excluding pathological vocab BPE tokens like Falcon's ``<|>`` (id
+    61799) that share the start/end pair.
+    """
+    if len(tok) <= 4:
+        return False
+    if not (tok.startswith("<|") and tok.endswith("|>")):
+        return False
+    return bool(_DELIMITER_BODY.match(tok[2:-2]))
+
 
 class Tokenizer(ABC):
     """Common interface every tokenizer satisfies."""
@@ -54,7 +70,11 @@ class BPETokenizer(Tokenizer):
        back to byte tokens (metaspace path).
     """
 
-    __slots__ = ("_id", "_encoder", "_vocab", "_merge_ranks", "_pre_tok_re", "_byte_fallback_start", "_cache")
+    __slots__ = (
+        "_id", "_encoder", "_vocab", "_merge_ranks", "_pre_tok_re",
+        "_byte_fallback_start", "_cache",
+        "_special_ids", "_special_re",
+    )
 
     @staticmethod
     def supports(m: TokenizerMap) -> bool:
@@ -92,6 +112,31 @@ class BPETokenizer(Tokenizer):
         else:
             self._pre_tok_re = None
 
+        # Build the special-token scanner. Accept entries from
+        # ``special_tokens`` AND any vocab key in ``<|body|>`` shape where
+        # body is non-empty and identifier-like — older maps shipped
+        # before a chat-template revision may carry the delimiters in
+        # vocab but not in special_tokens. Length-descending order makes
+        # the regex match the longest delimiter at any position. Without
+        # this pre-scan, ``<|im_start|>`` would tokenise byte-by-byte
+        # instead of as the single atomic vocab ID. The body constraint
+        # excludes pathological vocab tokens like Falcon's ``<|>`` (id
+        # 61799) that share the start/end pair.
+        special: dict[str, int] = dict(m.special_tokens or {})
+        for tok, tid in self._vocab.items():
+            if tok in special:
+                continue
+            if _is_delimiter_shape(tok):
+                special[tok] = tid
+        self._special_ids: dict[str, int] = special
+        if special:
+            keys = sorted(special.keys(), key=len, reverse=True)
+            self._special_re: regex.Pattern[str] | None = regex.compile(
+                "|".join(regex.escape(k) for k in keys)
+            )
+        else:
+            self._special_re = None
+
     @property
     def id(self) -> str:
         return self._id
@@ -100,18 +145,35 @@ class BPETokenizer(Tokenizer):
         if not text:
             return []
 
+        if self._special_re is not None:
+            out: list[int] = []
+            cursor = 0
+            for m in self._special_re.finditer(text):
+                if m.start() > cursor:
+                    self._encode_chunk(text[cursor:m.start()], out)
+                out.append(self._special_ids[m.group(0)])
+                cursor = m.end()
+            if cursor < len(text):
+                self._encode_chunk(text[cursor:], out)
+            return out
+
         ids: list[int] = []
+        self._encode_chunk(text, ids)
+        return ids
+
+    def _encode_chunk(self, text: str, out: list[int]) -> None:
+        if not text:
+            return
         for piece in self._pre_tokenize(text):
             cached = self._cache.get(piece)
             if cached is not None:
-                ids.extend(cached)
+                out.extend(cached)
                 continue
             encoded = self._encode_piece_to_vocab_space(piece)
             merged = self._apply_bpe(encoded)
             piece_ids = self._lookup(merged)
             self._cache[piece] = piece_ids
-            ids.extend(piece_ids)
-        return ids
+            out.extend(piece_ids)
 
     # ── Pre-tokenization ────────────────────────────────────────────────────
 

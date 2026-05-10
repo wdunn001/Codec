@@ -45,6 +45,16 @@ export class BPETokenizer implements Tokenizer {
   private readonly encoder: 'byte_level' | 'metaspace';
   private readonly byteFallbackStart: number;
   private readonly cache = new Map<string, number[]>();
+  /**
+   * Special-token scanner. Built from `map.special_tokens` plus any token in
+   * `map.vocab` whose surface form looks like a delimiter (`<|...|>`). HF's
+   * reference tokenizer splits input on added/special tokens BEFORE running
+   * BPE — emit each match as the atomic vocab ID, BPE the surrounding text.
+   * Required for chat templates (`<|im_start|>...<|im_end|>`), tool-call
+   * delimiters, FIM markers, etc. to round-trip with HF.
+   */
+  private readonly specialIds: ReadonlyMap<string, number>;
+  private readonly specialRegex: RegExp | null;
 
   /**
    * Returns true if `map` carries the data BPETokenizer needs (vocab, merges,
@@ -126,26 +136,83 @@ export class BPETokenizer implements Tokenizer {
       this.preTokRegex = null;
       this.preTokProgram = null;
     }
+
+    // Build the special-token scanner. We accept entries from
+    // `map.special_tokens` (the canonical source) AND any vocab key that
+    // looks like a delimiter (`<|...|>` or `<...>`). Older maps shipped
+    // before a chat-template revision may carry the delimiters in `vocab`
+    // but not in `special_tokens` — without the vocab-key fallback, those
+    // would still tokenise byte-by-byte. Length-descending order makes
+    // the regex match the longest delimiter at any position.
+    const specialIds = new Map<string, number>();
+    for (const [name, id] of Object.entries(map.special_tokens ?? {})) {
+      specialIds.set(name, id);
+    }
+    for (const [tok, id] of vocab) {
+      if (specialIds.has(tok)) continue;
+      // Heuristic: `<|body|>` where body is non-empty and identifier-like.
+      // Every shipped chat-template tokenizer uses this shape (Qwen,
+      // Llama-3, Phi-3/4, DeepSeek, Mistral-Nemo, Gemma). The body
+      // constraint excludes pathological vocab BPE tokens like `<|>` in
+      // Falcon (id 61799) that happen to share the start/end pair.
+      if (isDelimiterShape(tok)) specialIds.set(tok, id);
+    }
+    this.specialIds = specialIds;
+    if (specialIds.size > 0) {
+      const escaped = Array.from(specialIds.keys())
+        .sort((a, b) => b.length - a.length)
+        .map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      this.specialRegex = new RegExp(escaped.join('|'), 'g');
+    } else {
+      this.specialRegex = null;
+    }
   }
 
   /** Encode text → token IDs. */
   encode(text: string): number[] {
     if (text.length === 0) return [];
-    const pieces = this.preTokenize(text);
+
+    // First pass: split on special tokens. Each special is emitted as its
+    // single atomic vocab ID; the gaps between specials are BPE-encoded
+    // normally. Mirrors HuggingFace's added-token splitter — without this,
+    // `<|im_start|>` would tokenize as 6 byte-level tokens instead of one
+    // ID, breaking chat-template round-trips on Qwen/Llama-3/Phi/etc.
+    if (this.specialRegex !== null) {
+      const out: number[] = [];
+      this.specialRegex.lastIndex = 0;
+      let cursor = 0;
+      let m: RegExpExecArray | null;
+      while ((m = this.specialRegex.exec(text)) !== null) {
+        if (m.index > cursor) this.encodeChunk(text.slice(cursor, m.index), out);
+        out.push(this.specialIds.get(m[0])!);
+        cursor = m.index + m[0].length;
+        if (m[0].length === 0) this.specialRegex.lastIndex++;
+      }
+      if (cursor < text.length) this.encodeChunk(text.slice(cursor), out);
+      return out;
+    }
+
     const ids: number[] = [];
+    this.encodeChunk(text, ids);
+    return ids;
+  }
+
+  /** BPE-encode a chunk of plain text into `out`. */
+  private encodeChunk(text: string, out: number[]): void {
+    if (text.length === 0) return;
+    const pieces = this.preTokenize(text);
     for (const piece of pieces) {
       const cached = this.cache.get(piece);
       if (cached !== undefined) {
-        for (let i = 0; i < cached.length; i++) ids.push(cached[i]!);
+        for (let i = 0; i < cached.length; i++) out.push(cached[i]!);
         continue;
       }
       const encoded = this.encodePieceToVocabSpace(piece);
       const merged = this.applyBPE(encoded);
       const pieceIds = this.lookup(merged);
       this.cache.set(piece, pieceIds);
-      for (let i = 0; i < pieceIds.length; i++) ids.push(pieceIds[i]!);
+      for (let i = 0; i < pieceIds.length; i++) out.push(pieceIds[i]!);
     }
-    return ids;
   }
 
   // ── Pre-tokenization ──────────────────────────────────────────────────────
@@ -315,6 +382,19 @@ export function compilePreTokRegexWithFallback(
         `carries a \`pre_tokenizer_program\` and skips the regex path.`,
     );
   }
+}
+
+/**
+ * Match `<|body|>` where `body` is non-empty and identifier-like
+ * (letters/digits/`_`/`-`). Catches every shipped chat-template and
+ * tool-call delimiter while excluding pathological vocab BPE tokens
+ * like Falcon's `<|>` (id 61799) that share the start/end pair.
+ */
+function isDelimiterShape(tok: string): boolean {
+  if (tok.length <= 4) return false;
+  if (!tok.startsWith('<|') || !tok.endsWith('|>')) return false;
+  const body = tok.slice(2, -2);
+  return /^[A-Za-z0-9_-]+$/.test(body);
 }
 
 /**

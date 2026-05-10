@@ -239,3 +239,28 @@ test(
     }
   },
 );
+
+test(
+  'BPE byte_level: chat-template and FIM specials emit atomic IDs (HF parity)',
+  { skip: !haveRealMap && 'codec-maps/qwen2.json not present locally' },
+  () => {
+    // Reference IDs from running HuggingFace tokenizers 0.23.1 against
+    // Qwen/Qwen2.5-0.5B-Instruct tokenizer.json. The encoder must emit
+    // each `<|...|>` delimiter as the single atomic vocab ID, not as a
+    // byte-level sequence (`<`, `|`, `im`, `_start`, `|`, `>`).
+    const map = JSON.parse(fs.readFileSync(QWEN_MAP_PATH!, 'utf-8')) as TokenizerMap;
+    const tok = new BPETokenizer(map);
+    assert.deepEqual(
+      tok.encode('<|im_start|>user\nWhat is 2+2?<|im_end|>'),
+      [151644, 872, 198, 3838, 374, 220, 17, 10, 17, 30, 151645],
+    );
+    assert.deepEqual(
+      tok.encode('<|fim_prefix|>def foo(x):<|fim_suffix|>    return x<|fim_middle|>\n'),
+      [151659, 750, 15229, 2075, 1648, 151661, 262, 470, 856, 151660, 198],
+    );
+    assert.deepEqual(
+      tok.encode('<|im_start|>system\nYou are helpful.<|im_end|>\n<|im_start|>user\nHello<|im_end|>'),
+      [151644, 8948, 198, 2610, 525, 10950, 13, 151645, 198, 151644, 872, 198, 9707, 151645],
+    );
+  },
+);
