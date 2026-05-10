@@ -155,13 +155,134 @@ export interface ToolCallingBlock {
 }
 
 /**
+ * Closed enum of `finish_reason` values. The wire format permits any string
+ * (per spec/PROTOCOL.md), but these are the values defined by the protocol;
+ * unknown strings should be treated as `"error"` by clients.
+ *
+ *   - `"length"`           — max_tokens reached.
+ *   - `"eos_token"`        — model emitted its end-of-sequence token.
+ *   - `"stop_sequence"`    — model emitted a configured stop sequence.
+ *   - `"error"`            — server error mid-generation.
+ *   - `"policy_violation"` — server's negotiated safety policy fired
+ *                            (see SafetyPolicyDescriptor / discoverSafetyPolicy).
+ */
+export type FinishReason =
+  | 'length'
+  | 'eos_token'
+  | 'stop_sequence'
+  | 'error'
+  | 'policy_violation';
+
+/**
  * Wire frame produced by a Codec-compliant server. Identical shape across
  * MessagePack and Protobuf modes — only the serialization differs.
  */
 export interface CodecFrame {
   readonly ids: readonly number[];
   readonly done: boolean;
-  readonly finish_reason?: string;
+  readonly finish_reason?: FinishReason | string;
+}
+
+/**
+ * Sanitized, publishable safety-policy descriptor — the document at
+ * `.well-known/codec/policies/<id>.json` (or `<hash>.json`). Carries the
+ * shape of enforcement (categories, actions, classifier family, summary
+ * stats) but never the contents (banned token IDs, classifier thresholds,
+ * regex contents). See `spec/safety-policy.schema.json` for the normative
+ * schema.
+ *
+ * Loaded by clients that received `safety_policy_id` + `safety_policy_hash`
+ * in `READY` and want to verify or surface what's being enforced.
+ */
+export interface SafetyPolicyDescriptor {
+  /** Stable, globally unique policy id, e.g. `acme/strict-v3`. */
+  readonly id: string;
+
+  /** Schema version; currently `"1"`. */
+  readonly version: string;
+
+  /**
+   * Tokenizer IDs this policy is bound to. Servers MUST reject HELLO if
+   * the negotiated `tokenizer_id` is not in this list.
+   */
+  readonly tokenizers: readonly string[];
+
+  /** Closed list of safety categories enforced by this policy. */
+  readonly categories: readonly SafetyPolicyCategory[];
+
+  /**
+   * Optional reference to an external category-name registry (e.g.
+   * `mlcommons/ailuminate-v0.5`) the category names are drawn from.
+   */
+  readonly category_registry?: string;
+
+  /** Classifier family that backs the policy's semantic enforcement layer. */
+  readonly classifier: SafetyPolicyClassifier;
+
+  /** Summary statistics describing the size of the enforcement surface. */
+  readonly rules_summary?: SafetyPolicyRulesSummary;
+
+  /** Optional hints about client-side participation in enforcement. */
+  readonly client_hooks?: SafetyPolicyClientHooks;
+
+  readonly published_at?: string;
+
+  readonly publisher?: SafetyPolicyPublisher;
+}
+
+export interface SafetyPolicyCategory {
+  /** Lowercase ASCII matching `[a-z0-9_-]+`. */
+  readonly name: string;
+  readonly action: 'stop' | 'redact' | 'regenerate' | 'flag';
+  readonly description?: string;
+}
+
+export interface SafetyPolicyClassifier {
+  /**
+   * Free-form lowercase ASCII identifier; e.g. `llama-guard-3-1b`,
+   * `shield-gemma-2b`, `prompt-guard-86m`, `embedding-space-v1`, `none`.
+   */
+  readonly family: string;
+  readonly host?: 'server' | 'client' | 'both';
+  readonly requires_engine_features?: ReadonlyArray<
+    'logits_processor' | 'hidden_states' | 'sampling_chain'
+  >;
+}
+
+export interface SafetyPolicyRulesSummary {
+  readonly banned_token_id_count?: number;
+  readonly regex_pattern_count?: number;
+  readonly grammar_constraint_count?: number;
+  readonly multi_token_pattern_count?: number;
+}
+
+export interface SafetyPolicyClientHooks {
+  /**
+   * Category names the operator expects clients to enforce client-side
+   * before sending. Names match `categories[].name`.
+   */
+  readonly prefilter_categories?: readonly string[];
+  /**
+   * Suggested classifier family for client-side semantic checks. Often
+   * smaller than the server-side `classifier.family`. Hint, not contract.
+   */
+  readonly client_classifier_family?: string;
+}
+
+export interface SafetyPolicyPublisher {
+  readonly name?: string;
+  readonly url?: string;
+  readonly contact?: string;
+}
+
+/**
+ * Pluggable cache for loaded safety-policy descriptors. Same shape as
+ * `MapCache`; descriptors are immutable per `(id, hash)`, so cache hits
+ * are always valid.
+ */
+export interface SafetyPolicyCache {
+  get(key: string): Promise<SafetyPolicyDescriptor | undefined>;
+  set(key: string, descriptor: SafetyPolicyDescriptor): Promise<void>;
 }
 
 /**

@@ -1,0 +1,54 @@
+{
+  "id": "acme/strict-v3",
+  "version": "1",
+  "tokenizers": ["meta-llama/llama-3"],
+  "categories": [
+    {
+      "name": "secrets",
+      "action": "stop",
+      "description": "API keys, private keys, credentials, and high-entropy tokens that look like authentication material."
+    },
+    {
+      "name": "pii",
+      "action": "redact",
+      "description": "Email addresses, phone numbers, and government identifiers. Replaced with policy-defined placeholder token IDs in the output stream."
+    },
+    {
+      "name": "hate",
+      "action": "stop",
+      "description": "Hate speech directed at protected classes."
+    },
+    {
+      "name": "jailbreak",
+      "action": "regenerate",
+      "description": "Known prompt-injection / role-escape patterns. Generation rewinds and resamples with the offending tokens masked."
+    },
+    {
+      "name": "violence",
+      "action": "flag",
+      "description": "Graphic violence. Generation continues; downstream consumers receive an annotation in the policy_violation telemetry channel."
+    }
+  ],
+  "category_registry": "mlcommons/ailuminate-v0.5",
+  "classifier": {
+    "family": "llama-guard-3-1b",
+    "host": "server",
+    "requires_engine_features": ["logits_processor", "sampling_chain"]
+  },
+  "rules_summary": {
+    "banned_token_id_count": 4128,
+    "regex_pattern_count": 47,
+    "grammar_constraint_count": 3,
+    "multi_token_pattern_count": 312
+  },
+  "client_hooks": {
+    "prefilter_categories": ["secrets", "pii"],
+    "client_classifier_family": "prompt-guard-86m"
+  },
+  "published_at": "2026-05-09T00:00:00Z",
+  "publisher": {
+    "name": "Acme AI Safety",
+    "url": "https://acme.example/safety",
+    "contact": "safety@acme.example"
+  }
+}

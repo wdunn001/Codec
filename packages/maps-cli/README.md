@@ -228,6 +228,42 @@ const map = await discoverMap({ origin: 'https://qwen.io', id: 'qwen/qwen2' });
 
 Pass `--inline` instead of `--url` to embed the full map at the well-known location (skips the CDN indirection — recommended only for small maps). Re-running with the same id replaces the existing index entry. See [`spec/WELL_KNOWN_DISCOVERY.md`](https://github.com/wdunn001/Codec/blob/main/spec/WELL_KNOWN_DISCOVERY.md) for the publishing contract.
 
+### `policies-*` — safety-policy descriptor lifecycle (v0.4)
+
+The v0.4 [safety-policy negotiation spec](https://github.com/wdunn001/Codec/blob/main/spec/versions/v0.4.md#safety-policy-negotiation) ships four CLI subcommands that mirror the tokenizer-map shape exactly:
+
+```bash
+# Validate that an operator-internal policy is well-formed.
+codecai-maps policies-validate ./internal-config.json
+
+# Strip internal-only fields (banned_token_ids, regex_patterns,
+# grammar_constraints, multi_token_patterns, classifier thresholds /
+# weights) and emit the publishable descriptor — what the world sees
+# at .well-known/codec/policies/<id>.json. Internal-field counts
+# survive as rules_summary.* for auditors.
+codecai-maps policies-sanitize --internal=./internal-config.json \
+  --out=./acme-strict-v3.policy.json
+
+# Canonical sha256 over the sanitized descriptor — bit-identical
+# across @codecai/web, codecai (Python), codec-rs, Codec.Net,
+# codec (Java), libcodec, and codec-supervisor.
+codecai-maps policies-hash ./acme-strict-v3.policy.json
+
+# Emit both .well-known/codec/policies/<id>.json (mutable pointer or
+# inline) AND .well-known/codec/policies/sha256/<hex>.json (immutable
+# content-addressed sibling) so clients that received a hash in READY
+# can fetch + verify without a redirect hop.
+codecai-maps policies-well-known --descriptor=./acme-strict-v3.policy.json \
+  --inline --out-dir=./public
+```
+
+The descriptor never contains operator-internal contents — that's the
+disclosure-boundary contract (an attacker who can fetch the
+`.well-known` page learns the *shape* of enforcement, not the contents
+of banned-token lists or classifier thresholds). The internal-config
+side lives in [`codec-supervisor`](https://github.com/wdunn001/codec-supervisor)
+under `policies_dir/` and is never published.
+
 ## License
 
 MIT.

@@ -1,0 +1,97 @@
+{
+  "name": "@codecai/web-safety",
+  "version": "0.4.0",
+  "description": "Optional client-side safety layer for the Codec binary transport — prefilter (secrets / PII / high-entropy detection) and classifier registry. Pairs with @codecai/web; ships zero classifier weights of its own.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs",
+      "default": "./dist/esm/index.js"
+    },
+    "./prefilter": {
+      "types": "./dist/types/prefilter.d.ts",
+      "import": "./dist/esm/prefilter.js",
+      "require": "./dist/cjs/prefilter.cjs"
+    },
+    "./gate": {
+      "types": "./dist/types/gate.d.ts",
+      "import": "./dist/esm/gate.js",
+      "require": "./dist/cjs/gate.cjs"
+    },
+    "./registry": {
+      "types": "./dist/types/registry.d.ts",
+      "import": "./dist/esm/registry.js",
+      "require": "./dist/cjs/registry.cjs"
+    },
+    "./classifiers/prompt-guard-86m": {
+      "types": "./dist/types/classifiers/prompt-guard-86m.d.ts",
+      "import": "./dist/esm/classifiers/prompt-guard-86m.js",
+      "require": "./dist/cjs/classifiers/prompt-guard-86m.cjs"
+    },
+    "./classifiers/llama-guard-3-1b": {
+      "types": "./dist/types/classifiers/llama-guard-3-1b.d.ts",
+      "import": "./dist/esm/classifiers/llama-guard-3-1b.js",
+      "require": "./dist/cjs/classifiers/llama-guard-3-1b.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs && npm run build:types",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json && node -e \"require('fs').readdirSync('dist/cjs').filter(f=>f.endsWith('.js')).forEach(f=>require('fs').renameSync('dist/cjs/'+f,'dist/cjs/'+f.replace(/\\.js$/,'.cjs')))\"",
+    "build:types": "tsc -p tsconfig.types.json",
+    "test": "node --test --import tsx test/*.test.ts",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "@codecai/web": "^0.4.0"
+  },
+  "peerDependencies": {
+    "@huggingface/transformers": "^3.0.0",
+    "@mlc-ai/web-llm": "^0.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@huggingface/transformers": {
+      "optional": true
+    },
+    "@mlc-ai/web-llm": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@huggingface/transformers": "^3.0.0",
+    "@mlc-ai/web-llm": "^0.2.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "codec",
+    "safety",
+    "prefilter",
+    "secrets",
+    "pii",
+    "classifier",
+    "guardrails",
+    "llm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wdunn001/Codec.git",
+    "directory": "packages/web-safety"
+  },
+  "homepage": "https://github.com/wdunn001/Codec/tree/main/packages/web-safety"
+}

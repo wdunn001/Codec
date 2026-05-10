@@ -62,9 +62,11 @@ set(CODEC_SOURCES
     src/pretok_program.c
     src/bpe.c
     src/translator.c
+    src/codec_safety_policy.c
 )
 set(CODEC_HEADERS
     include/codec/codec.h
+    include/codec/codec_safety_policy.h
 )
 
 # ── Helper macro: configure a target ────────────────────────────────────────

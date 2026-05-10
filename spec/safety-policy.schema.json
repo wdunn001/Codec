@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://codec.ai/schemas/safety-policy/v1",
+  "title": "Codec Safety Policy Descriptor",
+  "description": "A sanitized, publishable descriptor for a safety policy enforced by a Codec server. Carries the shape of enforcement (categories, actions, classifier family, summary statistics) but never the contents (individual banned token IDs, classifier thresholds, regex contents). Content-addressed and immutable: a new policy version publishes a new descriptor at a new URL with a new sha256 hash. Symmetric to spec/tokenizer-map.schema.json (text negotiation) and spec/latent-space-map.schema.json (latent negotiation).",
+  "type": "object",
+  "required": ["id", "version", "tokenizers", "categories", "classifier"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable, globally unique policy identifier. Convention: lowercase 'org/policy-name' matching the operator publishing it, e.g. 'acme/strict-v3', 'codec/default-moderate'. Same ID + same hash means byte-identical descriptor. Used as `READY.safety_policy_id` on the wire."
+    },
+    "version": {
+      "type": "string",
+      "description": "Schema version. '1' for the current schema (v0.3 launch). Implementations SHOULD reject descriptors whose version they don't recognize rather than silently degrading."
+    },
+    "tokenizers": {
+      "type": "array",
+      "description": "Tokenizer IDs (matching `tokenizer-map.schema.json` `id` field) this policy is bound to. A safety policy is tokenizer-specific because banned-id lists, multi-token pattern enumerations, and classifier embeddings are all tokenizer-dependent. A policy that needs to work across tokenizers SHOULD publish one descriptor per tokenizer with a shared id family (e.g. 'acme/strict-v3-llama3', 'acme/strict-v3-qwen2'). Servers MUST reject HELLO if the negotiated `tokenizer_id` is not in this list.",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "categories": {
+      "type": "array",
+      "description": "Closed list of safety categories this policy enforces. The category names listed here are the names that may appear in classifier output and (in a future additive frame type) in mid-stream policy-violation signaling. Categories are operator-defined but SHOULD draw from a shared registry where possible (see `category_registry` field) to ease cross-policy comparison.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "action"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Category name, lowercase ASCII matching `[a-z0-9_-]+`. Examples: `secrets`, `pii`, `hate`, `jailbreak`, `violence`, `self_harm`."
+          },
+          "action": {
+            "type": "string",
+            "enum": ["stop", "redact", "regenerate", "flag"],
+            "description": "Action the server takes when this category fires. `stop` terminates the stream with `finish_reason: \"policy_violation\"`. `redact` replaces the offending span with placeholder token IDs and continues. `regenerate` rewinds and resamples with the offending IDs masked. `flag` annotates the frame for downstream consumers to act on (server still emits the tokens)."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable explanation of what the category covers. Useful for client-side audit UI. Plain text, no markdown."
+          }
+        }
+      }
+    },
+    "category_registry": {
+      "type": "string",
+      "description": "Optional reference to an external category-name registry the `categories[].name` values are drawn from (e.g. 'mlcommons/ailuminate-v0.5'). Informational only; clients MAY compare categories across policies via this field."
+    },
+    "classifier": {
+      "type": "object",
+      "description": "Classifier family that backs this policy's semantic enforcement layer (Layer 3). The descriptor exposes the family — never weights, thresholds, or training data. `family` is enough for an auditor to know what kind of judgments are being made; thresholds and per-category sensitivities are operator-internal.",
+      "required": ["family"],
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "type": "string",
+          "description": "Classifier model family. Free-form lowercase ASCII identifier; examples: `llama-guard-3-1b`, `shield-gemma-2b`, `prompt-guard-86m`, `embedding-space-v1`, `none` (rules-only enforcement). New families do not require a schema bump — this is descriptive metadata."
+        },
+        "host": {
+          "type": "string",
+          "enum": ["server", "client", "both"],
+          "description": "Where the classifier runs. `server` (typical) means the operator's classifier runs in their deployment. `client` means the policy expects the consumer to run a matching classifier locally (used in mesh/peer-to-peer setups). `both` means the same classifier id is enforced symmetrically by both sides."
+        },
+        "requires_engine_features": {
+          "type": "array",
+          "description": "Engine integration features this classifier depends on, declared so auditors know whether the policy is portable across engine forks. Allowed entries: `logits_processor` (banned-id masking), `hidden_states` (embedding-space classifier hook), `sampling_chain` (grammar/FSM mask).",
+          "items": {
+            "type": "string",
+            "enum": ["logits_processor", "hidden_states", "sampling_chain"]
+          }
+        }
+      }
+    },
+    "rules_summary": {
+      "type": "object",
+      "description": "Summary statistics describing the size of the enforcement surface — without revealing its contents. Lets an auditor compare policies on coverage breadth (a policy with 20k banned IDs and 50 regex rules is qualitatively different from one with 0 banned IDs and 0 regex rules) without giving an attacker an enumeration map.",
+      "additionalProperties": false,
+      "properties": {
+        "banned_token_id_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of token IDs in the operator's banned-id list. The IDs themselves are NEVER published."
+        },
+        "regex_pattern_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of regex patterns enforced (by Layer 1 client prefilter or Layer 2 server post-detok scans). Patterns themselves are NEVER published — they would form an evasion guide."
+        },
+        "grammar_constraint_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of grammar / FSM constraints enforced via the engine sampler chain."
+        },
+        "multi_token_pattern_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of multi-token banned patterns (e.g. compiled into an Aho-Corasick automaton over enumerated tokenizations). Pattern strings and their tokenizations are NEVER published."
+        }
+      }
+    },
+    "client_hooks": {
+      "type": "object",
+      "description": "Optional hints to clients about their participation in enforcement. Useful for `@codecai/web-safety` consumers and similar packages: tells them which prefilter checks the operator expects to be run client-side (so a doomed prompt never reaches the wire), and which classifier model id the operator's policy expects (so a peer running its own Layer 3 in a mesh can pick the matching model).",
+      "additionalProperties": false,
+      "properties": {
+        "prefilter_categories": {
+          "type": "array",
+          "description": "Category names (matching `categories[].name`) the operator expects clients to enforce client-side before sending. A client without prefilter capability MAY still connect, but the server's enforcement may be the only line of defense for these categories.",
+          "items": { "type": "string" }
+        },
+        "client_classifier_family": {
+          "type": "string",
+          "description": "Suggested classifier family for client-side semantic checks. Often a smaller model than `classifier.family` (e.g. server runs `llama-guard-3-1b`, client runs `prompt-guard-86m`). Clients MAY ignore this and pick their own model; this is a hint, not a contract."
+        }
+      }
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this descriptor was published. Informational only — content addressing is via sha256 hash."
+    },
+    "publisher": {
+      "type": "object",
+      "description": "Optional human-readable publisher metadata. Non-load-bearing; clients SHOULD treat the origin's TLS certificate as the trust anchor, not this field.",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "description": "Human-readable publisher name." },
+        "url":  { "type": "string", "format": "uri", "description": "Publisher home page or audit page." },
+        "contact": { "type": "string", "description": "Contact for safety-related inquiries (email, ticket queue URL, etc.)." }
+      }
+    }
+  },
+  "examples": [
+    {
+      "id": "acme/strict-v3",
+      "version": "1",
+      "tokenizers": ["meta-llama/llama-3"],
+      "categories": [
+        { "name": "secrets",   "action": "stop",       "description": "API keys, private keys, credentials." },
+        { "name": "pii",       "action": "redact",     "description": "Email, phone, government identifiers." },
+        { "name": "hate",      "action": "stop",       "description": "Hate speech directed at protected classes." },
+        { "name": "jailbreak", "action": "regenerate", "description": "Known prompt-injection / role-escape patterns." },
+        { "name": "violence",  "action": "flag",       "description": "Graphic violence; generation continues but is annotated." }
+      ],
+      "category_registry": "mlcommons/ailuminate-v0.5",
+      "classifier": {
+        "family": "llama-guard-3-1b",
+        "host": "server",
+        "requires_engine_features": ["logits_processor", "sampling_chain"]
+      },
+      "rules_summary": {
+        "banned_token_id_count": 4128,
+        "regex_pattern_count": 47,
+        "grammar_constraint_count": 3,
+        "multi_token_pattern_count": 312
+      },
+      "client_hooks": {
+        "prefilter_categories": ["secrets", "pii"],
+        "client_classifier_family": "prompt-guard-86m"
+      },
+      "published_at": "2026-05-09T00:00:00Z",
+      "publisher": {
+        "name": "Acme AI Safety",
+        "url": "https://acme.example/safety",
+        "contact": "safety@acme.example"
+      }
+    }
+  ]
+}

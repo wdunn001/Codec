@@ -38,20 +38,42 @@ current pinned hash without a code change.
 ## URL layout
 
 ```
-https://<origin>/.well-known/codec/maps/<id>.json    ← per-map document
-https://<origin>/.well-known/codec/index.json        ← directory (optional)
+https://<origin>/.well-known/codec/maps/<id>.json        ← per-tokenizer-map document
+https://<origin>/.well-known/codec/policies/<id>.json    ← per-safety-policy document (mutable pointer / inline)
+https://<origin>/.well-known/codec/policies/<hash>.json  ← per-safety-policy document (immutable, content-addressed)
+https://<origin>/.well-known/codec/index.json            ← directory (optional)
 ```
 
-`<id>` is the Codec map ID with `/` characters preserved as path separators.
-For example, the ID `qwen/qwen2` resolves to:
+`<id>` is the Codec ID (tokenizer-map id or safety-policy id) with `/`
+characters preserved as path separators. For example, the tokenizer ID
+`qwen/qwen2` resolves to:
 
 ```
 https://qwen.io/.well-known/codec/maps/qwen/qwen2.json
 ```
 
+And the safety-policy ID `acme/strict-v3` resolves to:
+
+```
+https://acme.example/.well-known/codec/policies/acme/strict-v3.json
+```
+
 IDs MUST be lowercase ASCII matching `[a-z0-9._/-]+`. Maintainers MUST NOT
-publish maps whose ID contains `..`, leading `/`, or any other path
+publish documents whose ID contains `..`, leading `/`, or any other path
 traversal sequence.
+
+Safety policies additionally publish under a content-addressed sibling
+path keyed by sha256 hash:
+
+```
+https://acme.example/.well-known/codec/policies/sha256/<hex>.json
+```
+
+The mutable per-id document MAY be either an inline descriptor or a
+pointer; the content-addressed sibling is always the inline descriptor
+(or a pointer whose own bytes hash to its filename's `<hex>`). Clients
+that receive a `safety_policy_hash` in `READY` SHOULD prefer the
+content-addressed path because it is provably immutable.
 
 ---
 
@@ -212,6 +234,35 @@ Clients that need stronger guarantees (e.g. air-gapped enterprise) SHOULD
 pin both the URL and the hash via direct configuration. `discoverMap` is
 one bootstrapping path; it doesn't replace `loadMap({ url, hash })` for
 fixed-deployment use.
+
+---
+
+## Safety policies
+
+Safety policy descriptors follow the same conventions as tokenizer maps:
+content-addressed by sha256, sanitized (operators publish the *shape* of
+enforcement, never the contents — see
+[`safety-policy.schema.json`](./safety-policy.schema.json)), discoverable
+under `.well-known/codec/policies/`.
+
+Resolution order, given `(origin, policy_id)`:
+
+1. Fetch `<origin>/.well-known/codec/policies/<policy_id>.json`.
+2. Parse as JSON.
+3. If the parsed object contains `categories` → treat as an inline
+   descriptor. Run the safety-policy validator and return.
+4. Otherwise → treat as a pointer (same `{id, url, hash}` shape as
+   tokenizer-map pointers). Validate, fetch `pointer.url`, verify hash,
+   return the inline descriptor.
+
+A client that received `safety_policy_hash` in `READY` MAY skip the
+mutable per-id path entirely and fetch
+`<origin>/.well-known/codec/policies/sha256/<hex>.json` directly — the
+hash already pins the bytes, so the mutable indirection is unnecessary.
+
+Resolution failures (404, hash mismatch, validation error) MUST surface
+as distinct error types so application code can fall back gracefully —
+e.g. abort the session if no acceptable policy is published.
 
 ---
 

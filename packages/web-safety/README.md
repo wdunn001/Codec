@@ -1,0 +1,150 @@
+# @codecai/web-safety
+
+> Optional client-side safety layer for the Codec binary transport.
+> Ships in v0.4 alongside [the safety-policy negotiation spec](../../spec/versions/v0.4.md#safety-policy-negotiation).
+> Sibling to [`@codecai/web`](../web); zero classifier weights of its
+> own.
+
+```sh
+npm install @codecai/web-safety
+```
+
+## What it gives you
+
+Two complementary layers, both framework-free (no React / Vue / Svelte
+dependency — host apps render their own UI using the gate's view-model):
+
+### Layer 1 — Prefilter (always-on, no network, no model load)
+
+Catches secrets, PII, and high-entropy strings in a user's input
+**before** it gets tokenized and sent over the wire. Doomed prompts
+never use uplink, never hit server inference budget, never need
+server-side moderation.
+
+- Vendor-anchored regex for AWS access keys, GitHub PATs, OpenAI /
+  Anthropic / Google API keys, Slack / Stripe tokens, SSH private key
+  headers, JWTs.
+- PII rules for email, US phone, SSN, Luhn-validated credit-card
+  candidates.
+- Generic high-entropy catch-all over base64-ish and hex-ish runs
+  (Shannon ≥ 4.0 bits, ≥ 24 chars).
+- Dedup so vendor keys aren't double-reported as both a regex hit and
+  a generic entropy hit.
+
+```ts
+import { SafetyGate } from "@codecai/web-safety";
+
+const gate = new SafetyGate({
+  audit: (e) => {
+    // categories + counts only, never values
+    if (e.kind === "blocked") console.info(`prefilter: ${e.categories}`);
+  },
+});
+
+const decision = gate.check("paste with AKIA1234567890ABCDEF in it");
+if (decision.kind === "blocked") {
+  // Host renders a redact / send-anyway / cancel dialog using
+  // decision.matches; user picks; gate.apply() returns send or cancel.
+  const action = await showHostModal(decision);
+  const result = gate.apply(decision, action);
+  if (result.kind === "cancel") return;
+  prompt = result.text;  // possibly redacted with [REDACTED:<rule>]
+}
+// ... tokenize and send via @codecai/web as usual
+```
+
+### Layer 3 — Browser-side classifier registry (opt-in)
+
+Modular `SafetyClassifier` interface mirroring the
+[`codec-supervisor` server registry](https://github.com/wdunn001/codec-supervisor)
+exactly — same shapes, same canonical-categories list, so policy
+descriptors talk about both sides without distinguishing host.
+
+Two shipped implementations:
+
+- **Prompt Guard 86M via Transformers.js** (tier 1, default) — ~80 MB
+  ONNX, CPU/WASM, no WebGPU dependency. Best for always-on
+  inbound-prompt classification.
+- **Llama Guard 3 1B via codec-web-llm** (tier 2, opt-in) — ~1 GB
+  WebGPU quant. Catches what Prompt Guard misses; same 14-category
+  Llama Guard taxonomy as the server-side classifier so policy
+  decisions are symmetric across mesh peers.
+
+```ts
+import { registerPromptGuard86m } from "@codecai/web-safety/classifiers/prompt-guard-86m";
+import { registerLlamaGuard31B } from "@codecai/web-safety/classifiers/llama-guard-3-1b";
+import { resolveClassifier } from "@codecai/web-safety";
+
+registerPromptGuard86m();
+registerLlamaGuard31B();  // opt-in
+
+const { classifier, downgraded } = await resolveClassifier("Llama-Guard-3-1B");
+// downgraded === true → registry fell back to Prompt Guard because
+// the device couldn't load Llama Guard (no WebGPU, insufficient memory).
+// Surface a "downgraded enforcement" badge in your UI.
+
+const result = await classifier.score({
+  form: "text",
+  payload: userMessage,
+});
+if (result.scores.jailbreak >= 0.5) {
+  // host policy decides: stop, redact, regenerate, flag
+}
+```
+
+## Architecture notes
+
+- **Framework-free.** No React/Vue/Svelte dependency. Hosts render
+  modals in their own component system using `SafetyGate`'s
+  `PrefilterDecision` view-model.
+- **Stable cross-stack contract.** A policy's `classifier.family`
+  string resolves to the same model on browser + server when both
+  ship the matching registry entry — so admin UIs can bind one
+  policy and have it enforced consistently across hosts.
+- **Audit hook receives only categories + counts.** Never log
+  matched values to telemetry; the audit callback intentionally
+  doesn't expose them.
+- **Per-pattern actions** match the
+  [`safety-policy.schema.json`](../../spec/safety-policy.schema.json)
+  contract: `stop` / `redact` / `regenerate` / `flag`. The browser
+  prefilter handles the first three actions itself; `flag` annotates
+  and continues.
+
+## Peer dependencies (optional)
+
+- [`@huggingface/transformers`](https://www.npmjs.com/package/@huggingface/transformers)
+  — only needed if you `registerPromptGuard86m()`. Without it, you can
+  still use the prefilter + the gate + the registry interface.
+- [`@mlc-ai/web-llm`](https://github.com/mlc-ai/web-llm) — only
+  needed if you `registerLlamaGuard31B()`. Same property.
+
+Both are declared as peer deps in `package.json` with
+`peerDependenciesMeta.optional: true` so consumers that don't use them
+never install them.
+
+## Tests
+
+```sh
+npm test
+```
+
+Currently 62 tests covering prefilter (vendor regexes, PII Luhn-gating,
+entropy-only confidence, dedup, redaction), gate state machine
+(check/apply transitions, audit events), registry (register/unregister/
+fallback semantics, capability detection), Prompt Guard 86M (label
+mapping for all variants), Llama Guard 3 1B (prompt builder + parser +
+classifier round-trip with stubbed generator). All run without
+network or model weights — generator injection is the default test
+pattern.
+
+## See also
+
+- [`spec/versions/v0.4.md`](../../spec/versions/v0.4.md) — the safety-
+  policy negotiation spec on the wire.
+- [`spec/safety-policy.schema.json`](../../spec/safety-policy.schema.json)
+  — the publishable descriptor format.
+- [`@codecai/web`](../web) — base tokenizer/detokenizer this package
+  pairs with.
+- [`codec-supervisor`](https://github.com/wdunn001/codec-supervisor) —
+  the server-side companion shipping the policy admin REST + the
+  matching `SafetyClassifier` Python registry.
