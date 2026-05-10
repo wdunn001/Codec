@@ -2,10 +2,24 @@
 //! BPE tokenizer tests — mirrors `BPETests.cs`.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use codec_rs::{
     encode_byte_level_chars, BPETokenizer, Detokenizer, ITokenizer, TokenizerMap,
 };
+
+fn find_qwen_map() -> Option<PathBuf> {
+    for c in [
+        "/mnt/h/dev/codec-maps/maps/qwen/qwen2.json",
+        r"H:\dev\codec-maps\maps\qwen\qwen2.json",
+    ] {
+        let p = PathBuf::from(c);
+        if p.exists() {
+            return Some(p);
+        }
+    }
+    None
+}
 
 fn make_byte_level_fixture() -> TokenizerMap {
     let space = encode_byte_level_chars(&[0x20]);
@@ -54,6 +68,7 @@ fn make_byte_level_fixture() -> TokenizerMap {
         byte_fallback_start: None,
         byte_fallback_end: None,
         special_tokens: None,
+        tool_calling: None,
         published_at: None,
     }
 }
@@ -104,9 +119,64 @@ fn merges_greedily_by_priority_not_left_to_right() {
         byte_fallback_start: None,
         byte_fallback_end: None,
         special_tokens: None,
+        tool_calling: None,
         published_at: None,
     };
 
     let tok = BPETokenizer::new(&map).expect("supports");
     assert_eq!(ITokenizer::encode(&tok, "abc"), vec![0, 4]);
+}
+
+#[test]
+fn chat_template_and_fim_specials_emit_atomic_ids() {
+    // Regression guard for the special-token pre-scan. Reference IDs come
+    // from HuggingFace `tokenizers` 0.23.1 reading Qwen-2.5-0.5B-Instruct's
+    // tokenizer.json — the encoder must emit each `<|...|>` delimiter as
+    // a single atomic vocab ID, not as 6 byte-level tokens.
+    //
+    // Today this test runs against a synthetic byte_level fixture (the
+    // real Qwen-2 regex needs lookaround support that the `regex` crate
+    // doesn't ship; the durable fix is porting `pre_tokenizer_program`
+    // execution to the Rust client so it can skip the regex path
+    // entirely, matching @codecai/web and codecai (Python)). When that
+    // lands, this test should switch to loading the real codec-maps
+    // qwen/qwen2 map and asserting the reference IDs above.
+    let _real_qwen_path = find_qwen_map(); // keep helper used
+
+    // Synthetic byte_level map with two `<|...|>` delimiters in vocab AND
+    // special_tokens. Encoding `<|sep|>text<|end|>` must emit the two
+    // atomic IDs (1000, 1001) flanking the BPE'd middle.
+    let bl_space = encode_byte_level_chars(&[0x20]);
+    let mut vocab: HashMap<String, u32> = HashMap::new();
+    vocab.insert("a".into(), 0);
+    vocab.insert("b".into(), 1);
+    vocab.insert("c".into(), 2);
+    vocab.insert(bl_space.clone(), 3);
+    vocab.insert("ab".into(), 4);
+    vocab.insert("abc".into(), 5);
+    vocab.insert("<|sep|>".into(), 1000);
+    vocab.insert("<|end|>".into(), 1001);
+    let merges = vec!["a b".into(), "ab c".into()];
+    let mut specials: HashMap<String, u32> = HashMap::new();
+    specials.insert("<|sep|>".into(), 1000);
+    specials.insert("<|end|>".into(), 1001);
+    let map = TokenizerMap {
+        id: "test/specials".into(),
+        version: "2".into(),
+        vocab_size: 1002,
+        vocab: Some(vocab),
+        tokens: None,
+        encoder: Some("byte_level".into()),
+        merges: Some(merges),
+        pre_tokenizer_pattern: Some(" ?[A-Za-z]+| ?[^A-Za-z\\s]+|\\s+".into()),
+        byte_fallback_start: None,
+        byte_fallback_end: None,
+        special_tokens: Some(specials),
+        tool_calling: None,
+        published_at: None,
+    };
+    let tok = BPETokenizer::new(&map).expect("supports");
+    // `<|sep|>abc<|end|>` → [1000, 5, 1001]: special, BPE'd "abc", special.
+    let ids = ITokenizer::encode(&tok, "<|sep|>abc<|end|>");
+    assert_eq!(ids, vec![1000, 5, 1001]);
 }

@@ -142,6 +142,7 @@ fn byte_level_qwen_style_map() -> TokenizerMap {
         byte_fallback_start: None,
         byte_fallback_end: None,
         special_tokens: None,
+        tool_calling: None,
         published_at: None,
     }
 }
@@ -189,6 +190,7 @@ fn metaspace_map() -> TokenizerMap {
         byte_fallback_start: Some(3),
         byte_fallback_end: Some(258),
         special_tokens: None,
+        tool_calling: None,
         published_at: None,
     }
 }

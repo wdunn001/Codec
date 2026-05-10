@@ -32,6 +32,7 @@ fn synth_map() -> TokenizerMap {
         byte_fallback_start: None,
         byte_fallback_end: None,
         special_tokens: Some(specials),
+        tool_calling: None,
         published_at: None,
     }
 }
@@ -139,6 +140,7 @@ fn never_decodes_operates_on_raw_ids() {
         byte_fallback_start: None,
         byte_fallback_end: None,
         special_tokens: Some(specials),
+        tool_calling: None,
         published_at: None,
     };
     let mut w = ToolWatcher::new(&no_vocab, "<tool_call>", "</tool_call>").unwrap();

@@ -50,6 +50,14 @@ pub struct BPETokenizer {
     /// Per-piece encode cache. Mutex-free RefCell — BPETokenizer is `!Sync`
     /// but `Send`. (Translator only needs `Send` and constructs its own.)
     cache: RefCell<HashMap<String, Vec<u32>>>,
+    /// Special-token scanner. Built from `map.special_tokens` plus any vocab
+    /// key in `<|body|>` shape with a non-empty identifier-like body. HF's
+    /// reference tokenizer splits input on registered specials BEFORE running
+    /// BPE — emit each match as the atomic vocab ID, BPE the surrounding
+    /// text. Required for chat templates (`<|im_start|>...<|im_end|>`),
+    /// tool-call delimiters, FIM markers, etc. to round-trip with HF.
+    special_ids: HashMap<String, u32>,
+    special_regex: Option<Regex>,
 }
 
 impl BPETokenizer {
@@ -99,6 +107,45 @@ impl BPETokenizer {
             None
         };
 
+        // Build the special-token scanner. Accept entries from
+        // `map.special_tokens` AND any vocab key in `<|body|>` shape
+        // with a non-empty identifier-like body — older maps shipped
+        // before a chat-template revision may carry the delimiters in
+        // `vocab` but not in `special_tokens`. Length-descending regex
+        // alternation order so longer delimiters match before shorter
+        // prefixes. Without this pre-scan, `<|im_start|>` would
+        // tokenise byte-by-byte instead of as the single atomic vocab
+        // ID (151644 for Qwen-2.5).
+        let mut special_ids: HashMap<String, u32> = HashMap::new();
+        if let Some(specials) = map.special_tokens.as_ref() {
+            for (name, id) in specials.iter() {
+                special_ids.insert(name.clone(), *id);
+            }
+        }
+        for (tok, id) in vocab.iter() {
+            if special_ids.contains_key(tok) {
+                continue;
+            }
+            if is_delimiter_shape(tok) {
+                special_ids.insert(tok.clone(), *id);
+            }
+        }
+        let special_regex = if special_ids.is_empty() {
+            None
+        } else {
+            let mut keys: Vec<&String> = special_ids.keys().collect();
+            keys.sort_by_key(|k| std::cmp::Reverse(k.len()));
+            let alt = keys
+                .iter()
+                .map(|k| regex::escape(k))
+                .collect::<Vec<_>>()
+                .join("|");
+            Some(
+                Regex::new(&alt)
+                    .map_err(|e| format!("BPETokenizer: bad special-token regex: {e}"))?,
+            )
+        };
+
         Ok(Self {
             id,
             vocab,
@@ -107,6 +154,8 @@ impl BPETokenizer {
             encoder,
             byte_fallback_start,
             cache: RefCell::new(HashMap::new()),
+            special_ids,
+            special_regex,
         })
     }
 
@@ -116,13 +165,37 @@ impl BPETokenizer {
             return Vec::new();
         }
 
+        if let Some(re) = self.special_regex.as_ref() {
+            let mut ids: Vec<u32> = Vec::new();
+            let mut cursor = 0usize;
+            for m in re.find_iter(text) {
+                if m.start() > cursor {
+                    self.encode_chunk(&text[cursor..m.start()], &mut ids);
+                }
+                ids.push(self.special_ids[m.as_str()]);
+                cursor = m.end();
+            }
+            if cursor < text.len() {
+                self.encode_chunk(&text[cursor..], &mut ids);
+            }
+            return ids;
+        }
+
+        let mut ids: Vec<u32> = Vec::new();
+        self.encode_chunk(text, &mut ids);
+        ids
+    }
+
+    /// BPE-encode a chunk of plain text into `out`.
+    fn encode_chunk(&self, text: &str, out: &mut Vec<u32>) {
+        if text.is_empty() {
+            return;
+        }
         let pieces = self.pre_tokenize(text);
-        let mut ids: Vec<u32> = Vec::with_capacity(pieces.len() * 2);
         for piece in pieces {
-            // Cache hit?
             if let Ok(cache) = self.cache.try_borrow() {
                 if let Some(cached) = cache.get(&piece) {
-                    ids.extend_from_slice(cached);
+                    out.extend_from_slice(cached);
                     continue;
                 }
             }
@@ -132,9 +205,8 @@ impl BPETokenizer {
             if let Ok(mut cache) = self.cache.try_borrow_mut() {
                 cache.insert(piece.clone(), piece_ids.clone());
             }
-            ids.extend_from_slice(&piece_ids);
+            out.extend_from_slice(&piece_ids);
         }
-        ids
     }
 
     // ── Pre-tokenization ────────────────────────────────────────────────────
@@ -272,6 +344,25 @@ fn collapse_spaces_and_tabs(s: &str) -> String {
         }
     }
     out
+}
+
+/// Match `<|body|>` where `body` is non-empty and identifier-like
+/// (letters/digits/`_`/`-`). Catches every shipped chat-template and
+/// tool-call delimiter while excluding pathological vocab BPE tokens
+/// like Falcon's `<|>` (id 61799) that share the start/end pair.
+fn is_delimiter_shape(tok: &str) -> bool {
+    if tok.len() <= 4 {
+        return false;
+    }
+    let bytes = tok.as_bytes();
+    if !(bytes.starts_with(b"<|") && bytes.ends_with(b"|>")) {
+        return false;
+    }
+    let body = &tok[2..tok.len() - 2];
+    !body.is_empty()
+        && body
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
 
 /// Split on whitespace, keeping each whitespace char as its own segment
