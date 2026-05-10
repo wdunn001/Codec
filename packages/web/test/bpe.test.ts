@@ -340,6 +340,14 @@ test(
     assert.deepEqual(tok.encode("isn't"), [276, 3023]);
     assert.deepEqual(tok.encode('1234567'), [7633, 19354, 22]);
     assert.deepEqual(tok.encode('XMLHttpRequest'), [13836, 4682, 2303]);
+    // Hello + Hello, world! — regression guard for the convert-tiktoken
+    // merge-derivation fix. Previously codec-maps' merge file used the
+    // "max-rank" split heuristic which picked unreachable splits like
+    // "Hel lo" for "Hello"; greedy BPE stopped at ["H","ello"] and
+    // emitted [39, 6053] instead of HF's [13225]. The new Karpathy-style
+    // greedy-BPE simulation produces reachable splits.
+    assert.deepEqual(tok.encode('Hello'), [13225]);
+    assert.deepEqual(tok.encode('Hello, world!'), [13225, 11, 2375, 0]);
   },
 );
 
