@@ -10,6 +10,73 @@ All numbers are real, captured this session — no projections, no
 
 ---
 
+## v0.4 release headline — 2026-05-11T00-12-00Z lab run
+
+Full cross-stack matrix in
+[`results/2026-05-11T00-12-00Z/MATRIX.md`](results/2026-05-11T00-12-00Z/MATRIX.md).
+**24 / 24 cells unanimous across all 6 client languages on every
+engine** (sglang, vllm, llama.cpp). Python row chosen as the canonical
+client for the headline; the other 5 languages produce byte-identical
+results per the cross-language equality matrix.
+
+### Wire reduction @ 2K tokens (vs JSON-SSE identity)
+
+| Engine | JSON-SSE | Codec msgpack + gzip | Codec msgpack + dict-zstd | Codec protobuf + gzip | Codec protobuf + dict-zstd |
+|---|---:|---:|---:|---:|---:|
+| **llama.cpp** | 529.2 KB | 16.1 KB | 28.5 KB | 16.1 KB | 19.3 KB |
+| | | **32.8×** | 18.6× | **32.9×** | 27.4× |
+| **sglang** | 485.2 KB | 354 b | 291 b | 311 b | 298 b |
+| | | **1,403×** | **1,707×** | **1,597×** | **1,667×** |
+| **vllm** | 517.8 KB | 3,874 b | 3,925 b | 3,985 b | 4,476 b |
+| | | **137×** | 135× | 133× | 119× |
+
+(Byte values < 1 KB carry the `b` (byte) suffix per the bench
+output's unit convention — reviewer feedback after the
+2026-05-09T17-09-35Z run flagged bare integers as ambiguous; the
+`b` suffix is now baked into `aggregate.py`'s `fmt_bytes`.)
+
+### Per-language tokenize / detokenize throughput (new in v0.4)
+
+Companion micro-bench over the
+[`golden/qwen2.json`](golden/qwen2.json) corpus (35 samples, 287
+tokens, 200 measured reps + 20 warmup). Wire bench measures bytes
+on the network; this measures CPU time inside each language's
+client lib.
+
+| Lang   | encode (tok/sec)        | decode (tok/sec)         |
+|--------|------------------------:|-------------------------:|
+| python | 1,845,208               | 775,654                  |
+| web    | 3,258,957               | 726,171                  |
+| dotnet | 3,319,838               | 2,179,195                |
+| rust   | **4,880,122**           | 7,103,785                |
+| java   | 1,291,461               | 2,313,304                |
+| c      | n/a (libcodec is decode-only) | **17,346,602**     |
+
+Per-cell median ms + p99 in
+[`results/2026-05-11T00-12-00Z/MATRIX.md`](results/2026-05-11T00-12-00Z/MATRIX.md)
+§X. Drivers under `packages/demo-*/token_bench.{py,ts,rs,cs,java,c}`,
+runner at `packages/bench/scripts/run-all-token-benches.sh`.
+
+### Delta vs v0.3.x previous run (`2026-05-09T17-09-35Z`)
+
+- sglang dict-zstd @ 2K tokens: 291 b vs prior 291 b — unchanged (sglang's
+  dict-zstd has been stable at this size across cuts).
+- vllm @ 2K: 3,874 b vs prior 3,874 b — unchanged.
+- llama.cpp @ 2K: 16.1 KB vs prior 16.1 KB — unchanged.
+- **New: per-language tokenize/detok cells** (§X above) — no prior
+  baseline; this run is the first.
+- **Cross-language equality**: 24/24 on every engine, same as prior
+  cuts. Reproduced after the codec-maps convert-tiktoken merge-fix
+  (regenerated o200k/cl100k/p50k/r50k/p50k_edit maps now greedy-BPE
+  byte-identical to HuggingFace).
+
+The v0.4 cut is **wire-additive over v0.3**: no field removals, no
+frame-type re-assignments, no closed-enum tightening. Diff audit in
+[`docs/PROTOCOL_VERSION_HISTORY.md`](../../docs/PROTOCOL_VERSION_HISTORY.md)
++ [`spec/versions/v0.4.md` § Versioning Policy](../../spec/versions/v0.4.md).
+
+---
+
 ## 1. Wire format A/B — sglang main vs PR #24483
 
 Same prompt, same model, 3 wire formats × 4 compression encodings.
