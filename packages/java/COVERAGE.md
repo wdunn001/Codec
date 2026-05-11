@@ -1,61 +1,61 @@
 # ai.codec:codec (Java) — coverage
 
-Last measured: 2026-05-11 (v0.4 release-cut). Quantitative number
-pending — see "How" below.
+Last measured: 2026-05-11 (v0.4 release-cut)
 
-## How (wiring needed)
+## How
 
-The pom doesn't yet declare `jacoco-maven-plugin`. Add to
-`packages/java/pom.xml`:
-
-```xml
-<plugin>
-    <groupId>org.jacoco</groupId>
-    <artifactId>jacoco-maven-plugin</artifactId>
-    <version>0.8.11</version>
-    <executions>
-        <execution><goals><goal>prepare-agent</goal></goals></execution>
-        <execution>
-            <id>report</id><phase>test</phase>
-            <goals><goal>report</goal></goals>
-        </execution>
-    </executions>
-</plugin>
-```
-
-Then:
+JaCoCo is wired in `pom.xml` (added 2026-05-11 for the v0.4 cut).
 
 ```
 cd packages/java
-mvn test  # report in target/site/jacoco/index.html
+mvn test                                    # runs jacoco:prepare-agent + report
+open target/site/jacoco/index.html
 ```
 
-The above wasn't wired for this cut. The build runs via Docker
-`maven:3.9-eclipse-temurin-17` (lab has no local Maven). Tracked as
-v0.5 follow-up; the test count is captured here as a floor.
-
-## Result (v0.4 baseline — test count as floor)
+If no local Maven, build via the lab's Docker maven:
 
 ```
-[INFO] Tests run: 60, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS
+ssh vinez@192.168.1.88
+docker run --rm -v <path>:/work -w /work maven:3.9-eclipse-temurin-17 \
+    mvn -q clean test jacoco:report
 ```
 
-| Test file                            | Tests |
-|--------------------------------------|------:|
-| `BPETokenizerTests.java`             |     5 |
-| `ByteLevelDetokenizerTests.java`     |     3 |
-| `DetokenizerTests.java`              |    10 |
-| `TokenizerMapTests.java`             |     5 |
-| `MapLoaderTests.java`                |     5 |
-| `ToolWatcherTests.java`              |     8 |
-| `TranslatorTests.java`               |     4 |
-| `StreamDecoderTests.java`            |     4 |
-| `SafetyPolicyTests.java`             |    16 | (new in v0.4)
+## Result (v0.4 baseline)
+
+```
+Lines:        60% (2,244 of 5,685 missed → 60% covered)
+Branches:     49% (409 of 813 missed → 49% covered)
+Instructions: 60%
+Methods:      ~68%
+60 tests passed
+```
+
+| Test file                     | Tests |
+|-------------------------------|------:|
+| `BPETokenizerTests`           |     5 |
+| `ByteLevelDetokenizerTests`   |     3 |
+| `DetokenizerTests`            |    10 |
+| `TokenizerMapTests`           |     5 |
+| `MapLoaderTests`              |     5 |
+| `ToolWatcherTests`            |     8 |
+| `TranslatorTests`             |     4 |
+| `StreamDecoderTests`          |     4 |
+| `SafetyPolicyTests`           |    16 |  (new in v0.4)
+
+## Intentionally uncovered
+
+- `MapLoader` HTTP-fetch paths — exercised by lab integration tests
+  against jsdelivr / well-known origins, not by `mvn test`.
+- Per-class detail still needs to be filed in the v0.5 follow-up (the
+  jacoco index gives line / branch / inst / method % per package but
+  not per-test-file breakdown).
 
 ## v0.5 follow-up
 
-- Wire `jacoco-maven-plugin`, capture % per package, fail-on-regression
-  in CI.
-- Add cross-vocab Translator tests parallel to .NET / Python / TS
-  (currently 4 Translator tests vs 10+ in other clients).
+- The 49% branch coverage is the gap to close — gate-flip behaviors
+  in `BPETokenizer` (lead_other / lead_space / lead_other+trailing_ci)
+  + cased-letter checkpoint backtracking in the new `letters_cased`
+  paths need fixtures that exercise each combination.
+- Cover `MapLoader` HTTP paths with `WireMock`-equivalent fixtures.
+- Wire CI to compute % per module + fail on regression vs the 60%
+  line baseline.

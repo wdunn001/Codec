@@ -33,9 +33,21 @@ option(CODEC_BUILD_STATIC  "Build static library"   ON)
 option(CODEC_BUILD_TESTS   "Build unit tests"       ${PROJECT_IS_TOP_LEVEL})
 option(CODEC_BUILD_EXAMPLES "Build examples"        ${PROJECT_IS_TOP_LEVEL})
 option(CODEC_INSTALL       "Generate install rules" ${PROJECT_IS_TOP_LEVEL})
+option(CODEC_COVERAGE      "Enable gcov/lcov coverage instrumentation" OFF)
 
 if(NOT CODEC_BUILD_SHARED AND NOT CODEC_BUILD_STATIC)
     message(FATAL_ERROR "At least one of CODEC_BUILD_SHARED / CODEC_BUILD_STATIC must be ON")
+endif()
+
+# Coverage flags — opt-in via `cmake -DCODEC_COVERAGE=ON`. Added 2026-05-11
+# for the v0.4 release cut.
+if(CODEC_COVERAGE)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(--coverage -O0 -g)
+        add_link_options(--coverage)
+    else()
+        message(WARNING "CODEC_COVERAGE=ON but compiler is not gcc/clang; ignoring")
+    endif()
 endif()
 
 # Compiler hardening / standards.

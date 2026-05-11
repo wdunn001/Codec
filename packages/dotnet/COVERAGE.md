@@ -1,56 +1,55 @@
 # Codec.Net — coverage
 
-Last measured: 2026-05-11 (v0.4 release-cut). Quantitative number
-pending — see "How" below.
+Last measured: 2026-05-11 (v0.4 release-cut)
 
-## How (wiring needed)
+## How
 
 ```
 cd packages/dotnet
-dotnet add test/Codec.Net.Tests package coverlet.collector  # one-time
 dotnet test --collect:"XPlat Code Coverage"
-# coverage report under test/Codec.Net.Tests/TestResults/*/coverage.cobertura.xml
+# coverage report under test/Codec.Net.Tests/TestResults/<guid>/coverage.cobertura.xml
 ```
 
-For human-readable output:
+Test project references `coverlet.collector` 6.0.4 (added 2026-05-11
+for the v0.4 cut). The `XPlat Code Coverage` collector is part of
+that package.
+
+For human-readable HTML output:
 
 ```
 dotnet tool install -g dotnet-reportgenerator-globaltool  # one-time
 reportgenerator -reports:**/coverage.cobertura.xml -targetdir:coveragereport
 ```
 
-The above wasn't fully wired for this cut — the test project doesn't
-yet reference `coverlet.collector`. `dotnet test --collect:"XPlat Code
-Coverage"` runs without error but emits no coverage file because
-the collector isn't loaded. Tracked as a v0.5 follow-up; the test
-count is captured here as a floor.
-
-## Result (v0.4 baseline — test count as floor)
+## Result (v0.4 baseline)
 
 ```
-Passed!  - Failed: 0, Passed: 48, Skipped: 4, Total: 52
+Line coverage:    75.40%
+Branch coverage:  63.25%
+48 passed, 4 skipped (cross-vocab Translator tests that need Llama-3 map)
 ```
 
-| Test file                            | Tests | Notes                                                  |
-|--------------------------------------|------:|--------------------------------------------------------|
-| `BPETests.cs`                        |     8 | chat-template specials, p50k, o200k, mistral-nemo     |
-| `DetokenizerTests.cs`                |     8 |                                                        |
-| `StreamDecoderTests.cs`              |     4 |                                                        |
-| `ToolWatcherTests.cs`                |     5 |                                                        |
-| `TranslatorTests.cs`                 |     3 |                                                        |
-| `SafetyPolicyTests.cs`               |    16 | new in v0.4 — descriptor parse, hash, load, discovery |
-| `MapLoaderTests.cs`                  |     4 |                                                        |
+Per-class (selected):
 
-(4 skipped are the cross-vocab fixtures that need a Llama-3 map
-present locally.)
+| Class                          | Line cov |
+|--------------------------------|---------:|
+| `SafetyPolicy.cs`              |     100% |  (new in v0.4 — descriptor + hash + load + discover paths) |
+| `Detokenizer.cs`               |     100% / 71.9% (two split classes — primary + helper) |
+| `BPETokenizer.cs`              |      84% |  (incl. new special-token pre-scan)                     |
+| `ByteEncoder.cs`               |      84% |  |
+| `LongestMatchTokenizer.cs`     |      75% |  |
+| `CodecFrame.cs`                |      75% / 0% (helpers not exercised) |
+| `MapLoader.cs`                 |       0% |  (HTTP-fetch paths not unit-tested) |
 
 ## Intentionally uncovered
 
+- `MapLoader.cs` HTTP-fetch paths are exercised only by integration
+  tests against jsdelivr / well-known origins, not by `dotnet test`.
 - 4 cross-vocab Translator tests skip without a Llama-3 map.
 
 ## v0.5 follow-up
 
-- Add `coverlet.collector` ProjectReference to the test csproj
-  so `dotnet test --collect:"XPlat Code Coverage"` actually emits
-  the Cobertura XML report.
-- Wire CI to compute % and fail on regression.
+- Wire `dotnet-reportgenerator-globaltool` into a CI step that emits
+  a top-level summary and gates on regression vs the 75.40% baseline.
+- Cover `MapLoader.cs` with a `WireMockServer`-style fixture so the
+  HTTP paths run in unit tests instead of needing live origins.
