@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "kind": "token_bench",
-  "captured_at": "2026-05-11T00:07:26Z",
+  "captured_at": "2026-05-11T00:29:16Z",
   "client": {
     "lang": "c",
     "lib_name": "libcodec",
@@ -23,9 +23,9 @@
   "warmup_reps": 20,
   "encode_ms_total_median": null,
   "encode_ms_total_p99": null,
-  "decode_ms_total_median": 0.011562,
-  "decode_ms_total_p99": 0.018796,
+  "decode_ms_total_median": 0.016545,
+  "decode_ms_total_p99": 0.020231,
   "encode_tokens_per_sec": null,
-  "decode_tokens_per_sec": 24822652.984738,
+  "decode_tokens_per_sec": 17346601.575405,
   "note": "libcodec is detokenize-only; encode_* are null pending C BPE encoder."
 }

@@ -1,12 +1,12 @@
 {
   "schema_version": "1",
   "kind": "token_bench",
-  "captured_at": "2026-05-11T00:07:14Z",
+  "captured_at": "2026-05-11T00:27:24Z",
   "client": {
     "lang": "dotnet",
     "lib_name": "Codec.Net",
     "lib_version": "0.2.0.0",
-    "runtime": ".NET 10.0.7"
+    "runtime": ".NET 8.0.26"
   },
   "map": {
     "id": "qwen/qwen2",
@@ -14,7 +14,7 @@
     "sha256": "sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad"
   },
   "corpus": {
-    "path": "packages/bench/golden/qwen2.json",
+    "path": "/home/vinez/codec-bench/Codec/packages/bench/golden/qwen2.json",
     "sha256": "sha256:80744e804d56436d398322b3ade8f5abb1dec6afc4c48b2298fc89cf664ab7f0",
     "samples": 35,
     "total_text_bytes": 929,
@@ -22,10 +22,10 @@
   },
   "reps": 200,
   "warmup_reps": 20,
-  "encode_ms_total_median": 0.0572,
-  "encode_ms_total_p99": 0.1496,
-  "decode_ms_total_median": 0.0827,
-  "decode_ms_total_p99": 2.2411,
-  "encode_tokens_per_sec": 5017482.517482517,
-  "decode_tokens_per_sec": 3470374.8488512696
+  "encode_ms_total_median": 0.08645,
+  "encode_ms_total_p99": 2.1459,
+  "decode_ms_total_median": 0.1317,
+  "decode_ms_total_p99": 0.226,
+  "encode_tokens_per_sec": 3319838.056680162,
+  "decode_tokens_per_sec": 2179195.1404707665
 }
