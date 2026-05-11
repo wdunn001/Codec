@@ -75,12 +75,9 @@ echo "--- web ---"
     --out "../../$OUTDIR/web.json" )
 
 # 3. .NET
-# Codec.Bench.csproj multi-targets net8.0 + net10.0 (lab has 8.0, dev
-# boxes typically have 10.0); pin the framework explicitly so
-# `dotnet run` doesn't bail out on multi-target ambiguity.
 echo
 echo "--- dotnet ---"
-PATH="$HOME/.dotnet:$PATH" dotnet run --project packages/demo-dotnet -c Release -f "${DOTNET_TFM:-net8.0}" --no-build -- \
+PATH="$HOME/.dotnet:$PATH" dotnet run --project packages/demo-dotnet -c Release --no-build -- \
     --methodology "$METHODOLOGY" \
     --sizes "${SIZES_ARR[@]}" --reps "$REPS" \
     --out "$OUTDIR/dotnet.json"

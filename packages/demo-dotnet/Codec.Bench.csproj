@@ -2,7 +2,13 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <!-- Lab boxes (where the matrix bench runs) currently ship .NET SDK 9.x
+         which can't evaluate a net10.0 target; the test project under
+         ../dotnet/test bumped to net10.0 for local dev parity is OK because
+         it's never built in the bench path. Pin this bin to net8.0 only —
+         dev boxes that don't have .NET 8 SDK should install it via
+         `dotnet-install --channel 8.0`. -->
+    <TargetFramework>net8.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
