@@ -1,142 +1,176 @@
 /**
- * @codecai/web-llm — local browser-side LLM as a Codec source.
+ * @codecai/web-llm — Codec-aware browser LLM runtime.
  *
- * Wraps `@mlc-ai/web-llm` (WebGPU inference in the browser) and emits
- * the same Codec msgpack frame stream that vLLM / sglang / llama.cpp
- * containers produce over HTTP. From the consumer's perspective, a
- * local web-llm engine and a remote Codec-aware HTTP server look
- * byte-identical on the wire: the same `@codecai/web` `decodeMsgpackStream`
- * consumes from both.
+ * Wraps the patched `wdunn001/web-llm` fork
+ * (`github:wdunn001/web-llm#feat/codec-binary-transport`) and exposes
+ * its `stream_format: "raw"` mode as the ergonomic
+ * `engine.streamFrames(prompt, onFrame)` API. The host does **no**
+ * tokenization or detokenization on the wire path:
  *
- * Where this matters: in Unstable Legion (peer-to-peer browser mesh),
- * one peer's local LLM is the "server" for another peer's request.
- * Routing the response back over a WebRTC data channel as Codec frames
- * keeps bandwidth-critical paths binary — a 500-token completion is
- * ~5 KB of Codec msgpack vs ~75 KB of JSON-SSE text. Codec frames are
- * already what `@codecai/web` decodes; nothing else has to change to
- * carry them over RTC.
+ *   - The MLC engine's generate loop samples token IDs from logits.
+ *   - The patched fork yields those IDs in `CodecFrame` objects
+ *     instead of running them through the model's detokenizer first.
+ *   - This wrapper passes the frames through verbatim — the consumer
+ *     ships them via WebRTC / HTTP / BroadcastChannel / whatever.
+ *
+ * Consumers that need UTF-8 (for display) detokenize at their own
+ * edge using `@codecai/web`'s `Detokenizer` + the appropriate
+ * tokenizer map fetched from `.well-known/codec/`. The wire never
+ * carries text.
  *
  * ## Usage
  *
  *   import { CreateMLCEngine } from "@mlc-ai/web-llm";
  *   import { wrapEngine } from "@codecai/web-llm";
- *   import { decodeMsgpackStream } from "@codecai/web";
  *
  *   const engine = await CreateMLCEngine("Qwen2.5-0.5B-Instruct-q4f16_1-MLC");
- *   const codecEngine = wrapEngine(engine, { mapId: "qwen/qwen2" });
+ *   const codec = wrapEngine(engine, { mapId: "qwen/qwen2" });
  *
- *   // Same shape `decodeMsgpackStream` consumes from an HTTP body.
- *   const stream = codecEngine.completionsStream({
- *     prompt: "Explain entropy.",
- *     max_tokens: 256,
+ *   // Frame-by-frame consumption (typical):
+ *   await codec.streamFrames("Explain entropy.", (frame) => {
+ *     peer.sendFrame(frame);            // ship over WebRTC, raw IDs
+ *     localDetok.render(frame.ids);     // edge-detokenize for self-display
  *   });
- *   for await (const frame of decodeMsgpackStream(stream)) {
- *     // frame.ids: number[], frame.done: boolean, frame.finish_reason?: string
- *   }
  *
- * Or in raw frame-emitter mode (no ReadableStream wrapper):
+ *   // Or, for HTTP-style consumers, a ReadableStream<Uint8Array>:
+ *   const body = codec.completionsStream({ prompt: "Explain entropy." });
+ *   for await (const frame of decodeMsgpackStream(body)) { ... }
  *
- *   for await (const frame of codecEngine.frames({ prompt, max_tokens })) {
- *     // frame is a CodecMsgpackFrame
- *   }
+ * ## Why peer-dep on a specific fork
  *
- * ## Tokenizer parity
- *
- * The Codec frame contains raw token IDs from the model's tokenizer.
- * Receivers detokenize via `@codecai/web`'s `Detokenizer` against the
- * matching codec-maps entry. The `mapId` passed at wrap time MUST
- * correspond to the actual tokenizer the loaded web-llm model uses —
- * mismatches produce wrong-tokenization output. `@codecai/web-llm`
- * doesn't auto-discover the map (it's a small library, not a smart
- * one); the caller chooses.
+ * Upstream `@mlc-ai/web-llm` 0.2.x's `chat.completions.create` only
+ * exposes detokenized text deltas — the generate loop calls
+ * `engine.tokenizer.decode(token_id)` per step and the IDs are lost.
+ * The patched fork adds `stream_format: "raw" | "msgpack"` which
+ * bypasses that decode, yielding the IDs directly. Until upstream
+ * merges that patch, `@codecai/web-llm` pins the fork as its
+ * dependency rather than the upstream package.
  */
 import { encode as msgpackEncode } from '@msgpack/msgpack';
+import type { CodecFrame, MLCEngine } from '@mlc-ai/web-llm';
 
-// Structural type — we don't import `@mlc-ai/web-llm` at build time
-// because it's a runtime-only peer dep. Consumers pass in the engine
-// they already constructed.
-export interface MlcEngineLike {
+// Re-export the wire frame type so consumers don't need to import it
+// from @mlc-ai/web-llm themselves. (It originates in the patched fork.)
+export type { CodecFrame };
+
+/**
+ * Structural type for an MLC engine that supports `stream_format: "raw"`.
+ * Matches the patched wdunn001/web-llm fork's `MLCEngine.chat.completions`
+ * shape. Captured as an interface so the wrapper doesn't depend on the
+ * fork's exact runtime type at consumer-build time.
+ */
+export interface CodecCapableEngine {
   chat: {
     completions: {
       create(req: {
         messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
         stream: true;
+        stream_format?: 'raw' | 'msgpack';
         max_tokens?: number;
         temperature?: number;
         top_p?: number;
         stop?: string | string[];
-      }): Promise<AsyncIterable<{
-        choices: { delta: { content?: string }; finish_reason?: string | null }[];
-      }>>;
+      }): Promise<AsyncIterable<CodecFrame | Uint8Array>>;
     };
-  };
-  /** Optional: the engine's tokenizer if exposed. Some MLC builds export this. */
-  getTokenizer?(): {
-    encode(text: string): number[] | { tokenIds: number[] };
   };
 }
 
 export interface WrapEngineOptions {
   /**
    * Tokenizer-map id this engine's model uses (e.g. `"qwen/qwen2"`).
-   * Receivers load the matching map from codec-maps for detokenization.
+   * Metadata only — the wrapper does NOT use it to tokenize anything.
+   * Consumers downstream (other peers, this peer's own UI) load the
+   * matching map for edge detokenization.
    */
   mapId: string;
   /**
-   * Optional fallback tokenizer when the underlying engine doesn't
-   * expose `getTokenizer()`. Required for browser builds of web-llm
-   * that don't surface the tokenizer; usually a `BPETokenizer` from
-   * `@codecai/web` constructed against the same map id.
+   * Default max tokens for `streamFrames` / `completionsStream` when the
+   * caller doesn't pass one. Optional; underlying engine has its own default.
    */
-  tokenize?: (text: string) => number[];
+  defaultMaxTokens?: number;
 }
 
 export interface CompletionsRequest {
   prompt: string;
+  /** Optional system prompt prepended to the chat-completions messages. */
+  system?: string;
   max_tokens?: number;
   temperature?: number;
   top_p?: number;
   stop?: string | string[];
-  /** Optional system prompt prepended to the chat-completions messages. */
-  system?: string;
-}
-
-export interface CodecFrame {
-  ids: number[];
-  done: boolean;
-  finish_reason?: string;
 }
 
 export interface CodecEngine {
+  /** The mapId passed at wrap time — informational, surfaced for receivers. */
+  readonly mapId: string;
   /**
-   * AsyncIterable of Codec frames. Lower-level than `completionsStream`.
-   * Each frame holds the token IDs produced by the underlying engine
-   * for one chunk; the terminal frame has `done: true` and a
-   * `finish_reason`.
+   * Stream raw `CodecFrame` objects from the engine. The callback fires
+   * once per frame as the engine emits them — exactly what
+   * `stream_format: "raw"` produces. Terminal frame has `done: true`.
+   */
+  streamFrames(
+    req: CompletionsRequest,
+    onFrame: (frame: CodecFrame) => void,
+  ): Promise<void>;
+  /**
+   * Same content, but exposed as `AsyncGenerator<CodecFrame>` for
+   * pull-style consumption.
    */
   frames(req: CompletionsRequest): AsyncGenerator<CodecFrame, void, void>;
-
   /**
-   * `ReadableStream<Uint8Array>` of Codec msgpack-encoded frames,
-   * length-prefix-less (each chunk is one frame's bytes). Drop-in for
-   * `decodeMsgpackStream` from `@codecai/web` — the wire format is
-   * the same one an HTTP-served vLLM emits.
+   * `ReadableStream<Uint8Array>` of msgpack-encoded frames — drop-in for
+   * `@codecai/web`'s `decodeMsgpackStream`. Same bytes an HTTP-served
+   * Codec server emits, so a consumer reading from this stream is
+   * byte-identical to one reading from a remote engine.
    */
   completionsStream(req: CompletionsRequest): ReadableStream<Uint8Array>;
 }
 
-export function wrapEngine(engine: MlcEngineLike, opts: WrapEngineOptions): CodecEngine {
-  const tokenize = pickTokenizer(engine, opts);
+export function wrapEngine(
+  engine: MLCEngine | CodecCapableEngine,
+  opts: WrapEngineOptions,
+): CodecEngine {
+  const eng = engine as CodecCapableEngine;
+
+  async function* run(
+    req: CompletionsRequest,
+  ): AsyncGenerator<CodecFrame, void, void> {
+    const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [];
+    if (req.system) messages.push({ role: 'system', content: req.system });
+    messages.push({ role: 'user', content: req.prompt });
+
+    const stream = await eng.chat.completions.create({
+      messages,
+      stream: true,
+      stream_format: 'raw',
+      max_tokens: req.max_tokens ?? opts.defaultMaxTokens,
+      temperature: req.temperature,
+      top_p: req.top_p,
+      stop: req.stop,
+    });
+
+    for await (const item of stream) {
+      // With stream_format:"raw" the fork yields CodecFrame objects.
+      // The Uint8Array branch is for "msgpack" mode which we don't use
+      // here (we want object form so the wrapper can choose encoding).
+      if (item instanceof Uint8Array) continue;
+      yield item;
+    }
+  }
 
   return {
+    mapId: opts.mapId,
+    async streamFrames(req, onFrame) {
+      for await (const frame of run(req)) onFrame(frame);
+    },
     frames(req) {
-      return mlcChunksToFrames(engine, req, tokenize);
+      return run(req);
     },
     completionsStream(req) {
-      const generator = mlcChunksToFrames(engine, req, tokenize);
+      const gen = run(req);
       return new ReadableStream<Uint8Array>({
         async pull(controller) {
-          const { value, done } = await generator.next();
+          const { value, done } = await gen.next();
           if (done) {
             controller.close();
             return;
@@ -144,78 +178,9 @@ export function wrapEngine(engine: MlcEngineLike, opts: WrapEngineOptions): Code
           controller.enqueue(msgpackEncode(value));
         },
         async cancel() {
-          await generator.return();
+          await gen.return();
         },
       });
     },
   };
-}
-
-async function* mlcChunksToFrames(
-  engine: MlcEngineLike,
-  req: CompletionsRequest,
-  tokenize: (text: string) => number[],
-): AsyncGenerator<CodecFrame, void, void> {
-  const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [];
-  if (req.system) messages.push({ role: 'system', content: req.system });
-  messages.push({ role: 'user', content: req.prompt });
-
-  const stream = await engine.chat.completions.create({
-    messages,
-    stream: true,
-    max_tokens: req.max_tokens,
-    temperature: req.temperature,
-    top_p: req.top_p,
-    stop: req.stop,
-  });
-
-  let lastFinishReason: string | undefined;
-  let totalEmitted = 0;
-
-  for await (const chunk of stream) {
-    const choice = chunk.choices?.[0];
-    if (!choice) continue;
-    const delta = choice.delta?.content ?? '';
-    if (delta.length > 0) {
-      const ids = tokenize(delta);
-      if (ids.length > 0) {
-        totalEmitted += ids.length;
-        yield { ids, done: false };
-      }
-    }
-    if (choice.finish_reason) {
-      lastFinishReason = choice.finish_reason;
-    }
-  }
-
-  // Terminal frame — empty ids, done: true, finish_reason from upstream.
-  yield {
-    ids: [],
-    done: true,
-    ...(lastFinishReason !== undefined ? { finish_reason: lastFinishReason } : {}),
-  };
-
-  // The void return prevents TS from inferring `void` as a yielded type.
-  void totalEmitted;
-}
-
-function pickTokenizer(
-  engine: MlcEngineLike,
-  opts: WrapEngineOptions,
-): (text: string) => number[] {
-  if (opts.tokenize) return opts.tokenize;
-  if (engine.getTokenizer) {
-    const tok = engine.getTokenizer();
-    return (text) => {
-      const out = tok.encode(text);
-      if (Array.isArray(out)) return out;
-      return out.tokenIds;
-    };
-  }
-  throw new Error(
-    `@codecai/web-llm: no tokenizer available. ` +
-      `Either the underlying engine must expose getTokenizer() ` +
-      `or you must pass opts.tokenize (typically a @codecai/web BPETokenizer ` +
-      `bound to map id "${opts.mapId}").`,
-  );
 }
