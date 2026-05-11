@@ -16,20 +16,56 @@ dependency — host apps render their own UI using the gate's view-model):
 
 ### Layer 1 — Prefilter (always-on, no network, no model load)
 
-Catches secrets, PII, and high-entropy strings in a user's input
-**before** it gets tokenized and sent over the wire. Doomed prompts
+Catches secrets, PII, jailbreak templates, destructive-command literals,
+high-entropy strings, and any host-supplied blocked patterns in a user's
+input **before** it gets tokenized and sent over the wire. Doomed prompts
 never use uplink, never hit server inference budget, never need
 server-side moderation.
 
-- Vendor-anchored regex for AWS access keys, GitHub PATs, OpenAI /
-  Anthropic / Google API keys, Slack / Stripe tokens, SSH private key
-  headers, JWTs.
-- PII rules for email, US phone, SSN, Luhn-validated credit-card
+Five categories:
+
+- **`secrets`** — vendor-anchored regex for AWS access keys, GitHub PATs,
+  OpenAI / Anthropic / Google API keys, Slack / Stripe tokens, SSH
+  private key headers, JWTs.
+- **`pii`** — email, US phone, SSN, Luhn-validated credit-card
   candidates.
-- Generic high-entropy catch-all over base64-ish and hex-ish runs
-  (Shannon ≥ 4.0 bits, ≥ 24 chars).
-- Dedup so vendor keys aren't double-reported as both a regex hit and
-  a generic entropy hit.
+- **`high_entropy`** — generic catch-all over base64-ish and hex-ish runs
+  (Shannon ≥ 4.0 bits, ≥ 24 chars). Catches API keys of unknown vendors.
+- **`dangerous_action`** — obvious bad asks: jailbreak templates
+  (`ignore previous instructions`, DAN-mode, "pretend to be
+  unrestricted"), malware-authoring asks
+  (`write working ransomware...`), exploit-authoring asks
+  (`generate a 0-day exploit for...`), destructive command literals
+  (`rm -rf /`, `dd if=/dev/zero of=/dev/sda`, `DROP TABLE prod`).
+  These are deliberately conservative regex — the semantic
+  classifiers in `classifiers/` (Prompt Guard 86M / Llama Guard 3
+  1B) catch the nuanced cases. The point of regex-level
+  enforcement here is to stop *cleanly-stated* doomed asks in the
+  prefilter, before they consume wire, server inference budget, or
+  classifier-tier compute.
+- **`blocked_action`** — host-supplied patterns. Empty by default; the
+  host application (`leet`, `codec-website`, etc.) passes
+  `blockedActionPatterns: [{ rule, pattern, confidence? }]` to
+  enforce deployment-specific gates (internal hostnames,
+  `--privileged`, "no `rm -rf` against `/prod`", regulator-mandated
+  refusals). Patterns live in the host's code, not in this package.
+
+Plus dedup so vendor keys aren't double-reported as both a regex hit
+and a generic entropy hit.
+
+> **The prefilter rules are public by design.** They ship in this
+> npm package's source — visible via `npm view @codecai/web-safety`
+> or by reading `src/prefilter.ts`. That's the *opposite* boundary
+> from the [server-side policy disclosure
+> contract](https://github.com/wdunn001/Codec/blob/main/spec/versions/v0.4.md#safety-policy-negotiation):
+> operator-internal banned-token-ID lists, classifier thresholds,
+> and multi-token patterns live in `codec-supervisor/policies_dir/`
+> and *never* cross the wire. The published policy descriptor at
+> `.well-known/codec/policies/<id>.json` lists only categories +
+> action types + classifier family + summary counts. Server-side
+> private; client-side public. Complementary, not duplicating —
+> see the top-of-file comment in `src/prefilter.ts` for the full
+> layer-mapping.
 
 ```ts
 import { SafetyGate } from "@codecai/web-safety";
