@@ -1,6 +1,6 @@
 {
   "name": "@codecai/maps-cli",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Generate Codec tokenizer dialect maps from HuggingFace tokenizer.json files. The 'tsc --declaration' for LLM token vocabularies.",
   "license": "MIT",
   "type": "module",

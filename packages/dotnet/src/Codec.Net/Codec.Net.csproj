@@ -12,7 +12,7 @@
     <PackageId>Codec.Net</PackageId>
     <AssemblyName>Codec.Net</AssemblyName>
     <RootNamespace>Codec</RootNamespace>
-    <Version>0.2.0</Version>
+    <Version>0.4.0</Version>
     <Authors>wdunn001 and contributors</Authors>
     <Description>Isomorphic tokenizer + detokenizer for the Codec binary transport protocol. Decodes streaming token IDs from Codec-compliant servers (vLLM, SGLang) and encodes text into IDs for the bidirectional path.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
