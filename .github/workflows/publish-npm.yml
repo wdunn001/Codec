@@ -1,13 +1,13 @@
-# Publish the three npm packages on a v* tag, or manually from the
-# Actions tab. Manual dispatch lets you republish a specific package
-# without re-tagging the whole repo.
+# Publish the npm packages on a v* tag, or manually from the Actions
+# tab. Manual dispatch lets you republish a specific package without
+# re-tagging the whole repo.
 #
 # Required secret: `NPM_TOKEN` (Automation token from
 # https://www.npmjs.com/settings/<user>/tokens — "Automation" type,
 # scoped to the @codecai org if possible).
 #
 # Each package publishes one at a time so a failure halts the cascade
-# rather than partially publishing the trio.
+# rather than partially publishing the set.
 
 name: publish-npm
 
@@ -21,7 +21,7 @@ on:
         required: true
         default: "all"
         type: choice
-        options: [all, web, web-safety, maps-cli]
+        options: [all, web, web-safety, web-llm, maps-cli]
 
 permissions:
   contents: read
@@ -68,6 +68,21 @@ jobs:
       - name: Publish @codecai/web-safety
         if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web-safety' }}
         run: npm publish --access public -w @codecai/web-safety
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ── @codecai/web-llm ───────────────────────────────────────────
+      - name: Build @codecai/web-llm
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web-llm' }}
+        run: npm run -w @codecai/web-llm build
+
+      - name: Test @codecai/web-llm
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web-llm' }}
+        run: npm test -w @codecai/web-llm
+
+      - name: Publish @codecai/web-llm
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web-llm' }}
+        run: npm publish --access public -w @codecai/web-llm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

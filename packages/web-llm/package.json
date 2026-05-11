@@ -1,0 +1,46 @@
+{
+  "name": "@codecai/web-llm",
+  "version": "0.4.0",
+  "description": "Make a local browser-side LLM look like a Codec server. Wraps @mlc-ai/web-llm (WebGPU inference) and emits the same Codec msgpack frame stream that vLLM / sglang / llama.cpp containers produce over HTTP. Same `@codecai/web` decoder works against it byte-identically.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs"
+    }
+  },
+  "files": ["dist/", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs && npm run build:types",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json && node -e \"require('fs').readdirSync('dist/cjs').filter(f=>f.endsWith('.js')).forEach(f=>require('fs').renameSync('dist/cjs/'+f,'dist/cjs/'+f.replace(/\\.js$/,'.cjs')))\"",
+    "build:types": "tsc -p tsconfig.types.json",
+    "test": "node --test --import tsx test/*.test.ts",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "@codecai/web": "^0.4.0",
+    "@msgpack/msgpack": "^3.0.0"
+  },
+  "peerDependencies": {
+    "@mlc-ai/web-llm": "^0.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@mlc-ai/web-llm": { "optional": false }
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wdunn001/Codec.git",
+    "directory": "packages/web-llm"
+  },
+  "keywords": ["codec", "web-llm", "browser-llm", "mlc", "webgpu", "p2p"]
+}
