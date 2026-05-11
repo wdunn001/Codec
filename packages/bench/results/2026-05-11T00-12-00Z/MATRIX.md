@@ -22,15 +22,7 @@ For every Codec cell (size × {msgpack,protobuf} × encoding), how many byte-ide
 
 ### sglang
 
-- **17 / 24 cells unanimous** across 6 clients (C, .NET, Java, Python, Rust, TS/Node)
-- Mismatched cells:
-  - size=512 msgpack+br: c=9234, dotnet=9013, java=9013, python=9013, rust=9013, web=9013
-  - size=512 msgpack+gzip: c=573, dotnet=730, java=730, python=730, rust=730, web=730
-  - size=512 msgpack+identity: c=7636, dotnet=7616, java=7616, python=7616, rust=7616, web=7616
-  - size=512 msgpack+zstd: c=574, dotnet=781, java=781, python=781, rust=781, web=781
-  - size=512 protobuf+br: c=5897, dotnet=7150, java=7150, python=7150, rust=7150, web=7150
-  - size=512 protobuf+gzip: c=687, dotnet=723, java=723, python=723, rust=723, web=723
-  - size=512 protobuf+identity: c=5153, dotnet=5136, java=5136, python=5136, rust=5136, web=5136
+- **24 / 24 cells unanimous** across 6 clients (C, .NET, Java, Python, Rust, TS/Node)
 
 ### vllm
 
@@ -117,18 +109,18 @@ Bodies and headers tend to arrive in the same TCP segment for non-buffered encod
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
-| 64 | identity | 41.1 | 43.1 |
-| 64 | gzip | 45.2 | 35.7 |
-| 64 | br | 45.7 | 35.9 |
-| 64 | zstd | 153 | 34.8 |
-| 512 | identity | 44.9 | 35.9 |
-| 512 | gzip | 49.9 | 39.6 |
-| 512 | br | 45.8 | 36.2 |
-| 512 | zstd | 954 | 36.3 |
-| 2048 | identity | 44.3 | 36.2 |
-| 2048 | gzip | 45.6 | 36.4 |
-| 2048 | br | 42.1 | 36.5 |
-| 2048 | zstd | 3932 | 42.7 |
+| 64 | identity | 45.0 | 36.2 |
+| 64 | gzip | 45.3 | 38.3 |
+| 64 | br | 43.6 | 36.3 |
+| 64 | zstd | 154 | 35.2 |
+| 512 | identity | 47.4 | 35.8 |
+| 512 | gzip | 45.5 | 35.9 |
+| 512 | br | 44.2 | 40.7 |
+| 512 | zstd | 952 | 36.3 |
+| 2048 | identity | 45.1 | 36.8 |
+| 2048 | gzip | 46.1 | 36.3 |
+| 2048 | br | 46.1 | 41.4 |
+| 2048 | zstd | 3923 | 36.6 |
 
 ### vllm — msgpack TTFB (median ms across reps)
 
