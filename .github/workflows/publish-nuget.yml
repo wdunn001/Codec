@@ -1,0 +1,44 @@
+# Publish `Codec.Net` to NuGet on a v* tag, or manually from the
+# Actions tab.
+#
+# Required secret: `NUGET_API_KEY` (from https://www.nuget.org/account/apikeys
+# — scope: Push, glob `Codec.Net`).
+
+name: publish-nuget
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/dotnet
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore + build + test
+        run: |
+          dotnet restore
+          dotnet build -c Release --no-restore
+          dotnet test -c Release --no-build --verbosity normal
+
+      - name: Pack
+        run: dotnet pack src/Codec.Net/Codec.Net.csproj -c Release -o ./nupkgs
+
+      - name: Push to NuGet
+        run: |
+          dotnet nuget push ./nupkgs/*.nupkg \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --skip-duplicate

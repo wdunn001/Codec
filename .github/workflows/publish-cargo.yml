@@ -1,0 +1,43 @@
+# Publish `codec-rs` to crates.io on a v* tag, or manually from the
+# Actions tab.
+#
+# Required secret: `CARGO_REGISTRY_TOKEN` (from
+# https://crates.io/settings/tokens — scope: publish-update,
+# publish-new). Must be a token attached to a crates.io account that's
+# a co-owner of `codec-rs` (run `cargo owner --add <user> codec-rs` to
+# add).
+
+name: publish-cargo
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/rust
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install rustup toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo test
+        run: cargo test --all-features
+
+      - name: Cargo publish (dry-run first)
+        run: cargo publish --dry-run --allow-dirty
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Cargo publish
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

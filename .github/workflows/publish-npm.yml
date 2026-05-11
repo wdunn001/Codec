@@ -1,0 +1,87 @@
+# Publish the three npm packages on a v* tag, or manually from the
+# Actions tab. Manual dispatch lets you republish a specific package
+# without re-tagging the whole repo.
+#
+# Required secret: `NPM_TOKEN` (Automation token from
+# https://www.npmjs.com/settings/<user>/tokens — "Automation" type,
+# scoped to the @codecai org if possible).
+#
+# Each package publishes one at a time so a failure halts the cascade
+# rather than partially publishing the trio.
+
+name: publish-npm
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Which package to publish (or 'all')"
+        required: true
+        default: "all"
+        type: choice
+        options: [all, web, web-safety, maps-cli]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          scope: "@codecai"
+
+      - name: Install (workspace-aware)
+        run: npm ci --workspaces --include-workspace-root || npm install
+
+      # ── @codecai/web ────────────────────────────────────────────────
+      - name: Build @codecai/web
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web' }}
+        run: npm run -w @codecai/web build
+
+      - name: Test @codecai/web
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web' }}
+        run: npm test -w @codecai/web
+
+      - name: Publish @codecai/web
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web' }}
+        run: npm publish --access public -w @codecai/web
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ── @codecai/web-safety ────────────────────────────────────────
+      - name: Build @codecai/web-safety
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web-safety' }}
+        run: npm run -w @codecai/web-safety build
+
+      - name: Test @codecai/web-safety
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web-safety' }}
+        run: npm test -w @codecai/web-safety
+
+      - name: Publish @codecai/web-safety
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web-safety' }}
+        run: npm publish --access public -w @codecai/web-safety
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ── @codecai/maps-cli ──────────────────────────────────────────
+      - name: Build @codecai/maps-cli
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'maps-cli' }}
+        run: npm run -w @codecai/maps-cli build
+
+      - name: Test @codecai/maps-cli
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'maps-cli' }}
+        run: npm test -w @codecai/maps-cli
+
+      - name: Publish @codecai/maps-cli
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'maps-cli' }}
+        run: npm publish --access public -w @codecai/maps-cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
