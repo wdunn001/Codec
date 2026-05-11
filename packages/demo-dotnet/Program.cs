@@ -527,6 +527,11 @@ internal static class Program
 
     public static async Task<int> Main(string[] argv)
     {
+        // Token-bench subcommand: dispatch before normal arg parsing so
+        // the token-bench has its own --map / --corpus / --reps flags.
+        if (argv.Length > 0 && argv[0] == "token-bench")
+            return TokenBench.Run(argv.Skip(1).ToArray());
+
         var args = ParseArgs(argv);
 
         // Dispatch: if --methodology is given, run the SCHEMA-v1 matrix

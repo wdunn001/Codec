@@ -62,13 +62,17 @@ def latest_run_id() -> str:
 
 
 def load_results(run_id: str) -> dict[str, dict[str, dict]]:
-    """{engine: {lang: result_doc}}"""
+    """{engine: {lang: result_doc}}.
+
+    The `token/` subdirectory (per-language tokenize/detokenize micro-bench)
+    is loaded by `load_token_results` instead — it's not engine-keyed.
+    """
     out: dict[str, dict[str, dict]] = {}
     base = RESULTS_DIR / run_id
     if not base.exists():
         sys.exit(f"run dir not found: {base}")
     for engine_dir in sorted(base.iterdir()):
-        if not engine_dir.is_dir():
+        if not engine_dir.is_dir() or engine_dir.name == "token":
             continue
         engine = engine_dir.name
         out[engine] = {}
@@ -86,18 +90,50 @@ def load_results(run_id: str) -> dict[str, dict[str, dict]]:
     return out
 
 
+def load_token_results(run_id: str) -> dict[str, dict]:
+    """Load per-language tokenize/detokenize micro-bench results from
+    `results/<run_id>/token/<lang>.json`. Returns {lang: doc}. Empty
+    dict when the directory or files are missing (the matrix builds
+    fine without token-bench data).
+    """
+    out: dict[str, dict] = {}
+    base = RESULTS_DIR / run_id / "token"
+    if not base.exists():
+        return out
+    for json_file in sorted(base.glob("*.json")):
+        lang = json_file.stem
+        try:
+            doc = json.loads(json_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            print(f"  WARN: {json_file} not valid JSON: {e}", file=sys.stderr)
+            continue
+        if doc.get("kind") != "token_bench":
+            print(f"  WARN: {json_file} not kind=token_bench", file=sys.stderr)
+            continue
+        out[lang] = doc
+    return out
+
+
 def cell_index(rows: list[dict]) -> dict[tuple, dict]:
     """Index rows by (size, format, encoding)."""
     return {(r["size"], r["format"], r["encoding"]): r for r in rows}
 
 
 def fmt_bytes(n: int | None) -> str:
+    """Render a byte count for the matrix tables.
+
+    Adds an explicit `b` (byte) suffix to bare numeric values so reviewers
+    don't have to guess the unit — reviewer feedback after the
+    2026-05-09T17-09-35Z run flagged the unsuffixed integers as confusing.
+    Sizes ≥ 1 KB keep the existing `KB`/`MB` rendering (and inherit the
+    same byte semantics from the K/M prefix).
+    """
     if n is None:
         return "—"
     if n < 1024:
-        return str(n)
+        return f"{n} b"
     if n < 10_000:
-        return f"{n:,}"
+        return f"{n:,} b"
     if n < 1_000_000:
         return f"{n / 1024:.1f} KB"
     return f"{n / 1_048_576:.2f} MB"
@@ -335,6 +371,83 @@ def quarantine_section(results: dict[str, dict[str, dict]]) -> list[str]:
     return out
 
 
+def token_bench_section(token_results: dict[str, dict]) -> list[str]:
+    """Render per-language tokenize/detokenize micro-bench numbers.
+
+    Cross-language companion to the wire benchmarks — same `results/<run-id>/`
+    directory, different subfolder (`token/`), different question:
+    how fast does each language's BPE/Detokenizer chew through a fixed
+    corpus? Reviewer feedback requested this be recorded alongside wire
+    bytes so encode/decode time isn't a hidden variable.
+    """
+    if not token_results:
+        return []
+
+    # Pull metadata from any one doc — corpus + map should match across langs.
+    sample_doc = next(iter(token_results.values()))
+    corpus = sample_doc.get("corpus", {})
+    map_meta = sample_doc.get("map", {})
+    reps = sample_doc.get("reps")
+    warmup = sample_doc.get("warmup_reps")
+
+    out: list[str] = [
+        "## §X. Per-language tokenize / detokenize micro-bench",
+        "",
+        f"Cross-language pass over a fixed golden corpus "
+        f"(`{corpus.get('path', '?')}`, "
+        f"{corpus.get('samples', '?')} samples, "
+        f"{corpus.get('total_text_bytes', '?')} b text, "
+        f"{corpus.get('total_tokens', '?')} tokens) "
+        f"against `{map_meta.get('id', '?')}` map, "
+        f"{reps} measured reps + {warmup} warmup, median per-pass time. "
+        f"Each `_total` value is the time to encode/decode the WHOLE corpus once.",
+        "",
+        "| Lang | encode total (ms) | encode tok/sec | decode total (ms) | decode tok/sec | encode p99 | decode p99 |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
+
+    # Stable ordering matching the wire-bench tables.
+    lang_order = ["python", "web", "dotnet", "rust", "java", "c"]
+    lang_order += [l for l in sorted(token_results) if l not in lang_order]
+
+    def fmt_ms(v: float | None) -> str:
+        return "—" if v is None else f"{v:.2f}"
+
+    def fmt_tps(v: float | None) -> str:
+        return "—" if v is None else f"{int(round(v)):,} /s"
+
+    for lang in lang_order:
+        if lang not in token_results:
+            continue
+        d = token_results[lang]
+        enc_med = d.get("encode_ms_total_median")
+        dec_med = d.get("decode_ms_total_median")
+        enc_p99 = d.get("encode_ms_total_p99")
+        dec_p99 = d.get("decode_ms_total_p99")
+        enc_tps = d.get("encode_tokens_per_sec")
+        dec_tps = d.get("decode_tokens_per_sec")
+        out.append(
+            f"| **{lang}** | {fmt_ms(enc_med)} | {fmt_tps(enc_tps)} | "
+            f"{fmt_ms(dec_med)} | {fmt_tps(dec_tps)} | "
+            f"{fmt_ms(enc_p99)} | {fmt_ms(dec_p99)} |"
+        )
+
+    # Footnote — note when any lib is detokenize-only.
+    footnotes = []
+    for lang in lang_order:
+        if lang not in token_results:
+            continue
+        d = token_results[lang]
+        if d.get("encode_ms_total_median") is None and d.get("note"):
+            footnotes.append(f"- **{lang}**: {d['note']}")
+    if footnotes:
+        out.append("")
+        out.extend(footnotes)
+
+    out.append("")
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="aggregate")
     ap.add_argument("run_id", nargs="?", help="ISO-8601-ish run id; defaults to most recent")
@@ -344,7 +457,8 @@ def main() -> None:
     print(f"aggregating run_id={run_id}", file=sys.stderr)
 
     results = load_results(run_id)
-    if not results:
+    token_results = load_token_results(run_id)
+    if not results and not token_results:
         sys.exit(f"no result JSONs found for run {run_id}")
 
     out_lines: list[str] = [
@@ -353,12 +467,15 @@ def main() -> None:
         f"Auto-generated from `packages/bench/results/{run_id}/{{engine}}/{{lang}}.json` by `packages/bench/scripts/aggregate.py`. SCHEMA.md is the source of truth on what each cell measures.",
         "",
     ]
-    out_lines += headline_section(results)
-    out_lines += cross_lang_equality_section(results)
-    out_lines += per_engine_lang_grid_section(results)
-    out_lines += ttfb_section(results)
-    out_lines += methodology_section(results)
-    out_lines += quarantine_section(results)
+    if results:
+        out_lines += headline_section(results)
+        out_lines += cross_lang_equality_section(results)
+        out_lines += per_engine_lang_grid_section(results)
+        out_lines += ttfb_section(results)
+    out_lines += token_bench_section(token_results)
+    if results:
+        out_lines += methodology_section(results)
+        out_lines += quarantine_section(results)
 
     out_path = RESULTS_DIR / run_id / "MATRIX.md"
     out_path.write_text("\n".join(out_lines), encoding="utf-8")

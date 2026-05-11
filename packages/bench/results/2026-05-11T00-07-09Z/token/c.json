@@ -1,0 +1,31 @@
+{
+  "schema_version": "1",
+  "kind": "token_bench",
+  "captured_at": "2026-05-11T00:07:26Z",
+  "client": {
+    "lang": "c",
+    "lib_name": "libcodec",
+    "lib_version": "0.2.0",
+    "runtime": "C99"
+  },
+  "map": {
+    "id": "qwen/qwen2",
+    "sha256": "hash64:2549ac01062612fe"
+  },
+  "corpus": {
+    "path": "packages/bench/golden/qwen2.json",
+    "sha256": "hash64:9f99ea6ed52c5cc5",
+    "samples": 35,
+    "total_text_bytes": 929,
+    "total_tokens": 287
+  },
+  "reps": 200,
+  "warmup_reps": 20,
+  "encode_ms_total_median": null,
+  "encode_ms_total_p99": null,
+  "decode_ms_total_median": 0.011562,
+  "decode_ms_total_p99": 0.018796,
+  "encode_tokens_per_sec": null,
+  "decode_tokens_per_sec": 24822652.984738,
+  "note": "libcodec is detokenize-only; encode_* are null pending C BPE encoder."
+}

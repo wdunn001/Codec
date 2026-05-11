@@ -260,6 +260,15 @@ public final class Bench {
     }
 
     public static void main(String[] argv) throws Exception {
+        // Token-bench subcommand: dispatch before normal arg parsing so
+        // the token-bench has its own --map / --corpus / --reps flags.
+        if (argv.length > 0 && "token-bench".equals(argv[0])) {
+            String[] rest = new String[argv.length - 1];
+            System.arraycopy(argv, 1, rest, 0, rest.length);
+            System.exit(TokenBench.run(rest));
+            return;
+        }
+
         // Dispatch: if --methodology is given, run the SCHEMA-v1 matrix mode.
         // Otherwise fall through to the legacy ad-hoc grid bench.
         MatrixRun.MatrixArgs matrixArgs = MatrixRun.parseMatrixArgs(argv);

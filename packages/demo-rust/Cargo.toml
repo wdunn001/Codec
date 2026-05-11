@@ -11,6 +11,10 @@ publish = false
 name = "codec-bench"
 path = "src/main.rs"
 
+[[bin]]
+name = "codec-token-bench"
+path = "src/token_bench.rs"
+
 [dependencies]
 codec-rs = { path = "../rust", default-features = false, features = ["tokio"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "time"] }
