@@ -42,8 +42,17 @@ pub mod stream;
 pub mod tokenize;
 pub mod tool_watcher;
 pub mod translator;
+pub mod version_signaling;
 
 // Re-export the public surface.
+pub use version_signaling::{
+    parse_version_policy_document, parse_version_required, well_known_version_policy_url,
+    CodecVersionPolicyDocument, CodecVersionRequiredBody, HttpStatus, VersionSignalingError,
+    CODEC_CLIENT_VERSION, CODEC_CLIENT_VERSION_HEADER, CODEC_MIN_VERSION_HEADER,
+    CODEC_REQUIRED_FEATURES_HEADER,
+};
+#[cfg(feature = "http")]
+pub use version_signaling::discover_version_policy_blocking;
 pub use byte_encoder::{decode_byte_level_token, encode_byte_level_chars, METASPACE};
 pub use detokenize::{Detokenizer, DetokenizeOptions};
 pub use frame::{CodecFrame, IMapCache, MapCache, MemoryMapCache};

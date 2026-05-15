@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG --coverage CMakeFiles/test_translator.dir/test_translator.c.o -o test_translator  ../libcodec.a 

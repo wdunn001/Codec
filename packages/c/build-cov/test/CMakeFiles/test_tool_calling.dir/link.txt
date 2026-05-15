@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG --coverage CMakeFiles/test_tool_calling.dir/test_tool_calling.c.o -o test_tool_calling  ../libcodec.a 

@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG --coverage CMakeFiles/test_stream.dir/test_stream.c.o -o test_stream  ../libcodec.a 

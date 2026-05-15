@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG --coverage CMakeFiles/test_bpe.dir/test_bpe.c.o -o test_bpe  ../libcodec.a 

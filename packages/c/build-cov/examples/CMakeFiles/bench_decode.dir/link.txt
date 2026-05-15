@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG --coverage CMakeFiles/bench_decode.dir/bench_decode.c.o -o bench_decode  -Wl,-rpath,"/mnt/h/dev/Project Codec/Codec/packages/c/build-cov" ../libcodec.so.0.2.0 

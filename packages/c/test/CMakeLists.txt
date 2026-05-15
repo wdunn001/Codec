@@ -17,6 +17,7 @@ set(CODEC_TESTS
     test_bpe
     test_translator
     test_safety_policy
+    test_version_signaling
 )
 
 foreach(t ${CODEC_TESTS})

@@ -75,10 +75,12 @@ set(CODEC_SOURCES
     src/bpe.c
     src/translator.c
     src/codec_safety_policy.c
+    src/codec_version_signaling.c
 )
 set(CODEC_HEADERS
     include/codec/codec.h
     include/codec/codec_safety_policy.h
+    include/codec/codec_version_signaling.h
 )
 
 # ── Helper macro: configure a target ────────────────────────────────────────
