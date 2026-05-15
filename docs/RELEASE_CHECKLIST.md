@@ -52,6 +52,74 @@ A release-issue with even one un-ticked, un-struck box in pre-publish
       `sha256:<hex>` (the contract that makes `safety_policy_hash`
       meaningful across stacks)
 
+### 1.5 · Prior-version wire compatibility
+
+Complements the static §4 diff audit with a dynamic round-trip
+against every prior minor version still in scope. The versioning
+policy (`spec/versions/v0.4.md` § Versioning Policy) requires
+minor releases to be wire-compatible with all earlier minor
+versions of the same major — this gate is where we actually run
+that.
+
+Fixtures live at `spec/compat-corpus/v0.X/`, one subtree per
+prior minor version, with three flavors:
+
+- `maps/` — tokenizer-map JSONs as published in v0.X (one per
+  reference vocab), pinned by `sha256` in
+  `compat-corpus/v0.X/maps.manifest.json`.
+- `frames/` — canonical wire frames for every frame type the
+  version added (text-token msgpack/protobuf for v0.2; latent
+  streams + `_codec_meta` blocks for v0.3; safety-policy
+  descriptors for v0.4). Stored as `.bin` files with a sibling
+  `.json` describing expected decode output.
+- `descriptors/` — well-known JSON documents the version
+  introduced (latent-space-map, safety-policy, tokenizer-map
+  with `tool_calling` block, etc.).
+
+If `spec/compat-corpus/v0.X/` doesn't exist for a shipped prior
+version, the FIRST release that adds the gate creates it from
+that version's tagged release artifacts and pins the hashes
+forward.
+
+For each shipped prior version (today: **v0.2, v0.3**):
+
+- [ ] **Decode-forward:** every fixture in
+      `spec/compat-corpus/v0.X/frames/` decodes cleanly with the
+      release-candidate library in all six languages. Decoded
+      shape matches the sibling `.json` byte-for-byte (frame
+      type, token IDs, header fields, control IDs). No silent
+      field drops, no panics on unknown future fields.
+- [ ] **Encode-backward:** the release-candidate encoder, when
+      negotiated down to the prior version's capability set
+      (`accept_codec_version: v0.X` in HELLO, no v0.X+1 axes
+      enabled), produces frames that the **prior version's**
+      published library decodes successfully. Run with the prior
+      version's npm tarball / PyPI wheel / NuGet package / etc.
+      pulled from each registry — not a local checkout. (The
+      first release that adds this gate may need to pin a Docker
+      image carrying the older clients; record the digest.)
+- [ ] **Schema-forward:** every JSON document in
+      `spec/compat-corpus/v0.X/maps/` and
+      `compat-corpus/v0.X/descriptors/` validates against the
+      release-candidate's schemas (`spec/*.schema.json`). The
+      version-tightening rule from §4 (no enum tightening, no
+      previously-optional → mandatory) makes this an invariant —
+      a fixture failure means the version is breaking and should
+      be a major bump.
+- [ ] **Discovery-forward:** every `.well-known/codec/*` path
+      shipped in v0.X still resolves under the release-candidate
+      discovery code path (404 means the path was removed —
+      breaking — and the release should be a major bump).
+- [ ] Results recorded in
+      `packages/bench/results/<release-UTC>/compat/v0.X.md`
+      (per prior version): cell-by-cell pass/fail, decoder
+      version under test, fixture hash list. Each cell is one of
+      pass / fail / skipped-with-reason; no silent skips.
+
+Hard-gate the publish phase. A failed cell means the release
+either degrades to a patch (no wire change) or escalates to a
+major bump.
+
 ### 2 · Coverage
 
 - [ ] Coverage % per language, captured in `packages/*/COVERAGE.md` (or
