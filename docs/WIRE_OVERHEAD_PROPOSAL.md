@@ -138,12 +138,12 @@ and HPACK).
 
 Per-intervention gating:
 
-| Intervention                              | Active when |
-|-------------------------------------------|-------------|
-| §1 `Codec-Session` ID caching             | `client_version >= 0.6` |
-| §2 Truncated `sha256:` in headers         | `client_version >= 0.5` |
-| §3 ID+hash instead of URL in headers      | `client_version >= 0.5` |
-| §4 Drop advisory headers on 200 OK        | server-side only — transparent to all clients; semantically the older clients never read those advisory headers anyway, so suppressing them on 200 OK is invisible |
+| Intervention                              | Active when                          | Notes |
+|-------------------------------------------|--------------------------------------|-------|
+| §1 `Codec-Session` ID caching             | `client_version >= 0.6`              | New header introduced in v0.6; older clients never see it. |
+| §2 Truncated `sha256:` in headers         | `client_version >= 0.5`              | Format change to existing v0.2 `Codec-Tokenizer-Map-Hash` etc.; older clients keep getting the full 64-hex form. |
+| §3 ID+hash instead of URL in headers      | `client_version >= 0.5`              | Format change to existing v0.2 `Codec-Tokenizer-Map` value; older clients keep getting the full URL form. |
+| §4 Drop advisory headers on 200 OK        | server-side only — transparent       | The advisory v0.4 headers (`Codec-Min-Version`, `Codec-Required-Features`) on 2xx were never required reading for any client; suppressing them is invisible. |
 
 A v0.4 client connecting to a v0.6+ server gets the v0.4 wire
 shape — no session id, no truncated hashes, no URL-less map

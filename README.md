@@ -47,6 +47,14 @@ Source-available under [BSL 1.1](LICENSE). Patent posture in [PATENTS.md](PATENT
 > scaffolding, classifier registry, delay-k streaming decisioning)
 > live in [`codec-supervisor`](https://github.com/wdunn001/codec-supervisor).
 > Publish gated on [the release checklist](docs/RELEASE_CHECKLIST.md).
+>
+> **Every v0.4 wire addition is opt-on** ([spec](spec/versions/v0.4.md#capabilities-are-opt-on-at-the-server-two-stage)):
+> two-stage enable + enforce, default OFF. A controlled fleet running
+> v0.4 code pays zero v0.4 wire cost. A v0.3 client connecting to a
+> v0.4 server sees v0.3 wire byte-for-byte (graceful downgrade). Same
+> shape as HTTP/HTTPS or CORS — the server chooses; the wire reflects
+> the choice. Header bloat thinning ([proposal](docs/WIRE_OVERHEAD_PROPOSAL.md))
+> staged for v0.5–0.6.
 
 ### Spec
 
