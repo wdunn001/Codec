@@ -75,6 +75,24 @@ export type {
   MLCEngineInterface,
 };
 
+// v0.4 version-negotiation primitives re-exported for convenience —
+// a browser app that wraps a local MLC engine often also talks to a
+// remote Codec server (mesh / hybrid); having both surfaces from one
+// import keeps the call sites tidy. Canonical impl in @codecai/web.
+export {
+  CODEC_CLIENT_VERSION,
+  CODEC_CLIENT_VERSION_HEADER,
+  CODEC_MIN_VERSION_HEADER,
+  CODEC_REQUIRED_FEATURES_HEADER,
+  withCodecClientVersion,
+  parseVersionRequired,
+  discoverVersionPolicy,
+  CodecVersionRequiredError,
+  type CodecVersionRequiredBody,
+  type CodecVersionPolicyDocument,
+  type DiscoverVersionPolicyOptions,
+} from '@codecai/web';
+
 /**
  * Structural type for an MLC engine that supports `stream_format: "raw"`.
  * Matches the patched wdunn001/web-llm fork's `MLCEngine.chat.completions`

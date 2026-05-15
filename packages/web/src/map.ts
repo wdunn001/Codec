@@ -8,6 +8,7 @@
  * The default cache is in-memory. Browsers can wrap the Cache API; Node can
  * back it with the filesystem; edge runtimes can use KV.
  */
+import { withCodecClientVersion } from './version-signaling.js';
 import type { MapCache, TokenizerMap } from './types.js';
 
 // ── Pluggable cache (default: in-memory) ──────────────────────────────────────
@@ -163,7 +164,7 @@ export async function loadMap(opts: LoadOptions): Promise<TokenizerMap> {
     );
   }
 
-  const resp = await fetchImpl(opts.url, { signal: opts.signal });
+  const resp = await fetchImpl(opts.url, withCodecClientVersion({ signal: opts.signal }));
   if (!resp.ok) {
     throw new Error(`Failed to fetch tokenizer map from ${opts.url}: HTTP ${resp.status}`);
   }

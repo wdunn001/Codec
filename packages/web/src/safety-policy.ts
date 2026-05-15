@@ -10,6 +10,7 @@
  * Used by clients that received `safety_policy_id` + `safety_policy_hash`
  * in `READY` and want to fetch and surface what the server is enforcing.
  */
+import { withCodecClientVersion } from './version-signaling.js';
 import type {
   SafetyPolicyCache,
   SafetyPolicyCategory,
@@ -311,7 +312,7 @@ export async function loadSafetyPolicy(
     );
   }
 
-  const resp = await fetchImpl(opts.url, { signal: opts.signal });
+  const resp = await fetchImpl(opts.url, withCodecClientVersion({ signal: opts.signal }));
   if (!resp.ok) {
     throw new Error(
       `Failed to fetch safety policy from ${opts.url}: HTTP ${resp.status}`,
@@ -478,7 +479,7 @@ export async function discoverSafetyPolicy(
   if (opts.hash) {
     const hashHex = parseHash(opts.hash);
     const url = wellKnownPolicyHashUrl(opts.origin, hashHex);
-    const resp = await fetchImpl(url, { signal: opts.signal });
+    const resp = await fetchImpl(url, withCodecClientVersion({ signal: opts.signal }));
     if (resp.status === 404) {
       throw new SafetyPolicyDiscoveryNotFoundError(url, resp.status);
     }
@@ -516,7 +517,7 @@ export async function discoverSafetyPolicy(
 
   // No hash: fetch the mutable per-id document and follow a pointer if present.
   const url = wellKnownPolicyUrl(opts.origin, opts.id);
-  const resp = await fetchImpl(url, { signal: opts.signal });
+  const resp = await fetchImpl(url, withCodecClientVersion({ signal: opts.signal }));
   if (resp.status === 404) {
     throw new SafetyPolicyDiscoveryNotFoundError(url, resp.status);
   }

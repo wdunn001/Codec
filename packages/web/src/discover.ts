@@ -13,6 +13,7 @@
  *
  * See `spec/WELL_KNOWN_DISCOVERY.md` for the full convention.
  */
+import { withCodecClientVersion } from './version-signaling.js';
 import type { MapCache, TokenizerMap } from './types.js';
 import { loadMap, validateMap } from './map.js';
 
@@ -168,7 +169,7 @@ export async function discoverMap(opts: DiscoverMapOptions): Promise<TokenizerMa
   }
 
   const url = wellKnownMapUrl(opts.origin, opts.id);
-  const resp = await fetchImpl(url, { signal: opts.signal });
+  const resp = await fetchImpl(url, withCodecClientVersion({ signal: opts.signal }));
   if (resp.status === 404) {
     throw new MapDiscoveryNotFoundError(url, resp.status);
   }
@@ -221,7 +222,7 @@ export async function discoverIndex(opts: DiscoverIndexOptions): Promise<MapInde
   }
 
   const url = wellKnownIndexUrl(opts.origin);
-  const resp = await fetchImpl(url, { signal: opts.signal });
+  const resp = await fetchImpl(url, withCodecClientVersion({ signal: opts.signal }));
   if (resp.status === 404) {
     throw new MapDiscoveryNotFoundError(url, resp.status);
   }

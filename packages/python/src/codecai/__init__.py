@@ -178,5 +178,34 @@ __all__ = [
     "validate_safety_policy",
     "well_known_policy_hash_url",
     "well_known_policy_url",
+    # v0.4 version negotiation
+    "CODEC_CLIENT_VERSION",
+    "CODEC_CLIENT_VERSION_HEADER",
+    "CODEC_MIN_VERSION_HEADER",
+    "CODEC_REQUIRED_FEATURES_HEADER",
+    "with_codec_client_version",
+    "parse_version_required",
+    "discover_version_policy",
+    "parse_version_policy_document",
+    "well_known_version_policy_url",
+    "CodecVersionRequiredError",
+    "CodecVersionRequiredBody",
+    "CodecVersionPolicyDocument",
     "__version__",
 ]
+
+
+from .version_signaling import (
+    CODEC_CLIENT_VERSION,
+    CODEC_CLIENT_VERSION_HEADER,
+    CODEC_MIN_VERSION_HEADER,
+    CODEC_REQUIRED_FEATURES_HEADER,
+    CodecVersionPolicyDocument,
+    CodecVersionRequiredBody,
+    CodecVersionRequiredError,
+    discover_version_policy,
+    parse_version_policy_document,
+    parse_version_required,
+    well_known_version_policy_url,
+    with_codec_client_version,
+)
