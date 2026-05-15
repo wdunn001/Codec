@@ -18,11 +18,17 @@ v0.4.
   `.well-known/codec/policies/<id>.json` with content-addressed
   siblings; `finish_reason: "policy_violation"`; explicit
   versioning policy (no breaking changes in minor versions; major
-  bump required for breakage); per-version documentation framework.
-  Pairs with operator-side enforcement primitives (banned-token
-  logits processor, multi-token Aho-Corasick matcher,
-  embedding-space classifier scaffolding, classifier registry,
-  delay-k streaming decisioning) shipped in `codec-supervisor`.
+  bump required for breakage); per-version documentation framework;
+  [Version Compatibility Signaling](./versions/v0.4.md#version-compatibility-signaling)
+  (`Codec-Client-Version` / `Codec-Min-Version` headers, `426
+  Upgrade Required` + JSON body, `VERSION_INCOMPATIBLE` frame,
+  `.well-known/codec/version-policy.json` pre-flight) — the CORS-style
+  signal a v0.4-mandated deployment sends to a v0.3 client so the
+  failure is structured instead of opaque. Pairs with operator-side
+  enforcement primitives (banned-token logits processor, multi-token
+  Aho-Corasick matcher, embedding-space classifier scaffolding,
+  classifier registry, delay-k streaming decisioning) shipped in
+  `codec-supervisor`.
 - [**v0.3**](./versions/v0.3.md) — image + video latent modality.
   `LatentStreamHeader` + `LatentFrame` frame types over the same
   msgpack/protobuf wire modes. Latent-space maps with paired VAE

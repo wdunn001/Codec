@@ -266,6 +266,40 @@ e.g. abort the session if no acceptable policy is published.
 
 ---
 
+## Version policy (v0.4+)
+
+A deployment that mandates v0.4+ features (e.g. safety-policy
+enforcement) publishes its minimum-version requirement at:
+
+```
+<origin>/.well-known/codec/version-policy.json
+```
+
+Document shape:
+
+```jsonc
+{
+  "minimum_version":   "0.4",
+  "required_features": ["safety-policy-enforcement"],
+  "deployment_id":     "acme-prod-us-west-2",
+  "docs_url":          "https://codecai.net/docs/version-negotiation/",
+  "valid_until":       "2026-12-31T23:59:59Z"
+}
+```
+
+This is the **pre-flight discovery** mirror of the 426 / `VERSION_INCOMPATIBLE`
+runtime signal — see `spec/versions/v0.4.md § Version Compatibility
+Signaling`. Clients MAY query this URL before opening a connection to
+avoid wasting a round-trip on a request that will 426. The runtime 426
+is still authoritative; the well-known document is opportunistic and
+MAY be cached up to `valid_until` (or 1 hour if absent).
+
+A deployment without mandatory features SHOULD NOT publish this
+document — its presence advertises that older clients will be
+rejected, which is information itself.
+
+---
+
 ## Worked example
 
 A maintainer publishes Qwen-2 and Qwen-2.5 from `qwen.io`:

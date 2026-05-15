@@ -110,6 +110,18 @@ For each shipped prior version (today: **v0.2, v0.3**):
       shipped in v0.X still resolves under the release-candidate
       discovery code path (404 means the path was removed —
       breaking — and the release should be a major bump).
+- [ ] **Version-incompatibility signaling:** for any new
+      mandatory feature this release adds, a release-candidate
+      server CONFIGURED to require that feature returns a
+      structured `426 Upgrade Required` (HTTP transport) or
+      `VERSION_INCOMPATIBLE` frame (session protocol) to a
+      `Codec-Client-Version: 0.X` client where `0.X < this
+      release`. See `spec/versions/v0.4.md § Version
+      Compatibility Signaling`. The 426 body parses cleanly as
+      JSON with the documented fields, AND degrades to a
+      renderable string for v0.3-and-older clients that don't
+      know the field shape. `.well-known/codec/version-policy.json`
+      matches runtime behavior (mismatch = deployment bug).
 - [ ] Results recorded in
       `packages/bench/results/<release-UTC>/compat/v0.X.md`
       (per prior version): cell-by-cell pass/fail, decoder
