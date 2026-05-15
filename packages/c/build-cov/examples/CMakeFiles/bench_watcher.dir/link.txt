@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG --coverage CMakeFiles/bench_watcher.dir/bench_watcher.c.o -o bench_watcher  -Wl,-rpath,"/mnt/h/dev/Project Codec/Codec/packages/c/build-cov" ../libcodec.so.0.2.0 
