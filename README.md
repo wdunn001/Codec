@@ -17,7 +17,7 @@ Three primitives fall out of the layering:
 - **Tool-call dispatch without detokenization.** `ToolWatcher` matches reserved control IDs in the raw token stream — single 32-bit compare per token, ~100× faster than detokenize+regex. Lives canonically in the [MetaMCP gateway](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.metamcp) but the primitive works in any inference proxy, agent runtime, or middleware.
 - **Cross-vocab agent handoff.** `Translator` carries one model's stream into another's vocabulary via one in-process detokenize/retokenize step. UTF-8 never crosses the wire. Llama-3 → Qwen-2 at 2 K tokens: 30 % less bridge CPU on 15× fewer wire bytes; both paths emit byte-identical Qwen-2 IDs.
 
-Source-available under [BSL 1.1](LICENSE). Patent posture in [PATENTS.md](PATENTS.md).
+Source-available under [BSL 1.1](LICENSE).
 
 ---
 
@@ -283,7 +283,6 @@ packages/
 dictionaries/      pre-trained zstd dictionaries for the Codec wire (per (vocab, format) for text; per (latent_space, format, pipeline) for v0.3 latents)
 article/
   text-is-the-wrong-wire-format.md   the case for Codec
-PATENTS.md         patent posture
 LICENSE            BSL 1.1 (auto-Apache-2.0 four years post-publication)
 COMMERCIAL.md      commercial licensing terms above the $5M threshold
 ```
@@ -464,10 +463,8 @@ What's still on the roadmap:
 
 ---
 
-## License + patent posture
+## License
 
 **Source license: [BSL 1.1](LICENSE)** by Quasarke LLC. Free for non-production use and for production use under US $5M annual revenue. Each release auto-converts to Apache-2.0 four years after publication. Commercial terms above the threshold: see [COMMERCIAL.md](COMMERCIAL.md) or contact [licensing@quasarke.com](mailto:licensing@quasarke.com).
 
-**Patent posture: [PATENTS.md](PATENTS.md).** Quasarke is pursuing patent protection on certain Codec mechanisms. The wire format, handshake, and content-addressed map distribution described in `spec/PROTOCOL.md` are intended to be made available on royalty-free or FRAND terms to implementers of the spec when patents issue. Adjacent improvements (ToolWatcher, Translator, the dictionary system, `Codec-Zstd-Dict` negotiation) may be commercially licensed separately — a Codec-compliant implementation does not require those modules. Defensive termination clause will apply to any future patent license grant. Full text in `PATENTS.md`.
-
-**Contributions** are licensed under BSL 1.1 plus a non-exclusive, royalty-free grant to Quasarke for inclusion in any future patent license commitment. See `PATENTS.md` § Contributions.
+**Contributions** are licensed under BSL 1.1 — no separate contributor agreement required.
