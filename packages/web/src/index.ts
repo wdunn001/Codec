@@ -133,6 +133,22 @@ export {
   decodeProtobufFrame,
 } from './stream.js';
 
+// v0.4 version negotiation — opt-on, graceful-downgrade wire contract.
+// See spec/versions/v0.4.md § Version Compatibility Signaling.
+export {
+  CODEC_CLIENT_VERSION,
+  CODEC_CLIENT_VERSION_HEADER,
+  CODEC_MIN_VERSION_HEADER,
+  CODEC_REQUIRED_FEATURES_HEADER,
+  withCodecClientVersion,
+  parseVersionRequired,
+  discoverVersionPolicy,
+  CodecVersionRequiredError,
+  type CodecVersionRequiredBody,
+  type CodecVersionPolicyDocument,
+  type DiscoverVersionPolicyOptions,
+} from './version-signaling.js';
+
 export {
   runPreTokProgram,
   type PreTokOp,
