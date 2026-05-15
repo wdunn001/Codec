@@ -125,6 +125,37 @@ Worst case today (spec-conformant v0.4 response on 84-byte payload):
 
 In steady state (after the first response of a connection), the headers drop to roughly the body size. The first response of a connection pays full Codec-* freight (~214 B with §2+§3+§4), but every response after that on the same session is essentially free.
 
+## Constraint: graceful downgrade to v0.2 / v0.3
+
+`spec/versions/v0.4.md § Graceful downgrade` is the binding rule:
+**a v0.4 server talking to a v0.3 client must look exactly like a
+v0.3 server.** Every intervention in this proposal MUST be
+version-gated by the client's `Codec-Client-Version`. The intent
+is that a v0.2 or v0.3 client can connect to a deployment running
+v0.4 or v0.6+ code AND receive the same wire it would have received
+from an actual v0.2 or v0.3 server, byte-for-byte (modulo timestamps
+and HPACK).
+
+Per-intervention gating:
+
+| Intervention                              | Active when |
+|-------------------------------------------|-------------|
+| §1 `Codec-Session` ID caching             | `client_version >= 0.6` |
+| §2 Truncated `sha256:` in headers         | `client_version >= 0.5` |
+| §3 ID+hash instead of URL in headers      | `client_version >= 0.5` |
+| §4 Drop advisory headers on 200 OK        | server-side only — transparent to all clients; semantically the older clients never read those advisory headers anyway, so suppressing them on 200 OK is invisible |
+
+A v0.4 client connecting to a v0.6+ server gets the v0.4 wire
+shape — no session id, no truncated hashes, no URL-less map
+headers. The server holds back the v0.5+ optimizations. The wire
+weight stays at the v0.4 floor (~580 B headers on a tiny payload).
+That's the cost of supporting that client; the user explicitly
+opts into it by sending `Codec-Client-Version: 0.4`.
+
+For deployments where every connecting client is v0.6+ (e.g.
+codec-supervisor admins, a controlled-fleet agent mesh), the full
+thinning applies and steady-state headers drop to ~85 B as planned.
+
 ## Migration plan
 
 Each section is independently shippable; ordered by safety + impact:

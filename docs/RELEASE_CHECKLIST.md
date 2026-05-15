@@ -122,6 +122,21 @@ For each shipped prior version (today: **v0.2, v0.3**):
       renderable string for v0.3-and-older clients that don't
       know the field shape. `.well-known/codec/version-policy.json`
       matches runtime behavior (mismatch = deployment bug).
+- [ ] **Default-off conformance (opt-on):** a release-candidate
+      server SHIPS with every new-in-this-version capability
+      DISABLED. Spin up a fresh server with default config; the
+      response to a v0.X (current-version) client MUST be byte-
+      equivalent to what a v0.(X-1) server would have returned
+      (modulo timestamps + HPACK). No version-N headers, no
+      version-N axes, no 426. See `spec/versions/v0.4.md §
+      Capabilities are opt-on at the server`.
+- [ ] **Graceful downgrade conformance:** with the new
+      capabilities ENABLED but not enforced, a v0.(X-1) client
+      hitting the same server MUST still see a v0.(X-1) wire
+      surface — no version-N headers leak. Re-run the
+      decode-forward step above with `Codec-Client-Version: 0.(X-1)`
+      against an opted-in server; the response set MUST be
+      identical to the v0.(X-1) corpus (modulo timestamps).
 - [ ] Results recorded in
       `packages/bench/results/<release-UTC>/compat/v0.X.md`
       (per prior version): cell-by-cell pass/fail, decoder
