@@ -1,0 +1,64 @@
+{
+  "schema_version": "1",
+  "captured_at": "2026-05-11T00:12:00Z",
+  "run_id": "2026-05-15T20-00-00Z",
+  "hardware": {
+    "host": "vinez-ME03-PE0-000",
+    "cpu_model": "AMD EPYC 8124P 16-Core Processor",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_count": 2,
+    "gpu_driver": "580.142",
+    "ram_gb": 125.6,
+    "kernel": "Linux 6.8.0-84-generic"
+  },
+  "engine": {
+    "name": "vllm",
+    "version": "",
+    "branch": "",
+    "commit": "",
+    "container_image": "wdunn001/codec-vllm@sha256:72d929aa019d638965474a860aea03973433bdf679db7edf3daadc12ba49ea5c",
+    "launch_flags": [],
+    "endpoint": "http://localhost:30003",
+    "endpoint_kind": "localhost",
+    "stream_format_supported": [
+      "json",
+      "msgpack",
+      "protobuf"
+    ],
+    "compression_supported": [
+      "identity",
+      "gzip",
+      "br",
+      "zstd"
+    ],
+    "compression_probe_format": "msgpack"
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "quantization": "fp16",
+    "tokenizer_sha256": "",
+    "vocab_size": null,
+    "model_sha256": null
+  },
+  "client": null,
+  "bench_tool": null,
+  "workload": {
+    "prompts_file": "methodology/prompts.json",
+    "prompts_sha256": "eff837b6cbbad632c15efb99a7bfaef1e173276be2b81734833ca4bcf0fb3604",
+    "stream": true,
+    "temperature": 0.0
+  },
+  "git": {
+    "repo_commit": "4afb8e6969ca5c559a14774151828c1d7d95d81e",
+    "repo_branch": "main",
+    "repo_clean": false,
+    "repo_dirty_files": [
+      ".venv/",
+      "packages/bench/methodology/2026-05-08T02-30-12Z/",
+      "packages/bench/results/2026-05-08T02-30-12Z/",
+      "packages/demo-c/build/"
+    ]
+  },
+  "notes": "wdunn001/codec-vllm:latest with dict-zstd hook",
+  "fingerprint": "9d484a10640b46ae4b2b35cf1a81b61d47715e4c5828c60f4ab0e473f9f7725f"
+}

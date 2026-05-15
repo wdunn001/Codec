@@ -1,0 +1,69 @@
+{
+  "schema_version": "1",
+  "captured_at": "2026-05-11T00:12:00Z",
+  "run_id": "2026-05-15T20-00-00Z",
+  "hardware": {
+    "host": "vinez-ME03-PE0-000",
+    "cpu_model": "AMD EPYC 8124P 16-Core Processor",
+    "gpu_model": "NVIDIA GeForce RTX 3090",
+    "gpu_count": 2,
+    "gpu_driver": "580.142",
+    "ram_gb": 125.6,
+    "kernel": "Linux 6.8.0-84-generic"
+  },
+  "engine": {
+    "name": "llama.cpp",
+    "version": "",
+    "branch": "",
+    "commit": "",
+    "container_image": "wdunn001/codec-llamacpp@sha256:947bcb1ba01e8a89b1be50365b47c1b7afd51fe66662d1c6de6a31bbdf999758",
+    "launch_flags": [
+      "--ctx-size",
+      "4096",
+      "--gpu-layers",
+      "999"
+    ],
+    "endpoint": "http://localhost:30004",
+    "endpoint_kind": "localhost",
+    "stream_format_supported": [
+      "json",
+      "msgpack",
+      "protobuf"
+    ],
+    "compression_supported": [
+      "identity",
+      "gzip"
+    ],
+    "compression_probe_format": "msgpack"
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M",
+    "quantization": "fp16",
+    "tokenizer_sha256": "",
+    "vocab_size": null,
+    "model_sha256": null
+  },
+  "client": null,
+  "bench_tool": null,
+  "workload": {
+    "prompts_file": "methodology/prompts.json",
+    "prompts_sha256": "eff837b6cbbad632c15efb99a7bfaef1e173276be2b81734833ca4bcf0fb3604",
+    "stream": true,
+    "temperature": 0.0
+  },
+  "git": {
+    "repo_commit": "d89d84b035c616ceb55cafb39da6a0a6fe1480f4",
+    "repo_branch": "main",
+    "repo_clean": false,
+    "repo_dirty_files": [
+      ".venv/",
+      "packages/bench/methodology/2026-05-15T20-00-00Z/vllm.json",
+      "packages/bench/methodology/2026-05-08T02-30-12Z/",
+      "packages/bench/results/2026-05-15T20-00-00Z/vllm/",
+      "packages/bench/results/2026-05-08T02-30-12Z/",
+      "packages/demo-c/build/"
+    ]
+  },
+  "notes": "rebuild#4 from 4b3fe38 (macro propagation fix); gzip middleware verified content-encoding: gzip",
+  "fingerprint": "2b689f2f38fd2887b16a529f1b28a5f61cd8179d9e30a53e1704a34587c15295"
+}
