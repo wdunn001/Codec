@@ -67,3 +67,15 @@ export {
   type ResolveOptions,
   type ResolveResult,
 } from './registry.js';
+
+// v0.4 server-policy pre-flight — discoverServerPolicy() returns a
+// tagged union describing whether the server mandates v0.4 features.
+// Thin layer over @codecai/web's discoverVersionPolicy with a
+// safety-aware shape.
+export {
+  discoverServerPolicy,
+  type ServerPolicyState,
+  type UnrestrictedServerPolicy,
+  type MandatedServerPolicy,
+  type DiscoverServerPolicyOptions,
+} from './server-policy.js';
