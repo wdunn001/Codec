@@ -47,11 +47,33 @@
  * dependency rather than the upstream package.
  */
 import { encode as msgpackEncode } from '@msgpack/msgpack';
-import type { CodecFrame, MLCEngine } from '@mlc-ai/web-llm';
+import {
+  CreateMLCEngine as _CreateMLCEngine,
+  prebuiltAppConfig as _prebuiltAppConfig,
+} from '@mlc-ai/web-llm';
+import type {
+  AppConfig,
+  CodecFrame,
+  MLCEngine,
+  MLCEngineConfig,
+  MLCEngineInterface,
+} from '@mlc-ai/web-llm';
 
-// Re-export the wire frame type so consumers don't need to import it
-// from @mlc-ai/web-llm themselves. (It originates in the patched fork.)
-export type { CodecFrame };
+// Re-exports — consumers go through @codecai/web-llm for the engine,
+// the app config, the types. They never have to type the bare
+// `@mlc-ai/web-llm` import — that's a fork-vs-upstream detail this
+// package abstracts over. NPM resolves `@mlc-ai/web-llm` to the
+// patched `wdunn001/web-llm` fork pinned in our package.json, so
+// `CreateMLCEngine` here ships the `stream_format: "raw"` patch.
+export const CreateMLCEngine = _CreateMLCEngine;
+export const prebuiltAppConfig = _prebuiltAppConfig;
+export type {
+  AppConfig,
+  CodecFrame,
+  MLCEngine,
+  MLCEngineConfig,
+  MLCEngineInterface,
+};
 
 /**
  * Structural type for an MLC engine that supports `stream_format: "raw"`.
