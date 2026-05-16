@@ -9,6 +9,149 @@ Docker Hub artifacts sees change between versions.
 
 ---
 
+## v0.4.1 — 2026-05-16
+
+**Theme: protocol-only honesty + cross-client dict-zstd interop + bench gate hardening.**
+
+A patch release that closes three correctness gaps the v0.4.0 cross-stack
+matrix had been silently papering over: (a) the §1 headline ratio
+conflated protocol efficiency with model-output behaviour; (b) only Python
+actually decoded dict-zstd responses, the other 5 clients silently
+produced garbage; (c) the bench's unanimity check only inspected wire
+bytes, not whether anything decoded. Each of these is now fixed AND
+defended by regression tests so the next release can't re-introduce them.
+
+### Wire-protocol changes
+
+**None — v0.4.1 is wire-additive over v0.4 and decodes byte-identically
+on every v0.4 client.** A v0.4 server emits the exact same frames it did
+at v0.4.0; v0.4.1 client improvements are purely consumer-side fidelity
+(handling dict-zstd correctly that v0.4 clients silently mishandled).
+
+### Client packages — dict-zstd interop landed across the family
+
+Before v0.4.1, only `codecai` (Python) actually decoded Codec's dict-zstd
+responses. The other 5 clients either silently returned the compressed
+bytes (TS/Web, C) or errored loudly (Rust, Java, .NET). The bench's
+wire-byte unanimity check missed this because it only verified the
+clients *received* the same bytes, not that they *decoded* the same
+tokens. v0.4.1 ships real dict-zstd support in all 6 clients:
+
+- **`@codecai/web` 0.4.1** — new `compression.ts` (`hashZstdDict`,
+  `selectZstdDictForResponse`, `CodecZstdDictError`) matching Python's
+  API shape. Demo bench client uses Node 22.15+ built-in
+  `zlib.zstdDecompressSync({dictionary})` (no new npm dependency).
+- **`codec-rs` 0.4.1** — new `compression` module + 17 unit + integration
+  tests against the shared interop fixture; demo bench wires through
+  `zstd::stream::Decoder::with_dictionary`.
+- **`Codec.Net` 0.4.1** — new `Compression.cs` + 18 tests; demo uses
+  `ZstdSharp.Port` for portable pure-C# dict decompression.
+- **`ai.codec:codec` 0.4.1** — new `Compression.java` +
+  `CodecZstdDictError`; demo uses `zstd-jni` `ZstdDictDecompress`.
+  *Local build only — Maven Central publish deferred to a follow-up.*
+- **`libcodec` 0.4.1** — new `codec_compression.{c,hpp}` + 12 tests +
+  CMake integration; demo links libzstd via `pkg-config`.
+- **`@codecai/mcp-leaf` 0.4.1** — fixed an unrelated hash-validation
+  ordering bug that was masking the validation error behind a fetch
+  failure in CI.
+
+Every client's dict-zstd test loads the same fixture
+(`packages/bench/fixtures/dict-zstd-interop/`, captured from a real
+`codec-sglang:v0.4.1` zstd response) and asserts byte-identical
+decompression + msgpack round-trip yielding the same 32 token IDs.
+Cross-client interop now provable in CI, not just hoped for.
+
+### Engine forks
+
+- **`wdunn001/llama.cpp`** gains brotli + zstd `Content-Encoding`
+  (was identity + gzip only). New `tools/server/codec_zstd_dict_registry.{hpp,cpp}`
+  loads dict bytes from `CODEC_ZSTD_DICT_*_PATH` env at startup +
+  hash-verifies. New `codec_brotli_streamer` + `codec_zstd_streamer`
+  classes in `server-http.cpp` mirror sglang's Python encoders, including
+  the no-per-chunk-flush fix. Negotiator in `server-context.cpp` honors
+  spec preference order zstd > br > gzip > identity with dict-gate +
+  emits `Codec-Zstd-Dict: sha256:<hex>` on every zstd response.
+  `GET /codec/schema` endpoint also added (was missing from the C++ port).
+- **`wdunn001/sglang` + `wdunn001/vllm`** — fixed
+  `_compress_brotli`'s per-chunk `flush()` that was inflating small
+  streams (64-token msgpack: 1,159 B vs 975 B identity). Removed; brotli
+  now compresses correctly across all stream sizes. New
+  `test_codec_compression.py` (7 tests) guards the regression.
+
+### Bench infrastructure
+
+- **Synthetic-stream wire bench** (`packages/bench/scripts/synthetic_wire_bench.py`)
+  — pure-library wire measurement. 8 sizes × 4 corpora × 4 encodings;
+  no engine, no model. The new §1 headline in MATRIX.md/RESULTS.md.
+  Honest range: ~4-17× over identity on typical streams, 100-400× on
+  structurally-repetitive ones.
+- **Aggregator gate hardening** — `aggregate.py` now (a) exits non-zero
+  on any cell with a non-empty `error` field, (b) reports both
+  wire-unanimous AND decode-unanimous counts in §2. The old wire-only
+  check let cells where 3/6 clients errored on decode get reported as
+  "unanimous" (because their wire bytes happened to match).
+- **Engine-image acceptance gate** (`packages/bench/tests/test_engine_acceptance.py`)
+  — 9 protocol probes (`/codec/schema`, spec preference-order
+  compression negotiation, `Codec-Zstd-Dict` header presence,
+  detokenize-bypass) that run BEFORE `run-all-langs.sh` invokes the
+  bench. Catches the "image was built from a stale Dockerfile"
+  regression class in ~15s instead of via the bench's headline
+  aggregator.
+
+### supervisor + release checklist
+
+- **`codec-supervisor`** logs WARNING at startup if `brotli` or
+  `zstandard` Python modules fail to import (catches v0.4.1's
+  stale-Dockerfile regression class loudly).
+- **`docs/RELEASE_CHECKLIST.md` §3** mandates synthetic-stream bench
+  before cross-stack bench + the engine acceptance gate before
+  invoking `run-all-langs.sh`.
+- **New `packages/bench/methodology/SCHEMA.md` § Synthetic-stream wire
+  bench** documents the methodology.
+
+### Bench numbers (v0.4.1 reruns)
+
+| Surface                                    | Headline                                                  |
+|--------------------------------------------|-----------------------------------------------------------|
+| §1 protocol-only (msgpack, 2K, by content) | uniform 4.8× / comma-dom 6.6× / low-ent 16.6× / cyclic 392× |
+| §1b engine-output @ 2K msgpack+dict-zstd   | sglang 1,707× / vllm 137× / llama.cpp fp16 3,868×        |
+| Cross-vocab translator (2K, Llama-3→Qwen-2)| 15.1× wire (Codec msgpack+gzip vs JSON-SSE+gzip)         |
+| Agent loop (mock get_weather)              | 16.9× wire / 8.8× total latency                          |
+| Agent loop (SearXNG live)                  | 18.0× / 1.65×                                             |
+| Agent loop (MetaMCP Time MCP)              | 17.0× / ~neutral                                          |
+| ToolWatcher microbench                     | 481 Mtok/s vs detokenize 18 Mtok/s → 26.7× speedup       |
+| Decode unanimity across 6 clients × 3 eng. | **24/24 wire AND 24/24 decode unanimous on every engine** |
+
+### Docker Hub publishes
+
+All 7 engine images at `v0.4.1`:
+- `wdunn001/codec-{sglang,vllm,llamacpp}:v0.4.1` (lab builds, pushed manually)
+- `wdunn001/codec-{comfyui,diffusers,metamcp,time-leaf}:v0.4.1` (codec-supervisor release.yml)
+
+### Package publishes
+
+- npm: `@codecai/web` 0.4.1, `@codecai/web-safety` 0.4.1, `@codecai/maps-cli` 0.4.1, `@codecai/web-llm` 0.4.1, `@codecai/mcp-leaf` 0.4.1
+- PyPI: `codecai` 0.4.1
+- crates.io: `codec-rs` 0.4.1
+- NuGet: `Codec.Net` 0.4.1
+- Maven Central: deferred (library JAR built + tested locally; publish revisits at v0.4.2)
+
+### Spec proposals (for v0.5)
+
+Two design docs added to `spec/proposals/`:
+- `v0.5-prompt-dialects.md` — per-concept opportunistic substitution
+  dictionaries at the language layer (concept → cheapest model-understood
+  representation; e.g. emoji, CJK char, math symbol, abbreviation), as
+  the third stackable compression layer alongside Codec's framing and
+  dict-zstd wire layers.
+- `packages/bench/docs/COMPRESSIBLE_PROMPTS.md` — prompt-engineering
+  patterns that produce naturally compressible model output (structured
+  schemas, vocabulary locks, restate-then-answer, tabular formats).
+
+Both filed as v0.5 / v0.6 candidates.
+
+---
+
 ## v0.4 — 2026-05-11
 
 **Theme: safety-policy negotiation as a TLS-style capability axis, plus
