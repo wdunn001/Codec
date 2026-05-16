@@ -48,10 +48,14 @@ Actions. Until those are set, the workflows will fail at the
 "Publish" step with a "no credentials" error and the rest of the
 build remains valid as a CI signal.
 
-For the v0.4 cut specifically:
-- Tags `v0.4.0` pushed on `Codec` and `codec-supervisor`.
+For the v0.4.1 cut specifically:
+- Tags `v0.4.1` pushed on `Codec` and `codec-supervisor`.
 - Docker images: built + pushed by `codec-supervisor/release.yml`
-  (uses `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN`, already configured).
-- npm / PyPI / crates.io / NuGet / Maven Central: pending secrets
-  configuration; these workflows fire on the tag push but will
-  fail until secrets land.
+  (uses `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN`); 4 small images via
+  the supervisor workflow + 3 large engine images built locally and
+  pushed by hand (codec-{sglang,vllm,llamacpp}:v0.4.1).
+- npm / PyPI / crates.io / NuGet: secrets configured; all 5 npm packages
+  + codecai + codec-rs + Codec.Net publish workflows green at v0.4.1.
+  npm workflow is idempotent — re-running with `package=all` is safe
+  (existing versions skip-if-exists). Maven Central (`ai.codec:codec`)
+  deferred at v0.4.1; revisits at v0.4.2.
