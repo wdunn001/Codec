@@ -173,6 +173,31 @@ heavily on the tool's dispatch latency — when the tool itself is fast
 (get_weather mock, MetaMCP Time), the wire savings dominate; when the
 tool is slow (SearXNG live web), tool latency dominates.
 
+### MCP leaf-mode — tool-result-side axis (v0.4.1)
+
+Complementary to the three model-emission-side rows above. `@codecai/mcp-leaf`
+lets a tool author attach pre-tokenized IDs to its `CallToolResult` via
+`_meta['ai.codec/leaf-tokenization']`, so a Codec-aware consumer skips
+the re-tokenize hop. Measured via [`results/2026-05-15T20-00-00Z/agent-loop/leaf.txt`](results/2026-05-15T20-00-00Z/agent-loop/leaf.txt)
+(driver: [`packages/bench/src/leaf-live.ts`](src/leaf-live.ts), N=20 warm
+calls of `get_current_time` against `codec-time-leaf` over MCP stdio,
+qwen/qwen2 map sha256:62c2f94f…):
+
+| Path                                     | wire   | tokenize | TTFB   | total   |
+|------------------------------------------|-------:|---------:|-------:|--------:|
+| plain MCP (consumer re-tokenizes text)   | 105 B  | 0.052 ms | 0.4 ms | 0.5 ms  |
+| mcp-leaf (consumer reads ids from _meta) | 316 B  | 0.004 ms | 0.4 ms | 0.4 ms  |
+| **delta**                                | **+211 B** | **12.4× faster** | — | — |
+
+Integrity: 20/20 leaf samples have `ids == tokenizer.encode(text)` under
+the declared `map_id`. The wire overhead is fixed per text block
+(~80–150 B for the `_meta` envelope); the tokenize savings scale linearly
+with text length. For a ~30-char timestamp, leaf is wire-negative but
+consumer-CPU-positive (the BPE encode disappears). The crossover where
+leaf wire ≤ plain wire sits around ~300+ chars of text-block content per
+tool result; for paginated docs / search results / large MCP outputs,
+leaf wins both axes.
+
 ### ToolWatcher CPU microbench (v0.4.1 rerun)
 
 `packages/c/examples/bench_watcher` — libcodec C99 measurement of
@@ -1533,6 +1558,7 @@ new maps emit both. Adding the runtime to a client takes ~250 LOC
 | Agent loop with mock tool | **16.9× wire reduction** | §4 |
 | Agent loop with SearXNG | **18.2× wire, 20% faster end-to-end** | §5 |
 | Agent loop with MetaMCP (Time MCP server) | **17.8× wire, 20% faster end-to-end** | §6 |
+| MCP leaf-mode (tool-result-side, tiny result) | **+211 B wire, 12.4× consumer-CPU speedup** | §6.5 |
 | libcodec ToolWatcher vs detokenize | **~100× faster (CPU)** | §7 |
 | Pretok program ≡ regex output | **bit-identical on 23 stress + real Qwen-2** | §8 |
 

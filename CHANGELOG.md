@@ -119,6 +119,7 @@ Cross-client interop now provable in CI, not just hoped for.
 | Agent loop (mock get_weather)              | 16.9× wire / 8.8× total latency                          |
 | Agent loop (SearXNG live)                  | 18.0× / 1.65×                                             |
 | Agent loop (MetaMCP Time MCP)              | 17.0× / ~neutral                                          |
+| MCP leaf-mode (tool-result-side)           | tiny result (~30 char timestamp): **+211 B wire**, **12.4× consumer-CPU speedup** (0.052 ms → 0.004 ms); leaf wire scales linearly with text-block length, crossover ~300+ chars |
 | ToolWatcher microbench                     | 481 Mtok/s vs detokenize 18 Mtok/s → 26.7× speedup       |
 | Decode unanimity across 6 clients × 3 eng. | **24/24 wire AND 24/24 decode unanimous on every engine** |
 

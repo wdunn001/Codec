@@ -9,6 +9,7 @@
     "handoff": "tsx src/handoff.ts",
     "live": "tsx src/live.ts",
     "mcp:live": "tsx src/mcp-live.ts",
+    "leaf:live": "tsx src/leaf-live.ts",
     "latent:live": "tsx src/latent-live.ts",
     "compression": "tsx src/compression.ts",
     "compression:dict": "tsx src/compression-dict.ts",
@@ -21,6 +22,8 @@
   },
   "dependencies": {
     "@codec/core": "*",
+    "@codecai/mcp-leaf": "*",
+    "@codecai/web": "*",
     "@msgpack/msgpack": "^3.0.0"
   }
 }

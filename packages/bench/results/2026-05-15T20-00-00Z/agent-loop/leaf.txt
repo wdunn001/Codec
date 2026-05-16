@@ -1,0 +1,26 @@
+  ✓ Plain MCP (consumer re-tokenizes text)
+  ✓ mcp-leaf (consumer reads ids from _meta)
+tool:   get_current_time  args={"timezone":"UTC"}
+map:    qwen/qwen2.json  sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad
+iters:  warmup=5  measured=20
+
+| path                                     | wire  | tokenize | TTFB   | total  | calls |
+|------------------------------------------|-------|----------|--------|--------|-------|
+| plain MCP (consumer re-tokenizes text)   | 105 B | 0.05 ms  | 0.4 ms | 0.5 ms | 20    |
+| mcp-leaf (consumer reads ids from _meta) | 316 B | 0.00 ms  | 0.4 ms | 0.4 ms | 20    |
+
+wire delta (leaf − plain):     +211 B
+consumer tokenize speedup:     12.4× (plain 0.052 ms → leaf 0.004 ms)
+
+leaf integrity (ids ≡ encode(text)):  ✓ 20/20 samples
+
+Notes:
+  * Leaf-mode wire overhead is fixed per text block (~80–150 B for the
+    _meta envelope) and savings scale with text length. For tiny
+    timestamp results, leaf adds wire bytes; consumer CPU still wins
+    because tokenize is O(chars). The crossover where leaf wire ≤ plain
+    is around ~300+ chars of text-block content per tool result.
+  * Complementary axis to the mock/searxng/metamcp agent-loop rows:
+    those measure model-emission-side (ToolWatcher fires on raw IDs in
+    the inference stream). This row measures tool-result-side (the
+    tokenize the consumer would otherwise pay on each tool result).

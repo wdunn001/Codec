@@ -1,0 +1,28 @@
+{
+  "map_url": "https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/qwen/qwen2.json",
+  "map_hash": "sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad",
+  "tool": "get_current_time",
+  "tool_args": {
+    "timezone": "UTC"
+  },
+  "warmup": 5,
+  "iters": 20,
+  "plain": {
+    "wire_bytes_median": 105,
+    "tokenize_ms_median": 0.05164799999965908,
+    "ttfb_ms_median": 0.3977805,
+    "total_ms_median": 0.47678449999973105,
+    "ids_length": 24
+  },
+  "leaf": {
+    "wire_bytes_median": 316,
+    "tokenize_ms_median": 0.0041725000000951695,
+    "ttfb_ms_median": 0.413914,
+    "total_ms_median": 0.4279249999992978,
+    "ids_length": 24
+  },
+  "wire_delta_bytes": 211,
+  "tokenize_speedup_x": 12.378190532889407,
+  "leaf_integrity_pass": 20,
+  "leaf_integrity_fail": 0
+}
