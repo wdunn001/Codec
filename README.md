@@ -169,6 +169,18 @@ prompt → model emits tool call → dispatch via real tool registry → tool re
 
 Wire-reduction ratios are protocol properties and stable across cuts. Total-latency speedups depend heavily on the tool's dispatch latency: when the tool itself is fast, wire savings dominate; when the tool is slow (live web), tool latency dominates.
 
+### MCP leaf-mode — tool-result-side axis (v0.4.1)
+
+Complementary to the three rows above. `@codecai/mcp-leaf` lets a tool author attach pre-tokenized IDs to the `CallToolResult` via `_meta['ai.codec/leaf-tokenization']` so the consumer skips the re-tokenize hop. Captured at [`results/2026-05-15T20-00-00Z/agent-loop/leaf.txt`](packages/bench/results/2026-05-15T20-00-00Z/agent-loop/leaf.txt) (driver: [`packages/bench/src/leaf-live.ts`](packages/bench/src/leaf-live.ts), N=20 warm `get_current_time` calls against `codec-time-leaf` over MCP stdio, qwen/qwen2 map):
+
+| Path                                       | wire   | tokenize | TTFB   | total   |
+|--------------------------------------------|-------:|---------:|-------:|--------:|
+| plain MCP (consumer re-tokenizes text)     | 105 B  | 0.052 ms | 0.4 ms | 0.5 ms  |
+| mcp-leaf (consumer reads ids from `_meta`) | 316 B  | 0.004 ms | 0.4 ms | 0.4 ms  |
+| **delta**                                  | **+211 B** | **12.4× faster** | — | — |
+
+Integrity: 20/20 leaf samples have `ids == tokenizer.encode(text)` under the declared `map_id`. Wire overhead is fixed per text block (~80–150 B for the `_meta` envelope); tokenize savings scale linearly with text length. The crossover where leaf wire ≤ plain wire sits around ~300+ chars per text block, so tiny results (timestamps, short status strings) are CPU-positive but wire-negative; paginated docs / search results / large MCP outputs win both axes.
+
 ### Polyglot interop (v0.4.1)
 
 Same wire decoded by all 6 clients (Python, TS/Web, .NET, Rust, Java, C); wire bytes match exactly AND token counts match exactly across all 6 — **24/24 wire-unanimous AND 24/24 decode-unanimous** on every engine (sglang, vllm, llama.cpp). The decode-unanimity check is new in v0.4.1; prior cuts only verified wire-byte equality, which masked the .NET/Rust/Java/Web/C silent-decode-failures on dict-zstd that v0.4.1 fixed.
