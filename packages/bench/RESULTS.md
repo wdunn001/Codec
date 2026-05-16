@@ -183,20 +183,25 @@ the re-tokenize hop. Measured via [`results/2026-05-15T20-00-00Z/agent-loop/leaf
 calls of `get_current_time` against `codec-time-leaf` over MCP stdio,
 qwen/qwen2 map sha256:62c2f94f…):
 
-| Path                                     | wire   | tokenize | TTFB   | total   |
-|------------------------------------------|-------:|---------:|-------:|--------:|
-| plain MCP (consumer re-tokenizes text)   | 105 B  | 0.052 ms | 0.4 ms | 0.5 ms  |
-| mcp-leaf (consumer reads ids from _meta) | 316 B  | 0.004 ms | 0.4 ms | 0.4 ms  |
-| **delta**                                | **+211 B** | **12.4× faster** | — | — |
+All wire values are in **bytes**. Absolute numbers are small here because
+`get_current_time` returns a ~30-char timestamp; the leaf-mode `_meta`
+envelope (`map_id` string + ids array in JSON) is a fixed ~210-byte
+overhead that **outweighs** the savings on tiny results:
+
+| Path                                     | wire (bytes) | consumer tokenize | TTFB   | total   |
+|------------------------------------------|-------------:|------------------:|-------:|--------:|
+| plain MCP (consumer re-tokenizes text)   |          105 |          0.052 ms | 0.4 ms | 0.5 ms  |
+| mcp-leaf (consumer reads ids from _meta) |          316 |          0.004 ms | 0.4 ms | 0.4 ms  |
+| **delta**                                | **+211 bytes (leaf 3× larger on wire)** | **12.4× faster on consumer CPU** | — | — |
 
 Integrity: 20/20 leaf samples have `ids == tokenizer.encode(text)` under
-the declared `map_id`. The wire overhead is fixed per text block
-(~80–150 B for the `_meta` envelope); the tokenize savings scale linearly
-with text length. For a ~30-char timestamp, leaf is wire-negative but
-consumer-CPU-positive (the BPE encode disappears). The crossover where
-leaf wire ≤ plain wire sits around ~300+ chars of text-block content per
-tool result; for paginated docs / search results / large MCP outputs,
-leaf wins both axes.
+the declared `map_id`. Wire cost is fixed per text block (~80–150 bytes
+for the `_meta` envelope); consumer-CPU savings scale linearly with
+text length. For a ~30-char timestamp, leaf is wire-negative but
+consumer-CPU-positive (the BPE encode disappears). **The crossover where
+leaf wire ≤ plain wire sits at ~300+ chars per text block** — so tiny
+results pay a wire tax for the CPU win, while paginated docs / search
+results / large MCP outputs win both axes.
 
 ### ToolWatcher CPU microbench (v0.4.1 rerun)
 

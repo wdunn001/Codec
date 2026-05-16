@@ -171,15 +171,17 @@ Wire-reduction ratios are protocol properties and stable across cuts. Total-late
 
 ### MCP leaf-mode — tool-result-side axis (v0.4.1)
 
-Complementary to the three rows above. `@codecai/mcp-leaf` lets a tool author attach pre-tokenized IDs to the `CallToolResult` via `_meta['ai.codec/leaf-tokenization']` so the consumer skips the re-tokenize hop. Captured at [`results/2026-05-15T20-00-00Z/agent-loop/leaf.txt`](packages/bench/results/2026-05-15T20-00-00Z/agent-loop/leaf.txt) (driver: [`packages/bench/src/leaf-live.ts`](packages/bench/src/leaf-live.ts), N=20 warm `get_current_time` calls against `codec-time-leaf` over MCP stdio, qwen/qwen2 map):
+Complementary to the three rows above. `@codecai/mcp-leaf` lets a tool author attach pre-tokenized IDs to the `CallToolResult` via `_meta['ai.codec/leaf-tokenization']` so the consumer skips the re-tokenize hop. Captured at [`results/2026-05-15T20-00-00Z/agent-loop/leaf.txt`](packages/bench/results/2026-05-15T20-00-00Z/agent-loop/leaf.txt) (driver: [`packages/bench/src/leaf-live.ts`](packages/bench/src/leaf-live.ts), N=20 warm `get_current_time` calls against `codec-time-leaf` over MCP stdio, qwen/qwen2 map).
 
-| Path                                       | wire   | tokenize | TTFB   | total   |
-|--------------------------------------------|-------:|---------:|-------:|--------:|
-| plain MCP (consumer re-tokenizes text)     | 105 B  | 0.052 ms | 0.4 ms | 0.5 ms  |
-| mcp-leaf (consumer reads ids from `_meta`) | 316 B  | 0.004 ms | 0.4 ms | 0.4 ms  |
-| **delta**                                  | **+211 B** | **12.4× faster** | — | — |
+Wire is in **bytes**. Absolute values are small here because `get_current_time` returns a ~30-character timestamp; the leaf-mode `_meta` envelope (`map_id` string + ids array in JSON) is a fixed ~210-byte overhead that **outweighs** the savings on tiny results like this:
 
-Integrity: 20/20 leaf samples have `ids == tokenizer.encode(text)` under the declared `map_id`. Wire overhead is fixed per text block (~80–150 B for the `_meta` envelope); tokenize savings scale linearly with text length. The crossover where leaf wire ≤ plain wire sits around ~300+ chars per text block, so tiny results (timestamps, short status strings) are CPU-positive but wire-negative; paginated docs / search results / large MCP outputs win both axes.
+| Path                                       | wire (bytes) | consumer tokenize | TTFB   | total   |
+|--------------------------------------------|-------------:|------------------:|-------:|--------:|
+| plain MCP (consumer re-tokenizes text)     |          105 |          0.052 ms | 0.4 ms | 0.5 ms  |
+| mcp-leaf (consumer reads ids from `_meta`) |          316 |          0.004 ms | 0.4 ms | 0.4 ms  |
+| **delta**                                  | **+211 bytes (leaf 3× larger on wire)** | **12.4× faster on consumer CPU** | — | — |
+
+Integrity: 20/20 leaf samples have `ids == tokenizer.encode(text)` under the declared `map_id`. The wire cost is fixed per text block; the consumer-CPU savings scale linearly with text length. **The crossover where leaf wire ≤ plain wire sits at ~300+ characters per text block** — so timestamps / short status strings pay a wire tax for the CPU win, while paginated docs, search results, and large MCP outputs win on both axes.
 
 ### Polyglot interop (v0.4.1)
 
