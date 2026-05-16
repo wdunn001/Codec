@@ -1,0 +1,14 @@
+  ✓ JSON-SSE + client text scan + dispatch
+  ✓ Codec msgpack + server tool_watcher + dispatch
+target: http://localhost:30002
+model:  Qwen/Qwen2.5-0.5B-Instruct
+prompt: What is the current time in UTC?
+
+path                                                    wire     detect   dispatch       TTFB      total  calls
+--------------------------------------------------------------------------------------------------------------
+JSON-SSE + client text scan + dispatch                 18072     0.0 ms     0.0 ms    52.8 ms   210.0 ms  1
+Codec msgpack + server tool_watcher + dispatch          1061     0.0 ms     0.0 ms    53.8 ms   216.3 ms  1
+
+tool calls dispatched:
+  [JSON-SSE + client text scan + ] get_current_time ← {"name": "get_current_time", "arguments": {"timezone": "UTC"}}
+  [Codec msgpack + server tool_wa] get_current_time ← {"name": "get_current_time", "arguments": {"timezone": "UTC"}}

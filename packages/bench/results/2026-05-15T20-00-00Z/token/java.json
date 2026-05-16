@@ -1,0 +1,31 @@
+{
+  "schema_version" : "1",
+  "kind" : "token_bench",
+  "captured_at" : "2026-05-16T20:16:23Z",
+  "client" : {
+    "lang" : "java",
+    "lib_name" : "ai.codec:codec",
+    "lib_version" : "unknown",
+    "runtime" : "Java 21.0.11"
+  },
+  "map" : {
+    "id" : "qwen/qwen2",
+    "vocab_size" : 151665,
+    "sha256" : "sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad"
+  },
+  "corpus" : {
+    "path" : "/home/vinez/codec-bench/Codec/packages/bench/golden/qwen2.json",
+    "sha256" : "sha256:80744e804d56436d398322b3ade8f5abb1dec6afc4c48b2298fc89cf664ab7f0",
+    "samples" : 35,
+    "total_text_bytes" : 929,
+    "total_tokens" : 287
+  },
+  "reps" : 200,
+  "warmup_reps" : 20,
+  "encode_ms_total_median" : 0.139974,
+  "encode_ms_total_p99" : 0.446382,
+  "decode_ms_total_median" : 0.13774599999999998,
+  "decode_ms_total_p99" : 0.430868,
+  "encode_tokens_per_sec" : 2050380.7850029294,
+  "decode_tokens_per_sec" : 2083545.0757190774
+}

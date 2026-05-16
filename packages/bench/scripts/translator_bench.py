@@ -70,9 +70,9 @@ from codecai import (  # noqa: E402  (after sys.path tweak)
 # Chinese + multilingual corpora. Re-tokenizing across these two is
 # the canonical "cross-vocab" stress test.
 LLAMA_MAP_URL = "https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/meta-llama/llama-3.json"
-LLAMA_MAP_HASH = "sha256:79b707aea8c2b41c2883ec7913b0c4a0c880044ac844d89a9a03e779eb92db04"
+LLAMA_MAP_HASH = "sha256:1df0d6a894b844712979207a0521c3887026f3dde427fb75b2984307a57d797f"
 QWEN_MAP_URL = "https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/qwen/qwen2.json"
-QWEN_MAP_HASH = "sha256:887311099cdc09e7022001a01fa1da396750d669b7ed2c242a000b9badd09791"
+QWEN_MAP_HASH = "sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad"
 
 # A multi-paragraph English passage, deterministic across runs. Encoded
 # through Llama-3 BPE, this gives ~580 tokens; we tile it to reach

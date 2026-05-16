@@ -15,6 +15,9 @@
  * Self-contained — uses an inline synthetic tokenizer map so the bench
  * runs without any external map file.
  */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#  define _POSIX_C_SOURCE 199309L  /* unlocks clock_gettime + CLOCK_MONOTONIC */
+#endif
 #include "codec/codec.h"
 
 #include <stdio.h>

@@ -1,0 +1,14 @@
+  ✓ JSON-SSE + client text scan + dispatch
+  ✓ Codec msgpack + server tool_watcher + dispatch
+target: http://localhost:30002
+model:  Qwen/Qwen2.5-0.5B-Instruct
+prompt: What is the weather in Tokyo?
+
+path                                                    wire     detect   dispatch       TTFB      total  calls
+--------------------------------------------------------------------------------------------------------------
+JSON-SSE + client text scan + dispatch                 13419     0.0 ms     1.1 ms  1182.0 ms  1662.2 ms  1
+Codec msgpack + server tool_watcher + dispatch           794     0.0 ms     1.2 ms    53.5 ms   189.0 ms  1
+
+tool calls dispatched:
+  [JSON-SSE + client text scan + ] get_weather ← {"name": "get_weather", "arguments": {"city": "Tokyo"}}
+  [Codec msgpack + server tool_wa] get_weather ← {"name": "get_weather", "arguments": {"city": "Tokyo"}}

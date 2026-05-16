@@ -1,0 +1,27 @@
+ToolWatcher CPU microbench — v0.4.1 rerun on lab (gcc:13 container build, AMD EPYC 8124P)
+
+Command: bench_watcher 1000000 0.05 1024
+  (1M synthetic tokens, 5% region density, 1024-id chunks)
+
+Result:
+  tokens             1000000
+  region_density     0.050  (regions seen: 4030)
+  passthrough ids    943580
+  detok chars        3541540
+
+  watcher (codec_tool_watcher_feed)  2.08 ns/token   481.09 Mtok/s   total 2.08 ms
+  detokenize (codec_detokenizer_render) 55.42 ns/token   18.04 Mtok/s   total 55.42 ms
+  speedup            26.7×
+
+Note: differs from pre-v0.4.1 README claim (0.61 ns/token, 1648 Mtok/s, ~100×).
+The earlier number was captured on a different CPU/compiler combination
+(not documented in the older capture). Today's number is honest on the lab's
+AMD EPYC 8124P; the speedup ratio (26.7×) is what matters for the marketing
+claim and is still strongly in ToolWatcher's favour.
+
+bench_decode (end-to-end decode + detokenize against qwen2 map):
+  stream:      149891 bytes (14.99 B/token)
+  decoded:     10000 frames in 13.70 ms
+               1370 ns/frame
+               0.73 Mtok/sec
+  rendered:    58285 chars

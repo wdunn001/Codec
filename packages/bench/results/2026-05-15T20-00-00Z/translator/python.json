@@ -1,0 +1,191 @@
+{
+  "schema_version": "1",
+  "bench": "translator-cross-vocab",
+  "from_map_id": "meta-llama/llama-3",
+  "to_map_id": "qwen/qwen2",
+  "from_map_hash": "sha256:1df0d6a894b844712979207a0521c3887026f3dde427fb75b2984307a57d797f",
+  "to_map_hash": "sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad",
+  "reps_per_cell": 5,
+  "rows": [
+    {
+      "size": 64,
+      "format": "codec_msgpack",
+      "encoding": "identity",
+      "wire_bytes": 208,
+      "bridge_cpu_ms": 0.972,
+      "out_token_count": 64,
+      "rep_cpu_ns": [
+        913049,
+        1374899,
+        972410,
+        920453,
+        1330925
+      ]
+    },
+    {
+      "size": 64,
+      "format": "codec_msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 215,
+      "bridge_cpu_ms": 1.137,
+      "out_token_count": 64,
+      "rep_cpu_ns": [
+        1137401,
+        1010583,
+        1747042,
+        1082207,
+        1269299
+      ]
+    },
+    {
+      "size": 64,
+      "format": "json_sse",
+      "encoding": "identity",
+      "wire_bytes": 16847,
+      "bridge_cpu_ms": 1.044,
+      "out_token_count": 64,
+      "rep_cpu_ns": [
+        993259,
+        1043916,
+        1351505,
+        947013,
+        1427418
+      ]
+    },
+    {
+      "size": 64,
+      "format": "json_sse",
+      "encoding": "gzip",
+      "wire_bytes": 585,
+      "bridge_cpu_ms": 1.042,
+      "out_token_count": 64,
+      "rep_cpu_ns": [
+        1041741,
+        1042543,
+        1039747,
+        967431,
+        1258820
+      ]
+    },
+    {
+      "size": 512,
+      "format": "codec_msgpack",
+      "encoding": "identity",
+      "wire_bytes": 1484,
+      "bridge_cpu_ms": 4.334,
+      "out_token_count": 514,
+      "rep_cpu_ns": [
+        5312521,
+        3782450,
+        4252065,
+        5072029,
+        4334213
+      ]
+    },
+    {
+      "size": 512,
+      "format": "codec_msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 672,
+      "bridge_cpu_ms": 4.383,
+      "out_token_count": 514,
+      "rep_cpu_ns": [
+        4383203,
+        6326127,
+        4215048,
+        3328947,
+        4836267
+      ]
+    },
+    {
+      "size": 512,
+      "format": "json_sse",
+      "encoding": "identity",
+      "wire_bytes": 117504,
+      "bridge_cpu_ms": 4.083,
+      "out_token_count": 514,
+      "rep_cpu_ns": [
+        4082675,
+        4279445,
+        5568652,
+        3625594,
+        3722738
+      ]
+    },
+    {
+      "size": 512,
+      "format": "json_sse",
+      "encoding": "gzip",
+      "wire_bytes": 2923,
+      "bridge_cpu_ms": 4.873,
+      "out_token_count": 514,
+      "rep_cpu_ns": [
+        5819809,
+        3870094,
+        6250455,
+        4872701,
+        3857992
+      ]
+    },
+    {
+      "size": 2048,
+      "format": "codec_msgpack",
+      "encoding": "identity",
+      "wire_bytes": 5898,
+      "bridge_cpu_ms": 7.089,
+      "out_token_count": 2055,
+      "rep_cpu_ns": [
+        7016507,
+        7088687,
+        6682941,
+        7194218,
+        9134411
+      ]
+    },
+    {
+      "size": 2048,
+      "format": "codec_msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 709,
+      "bridge_cpu_ms": 8.151,
+      "out_token_count": 2055,
+      "rep_cpu_ns": [
+        11271015,
+        7134777,
+        6142231,
+        8299873,
+        8150783
+      ]
+    },
+    {
+      "size": 2048,
+      "format": "json_sse",
+      "encoding": "identity",
+      "wire_bytes": 461103,
+      "bridge_cpu_ms": 8.799,
+      "out_token_count": 2055,
+      "rep_cpu_ns": [
+        8799453,
+        12886147,
+        8331292,
+        8616599,
+        12021215
+      ]
+    },
+    {
+      "size": 2048,
+      "format": "json_sse",
+      "encoding": "gzip",
+      "wire_bytes": 10683,
+      "bridge_cpu_ms": 10.037,
+      "out_token_count": 2055,
+      "rep_cpu_ns": [
+        8347998,
+        10684572,
+        9993068,
+        12182144,
+        10037018
+      ]
+    }
+  ]
+}

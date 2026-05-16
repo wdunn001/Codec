@@ -9,6 +9,9 @@
  *
  * Reports: wire bytes/token, decode ns/frame, detokenize ns/frame.
  */
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#  define _POSIX_C_SOURCE 199309L  /* unlocks clock_gettime + CLOCK_MONOTONIC */
+#endif
 #include "codec/codec.h"
 
 #include <stdio.h>

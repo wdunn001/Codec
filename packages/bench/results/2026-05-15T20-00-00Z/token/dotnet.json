@@ -1,0 +1,31 @@
+{
+  "schema_version": "1",
+  "kind": "token_bench",
+  "captured_at": "2026-05-16T20:16:22Z",
+  "client": {
+    "lang": "dotnet",
+    "lib_name": "Codec.Net",
+    "lib_version": "0.4.0.0",
+    "runtime": ".NET 8.0.26"
+  },
+  "map": {
+    "id": "qwen/qwen2",
+    "vocab_size": 151665,
+    "sha256": "sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad"
+  },
+  "corpus": {
+    "path": "/home/vinez/codec-bench/Codec/packages/bench/golden/qwen2.json",
+    "sha256": "sha256:80744e804d56436d398322b3ade8f5abb1dec6afc4c48b2298fc89cf664ab7f0",
+    "samples": 35,
+    "total_text_bytes": 929,
+    "total_tokens": 287
+  },
+  "reps": 200,
+  "warmup_reps": 20,
+  "encode_ms_total_median": 0.0841,
+  "encode_ms_total_p99": 0.6786,
+  "decode_ms_total_median": 0.12595,
+  "decode_ms_total_p99": 2.1946,
+  "encode_tokens_per_sec": 3412604.0428061835,
+  "decode_tokens_per_sec": 2278682.0166732827
+}
