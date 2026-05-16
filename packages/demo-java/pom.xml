@@ -27,7 +27,7 @@
         <dependency>
             <groupId>io.github.wdunn001</groupId>
             <artifactId>codec</artifactId>
-            <version>0.4.0</version>
+            <version>0.4.1</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

@@ -1,6 +1,6 @@
 {
   "name": "@codecai/web-safety",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Optional client-side safety layer for the Codec binary transport — prefilter (secrets / PII / high-entropy detection) and classifier registry. Pairs with @codecai/web; ships zero classifier weights of its own.",
   "license": "MIT",
   "type": "module",
