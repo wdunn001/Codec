@@ -236,7 +236,7 @@ CORPORA = {
     "comma-dominated-50pct":       lambda n: corpus_mostly_one_token(n),
 }
 
-SIZES = [64, 512, 2048]
+SIZES = [16, 32, 64, 128, 256, 512, 1024, 2048]
 FORMATS = ["msgpack", "protobuf"]
 ENCODINGS = ["identity", "gzip", "br", "zstd"]
 

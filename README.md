@@ -327,49 +327,41 @@ Codec supports optional compression of the response stream via standard HTTP `Ac
 |------------|--------|--------|------------------------------------------------|
 | `identity` | MUST   | MUST   | The fallback. Always works.                    |
 | `gzip`     | SHOULD | SHOULD | Stdlib in every language. Universal browser support. |
-| `zstd`     | MAY    | MAY    | Best ratio at scale. Browsers: Chrome 123+, Firefox 126+. |
-| `br`       | MAY    | MAY    | Fallback only. Universal browser support (Safari, iOS, older Firefox) covers the gap until zstd ships everywhere. |
+| `br`       | SHOULD | SHOULD | Universal browser support (Chrome 50+, Firefox 44+, Safari 11+). v0.4.1 made brotli the **best small-stream choice** — see table below. |
+| `zstd`     | MAY    | MAY    | Best ratio at scale **with a pre-trained dictionary**. Browsers: Chrome 123+, Firefox 126+. |
 
 Browsers handle decompression transparently in `fetch()`, so `@codecai/web` requires zero changes to consume compressed streams.
 
-### Which encoding to pick (measured threshold)
+### Which encoding to pick (measured against v0.4.1 synthetic streams)
 
-A fine-grained sweep at 8 sizes (16 → 2,048 tokens, see `RESULTS.md` §1c) gives a clean rule of thumb on the PR-branch sglang server with Qwen2.5-0.5B-Instruct:
+Pure-library measurement at 8 sizes × 4 corpora — protocol-only, no engine, no model. See [`packages/bench/results/2026-05-15T20-00-00Z/synthetic/wire.json`](packages/bench/results/2026-05-15T20-00-00Z/synthetic/wire.json) and [`scripts/synthetic_wire_bench.py`](packages/bench/scripts/synthetic_wire_bench.py).
 
-![Encoding crossover by response size](packages/bench/docs/crossover-summary.png)
+**Best encoding by stream size (msgpack, typical model output — low-entropy 50-unique corpus):**
 
-| stream length     | best encoding | why                                                                          |
-|-------------------|---------------|------------------------------------------------------------------------------|
-| **≤ 128 tokens**  | **gzip**      | tiny deflate header beats zstd's frame header on payloads under ~150 tokens  |
-| **128 – 256**     | zstd if available, else gzip | within 10% of each other, both within reach of optimal                |
-| **≥ 256 tokens**  | **zstd**      | Huffman + dictionary keep amortising as the stream grows (562× vs JSON-SSE at 2K) |
+| stream length (tokens) | best encoding | second        | why                                                                |
+|-----------------------:|---------------|---------------|--------------------------------------------------------------------|
+| ≤ 16                   | **dict-zstd** | br            | zstd dict's pre-loaded context wins immediately when content matches dict; br close behind |
+| 32 – 256               | **br**        | gzip          | brotli's static dictionary beats deflate on small structural payloads; per-chunk flush regression removed in v0.4.1 |
+| 512                    | **gzip**      | br            | by 512 tokens gzip's sliding window has caught up; br's per-stream header amortises away |
+| 1024 – 2048            | **dict-zstd** | gzip          | for cooperative content, dict-zstd opens a 1.5–2× lead over gzip as the stream grows |
 
-**Two important caveats from the timed-sweep data** (single run, fixed prompt, all 12 cells, median of reps — at 2K tokens):
+**For uniform-random content** (worst case — no compressible structure):
 
-| encoding | wire reduction vs JSON-SSE | TTFT @ 2K | streams? | notes |
-|---|---:|---:|:---:|---|
-| gzip | **705×–765×** | 11 ms | ✓ | universal default for streaming |
-| zstd | **990×–997×** | 3,684 ms | ✗ (buffers) | best ratio, agent/batch only |
-| br | 23× | 11 ms | ✓ | sglang's br middleware barely compresses Codec frames — sometimes *expands* them (protobuf · br at 2K = 20.2 KB, vs identity 18.9 KB). Streams cleanly, but no real wire savings on this stack today. |
-| identity | 17×–25× | 11 ms | ✓ | last-resort fallback |
+| stream length | best | runner-up |
+|---:|---|---|
+| 16  | dict-zstd 122 B | br 126 B |
+| 32–2048 | **br wins every size** | gzip a close second |
 
-1. **TTFT cliff.** zstd buffers the full response before sending the first byte. gzip, brotli, and identity all stream chunk-by-chunk. Only zstd has the cliff.
-2. **Brotli isn't compressing.** sglang's br middleware on Codec streams is delivering near-zero compression at scale — barely better than identity, sometimes worse. This is a sglang configuration issue (likely per-frame compression with a quality setting that doesn't fit small-frame workloads), not a fundamental br limitation. Until that's patched upstream, br is in the negotiated set as a fallback only.
+Brotli is now the *default* small-and-medium-stream choice. dict-zstd is the **growth winner** when (a) the response is structurally repetitive AND (b) a matching trained dictionary is loaded.
 
-For human-facing streams (chat, code completion) **use gzip** — it streams *and* delivers 700×+ wire reduction. zstd's full ratio is only safe for agent-to-agent and batch workloads where TTFT doesn't matter. The picker's `interactive: true` mode (the default) enforces this — see [`RESULTS.md` §1d](packages/bench/RESULTS.md) for the chart and full numbers.
+**Two important caveats** from the v0.4.1 synthetic-stream data:
 
-#### A single number to rank by: **bytes × TTFT** (interactive) and **bytes** (batch)
+1. **TTFT cliff.** zstd buffers the full response before sending the first byte in some middleware stacks. gzip, brotli, and identity all stream chunk-by-chunk. If TTFT matters more than ratio, prefer gzip or br over zstd.
+2. **Brotli regression FIXED in v0.4.1.** Pre-v0.4.1, the engine forks' `_compress_brotli` called `flush()` on every chunk, emitting a complete brotli block per chunk and inflating small streams (64-token msgpack: br 1,159 B vs identity 975 B). The per-chunk flush was removed in v0.4.1; brotli now compresses properly across all stream sizes. The "br is a fallback only" guidance pre-v0.4.1 is obsolete.
 
-To compare encodings holistically you can multiply the two: `bytes × TTFT` is the "byte-milliseconds you pay before the user sees something" — a composite efficiency score normalised to JSON-SSE identity = 1.0×. The two regimes give two different rankings:
+For most workloads: **gzip remains a safe streaming default**, br is the better choice when both ends support it on streams < 512 tokens, and dict-zstd is the choice for long structurally-repetitive streams where you control both ends + ship a tokenizer-specific dict.
 
-| metric | best at 2K tok | second | also-rans |
-|---|---|---|---|
-| **Interactive (bytes × TTFT)** | gzip — **722-855×** better than JSON-SSE | identity Codec — 18-25× | br — 25× &nbsp;·&nbsp; **zstd — only 3×** (TTFT cliff) |
-| **Batch (bytes only)** | zstd — **1014-1021×** | gzip — 722-784× | br — 23× &nbsp;·&nbsp; identity — 17-25× |
-
-The Pareto front for both metrics is `{gzip, zstd}` — br and identity are dominated everywhere. That's why the `wire-compress` picker has exactly one knob (`interactive: boolean`).
-
-**Brotli is a fallback tier, not a competitor.** On streaming small-frame workloads brotli's per-block overhead doesn't amortise, so when gzip *or* zstd is available the picker chooses one of those instead. But brotli has wider client coverage than zstd — Safari, iOS, older Firefox all ship br but not zstd — so it remains a critical fallback when neither modern encoder is supported. Identity is the universal floor; the picker only chooses it when nothing else negotiates.
+The Pareto front is now `{br, gzip, dict-zstd}` — identity is dominated everywhere except when nothing else negotiates. The `wire-compress` picker's selection logic [should be revisited](packages/wire-compress) against the v0.4.1 numbers; the size-only heuristic doesn't capture brotli's new strength at small sizes.
 
 ### Reference implementation: [`wire-compress`](packages/wire-compress)
 
