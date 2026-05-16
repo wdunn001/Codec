@@ -21,7 +21,7 @@ on:
         required: true
         default: "all"
         type: choice
-        options: [all, web, web-safety, web-llm, maps-cli]
+        options: [all, web, web-safety, web-llm, maps-cli, mcp-leaf]
 
 permissions:
   contents: read
@@ -98,5 +98,20 @@ jobs:
       - name: Publish @codecai/maps-cli
         if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'maps-cli' }}
         run: npm publish --access public -w @codecai/maps-cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ── @codecai/mcp-leaf ──────────────────────────────────────────
+      - name: Build @codecai/mcp-leaf
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'mcp-leaf' }}
+        run: npm run -w @codecai/mcp-leaf build
+
+      - name: Test @codecai/mcp-leaf
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'mcp-leaf' }}
+        run: npm test -w @codecai/mcp-leaf
+
+      - name: Publish @codecai/mcp-leaf
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'mcp-leaf' }}
+        run: npm publish --access public -w @codecai/mcp-leaf
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
