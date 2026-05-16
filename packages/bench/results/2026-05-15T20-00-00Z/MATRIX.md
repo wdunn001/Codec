@@ -10,7 +10,7 @@ Per engine, best-case Codec compression vs JSON-SSE identity. Python row chosen 
 |---|---:|---:|---:|---:|---:|
 | **llama.cpp** | 529.2 KB | 16.1 KB (32.8×) | 28.5 KB (18.6×) | 16.1 KB (32.9×) | 19.3 KB (27.4×) |
 | **sglang** | 484.5 KB | 354 b (1401.4×) | 291 b (1704.8×) | 311 b (1595.1×) | 298 b (1664.7×) |
-| **vllm** | 484.0 KB | 3,874 b (127.9×) | 3,925 b (126.3×) | 3,985 b (124.4×) | 4,476 b (110.7×) |
+| **vllm** | 412.9 KB | 4,288 b (98.6×) | 4,401 b (96.1×) | 4,418 b (95.7×) | 5,083 b (83.2×) |
 
 ## §2. Cross-language Codec wire-byte equality
 
@@ -26,13 +26,12 @@ For every Codec cell (size × {msgpack,protobuf} × encoding), how many byte-ide
 
 ### vllm
 
-- **19 / 24 cells unanimous** across 6 clients (C, .NET, Java, Python, Rust, TS/Node)
+- **20 / 24 cells unanimous** across 6 clients (C, .NET, Java, Python, Rust, TS/Node)
 - Mismatched cells:
-  - size=2048 msgpack+br: c=33815, dotnet=33815, java=33815, python=33815, rust=33851, web=33815
-  - size=2048 msgpack+identity: c=29908, dotnet=29908, java=29902, python=29896, rust=29908, web=29908
-  - size=2048 msgpack+zstd: c=3925, dotnet=3945, java=3925, python=3925, rust=3925, web=3925
-  - size=2048 protobuf+gzip: c=3985, dotnet=3985, java=3985, python=3985, rust=3985, web=3987
-  - size=2048 protobuf+zstd: c=4476, dotnet=4476, java=4475, python=4476, rust=4476, web=4476
+  - size=64 msgpack+zstd: c=237, dotnet=237, java=237, python=237, rust=236, web=237
+  - size=512 protobuf+identity: c=5157, dotnet=5157, java=5157, python=5161, rust=5157, web=5157
+  - size=2048 msgpack+identity: c=30288, dotnet=30288, java=30294, python=30288, rust=30288, web=30288
+  - size=2048 protobuf+br: c=29221, dotnet=29221, java=29221, python=29221, rust=29228, web=29221
 
 ## §3. Wire-byte grid per engine (Python row)
 
@@ -76,15 +75,15 @@ Median bytes across reps. Other 5 client languages agree byte-identically on eve
 
 | size | path | identity | gzip | br | zstd |
 |---:|---|---:|---:|---:|---:|
-| 64 | JSON-SSE | 16.3 KB | 16.3 KB | 16.3 KB | 16.3 KB |
-| 64 | Codec msgpack | 977 b | 256 b | 1,166 b | 234 b |
-| 64 | Codec protobuf | 654 b | 249 b | 941 b | 246 b |
-| 512 | JSON-SSE | 129.9 KB | 129.6 KB | 130.0 KB | 130.0 KB |
-| 512 | Codec msgpack | 7,641 b | 1,200 b | 9,157 b | 1,323 b |
-| 512 | Codec protobuf | 5,165 b | 1,223 b | 7,386 b | 1,463 b |
-| 2048 | JSON-SSE | 484.0 KB | 517.8 KB | 517.8 KB | 517.8 KB |
-| 2048 | Codec msgpack | 29.2 KB | 3,874 b | 33.0 KB | 3,925 b |
-| 2048 | Codec protobuf | 19.8 KB | 3,985 b | 27.5 KB | 4,476 b |
+| 64 | JSON-SSE | 16.1 KB | 16.1 KB | 16.1 KB | 16.1 KB |
+| 64 | Codec msgpack | 957 b | 253 b | 1,143 b | 237 b |
+| 64 | Codec protobuf | 643 b | 251 b | 925 b | 262 b |
+| 512 | JSON-SSE | 129.6 KB | 129.7 KB | 129.7 KB | 129.7 KB |
+| 512 | Codec msgpack | 7,641 b | 1,299 b | 9,191 b | 1,438 b |
+| 512 | Codec protobuf | 5,161 b | 1,346 b | 7,421 b | 1,578 b |
+| 2048 | JSON-SSE | 412.9 KB | 518.9 KB | 519.0 KB | 518.9 KB |
+| 2048 | Codec msgpack | 29.6 KB | 4,288 b | 35.0 KB | 4,401 b |
+| 2048 | Codec protobuf | 20.1 KB | 4,418 b | 28.5 KB | 5,083 b |
 
 ## §4. TTFB by client definition cohort
 
@@ -132,18 +131,18 @@ Bodies and headers tend to arrive in the same TCP segment for non-buffered encod
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
-| 64 | identity | 60.0 | 52.0 |
-| 64 | gzip | 59.7 | 55.1 |
-| 64 | br | 60.0 | 49.7 |
-| 64 | zstd | 189 | 51.8 |
-| 512 | identity | 62.7 | 52.2 |
-| 512 | gzip | 57.3 | 52.0 |
-| 512 | br | 60.2 | 56.4 |
-| 512 | zstd | 1124 | 54.0 |
-| 2048 | identity | 59.6 | 42.9 |
-| 2048 | gzip | 60.7 | 53.2 |
-| 2048 | br | 60.5 | 53.1 |
-| 2048 | zstd | 4351 | 52.9 |
+| 64 | identity | 72.3 | 52.0 |
+| 64 | gzip | 72.4 | 52.0 |
+| 64 | br | 72.8 | 42.4 |
+| 64 | zstd | 659 | 50.9 |
+| 512 | identity | 72.3 | 53.0 |
+| 512 | gzip | 72.4 | 52.9 |
+| 512 | br | 73.7 | 52.5 |
+| 512 | zstd | 4928 | 52.7 |
+| 2048 | identity | 73.8 | 53.2 |
+| 2048 | gzip | 75.4 | 53.2 |
+| 2048 | br | 74.8 | 51.6 |
+| 2048 | zstd | 19840 | 42.4 |
 
 ## §5. Methodology fingerprints
 
