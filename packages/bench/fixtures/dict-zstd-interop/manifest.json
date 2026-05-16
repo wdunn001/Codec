@@ -1,0 +1,42 @@
+{
+  "schema_version": "1",
+  "purpose": "Cross-client dict-zstd interop test fixture. Each Codec client (TS, Python, Rust, Java, .NET, C) MUST decompress compressed.bin using dict.bin and produce decompressed.bin byte-identically. Then msgpack-parse decompressed.bin and verify the token-ID sequence matches expected_token_ids.",
+  "captured": {
+    "from_engine": "wdunn001/codec-sglang:v0.4.1",
+    "engine_image_sha256": "sha256:e4465a7cd96e33b5b023da535e756dcb19430b72a8dd0bcf5656c8761015183a",
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "stream_format": "msgpack",
+    "max_tokens_requested": 32,
+    "captured_at": "2026-05-15T23:55:00Z",
+    "captured_via": "POST /v1/completions  Accept-Encoding: zstd"
+  },
+  "compressed_bin": {
+    "path": "compressed.bin",
+    "size_bytes": 187,
+    "content_encoding": "zstd",
+    "dict_required": true
+  },
+  "dict_bin": {
+    "path": "dict.bin",
+    "size_bytes": 16384,
+    "sha256": "sha256:29a810f3fbded045d55f1cd4435c7d2959f6dbc9c697dc7fe41fb44bd2e891db",
+    "trained_on": "qwen2.5-msgpack-v1",
+    "matches_codec_zstd_dict_header": true
+  },
+  "decompressed_bin": {
+    "path": "decompressed.bin",
+    "size_bytes": 521,
+    "content_type": "concatenated msgpack frames per spec/versions/v0.4.md §Mode-A",
+    "frame_shape": "{\"ids\": [uint32, ...], \"done\": bool}"
+  },
+  "expected_token_count": 32,
+  "expected_first_10_ids": [53365, 1593, 7552, 57218, 5371, 37, 11278, 43, 9909, 2773],
+  "client_contract": {
+    "step_1": "Load dict.bin into a hash registry keyed by 'sha256:<lowercase hex>'.",
+    "step_2": "On receiving a response with Content-Encoding: zstd + Codec-Zstd-Dict: sha256:..., look up the dict bytes in the registry.",
+    "step_3": "Pass the dict to a zstd decompressor (zstd-jni Dictionary, zstandard.ZstdCompressionDict, ZstdSharp.DecompressionDictionary, libzstd ZSTD_DDict, etc.).",
+    "step_4": "Stream-decompress the response body. The result MUST be byte-identical to decompressed.bin.",
+    "step_5": "Msgpack-parse the decompressed bytes. The concatenated frames MUST yield expected_token_count token IDs starting with expected_first_10_ids.",
+    "spec_reference": "spec/versions/v0.4.md §Pre-trained ZSTD dictionaries + §Codec-Zstd-Dict response header"
+  }
+}

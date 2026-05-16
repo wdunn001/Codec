@@ -133,6 +133,16 @@ export {
   decodeProtobufFrame,
 } from './stream.js';
 
+// Codec-Zstd-Dict client-side contract (v0.2+). Match a response's
+// declared dict hash to a loaded dict before decompressing; fail fast on
+// mismatch. See spec/versions/v0.4.md §Codec-Zstd-Dict response header.
+export {
+  hashZstdDict,
+  selectZstdDictForResponse,
+  CodecZstdDictError,
+  type ResponseHeadersLike,
+} from './compression.js';
+
 // v0.4 version negotiation — opt-on, graceful-downgrade wire contract.
 // See spec/versions/v0.4.md § Version Compatibility Signaling.
 export {

@@ -18,6 +18,11 @@
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
+    <!-- Used only by DictZstdInteropTests to decompress the shipped
+         dict-zstd-interop fixture end-to-end. Production callers wire up
+         their own zstd library; Codec.Net itself does not take a zstd
+         dep. -->
+    <PackageReference Include="ZstdSharp.Port" Version="0.8.8" />
   </ItemGroup>
 
   <ItemGroup>

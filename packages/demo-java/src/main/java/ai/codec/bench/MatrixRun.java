@@ -16,12 +16,15 @@
 package ai.codec.bench;
 
 import ai.codec.CodecFrame;
+import ai.codec.CodecZstdDictError;
+import ai.codec.Compression;
 import ai.codec.StreamDecoder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.luben.zstd.ZstdDictDecompress;
 import com.github.luben.zstd.ZstdInputStream;
 import org.brotli.dec.BrotliInputStream;
 
@@ -43,6 +46,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.GZIPInputStream;
 
 public final class MatrixRun {
@@ -53,6 +57,42 @@ public final class MatrixRun {
             { "Codec protobuf",     "protobuf" },
     };
     private static final String[] ENCODINGS = { "identity", "gzip", "br", "zstd" };
+
+    /**
+     * Hash → raw dict bytes for any zstd dict the bench has loaded
+     * locally. Keys MUST follow the canonical {@code sha256:<hex>} shape
+     * the server emits in the {@code Codec-Zstd-Dict} response header.
+     * Populated by {@link #loadZstdDictFiles(String...)} at bench
+     * startup with the reference dicts from {@code dictionaries/}.
+     */
+    static final Map<String, byte[]> ZSTD_DICTS = new ConcurrentHashMap<>();
+
+    /**
+     * Load each dict file into {@link #ZSTD_DICTS}, keyed by its sha256.
+     * Missing files are silently skipped — the bench then decompresses
+     * successfully only on cells whose {@code Codec-Zstd-Dict} header
+     * matches a hash we have. Called from {@link #run(MatrixArgs)} before
+     * the matrix loop begins.
+     *
+     * <p>Mirrors {@code codec_demo.load_zstd_dict_files} in
+     * packages/demo-python.
+     */
+    static void loadZstdDictFiles(String... paths) {
+        for (String p : paths) {
+            if (p == null || p.isEmpty()) continue;
+            Path path = Paths.get(p);
+            if (!Files.isRegularFile(path)) continue;
+            try {
+                byte[] bytes = Files.readAllBytes(path);
+                ZSTD_DICTS.put(Compression.hashZstdDict(bytes), bytes);
+            } catch (Exception e) {
+                // Best-effort: a missing/unreadable dict just means the
+                // matching zstd cell will report dict-not-loaded.
+                System.err.println("loadZstdDictFiles: skipping " + p + ": "
+                        + e.getClass().getSimpleName() + ": " + e.getMessage());
+            }
+        }
+    }
 
     static final class MatrixArgs {
         String methodology;
@@ -152,19 +192,58 @@ public final class MatrixRun {
     }
 
     /** Decompress per Content-Encoding. Returns the raw bytes on failure
-     *  with an error string; never throws. */
-    static byte[] tryDecode(String contentEncoding, byte[] compressed, String[] errOut) {
+     *  with an error string; never throws.
+     *
+     *  <p>For zstd, looks up the server's {@code Codec-Zstd-Dict} header
+     *  against {@link #ZSTD_DICTS} via
+     *  {@link Compression#selectZstdDictForResponse} and decompresses
+     *  with that dict — bare {@code ZstdInputStream(...)} (no dict) only
+     *  works against no-dict servers, and the v0.4 bench fleet emits
+     *  dict-zstd, so the no-dict path produced
+     *  "ZstdIOException: Dictionary mismatch" before this rewire. */
+    static byte[] tryDecode(String contentEncoding,
+                            byte[] compressed,
+                            Map<String, String> responseHeaders,
+                            String[] errOut) {
         try {
             return switch (contentEncoding) {
                 case "gzip" -> readAll(new GZIPInputStream(new ByteArrayInputStream(compressed)));
                 case "br"   -> readAll(new BrotliInputStream(new ByteArrayInputStream(compressed)));
-                case "zstd" -> readAll(new ZstdInputStream(new ByteArrayInputStream(compressed)));
+                case "zstd" -> decodeZstd(compressed, responseHeaders);
                 default     -> compressed;
             };
+        } catch (CodecZstdDictError dictErr) {
+            // Spec-defined failure (header missing/malformed/unknown
+            // hash). Surface the message verbatim — it's already shaped
+            // for operators.
+            errOut[0] = dictErr.getClass().getSimpleName() + ": " + dictErr.getMessage();
+            return compressed;
         } catch (Exception e) {
             errOut[0] = e.getClass().getSimpleName() + ": " + e.getMessage();
             return compressed;
         }
+    }
+
+    /** zstd path: pick the dict via the production helper, then stream-
+     *  decompress with zstd-jni's {@link ZstdDictDecompress} for dict
+     *  reuse (parsing the 16 KB dict once per stream is fine; parsing it
+     *  once per chunk would not be). */
+    private static byte[] decodeZstd(byte[] compressed,
+                                     Map<String, String> responseHeaders) throws Exception {
+        byte[] dict = Compression.selectZstdDictForResponse(responseHeaders, ZSTD_DICTS);
+        ZstdInputStream zis = new ZstdInputStream(new ByteArrayInputStream(compressed));
+        if (dict != null) {
+            // ZstdDictDecompress holds a native-side parsed dict — reuse
+            // it across the stream rather than re-parsing on every chunk.
+            try (ZstdDictDecompress parsed = new ZstdDictDecompress(dict)) {
+                zis.setDict(parsed);
+                return readAll(zis);
+            }
+        }
+        // No dict needed (shouldn't happen on v0.4+ servers, but the
+        // helper returns null for non-zstd; on zstd it either returns
+        // the dict bytes or throws). Kept defensive for older servers.
+        return readAll(zis);
     }
 
     static CellResult runOne(HttpClient http, ObjectMapper json,
@@ -182,6 +261,7 @@ public final class MatrixRun {
         long t0 = System.nanoTime();
         byte[] compressed;
         String contentEncoding;
+        Map<String, String> respHeaders = new LinkedHashMap<>();
         try {
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(endpoint + "/v1/completions"))
@@ -209,6 +289,12 @@ public final class MatrixRun {
             r.totalMs = (System.nanoTime() - t0) / 1_000_000.0;
             contentEncoding = resp.headers().firstValue("Content-Encoding")
                     .orElse("identity").toLowerCase();
+            // Snapshot all response headers (lowercase keys, first value)
+            // so tryDecode can look up Codec-Zstd-Dict case-insensitively.
+            resp.headers().map().forEach((k, vs) -> {
+                if (vs != null && !vs.isEmpty())
+                    respHeaders.put(k.toLowerCase(), vs.get(0));
+            });
         } catch (Exception e) {
             r.error = e.getClass().getSimpleName() + ": " + e.getMessage();
             return r;
@@ -216,7 +302,7 @@ public final class MatrixRun {
 
         // Wire/TTFB/total preserved past this point regardless of decode outcome.
         String[] decodeErr = new String[1];
-        byte[] decoded = tryDecode(contentEncoding, compressed, decodeErr);
+        byte[] decoded = tryDecode(contentEncoding, compressed, respHeaders, decodeErr);
         if (decodeErr[0] != null) {
             r.error = "decode " + contentEncoding + ": " + decodeErr[0];
             r.tokens = 0;
@@ -275,6 +361,24 @@ public final class MatrixRun {
         String promptsRel = methodology.path("workload").path("prompts_file").asText();
         Path promptsPath = repoRoot.resolve("packages").resolve("bench").resolve(promptsRel);
         ObjectNode prompts = (ObjectNode) json.readTree(promptsPath.toFile()).path("prompts");
+
+        // Pre-load the reference zstd dictionaries so the bench can
+        // actually decompress the `zstd` cells (v0.4 servers emit
+        // dict-zstd with Codec-Zstd-Dict). Without these, the zstd
+        // column reports "ZstdIOException: Dictionary mismatch" and
+        // tokens=0 even though wire/TTFB are fine. The Python /
+        // TS / Rust / .NET / C bench clients all do the same priming
+        // step against `dictionaries/`.
+        Path dictsDir = repoRoot.resolve("dictionaries");
+        loadZstdDictFiles(
+                dictsDir.resolve("qwen2.5-synth-msgpack-v1.dict").toString(),
+                dictsDir.resolve("qwen2.5-synth-protobuf-v1.dict").toString());
+        if (ZSTD_DICTS.isEmpty()) {
+            System.err.println("WARNING: no zstd dicts loaded from " + dictsDir
+                    + " — zstd cells will fail with 'dict not loaded'");
+        } else {
+            System.err.println("loaded " + ZSTD_DICTS.size() + " zstd dict(s) from " + dictsDir);
+        }
 
         String endpoint = methodology.path("engine").path("endpoint").asText();
         String model = methodology.path("model").path("id").asText();

@@ -18,6 +18,7 @@ set(CODEC_TESTS
     test_translator
     test_safety_policy
     test_version_signaling
+    test_compression
 )
 
 foreach(t ${CODEC_TESTS})
@@ -31,4 +32,13 @@ endforeach()
 if(EXISTS "${CMAKE_SOURCE_DIR}/../../codec-maps/maps/qwen/qwen2.json")
     set_tests_properties(test_map test_tool_watcher PROPERTIES
         ENVIRONMENT "CODEC_MAPS_QWEN=${CMAKE_SOURCE_DIR}/../../codec-maps/maps/qwen/qwen2.json")
+endif()
+
+# Make the dict-zstd interop fixture discoverable to test_compression. The
+# fixture lives in packages/bench/fixtures/dict-zstd-interop/ and is the
+# same one every Codec client (TS / Python / Rust / Java / .NET) cross-verifies
+# byte-for-byte against — see its manifest.json for the contract.
+if(EXISTS "${CMAKE_SOURCE_DIR}/../bench/fixtures/dict-zstd-interop/manifest.json")
+    set_tests_properties(test_compression PROPERTIES
+        ENVIRONMENT "CODEC_DICT_ZSTD_INTEROP_DIR=${CMAKE_SOURCE_DIR}/../bench/fixtures/dict-zstd-interop")
 endif()

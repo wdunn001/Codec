@@ -321,6 +321,61 @@ When building MATRIX.md from a `results/{run_id}/` tree:
 6. Always emit a "Methodology" section at the top citing the
    canonical methodology block and the fingerprint each table uses.
 
+## Synthetic-stream wire bench (v0.4.1+) — protocol-only headline
+
+Added after the v0.4.1 post-mortem caught that the engine-output ratios
+were **content-dependent** rather than measuring protocol efficiency in
+isolation. Two engines fed the same prompt at temperature=0 generate
+different token sequences (floating-point non-associativity in CUDA
+reductions + sampler/attention divergence), and those sequences compress
+differently — producing wildly different headline ratios for what should
+have been a protocol comparison.
+
+The synthetic-stream bench fixes this by **never invoking a model**. It
+takes known token-ID sequences from a small set of canonical corpora and
+runs them through the Codec encoder + compression libraries locally. No
+HTTP, no inference engine, no model.
+
+### What the synthetic bench measures
+
+For each corpus × size × {msgpack, protobuf} × {identity, gzip, br, dict-zstd}:
+
+- **wire_bytes**: bytes produced by `encode_stream() + compress_*()`
+- **bytes_per_token**: `wire_bytes / n_tokens`
+
+Stored at `results/{run_id}/synthetic/wire.json` with `kind:
+"synthetic_wire_bench"`.
+
+### Canonical corpora
+
+| Corpus name                       | Distribution                            | Purpose                              |
+|-----------------------------------|------------------------------------------|--------------------------------------|
+| `uniform-random-vocab-152064`     | Uniform random in `[0, 152064)`         | Worst case — no content redundancy   |
+| `low-entropy-50-unique`           | Uniform from 50 sampled IDs             | Typical mixed-vocab model output     |
+| `comma-dominated-50pct`           | One ID 50% of the time, rest random     | Models the "comma/glue token dominates" pattern |
+| `cyclic-period-10`                | `[0, 1, ..., 9, 0, 1, ...]`             | Best case — pure structural repetition |
+
+These four cover the realistic compressibility spectrum from "incompressible
+random" through "structurally degenerate." Live model output sits somewhere
+on this spectrum depending on prompt + model.
+
+### Headline rule
+
+`aggregate.py` §1 renders the synthetic-stream table as the headline
+(protocol-only). §1b renders the engine-output cells with a clear
+disclaimer that those ratios depend on what each engine's model produces.
+
+The synthetic bench is **mandatory** for any release whose §1 numbers
+appear in marketing material — see `docs/RELEASE_CHECKLIST.md` §3.
+
+### Implementation
+
+`packages/bench/scripts/synthetic_wire_bench.py` — pure Python, no
+network calls. Uses the same library versions every engine fork uses
+(msgpack, brotli, zstandard with the shipped dict files at
+`dictionaries/`). Encoder versions are recorded in the output JSON for
+reproducibility.
+
 ### Latent-specific aggregator outputs (v0.3+)
 
 For runs whose `modality.kind` is `image-latents` or `video-latents`,

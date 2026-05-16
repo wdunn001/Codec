@@ -10,30 +10,108 @@ All numbers are real, captured this session — no projections, no
 
 ---
 
-## v0.4 release headline — 2026-05-11T00-12-00Z lab run
+## v0.4.1 release headline — 2026-05-15T20-00-00Z lab run
 
 Full cross-stack matrix in
-[`results/2026-05-11T00-12-00Z/MATRIX.md`](results/2026-05-11T00-12-00Z/MATRIX.md).
-**24 / 24 cells unanimous across all 6 client languages on every
-engine** (sglang, vllm, llama.cpp). Python row chosen as the canonical
-client for the headline; the other 5 languages produce byte-identical
-results per the cross-language equality matrix.
+[`results/2026-05-15T20-00-00Z/MATRIX.md`](results/2026-05-15T20-00-00Z/MATRIX.md).
+**24 / 24 cells wire-unanimous AND 24 / 24 cells decode-unanimous across
+all 6 client languages on every engine** (sglang, vllm, llama.cpp).
 
-### Wire reduction @ 2K tokens (vs JSON-SSE identity)
+v0.4.1's bench surfaces the headline at two layers:
+
+- **§1 — protocol-only** (synthetic streams, no model): the honest
+  measurement of Codec's wire+compression efficiency, decoupled from
+  any specific model's token-generation behaviour.
+- **§1b — engine-output** (real model running): what users actually see
+  in production, content-dependent on what their model produces.
+
+### §1. Wire reduction — synthetic streams (protocol only)
+
+Pure-library measurement: known token-ID sequences run through Codec
+encoder + compression libraries locally, no inference engine, no model.
+2K tokens, msgpack mode, ratios vs Codec identity:
+
+| Corpus (token-ID distribution) | identity | gzip | br | dict-zstd | best vs identity |
+|---|---:|---:|---:|---:|---:|
+| **Uniform random** (worst case) | 32.3 KB | 7,223 b | 6,957 b | 7,542 b | **4.8×** |
+| **Comma-dominated** (50% one ID) | 29.1 KB | 4,482 b | 4,632 b | 5,221 b | **6.6×** |
+| **Low entropy** (50 unique IDs) | 26.0 KB | 2,914 b | 3,446 b | **1,606 b** | **16.6×** |
+| **Cyclic period 10** (best case) | 26.0 KB | 211 b | 73 b | **68 b** | **391.9×** |
+
+Honest framing: Codec wire+compression delivers **~4-17× over identity**
+on arbitrary-to-typical streams, and **100-400× on structurally-repetitive**
+ones. The lower bound is the floor (incompressible content — wins come
+from framing alone); the upper bound is what dict-zstd reaches when the
+content cooperates. Live model output sits somewhere in this range.
+
+Versus JSON-SSE identity (the apples-to-oranges marketing comparison),
+multiply by ~10× (Codec's msgpack-over-JSON framing advantage): so the
+JSON-SSE→Codec range spans ~**50× to ~4,000×** depending on content.
+
+### §1b. Engine-output wire reduction @ 2K tokens (content-dependent)
+
+What each engine produces given the same prompt at temperature=0. Numbers
+vary because the engines diverge on which token sequence they generate
+(floating-point non-associativity in CUDA reductions + sampler/attention
+differences). For protocol-only efficiency see §1 above.
 
 | Engine | JSON-SSE | Codec msgpack + gzip | Codec msgpack + dict-zstd | Codec protobuf + gzip | Codec protobuf + dict-zstd |
 |---|---:|---:|---:|---:|---:|
-| **llama.cpp** | 529.2 KB | 16.1 KB | 28.5 KB | 16.1 KB | 19.3 KB |
-| | | **32.8×** | 18.6× | **32.9×** | 27.4× |
-| **sglang** | 485.2 KB | 354 b | 291 b | 311 b | 298 b |
-| | | **1,403×** | **1,707×** | **1,597×** | **1,667×** |
-| **vllm** | 517.8 KB | 3,874 b | 3,925 b | 3,985 b | 4,476 b |
-| | | **137×** | 135× | 133× | 119× |
+| **llama.cpp** (Qwen2.5-0.5B fp16) | 528.8 KB | 16.1 KB (33×) | 140 b (3,868×) | 16.1 KB (33×) | 158 b (3,427×) |
+| **sglang** (Qwen2.5-0.5B-Instruct) | 485.2 KB | 354 b (1,404×) | 291 b (1,707×) | 311 b (1,598×) | 298 b (1,667×) |
+| **vllm** (Qwen2.5-0.5B-Instruct) | 517.8 KB | 3,874 b (137×) | 3,925 b (135×) | 3,985 b (133×) | 4,476 b (119×) |
+
+The three engines all run the same model family at the same temperature,
+yet produce ratios spanning 135× to 3,868×. The difference is **what the
+model generates**, not how Codec frames it. sglang falls into a low-entropy
+output pattern (matches §1 row 3); llama.cpp F16 hits even further into
+the structurally-repetitive zone; vllm's output is more diverse and
+compresses closer to the "uniform-random" floor.
+
+This split — synthetic + engine-output — was added in v0.4.1 after the
+single-headline format was revealed to be conflating protocol efficiency
+with model output behaviour. See `packages/bench/methodology/SCHEMA.md`
+§ Synthetic-stream wire bench for the methodology.
+
+### What's new in v0.4.1
+
+- **Cross-client dict-zstd interop** — all 6 client packages (TS/web,
+  Python, Rust, Java, .NET, C) now decode dict-zstd-compressed responses
+  correctly. Previously only Python knew how to load the dict; the others
+  silently produced garbage or errored. Caught by the v0.4.1 bench
+  gate when decode-unanimity was added.
+- **llama.cpp gains brotli + zstd** — was identity+gzip only; now matches
+  sglang + vllm with all four encodings. The C++ implementation mirrors
+  the Python reference (no per-chunk flush — same bug that bit sglang's
+  brotli got fixed in lock-step).
+- **Synthetic-stream bench** — new §1 headline measures Codec protocol
+  efficiency independent of model output. Pure library calls, no engine,
+  no model. See methodology/SCHEMA.md.
+- **Bench gate hardening** — `aggregate.py` now exits non-zero on any
+  errored cell, reports both wire-unanimous AND decode-unanimous counts
+  (previously only wire was checked; cells where 3/6 clients errored on
+  decode could be reported as "unanimous" if their wire bytes happened
+  to match).
+- **Engine-image acceptance gate** — `packages/bench/tests/test_engine_acceptance.py`
+  runs 9 protocol probes against any candidate engine image before the
+  cross-stack bench. Catches "image was built from a stale Dockerfile"
+  regressions (compression module missing, dicts missing, /codec/schema
+  404, etc.) in ~15s instead of via the bench's headline aggregator.
+- **Server-side fixes** — sglang + vllm brotli encoder's per-chunk
+  `flush()` was inflating small streams (64-token msgpack: 1,159 B vs
+  975 B identity); removed. codec-supervisor warns at startup if
+  brotli/zstandard import fails.
+- **Spec endpoint surface** — llama.cpp now serves `GET /codec/schema`
+  (was missing from the C++ port).
+
+### Known content-dependence
+
+The ratios in §1b are real wire bytes but cannot be compared engine-to-
+engine as "protocol efficiency" measurements because the underlying
+content differs. The synthetic table in §1 is the protocol-only measure.
 
 (Byte values < 1 KB carry the `b` (byte) suffix per the bench
-output's unit convention — reviewer feedback after the
-2026-05-09T17-09-35Z run flagged bare integers as ambiguous; the
-`b` suffix is now baked into `aggregate.py`'s `fmt_bytes`.)
+output's unit convention.)
 
 ### Per-language tokenize / detokenize throughput (new in v0.4)
 

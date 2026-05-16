@@ -156,11 +156,63 @@ major bump.
 
 ### 3 · Benchmarks
 
+**Engine image acceptance (gate-before-bench).** Added after the v0.4.1
+post-mortem caught a stale-Dockerfile regression that the bench's
+headline aggregator surfaced only by accident. Every engine image
+swapped into the bench harness MUST pass these four probes BEFORE
+`bench/scripts/run-matrix.sh` is invoked. The probes take ~15s total
+per engine and catch the entire "image was built from a stale tree"
+regression class (missing transport-compression modules, missing zstd
+dicts, supervisor admin endpoints absent, codec patch files missing).
+
+- [ ] **Fork pytest inside the running container** — `docker exec
+      <engine> python3 -m pytest /opt/codec/<engine>/python/.../test_codec_*.py`
+      passes. Confirms the fork source code in the image still has
+      working unit tests; if this fails the merge is damaged and the
+      bench cannot help.
+- [ ] **Endpoint surface probe** — `GET /openapi.json` enumerates the
+      expected v0.X surface (`/codec/schema`, `/.well-known/codec/version-policy.json`,
+      and operator-side `/admin/codec-policy`, `/admin/policies/*` for
+      v0.4-and-later). Missing endpoints mean the supervisor in the
+      image is stale.
+- [ ] **Transport-compression probe** — POST a streaming completion
+      with `Accept-Encoding: zstd, br, gzip, identity`. Verify the
+      response `Content-Encoding` is the highest the server claims to
+      support (per spec §Transport-Compression preference order). A
+      silent fall-through to `identity` when `gzip` overlaps is a
+      §Negotiation MUST violation and means the image's brotli/zstandard
+      python modules are missing.
+- [ ] **Detokenize-bypass probe** — POST with `stream_format=msgpack`,
+      hex-dump the response, verify no `text` field in the msgpack
+      map. Confirms the binary stream path is wired correctly per
+      §Bidirectional + §Mode-A.
+
+**Synthetic-stream bench (protocol-only headline).** Added after the
+v0.4.1 post-mortem caught that engine-output ratios were content-dependent
+(same prompt, T=0, three engines, three different token sequences, three
+different compression ratios). The synthetic bench MUST run before the
+cross-stack bench so MATRIX.md §1 is protocol-only and §1b is the
+content-dependent companion. See `packages/bench/methodology/SCHEMA.md`
+§ Synthetic-stream wire bench.
+
+- [ ] `packages/bench/scripts/synthetic_wire_bench.py <UTC>` ran;
+      produced `results/<UTC>/synthetic/wire.json` covering all 4
+      canonical corpora × 3 sizes × 2 formats × 4 encodings.
+- [ ] Synthetic numbers reviewed for sanity: uniform-random ratio is
+      modest (~4-5×), low-entropy is mid (~10-20×), cyclic is high
+      (>100×) — same ranges every release; significant deviations
+      indicate an encoder/compressor regression.
 - [ ] `packages/bench/` cross-stack run completed against the release
       candidate stack.
 - [ ] Fresh result file under `packages/bench/results/<UTC>/`.
-- [ ] `MATRIX.md` aggregator regenerated.
-- [ ] `RESULTS.md` headline numbers updated.
+- [ ] `MATRIX.md` aggregator regenerated (must include §1 synthetic
+      + §1b engine-output sections — `aggregate.py` enforces this
+      ordering as of v0.4.1).
+- [ ] Aggregator exited with code 0 (no errored cells per the gate
+      added in v0.4.1).
+- [ ] `RESULTS.md` headline numbers updated, leading with the
+      protocol-only synthetic numbers and clearly labelling the
+      engine-output numbers as content-dependent.
 - [ ] Bench-method changes documented (see `methodology/SCHEMA.md`); no
       cell with a stale `(run_id, engine, lang)` fingerprint compared
       against a new one.

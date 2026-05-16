@@ -25,6 +25,24 @@ set(CMAKE_C_EXTENSIONS OFF)
 # dev box without libcurl still build the token-bench micro-driver.
 find_package(CURL)
 
+# libzstd — required by codec-matrix to honour the dict-zstd contract
+# (verify Codec-Zstd-Dict, decompress with the matching dict). On Debian /
+# Ubuntu: apt install libzstd-dev. On macOS: brew install zstd. On
+# Windows: vcpkg install zstd. If unavailable, we drop libzstd-using
+# features from codec-matrix and fall back to "skip zstd cells" rather
+# than failing the build; the rest of the matrix still runs.
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(ZSTD QUIET IMPORTED_TARGET libzstd)
+endif()
+if(NOT ZSTD_FOUND)
+    find_library(ZSTD_LIBRARY NAMES zstd)
+    find_path(ZSTD_INCLUDE_DIR zstd.h)
+    if(ZSTD_LIBRARY AND ZSTD_INCLUDE_DIR)
+        set(ZSTD_FOUND TRUE)
+    endif()
+endif()
+
 # libcodec - find sibling source tree if not already installed.
 if(NOT TARGET codec::codec)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../c
@@ -61,6 +79,26 @@ else()
     if(CURL_FOUND)
         target_link_libraries(codec-bench PRIVATE codec::codec CURL::libcurl)
         target_link_libraries(codec-matrix PRIVATE codec::codec CURL::libcurl)
+    endif()
+endif()
+
+# codec-matrix uses libzstd for dict-zstd decompression. When libzstd is
+# present we link it and define CODEC_DEMO_HAVE_ZSTD; when absent the
+# code path is compiled out so the binary still builds and the matrix
+# still runs (zstd cells just report a "libzstd unavailable" error).
+if(CURL_FOUND)
+    if(ZSTD_FOUND)
+        if(TARGET PkgConfig::ZSTD)
+            target_link_libraries(codec-matrix PRIVATE PkgConfig::ZSTD)
+        else()
+            target_include_directories(codec-matrix PRIVATE ${ZSTD_INCLUDE_DIR})
+            target_link_libraries(codec-matrix PRIVATE ${ZSTD_LIBRARY})
+        endif()
+        target_compile_definitions(codec-matrix PRIVATE CODEC_DEMO_HAVE_ZSTD=1)
+    else()
+        message(STATUS "libzstd not found — codec-matrix will skip dict-zstd cells. "
+                       "Install libzstd-dev (Debian/Ubuntu) / zstd (brew) / zstd (vcpkg) "
+                       "to enable.")
     endif()
 endif()
 

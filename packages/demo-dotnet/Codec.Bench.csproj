@@ -18,6 +18,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\dotnet\src\Codec.Net\Codec.Net.csproj" />
+    <!-- Pure-C# port of libzstd. Supports pre-trained dictionaries via
+         Decompressor.LoadDictionary (matches the Codec-Zstd-Dict contract
+         in spec/PROTOCOL.md). Avoids the native libzstd dependency that
+         ZstdNet pulls in, so the bench runs identically on Windows /
+         Linux / macOS lab boxes without extra OS packages. -->
+    <PackageReference Include="ZstdSharp.Port" Version="0.8.8" />
   </ItemGroup>
 
 </Project>

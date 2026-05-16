@@ -58,6 +58,35 @@ REPS="${REPS:-2}"
 
 echo "=== run_id=$RUN_ID engine=$ENGINE sizes=$SIZES reps=$REPS ==="
 
+# Engine image acceptance (gate-before-bench) — added after the v0.4.1
+# post-mortem caught a stale-Dockerfile regression that shipped broken
+# brotli/zstandard + missing v0.4 safety admin endpoints. See
+# docs/RELEASE_CHECKLIST.md §3 + packages/bench/tests/test_engine_acceptance.py.
+#
+# Skip via SKIP_ACCEPTANCE=1 only when you are deliberately benching a
+# known-broken engine (rare; document why in the commit message).
+if [ "${SKIP_ACCEPTANCE:-0}" != "1" ]; then
+    ENGINE_ENDPOINT=$(python3 -c "
+import json,sys
+d = json.load(open('$METHODOLOGY'))
+print(d['engine']['endpoint'])
+")
+    ENGINE_MODEL_ID=$(python3 -c "
+import json,sys
+d = json.load(open('$METHODOLOGY'))
+print(d['model']['id'])
+")
+    echo
+    echo "--- engine acceptance (tests-before-bench gate) ---"
+    CODEC_ENGINE_URL="$ENGINE_ENDPOINT" \
+    CODEC_ENGINE_NAME="$ENGINE" \
+    CODEC_ENGINE_MODEL="$ENGINE_MODEL_ID" \
+    .venv/bin/python -m pytest packages/bench/tests/test_engine_acceptance.py -v --tb=short \
+        || { echo "FAIL: engine acceptance gate failed for $ENGINE — bench aborted." >&2; \
+             echo "Fix the engine image and retry. To bypass for a known-broken baseline, set SKIP_ACCEPTANCE=1." >&2; \
+             exit 3; }
+fi
+
 # 1. Python
 echo
 echo "--- python ---"

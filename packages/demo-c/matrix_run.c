@@ -27,8 +27,13 @@
  */
 
 #include "codec/codec.h"
+#include "codec/codec_compression.h"
 
 #include <curl/curl.h>
+
+#ifdef CODEC_DEMO_HAVE_ZSTD
+#  include <zstd.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,6 +70,82 @@ static int buf_push(buf_t *b, const uint8_t *src, size_t n) {
 
 static void buf_free(buf_t *b) { free(b->data); b->data = NULL; b->len = b->cap = 0; }
 
+/* ── dict-zstd registry ─────────────────────────────────────────────────── */
+/*
+ * Mirrors codec_demo.CODEC_ZSTD_DICTS (Python) /
+ * @codecai/demo's loaded_dicts map (TS). At bench startup we load the
+ * reference Qwen2.5 dicts from <repo-root>/dictionaries/ and key them by
+ * the canonical "sha256:<hex>" hash codec_hash_zstd_dict produces.
+ *
+ * On a zstd response the bench reads the Codec-Zstd-Dict header (captured
+ * by curl_header_cb below), calls codec_select_zstd_dict_for_response to
+ * pick a matching dict, then hands the dict bytes to libzstd for
+ * decompression. Wrong-dict decompression would produce garbage bytes
+ * that msgpack/protobuf parsers would misinterpret — codec_select fails
+ * fast with UNKNOWN_HASH / MALFORMED_HASH / MISSING_HEADER instead.
+ */
+typedef struct {
+    char *hash;       /* "sha256:<hex>" — owned */
+    uint8_t *bytes;   /* dict file contents — owned */
+    size_t len;
+} dict_owned_t;
+
+#define CODEC_DEMO_MAX_DICTS 8
+
+static dict_owned_t g_dicts[CODEC_DEMO_MAX_DICTS];
+static size_t       g_dict_count = 0;
+
+/* Load one dict file into the registry. Silent on missing files — the
+ * matrix run still completes, but zstd cells that need this dict will
+ * fail with "Codec-Zstd-Dict mismatch" in the error column (the row's
+ * wire_bytes / ttft / total numbers stay valid). Same behaviour as
+ * codec_demo.load_zstd_dict_files. */
+static void load_zstd_dict_file(const char *path) {
+    if (!path || g_dict_count >= CODEC_DEMO_MAX_DICTS) return;
+    FILE *f = fopen(path, "rb");
+    if (!f) return;
+    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return; }
+    long L = ftell(f);
+    if (L < 0) { fclose(f); return; }
+    if (fseek(f, 0, SEEK_SET) != 0) { fclose(f); return; }
+    uint8_t *bytes = (uint8_t *)malloc((size_t)L);
+    if (!bytes && L > 0) { fclose(f); return; }
+    if (fread(bytes, 1, (size_t)L, f) != (size_t)L) {
+        free(bytes); fclose(f); return;
+    }
+    fclose(f);
+    char hash[CODEC_ZSTD_DICT_HASH_BUF_LEN];
+    if (codec_hash_zstd_dict(bytes, (size_t)L, hash) != 0) {
+        free(bytes); return;
+    }
+    g_dicts[g_dict_count].hash  = strdup(hash);
+    g_dicts[g_dict_count].bytes = bytes;
+    g_dicts[g_dict_count].len   = (size_t)L;
+    g_dict_count++;
+    fprintf(stderr, "loaded zstd dict %s (%ld bytes) from %s\n",
+            hash, L, path);
+}
+
+static void free_dict_registry(void) {
+    for (size_t i = 0; i < g_dict_count; i++) {
+        free(g_dicts[i].hash);
+        free(g_dicts[i].bytes);
+    }
+    g_dict_count = 0;
+}
+
+/* Build a codec_zstd_dict_entry_t snapshot of the registry for the
+ * codec_select_zstd_dict_for_response call. Borrowed pointers — the
+ * snapshot is valid as long as the registry isn't mutated. */
+static size_t snapshot_dict_registry(codec_zstd_dict_entry_t out[CODEC_DEMO_MAX_DICTS]) {
+    for (size_t i = 0; i < g_dict_count; i++) {
+        out[i].hash  = g_dicts[i].hash;
+        out[i].bytes = g_dicts[i].bytes;
+        out[i].len   = g_dicts[i].len;
+    }
+    return g_dict_count;
+}
+
 /* libcurl writes raw bytes off the socket here. We disabled
  * accept-encoding negotiation in curl (CURLOPT_ACCEPT_ENCODING is unset
  * by default) so the server's response is delivered un-decompressed. */
@@ -73,7 +154,115 @@ typedef struct {
     double t0;
     double ttft_ms;
     bool first;
+    /* Captured response headers we care about. Heap-owned; freed by
+     * stream_state_reset. */
+    char *content_encoding;   /* lowercase, trimmed */
+    char *codec_zstd_dict;    /* raw header value, untrimmed */
 } stream_state_t;
+
+static void stream_state_reset(stream_state_t *st) {
+    buf_free(&st->buf);
+    free(st->content_encoding); st->content_encoding = NULL;
+    free(st->codec_zstd_dict);  st->codec_zstd_dict  = NULL;
+    st->t0 = 0; st->ttft_ms = 0; st->first = true;
+}
+
+/* curl header callback. Headers arrive one line at a time, including the
+ * CRLF terminator. We snapshot Content-Encoding and Codec-Zstd-Dict only.
+ * Case-insensitive name match — HTTP/2 lowercases everything but HTTP/1.1
+ * leaves casing to the server. */
+static size_t curl_header_cb(char *buf, size_t size, size_t nitems, void *userdata) {
+    stream_state_t *st = (stream_state_t *)userdata;
+    size_t n = size * nitems;
+    /* Find the colon. */
+    size_t colon = 0;
+    while (colon < n && buf[colon] != ':') colon++;
+    if (colon >= n) return n; /* status line / continuation / malformed */
+    size_t name_len = colon;
+    /* Skip ": " and any leading whitespace in value. */
+    size_t v = colon + 1;
+    while (v < n && (buf[v] == ' ' || buf[v] == '\t')) v++;
+    /* Trim CR / LF / trailing whitespace from value. */
+    size_t v_end = n;
+    while (v_end > v && (buf[v_end - 1] == '\r' || buf[v_end - 1] == '\n'
+                         || buf[v_end - 1] == ' ' || buf[v_end - 1] == '\t')) v_end--;
+    size_t v_len = v_end - v;
+
+    /* Case-insensitive name compare against the two headers we capture. */
+    static const char H_CE[] = "content-encoding";
+    static const char H_CZD[] = "codec-zstd-dict";
+    int is_ce = (name_len == sizeof(H_CE) - 1);
+    int is_czd = (name_len == sizeof(H_CZD) - 1);
+    for (size_t i = 0; i < name_len; i++) {
+        char c = buf[i];
+        if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
+        if (is_ce  && c != H_CE[i])  is_ce = 0;
+        if (is_czd && c != H_CZD[i]) is_czd = 0;
+        if (!is_ce && !is_czd) break;
+    }
+
+    if (is_ce && !st->content_encoding) {
+        st->content_encoding = (char *)malloc(v_len + 1);
+        if (st->content_encoding) {
+            memcpy(st->content_encoding, buf + v, v_len);
+            st->content_encoding[v_len] = 0;
+            /* Lowercase + trim was already done; we keep the value as
+             * received but produce a lowercase comparison-friendly form
+             * below by calling codec_select_zstd_dict_for_response. */
+        }
+    } else if (is_czd && !st->codec_zstd_dict) {
+        st->codec_zstd_dict = (char *)malloc(v_len + 1);
+        if (st->codec_zstd_dict) {
+            memcpy(st->codec_zstd_dict, buf + v, v_len);
+            st->codec_zstd_dict[v_len] = 0;
+        }
+    }
+    return n;
+}
+
+#ifdef CODEC_DEMO_HAVE_ZSTD
+/* Decompress `src` with `dict` using libzstd's streaming API. Returns 1
+ * on success (sets *out / *out_len); 0 on failure. Caller frees *out. */
+static int zstd_decompress_with_dict(const uint8_t *src, size_t src_len,
+                                     const uint8_t *dict, size_t dict_len,
+                                     uint8_t **out, size_t *out_len) {
+    ZSTD_DCtx *dctx = ZSTD_createDCtx();
+    if (!dctx) return 0;
+    if (ZSTD_isError(ZSTD_DCtx_loadDictionary(dctx, dict, dict_len))) {
+        ZSTD_freeDCtx(dctx); return 0;
+    }
+
+    /* Grow geometrically. Codec frame streams are small (KBs, not MBs) so
+     * we start with a 64 KB output buffer and double on overflow. */
+    size_t cap = 64 * 1024;
+    uint8_t *dst = (uint8_t *)malloc(cap);
+    if (!dst) { ZSTD_freeDCtx(dctx); return 0; }
+    size_t produced = 0;
+
+    ZSTD_inBuffer in = { src, src_len, 0 };
+    while (in.pos < in.size) {
+        if (produced + ZSTD_BLOCKSIZE_MAX > cap) {
+            size_t nc = cap * 2;
+            uint8_t *p = (uint8_t *)realloc(dst, nc);
+            if (!p) { free(dst); ZSTD_freeDCtx(dctx); return 0; }
+            dst = p; cap = nc;
+        }
+        ZSTD_outBuffer outb = { dst + produced, cap - produced, 0 };
+        size_t r = ZSTD_decompressStream(dctx, &outb, &in);
+        if (ZSTD_isError(r)) {
+            free(dst); ZSTD_freeDCtx(dctx); return 0;
+        }
+        produced += outb.pos;
+        if (r == 0 && in.pos == in.size) break;  /* frame complete */
+        if (outb.pos == 0 && in.pos == in.size) break;  /* drained */
+    }
+
+    ZSTD_freeDCtx(dctx);
+    *out = dst;
+    *out_len = produced;
+    return 1;
+}
+#endif
 
 static size_t curl_write(char *ptr, size_t size, size_t nmemb, void *userdata) {
     stream_state_t *st = (stream_state_t *)userdata;
@@ -259,6 +448,10 @@ static void run_one(CURL *curl, const char *endpoint, const char *model,
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &st);
+    /* Capture Content-Encoding + Codec-Zstd-Dict so the zstd path can
+     * verify the server's dict against our loaded registry. */
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, curl_header_cb);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &st);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 180L);
     /* CRITICAL: do NOT set CURLOPT_ACCEPT_ENCODING — that would tell
      * curl to auto-decompress, which would corrupt our wire-byte count.
@@ -273,34 +466,28 @@ static void run_one(CURL *curl, const char *endpoint, const char *model,
 
     if (rc != CURLE_OK) {
         snprintf(out->error, sizeof(out->error), "curl: %s", curl_easy_strerror(rc));
-        buf_free(&st.buf);
+        stream_state_reset(&st);
         return;
     }
     if (code / 100 != 2) {
         snprintf(out->error, sizeof(out->error), "HTTP %ld", code);
-        buf_free(&st.buf);
+        stream_state_reset(&st);
         return;
     }
     out->wire_bytes = (int)st.buf.len;
     out->ttft_ms = st.first ? out->total_ms : st.ttft_ms;
 
-    /* Token counting. We don't decompress here — for identity/json paths
-     * the bytes are already the canonical content and we count them
-     * directly. For compressed msgpack/protobuf, libcurl was told NOT
-     * to decompress (so wire_bytes stays the raw socket count, the
-     * bench's primary signal), which means we can't directly count
-     * post-decompression tokens.
+    /* Token counting.
      *
-     * Fallback for compressed cells: report the requested `size`. The
-     * bench runs with temperature=0.0 and a deterministic prompt; vLLM
-     * typically emits exactly `size` tokens (occasionally fewer if the
-     * model hits EOS — same pattern Python's JSON cells show). Reporting
-     * `size` rather than 0 keeps the cross-stack matrix's §2 "cells
-     * unanimous" check meaningful for compressed cells, which previously
-     * read as broken-vs-baseline just because C's tokens column was
-     * always 0. The primary signal (wire_bytes / TTFB / total_ms) stays
-     * accurate because they're measured pre-decompression on the raw
-     * socket. */
+     *   identity        — bytes are already the canonical content; count directly.
+     *   zstd            — verify Codec-Zstd-Dict against the loaded dict registry
+     *                     (codec_select_zstd_dict_for_response), decompress with
+     *                     libzstd, then count post-decompression tokens.
+     *   gzip / br       — libcodec doesn't link a gzip/brotli decoder, so we
+     *                     report the requested `size` (same fallback the bench
+     *                     used before this change). The primary signal
+     *                     (wire_bytes / TTFB / total_ms) is captured pre-decompress
+     *                     on the raw socket and is accurate regardless. */
     if (strcmp(encoding, "identity") == 0) {
         if (strcmp(format, "json") == 0)
             out->tokens = count_jsonsse(st.buf.data, st.buf.len);
@@ -308,16 +495,116 @@ static void run_one(CURL *curl, const char *endpoint, const char *model,
             out->tokens = count_msgpack(st.buf.data, st.buf.len);
         else if (strcmp(format, "protobuf") == 0)
             out->tokens = count_protobuf(st.buf.data, st.buf.len);
+    } else if (strcmp(encoding, "zstd") == 0) {
+        /* Build the header pair for codec_select_zstd_dict_for_response.
+         * Two entries are enough: Content-Encoding + Codec-Zstd-Dict. */
+        codec_header_kv_t resp_headers[2];
+        size_t n_resp = 0;
+        if (st.content_encoding) {
+            resp_headers[n_resp].name  = "Content-Encoding";
+            resp_headers[n_resp].value = st.content_encoding;
+            n_resp++;
+        }
+        if (st.codec_zstd_dict) {
+            resp_headers[n_resp].name  = "Codec-Zstd-Dict";
+            resp_headers[n_resp].value = st.codec_zstd_dict;
+            n_resp++;
+        }
+        codec_zstd_dict_entry_t reg[CODEC_DEMO_MAX_DICTS];
+        size_t n_reg = snapshot_dict_registry(reg);
+
+        const uint8_t *dict_bytes = NULL;
+        size_t dict_len = 0;
+        codec_zstd_dict_result_t r = codec_select_zstd_dict_for_response(
+            resp_headers, n_resp, reg, n_reg, &dict_bytes, &dict_len);
+
+        if (r == CODEC_ZSTD_DICT_NOT_ZSTD) {
+            /* Server didn't actually zstd-compress (e.g. Accept-Encoding
+             * downgrade); count as identity. */
+            if (strcmp(format, "json") == 0)
+                out->tokens = count_jsonsse(st.buf.data, st.buf.len);
+            else if (strcmp(format, "msgpack") == 0)
+                out->tokens = count_msgpack(st.buf.data, st.buf.len);
+            else if (strcmp(format, "protobuf") == 0)
+                out->tokens = count_protobuf(st.buf.data, st.buf.len);
+        } else if (r != CODEC_ZSTD_DICT_OK) {
+            static const char *NAMES[] = {
+                "ok", "not_zstd", "missing Codec-Zstd-Dict",
+                "malformed Codec-Zstd-Dict", "Codec-Zstd-Dict mismatch"
+            };
+            snprintf(out->error, sizeof(out->error),
+                "zstd dict select: %s%s%s",
+                NAMES[(int)r],
+                st.codec_zstd_dict ? " (server used " : "",
+                st.codec_zstd_dict ? st.codec_zstd_dict : "");
+            if (st.codec_zstd_dict) {
+                size_t L = strlen(out->error);
+                if (L + 2 < sizeof(out->error)) {
+                    out->error[L]   = ')';
+                    out->error[L+1] = 0;
+                }
+            }
+            out->tokens = 0;
+        } else {
+#ifdef CODEC_DEMO_HAVE_ZSTD
+            uint8_t *decompressed = NULL;
+            size_t decompressed_len = 0;
+            if (zstd_decompress_with_dict(st.buf.data, st.buf.len,
+                                          dict_bytes, dict_len,
+                                          &decompressed, &decompressed_len)) {
+                if (strcmp(format, "msgpack") == 0)
+                    out->tokens = count_msgpack(decompressed, decompressed_len);
+                else if (strcmp(format, "protobuf") == 0)
+                    out->tokens = count_protobuf(decompressed, decompressed_len);
+                else if (strcmp(format, "json") == 0)
+                    out->tokens = count_jsonsse(decompressed, decompressed_len);
+                free(decompressed);
+            } else {
+                snprintf(out->error, sizeof(out->error),
+                    "libzstd decompress failed (dict ok, %zu wire bytes)",
+                    st.buf.len);
+                out->tokens = 0;
+            }
+#else
+            /* libzstd wasn't available at build time. The wire numbers are
+             * still accurate; flag the row so reviewers see why tokens=0. */
+            snprintf(out->error, sizeof(out->error),
+                "libzstd unavailable at build time");
+            out->tokens = 0;
+            (void)dict_bytes; (void)dict_len;
+#endif
+        }
     } else {
-        /* Compressed — wire bytes correct, fall back to requested size
+        /* gzip / br — wire bytes correct, fall back to requested size
          * for tokens (deterministic at temp=0 in normal completion). */
         out->tokens = size;
     }
 
-    buf_free(&st.buf);
+    stream_state_reset(&st);
 }
 
 /* ── prompts ────────────────────────────────────────────────────────────── */
+
+/* Walk up from `start` looking for the marker file
+ * "packages/bench/<rel>" (same anchor find_repo_root_and_load uses).
+ * Returns a heap-allocated absolute repo-root path on success, NULL on
+ * miss. Caller frees. */
+static char *find_repo_root(const char *start, const char *anchor_rel) {
+    char *abs = realpath(start, NULL);
+    char *p = abs ? strdup(abs) : strdup(start);
+    free(abs);
+    char *slash;
+    char *root = NULL;
+    while ((slash = strrchr(p, '/'))) {
+        *slash = 0;
+        char test[1024];
+        snprintf(test, sizeof(test), "%s/%s", p, anchor_rel);
+        FILE *f = fopen(test, "r");
+        if (f) { fclose(f); root = strdup(p); break; }
+    }
+    free(p);
+    return root;
+}
 
 static char *find_repo_root_and_load(const char *methodology_path,
                                      const char *prompts_rel,
@@ -463,6 +750,31 @@ int main(int argc, char **argv) {
         fprintf(stderr, "prompts file not found (rel: %s)\n", prompts_rel);
         return 1;
     }
+    /* Load reference zstd dicts so we can decompress dict-zstd responses.
+     * Mirrors codec_demo.matrix_run.load_zstd_dict_files. Anchor lookup
+     * on packages/bench/<prompts_rel> so we land on the same repo root
+     * as the prompts file. If the server is configured to use a different
+     * dict, the wire/ttft numbers still land — only the decoded-tokens
+     * count drops to 0 with a "Codec-Zstd-Dict mismatch" error string on
+     * the row, which keeps reviewers honest. */
+    {
+        char anchor[256];
+        snprintf(anchor, sizeof(anchor), "packages/bench/%s", prompts_rel);
+        char *repo_root = find_repo_root(methodology_path, anchor);
+        if (repo_root) {
+            char dpath[1024];
+            snprintf(dpath, sizeof(dpath),
+                     "%s/dictionaries/qwen2.5-synth-msgpack-v1.dict", repo_root);
+            load_zstd_dict_file(dpath);
+            snprintf(dpath, sizeof(dpath),
+                     "%s/dictionaries/qwen2.5-synth-protobuf-v1.dict", repo_root);
+            load_zstd_dict_file(dpath);
+            free(repo_root);
+        } else {
+            fprintf(stderr, "warning: could not locate repo root for dict loading; "
+                            "dict-zstd cells will fail with UNKNOWN_HASH\n");
+        }
+    }
     char *commit = git_head_sha();
 
     /* libcurl init. */
@@ -607,6 +919,7 @@ int main(int argc, char **argv) {
     free(endpoint);
     free(model);
     free(methodology);
+    free_dict_registry();
     curl_easy_cleanup(curl);
     curl_global_cleanup();
     return 0;

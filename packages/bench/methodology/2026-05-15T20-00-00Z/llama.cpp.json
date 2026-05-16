@@ -37,7 +37,7 @@
     "compression_probe_format": "msgpack"
   },
   "model": {
-    "id": "Qwen/Qwen2.5-0.5B-Instruct-GGUF:Q4_K_M",
+    "id": "Qwen/Qwen2.5-0.5B-Instruct-GGUF:fp16",
     "quantization": "fp16",
     "tokenizer_sha256": "",
     "vocab_size": null,

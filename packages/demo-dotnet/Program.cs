@@ -19,6 +19,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Codec;
+using ZstdSharp;
 
 namespace Codec.Bench;
 
@@ -32,6 +33,36 @@ internal static class Program
     };
 
     static readonly string[] Encodings = { "identity", "gzip", "br", "zstd" };
+
+    // ── Codec-Zstd-Dict client-side registry ───────────────────────────────
+    // Hash → bytes for any dict the bench has loaded locally. Keys MUST
+    // follow the canonical "sha256:<hex>" shape the server emits in the
+    // Codec-Zstd-Dict response header. Populated by LoadZstdDictFiles()
+    // below; Main() invokes that on startup with the reference dicts from
+    // <repo>/dictionaries/.
+    static readonly Dictionary<string, byte[]> ZstdDicts =
+        new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Load each dict file into the client-side registry, keyed by its
+    /// sha256. Missing files are silently skipped — the bench then
+    /// decompresses successfully only on cells whose Codec-Zstd-Dict
+    /// header matches a hash we have. Same shape as
+    /// <c>codec_demo.load_zstd_dict_files</c> in demo-python.
+    /// </summary>
+    static void LoadZstdDictFiles(params string[] paths)
+    {
+        foreach (var p in paths)
+        {
+            if (string.IsNullOrEmpty(p) || !File.Exists(p)) continue;
+            try
+            {
+                var b = File.ReadAllBytes(p);
+                ZstdDicts[Compression.HashZstdDict(b)] = b;
+            }
+            catch (IOException) { /* missing dict → cell decode fails, not fatal */ }
+        }
+    }
 
     sealed class Cell
     {
@@ -146,14 +177,43 @@ internal static class Program
         }
         else if (contentEncoding == "zstd")
         {
-            // .NET 8 BCL has no zstd. We treat zstd as a pass-through token
-            // count failure here (decoder bytes count is approximated by
-            // the wire size). The C and Python clients do better; this is a
-            // known gap pending zstd support in BCL or a NuGet package.
-            decompressed = compressed;
+            // Server-side dict-zstd: the response advertises which dict
+            // it used via Codec-Zstd-Dict (spec/PROTOCOL.md §Pre-trained
+            // ZSTD dictionaries). We hand the headers to Compression.
+            // SelectZstdDictForResponse which:
+            //   - returns the dict bytes when both headers are right,
+            //   - throws CodecZstdDictException on missing / malformed /
+            //     unknown-hash header,
+            //   - returns null only for non-zstd responses (we already
+            //     branched, so that path is unreachable here).
+            // We then plug the dict into ZstdSharp's Decompressor so the
+            // tokens-per-cell number reflects the real decoded payload
+            // instead of being approximated to wire bytes.
+            var hdrs = CollectHeaders(resp);
+            var dictBytes = Compression.SelectZstdDictForResponse(hdrs, ZstdDicts);
+            using var dec = new Decompressor();
+            if (dictBytes is not null) dec.LoadDictionary(dictBytes);
+            decompressed = dec.Unwrap(compressed).ToArray();
         }
 
         return (decompressed, wire, ttfb);
+    }
+
+    /// <summary>
+    /// Flatten response + content headers into a single case-insensitive
+    /// dict for <see cref="Compression.SelectZstdDictForResponse"/>. We
+    /// only care about Content-Encoding (Content header) and
+    /// Codec-Zstd-Dict (Response header in our server impl, but some
+    /// proxies move it to Content; check both buckets).
+    /// </summary>
+    static Dictionary<string, string> CollectHeaders(HttpResponseMessage resp)
+    {
+        var h = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var kv in resp.Headers)
+            h[kv.Key] = string.Join(",", kv.Value);
+        foreach (var kv in resp.Content.Headers)
+            h[kv.Key] = string.Join(",", kv.Value);
+        return h;
     }
 
     static int CountJsonSse(byte[] data)
@@ -525,6 +585,20 @@ internal static class Program
         return 0;
     }
 
+    /// <summary>
+    /// Resolve <c>&lt;repo-root&gt;/dictionaries/</c> relative to this
+    /// assembly. Mirrors the path-walk in
+    /// <c>RunMatrixAsync</c> — codec-bench.dll lives at
+    /// <c>packages/demo-dotnet/bin/.../codec-bench.dll</c>, so the repo
+    /// root is five hops up.
+    /// </summary>
+    static string ResolveDictionariesDir()
+    {
+        var asmDir = Path.GetDirectoryName(typeof(Program).Assembly.Location)!;
+        var repoRoot = Path.GetFullPath(Path.Combine(asmDir, "..", "..", "..", "..", ".."));
+        return Path.Combine(repoRoot, "dictionaries");
+    }
+
     public static async Task<int> Main(string[] argv)
     {
         // Token-bench subcommand: dispatch before normal arg parsing so
@@ -533,6 +607,18 @@ internal static class Program
             return TokenBench.Run(argv.Skip(1).ToArray());
 
         var args = ParseArgs(argv);
+
+        // Load reference zstd dicts so the client can decompress dict-zstd
+        // responses. The bench harness ships the canonical Qwen2.5 dicts
+        // at repo-root/dictionaries/. If the server is configured to use a
+        // different dict, the wire/ttft numbers still land — only the
+        // decoded-tokens count drops to 0 and the row carries a
+        // Codec-Zstd-Dict mismatch error so reviewers see it.
+        // Mirrors codec_demo.matrix_run (Python) and the TS bench.
+        var dictDir = ResolveDictionariesDir();
+        LoadZstdDictFiles(
+            Path.Combine(dictDir, "qwen2.5-synth-msgpack-v1.dict"),
+            Path.Combine(dictDir, "qwen2.5-synth-protobuf-v1.dict"));
 
         // Dispatch: if --methodology is given, run the SCHEMA-v1 matrix
         // mode. Otherwise fall through to the legacy ad-hoc grid bench

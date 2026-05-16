@@ -30,6 +30,7 @@
 //! See module-level docs and the project README for the full surface.
 
 pub mod byte_encoder;
+pub mod compression;
 pub mod detokenize;
 pub mod frame;
 pub mod longest_match;
@@ -54,6 +55,7 @@ pub use version_signaling::{
 #[cfg(feature = "http")]
 pub use version_signaling::discover_version_policy_blocking;
 pub use byte_encoder::{decode_byte_level_token, encode_byte_level_chars, METASPACE};
+pub use compression::{hash_zstd_dict, select_zstd_dict_for_response, CodecZstdDictError};
 pub use detokenize::{Detokenizer, DetokenizeOptions};
 pub use frame::{CodecFrame, IMapCache, MapCache, MemoryMapCache};
 pub use longest_match::{LongestMatchTokenizer, Tokenize};

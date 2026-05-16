@@ -10,13 +10,52 @@
 // is best-effort for token counting and never overrides wire/TTFB on
 // failure (e.g. zstd dict mismatch when no client-side dict is loaded).
 
+use std::collections::HashMap;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
-use codec_rs::{decode_msgpack_stream, decode_protobuf_stream};
+use codec_rs::{
+    decode_msgpack_stream, decode_protobuf_stream, hash_zstd_dict,
+    select_zstd_dict_for_response,
+};
 use futures_util::StreamExt;
 use serde_json::{json, Value};
+
+// Hash → bytes for any dict the bench has loaded locally. Keys MUST
+// follow the canonical "sha256:<hex>" shape the server emits in the
+// Codec-Zstd-Dict response header. Populated by load_zstd_dict_files()
+// below; run_matrix() invokes that on startup with the reference dicts
+// from <repo>/dictionaries/. Mirrors CODEC_ZSTD_DICTS in
+// packages/demo-python/src/codec_demo/__init__.py.
+static ZSTD_DICTS: OnceLock<HashMap<String, Vec<u8>>> = OnceLock::new();
+
+fn zstd_dicts() -> &'static HashMap<String, Vec<u8>> {
+    ZSTD_DICTS.get_or_init(HashMap::new)
+}
+
+/// Load each dict file into the bench-side registry, keyed by its
+/// canonical Codec-Zstd-Dict sha256. Missing files are silently
+/// skipped — the bench then decompresses successfully only on cells
+/// whose Codec-Zstd-Dict header matches a hash we have. Call once
+/// before the matrix loop begins.
+pub fn load_zstd_dict_files(paths: &[&Path]) -> HashMap<String, Vec<u8>> {
+    let mut out = HashMap::new();
+    for p in paths {
+        if !p.is_file() {
+            continue;
+        }
+        match std::fs::read(p) {
+            Ok(bytes) => {
+                let hash = hash_zstd_dict(&bytes);
+                out.insert(hash, bytes);
+            }
+            Err(_) => continue,
+        }
+    }
+    out
+}
 
 const PATHS: &[(&str, &str)] = &[
     ("JSON-SSE (default)", "json"),
@@ -139,7 +178,19 @@ fn count_protobuf(data: &[u8]) -> usize {
 
 // Decompression-tolerant: returns (decoded_bytes, optional decode error).
 // Wire bytes are already captured by the caller; this is best-effort.
-fn try_decode(content_encoding: &str, compressed: &[u8]) -> (Vec<u8>, Option<String>) {
+//
+// `response_headers` is a case-insensitive (lowercased-key) view of the
+// server's response headers. For Content-Encoding: zstd, we look up the
+// Codec-Zstd-Dict header via the production helper in `codec_rs` and
+// pass the matched dict bytes to `zstd::stream::Decoder::with_dictionary`.
+// A missing/malformed/unknown-hash header is a fatal decode error per
+// spec — we propagate it as a string in the same shape the rest of the
+// matrix expects, instead of silently bare-decoding with no dict.
+fn try_decode(
+    content_encoding: &str,
+    response_headers: &HashMap<String, String>,
+    compressed: &[u8],
+) -> (Vec<u8>, Option<String>) {
     let result: Result<Vec<u8>, String> = match content_encoding {
         "gzip" => {
             let mut out = Vec::new();
@@ -155,7 +206,26 @@ fn try_decode(content_encoding: &str, compressed: &[u8]) -> (Vec<u8>, Option<Str
                 .map(|_| out)
                 .map_err(|e| format!("br: {e}"))
         }
-        "zstd" => zstd::decode_all(Cursor::new(compressed)).map_err(|e| format!("zstd: {e}")),
+        "zstd" => match select_zstd_dict_for_response(response_headers, zstd_dicts()) {
+            Ok(Some(dict_bytes)) => {
+                let mut out = Vec::new();
+                zstd::stream::Decoder::with_dictionary(Cursor::new(compressed), dict_bytes)
+                    .and_then(|mut d| d.read_to_end(&mut out).map(|_| ()))
+                    .map(|()| out)
+                    .map_err(|e| format!("zstd: {e}"))
+            }
+            // Spec says Codec-Zstd-Dict is mandatory on zstd responses,
+            // but pre-header (v0.0/v0.1) servers can still omit it. Fall
+            // back to bare zstd in that case — and surface the absence
+            // as part of the error message if the bare decode also fails.
+            Ok(None) => Ok(compressed.to_vec()),
+            Err(codec_rs::CodecZstdDictError::MissingHeader) => {
+                // Treat as legacy / pre-v0.2 path: try bare decode with no dict.
+                zstd::stream::decode_all(Cursor::new(compressed))
+                    .map_err(|e| format!("zstd (no Codec-Zstd-Dict header, bare decode failed): {e}"))
+            }
+            Err(e) => Err(format!("zstd: {e}")),
+        },
         _ => Ok(compressed.to_vec()),
     };
     match result {
@@ -233,6 +303,17 @@ async fn run_one(
         .unwrap_or("identity")
         .to_lowercase();
 
+    // Snapshot response headers (lowercased keys) so try_decode can run
+    // select_zstd_dict_for_response against them. Cheap — only used per
+    // request, and reqwest's HeaderMap keys are already ASCII-lowercase
+    // on the wire.
+    let mut response_headers: HashMap<String, String> = HashMap::new();
+    for (k, v) in resp.headers().iter() {
+        if let Ok(s) = v.to_str() {
+            response_headers.insert(k.as_str().to_ascii_lowercase(), s.to_string());
+        }
+    }
+
     let mut compressed = Vec::<u8>::new();
     let mut byte_stream = resp.bytes_stream();
     while let Some(chunk) = byte_stream.next().await {
@@ -253,7 +334,7 @@ async fn run_one(
     let wire = compressed.len();
 
     // Wire/TTFB/total are now safe regardless of decompression outcome.
-    let (decoded, decode_err) = try_decode(&content_encoding, &compressed);
+    let (decoded, decode_err) = try_decode(&content_encoding, &response_headers, &compressed);
     let tokens = if decode_err.is_some() {
         0
     } else {
@@ -289,6 +370,39 @@ pub async fn run_matrix(args: MatrixArgs) -> Result<(), Box<dyn std::error::Erro
         .nth(5) // codec-bench → release/ → target/ → demo-rust/ → packages/ → repo root
         .map(Path::to_path_buf)
         .unwrap_or_else(|| PathBuf::from("."));
+
+    // Load the reference zstd dicts from <repo>/dictionaries/ into the
+    // process-global ZSTD_DICTS registry. Mirrors the
+    // load_zstd_dict_files(...) call in
+    // packages/demo-python/src/codec_demo/matrix_run.py. Missing files
+    // are tolerated — the bench then surfaces a 'Dictionary mismatch'
+    // style error on zstd cells whose hash we don't have, rather than
+    // crashing.
+    let dict_dir = repo_root.join("dictionaries");
+    let dict_paths = [
+        dict_dir.join("qwen2.5-synth-msgpack-v1.dict"),
+        dict_dir.join("qwen2.5-synth-protobuf-v1.dict"),
+    ];
+    let dict_path_refs: Vec<&Path> = dict_paths.iter().map(PathBuf::as_path).collect();
+    let dicts = load_zstd_dict_files(&dict_path_refs);
+    if !dicts.is_empty() {
+        eprintln!(
+            "loaded {} zstd dict(s) from {}:",
+            dicts.len(),
+            dict_dir.display()
+        );
+        for hash in dicts.keys() {
+            eprintln!("  {hash}");
+        }
+    } else {
+        eprintln!(
+            "no zstd dicts found under {} — zstd cells will fail to decode",
+            dict_dir.display()
+        );
+    }
+    // First writer wins (OnceLock); on repeat runs in tests / harnesses
+    // the existing registry stays put, which is the right semantics.
+    let _ = ZSTD_DICTS.set(dicts);
 
     let prompts_rel = methodology["workload"]["prompts_file"]
         .as_str()
