@@ -52,7 +52,18 @@ jobs:
 
       - name: Publish @codecai/web
         if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web' }}
-        run: npm publish --access public -w @codecai/web
+        # Idempotent publish: skip if the version is already on the registry.
+        # Lets workflow_dispatch re-runs succeed cleanly when a prior tag-push
+        # already published one or more of the @codecai/* family. The 403
+        # "previously published versions" error npm returns is the failure
+        # this guard short-circuits.
+        run: |
+          v=$(node -p "require('./packages/web/package.json').version")
+          if npm view @codecai/web@$v version 2>/dev/null | grep -q "^$v$"; then
+            echo "@codecai/web@$v already on npm — skipping"
+          else
+            npm publish --access public -w @codecai/web
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -67,7 +78,13 @@ jobs:
 
       - name: Publish @codecai/web-safety
         if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web-safety' }}
-        run: npm publish --access public -w @codecai/web-safety
+        run: |
+          v=$(node -p "require('./packages/web-safety/package.json').version")
+          if npm view @codecai/web-safety@$v version 2>/dev/null | grep -q "^$v$"; then
+            echo "@codecai/web-safety@$v already on npm — skipping"
+          else
+            npm publish --access public -w @codecai/web-safety
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -82,7 +99,13 @@ jobs:
 
       - name: Publish @codecai/web-llm
         if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'web-llm' }}
-        run: npm publish --access public -w @codecai/web-llm
+        run: |
+          v=$(node -p "require('./packages/web-llm/package.json').version")
+          if npm view @codecai/web-llm@$v version 2>/dev/null | grep -q "^$v$"; then
+            echo "@codecai/web-llm@$v already on npm — skipping"
+          else
+            npm publish --access public -w @codecai/web-llm
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -97,7 +120,13 @@ jobs:
 
       - name: Publish @codecai/maps-cli
         if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'maps-cli' }}
-        run: npm publish --access public -w @codecai/maps-cli
+        run: |
+          v=$(node -p "require('./packages/maps-cli/package.json').version")
+          if npm view @codecai/maps-cli@$v version 2>/dev/null | grep -q "^$v$"; then
+            echo "@codecai/maps-cli@$v already on npm — skipping"
+          else
+            npm publish --access public -w @codecai/maps-cli
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -112,6 +141,12 @@ jobs:
 
       - name: Publish @codecai/mcp-leaf
         if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'mcp-leaf' }}
-        run: npm publish --access public -w @codecai/mcp-leaf
+        run: |
+          v=$(node -p "require('./packages/mcp-leaf/package.json').version")
+          if npm view @codecai/mcp-leaf@$v version 2>/dev/null | grep -q "^$v$"; then
+            echo "@codecai/mcp-leaf@$v already on npm — skipping"
+          else
+            npm publish --access public -w @codecai/mcp-leaf
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
