@@ -16,7 +16,7 @@
     "version": "",
     "branch": "",
     "commit": "",
-    "container_image": "wdunn001/codec-sglang@sha256:229a51ede62ccb33cb44d14ecac5653c1927ab2b76729b6f7418d60b1a8d0e2c",
+    "container_image": "wdunn001/codec-sglang@sha256:08c7dfe59ad3fa5380bca6848fdd85b8ce9e1811093f16c710e774d071204150",
     "launch_flags": [],
     "endpoint": "http://localhost:30002",
     "endpoint_kind": "localhost",

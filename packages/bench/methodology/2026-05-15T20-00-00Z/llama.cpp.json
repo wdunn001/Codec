@@ -16,7 +16,7 @@
     "version": "",
     "branch": "",
     "commit": "",
-    "container_image": "wdunn001/codec-llamacpp@sha256:20d0773c28d44e22b89fe2285cf0aa09b644a02a8c10f364c36307188725a91d",
+    "container_image": "wdunn001/codec-llamacpp@sha256:8c7bd53094b060a90c9ac2255aeab518842f37bc5ddd3b9519044f093cf4e1b8",
     "launch_flags": [
       "--ctx-size",
       "4096",
