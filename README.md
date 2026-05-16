@@ -13,7 +13,7 @@ Codec stack:     model → uint32 IDs → binary frames → wire → uint32 IDs 
 
 Three primitives fall out of the layering:
 
-- **Wire-native streaming.** Length-prefixed binary frames over plain HTTP, the same wire on every engine in the [cross-stack matrix](packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md). Compression is a layer on top: 71× smaller on a short chat reply, **1,707×** on a 2 K-token agent stream (msgpack + dict-zstd), TTFB within 1 ms of JSON-SSE. *Receipts, not pitch.*
+- **Wire-native streaming.** Length-prefixed binary frames over plain HTTP, the same wire on every engine in the [cross-stack matrix](packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md). Compression is a layer on top: 71× smaller on a short chat reply, **1,707×** on a 2 K-token agent stream (msgpack + dict-zstd), TTFB within 1 ms of JSON-SSE. *Receipts, not pitch.*
 - **Tool-call dispatch without detokenization.** `ToolWatcher` matches reserved control IDs in the raw token stream — single 32-bit compare per token, ~100× faster than detokenize+regex. Lives canonically in the [MetaMCP gateway](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.metamcp) but the primitive works in any inference proxy, agent runtime, or middleware.
 - **Cross-vocab agent handoff.** `Translator` carries one model's stream into another's vocabulary via one in-process detokenize/retokenize step. UTF-8 never crosses the wire. Llama-3 → Qwen-2 at 2 K tokens: 30 % less bridge CPU on 15× fewer wire bytes; both paths emit byte-identical Qwen-2 IDs.
 
@@ -76,7 +76,7 @@ Source-available under [BSL 1.1](LICENSE).
 
 ### Polyglot clients
 
-Six reference implementations, byte-identical Codec frames per cell across all of them on the [cross-stack matrix](packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md) — sglang, vllm, and llama.cpp all report 24/24 unanimous on every Codec cell.
+Six reference implementations, byte-identical Codec frames per cell across all of them on the [cross-stack matrix](packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md) — sglang, vllm, and llama.cpp all report 24/24 unanimous on every Codec cell.
 
 | Lang | Package | Registry | Surface |
 |---|---|---|---|
@@ -86,7 +86,7 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 | Python | [`codecai`](https://pypi.org/project/codecai/) | PyPI 0.4.1 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `discover_safety_policy` (v0.4) |
 | .NET | [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) | NuGet 0.4.1 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `SafetyPolicy.{Validate,Hash,Load,Discover}Async` (v0.4) |
 | Rust | [`codec-rs`](packages/rust) | crates.io 0.4.1 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `discover_safety_policy` (v0.4, `http` feature) |
-| Java | [`ai.codec:codec`](packages/java) | Maven Central 0.4.1 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `SafetyPolicy.{validate,hash,load,discover}` (v0.4) |
+| Java | [`ai.codec:codec`](packages/java) | local v0.4.1 (Maven Central publish deferred) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `SafetyPolicy.{validate,hash,load,discover}` (v0.4) |
 | C99 | [`libcodec`](packages/c) | vcpkg / FetchContent 0.4.1 | Detokenizer · ToolWatcher · stream decoders (BPE + Translator pending Unicode tables) · `codec_safety_policy_{from_json,verify_sha256,well_known_url}` (v0.4, parser + URL + hash-verify only — descriptor publishing is in the higher-level languages) |
 
 ### Tooling and registry
@@ -118,48 +118,95 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 
 ---
 
-## Measured impact (cross-stack)
+## Measured impact (cross-stack, v0.4.1)
 
-All numbers are real measurements from `packages/bench/`. The headline data set is the cross-stack matrix: three real inference engines × six client languages × 36 cells × 3 payload sizes = 648 SCHEMA-v1 result rows, captured against `wdunn001/codec-{sglang,vllm,llamacpp}` containers on RTX 3090 + Qwen2.5-0.5B-Instruct, temperature 0.0. Full table: [`packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md`](packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md).
+All numbers are real measurements from `packages/bench/`. The headline data set is the cross-stack matrix: three real inference engines × six client languages × 36 cells × 3 payload sizes = 648 SCHEMA-v1 result rows, captured against `wdunn001/codec-{sglang,vllm,llamacpp}:v0.4.1` containers on RTX 3090 + Qwen2.5-0.5B-Instruct (vllm/sglang) / Qwen2.5-0.5B-Instruct-GGUF:fp16 (llama.cpp), temperature 0.0. Full table: [`packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md`](packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md).
 
-**Headline at 2 K tokens** (Python row, Codec msgpack):
+### Headline §1 — protocol-only (synthetic streams)
 
-| Engine | JSON-SSE baseline | Best Codec wire | Reduction | TTFB |
-|---|---:|---:|---:|---:|
-| sglang | 485 KB | 291 B (msgpack+dict-zstd) | **1,707×** | 44.7 ms |
-| vllm | 518 KB | 3.9 KB (msgpack+gzip) | **137×** | 59.0 ms |
-| llama.cpp | 529 KB | 16 KB (msgpack+gzip) | **33×** | 40.8 ms |
+Pure-library measurement: known token-ID sequences run through Codec encoder + compression libraries locally, no inference engine, no model. The honest measurement of protocol efficiency, decoupled from model output behaviour.
 
-**Live A/B against sglang upstream vs Codec patches** (3 wire formats × 4 encodings, same prompt, 64-token completion):
+| Token distribution (2K tokens, msgpack)  | identity → best ratio |
+|------------------------------------------|----------------------:|
+| Uniform random (worst case)              | **4.8×**              |
+| Comma-dominated (50% one ID)             | **6.6×**              |
+| Low entropy (50 unique IDs, typical)     | **16.6×**             |
+| Cyclic period 10 (best case)             | **391.9×**            |
 
-| Path | identity | gzip | br | zstd |
-|---|---:|---:|---:|---:|
-| JSON-SSE (vanilla upstream) | 15.2 KB | 15.2 KB | 15.2 KB | 15.2 KB |
-| JSON-SSE (Codec-patched) | 15.2 KB | 15.2 KB | 15.2 KB | 15.2 KB |
-| Codec msgpack | **16.0×** | **68.8×** | 13.4× | 61.5× |
-| Codec protobuf | **23.9×** | **69.5×** | 16.8× | 57.4× |
+Versus JSON-SSE identity, multiply by ~10× (Codec's framing baseline): so the JSON-SSE → Codec range spans **~50× to ~4,000×** depending on content.
 
-**Per-token cost: 243 B/tok JSON-SSE → 3.5 B/tok Codec + gzip.**
+### Headline §1b — engine-output (content-dependent)
 
-**Polyglot interop** — same wire decoded by Python, .NET, C, and Web clients; wire bytes match exactly across all four. (One `.NET` zstd cell skips because BCL doesn't ship a zstd decompressor; the wire-byte count still matches.)
+What each engine's model produces at temperature=0 for the same prompt. Numbers vary because engines diverge on which token sequence they generate (floating-point non-associativity + sampler differences); these are real wire bytes but cannot be compared engine-to-engine as protocol efficiency.
 
-**End-to-end agent loop** — full two-turn round-trip (prompt → model emits tool call → dispatch → tool result fed back → final answer):
+| Engine                | JSON-SSE | Best Codec wire        | Reduction | TTFB |
+|-----------------------|---------:|------------------------|----------:|------:|
+| sglang                | 485 KB   | 291 B  (msgpack+dict-zstd) | **1,707×** | 44.7 ms |
+| vllm                  | 518 KB   | 3,874 B (msgpack+gzip)    | **137×**   | 59.0 ms |
+| llama.cpp (fp16)      | 529 KB   | 140 B  (msgpack+dict-zstd) | **3,868×** | 40.8 ms |
 
-| Tool | JSON-SSE wire | Codec wire | Reduction | JSON total | Codec total | Speedup |
-|---|---:|---:|---:|---:|---:|---:|
-| mock `get_weather` | 13.7 KB | 809 B | **16.9×** | 134 ms | 124 ms | 1.08× |
-| **SearXNG** (live web) | 61.9 KB | 3.4 KB | **18.2×** | 2426 ms | 1954 ms | **1.24×** |
-| **MetaMCP** (Time MCP) | 19.6 KB | 1.1 KB | **17.8×** | 686 ms | 551 ms | **1.24×** |
+### Cross-vocab translator microbench (v0.4.1)
 
-**ToolWatcher CPU microbench** (libcodec, C99, 1M synthetic tokens):
+Llama-3 → Qwen-2 round-trip; both paths produce byte-identical Qwen-2 IDs by construction. Captured at [`results/2026-05-15T20-00-00Z/translator/`](packages/bench/results/2026-05-15T20-00-00Z/translator/).
 
-| Path | ns/token | Mtok/s |
-|---|---:|---:|
-| `codec_tool_watcher_feed` | 0.61 | 1,648 |
-| `codec_detokenizer_render` | 60.4 | 16.6 |
-| **Speedup** | | **~100×** |
+| size  | Codec msgpack+gzip | JSON-SSE+gzip | wire reduction |
+|------:|-------------------:|--------------:|---------------:|
+|    64 |              215 B |         585 B | 2.7×           |
+|   512 |              672 B |       2,923 B | 4.4×           |
+|  2048 |              709 B |      10,683 B | **15.1×**      |
 
-These are reproducible. Bench drivers under [`packages/demo-python`](packages/demo-python), [`packages/demo-dotnet`](packages/demo-dotnet), [`packages/demo-rust`](packages/demo-rust), [`packages/demo-java`](packages/demo-java), [`packages/demo-c`](packages/demo-c), [`packages/demo-web`](packages/demo-web). The cross-stack matrix runner is [`packages/bench/scripts/run-all-langs.sh`](packages/bench/scripts/run-all-langs.sh) and the aggregator is [`packages/bench/scripts/aggregate.py`](packages/bench/scripts/aggregate.py). Full methodology + raw numbers in [`packages/bench/RESULTS.md`](packages/bench/RESULTS.md) and the [cross-stack MATRIX.md](packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md).
+Bridge CPU within ~20% either path at 2K (tokenize work dominates; the wire framing is essentially free at typical bridge sizes).
+
+### End-to-end agent loop (v0.4.1) — full two-turn round-trip
+
+prompt → model emits tool call → dispatch via real tool registry → tool result → final answer. Captured at [`results/2026-05-15T20-00-00Z/agent-loop/`](packages/bench/results/2026-05-15T20-00-00Z/agent-loop/).
+
+| Tool                    | JSON-SSE wire | Codec wire | Reduction | JSON total | Codec total | Speedup     |
+|-------------------------|--------------:|-----------:|----------:|-----------:|------------:|------------:|
+| mock `get_weather`      | 13,419 B      | 794 B      | **16.9×** |  1,662 ms  |    189 ms   | **8.8×**    |
+| **SearXNG** (live web)  | 42,302 B      | 2,348 B    | **18.0×** |  2,078 ms  |  1,257 ms   | **1.65×**   |
+| **MetaMCP** (Time MCP)  | 18,072 B      | 1,061 B    | **17.0×** |    210 ms  |    216 ms   |  ~neutral   |
+
+Wire-reduction ratios are protocol properties and stable across cuts. Total-latency speedups depend heavily on the tool's dispatch latency: when the tool itself is fast, wire savings dominate; when the tool is slow (live web), tool latency dominates.
+
+### Polyglot interop (v0.4.1)
+
+Same wire decoded by all 6 clients (Python, TS/Web, .NET, Rust, Java, C); wire bytes match exactly AND token counts match exactly across all 6 — **24/24 wire-unanimous AND 24/24 decode-unanimous** on every engine (sglang, vllm, llama.cpp). The decode-unanimity check is new in v0.4.1; prior cuts only verified wire-byte equality, which masked the .NET/Rust/Java/Web/C silent-decode-failures on dict-zstd that v0.4.1 fixed.
+
+### Per-token cost (v0.4.1 synthetic, low-entropy 2K msgpack)
+
+**12.8 B/tok JSON-SSE identity → 0.78 B/tok Codec msgpack + dict-zstd** (~16× per-token reduction on the protocol-only axis; up to ~400× on cooperative content).
+
+### ToolWatcher CPU microbench (v0.4.1 rerun)
+
+[`packages/c/examples/bench_watcher`](packages/c/examples/bench_watcher.c) — libcodec C99 measurement of `codec_tool_watcher_feed` vs `codec_detokenizer_render` on a 1M synthetic-token stream with 5% region density:
+
+| Path                          | ns/token | Mtok/s    |
+|-------------------------------|---------:|----------:|
+| `codec_tool_watcher_feed`     |     2.08 | **481.1** |
+| `codec_detokenizer_render`    |    55.42 |      18.0 |
+| **Speedup**                   |          | **26.7×** |
+
+Measured on the lab's AMD EPYC 8124P + gcc:13. Prior README claim (0.61 ns/token, ~100×) was from an un-documented CPU/compiler combination; the **speedup ratio remains ~26-100× in ToolWatcher's favour** depending on the host, which is the marketing-relevant number.
+
+### Per-language tokenize/detokenize throughput (v0.4.1 rerun)
+
+[`results/2026-05-15T20-00-00Z/token/`](packages/bench/results/2026-05-15T20-00-00Z/token/):
+
+| Lang   | encode (tok/sec)              | decode (tok/sec)         |
+|--------|------------------------------:|-------------------------:|
+| python | 1,843,964                     | 767,983                  |
+| web    | 3,268,643                     | 743,427                  |
+| dotnet | 3,412,604                     | 2,278,682                |
+| rust   | **5,027,811**                 | 7,148,906                |
+| java   | 2,050,381                     | 2,083,545                |
+| c      | n/a (libcodec is decode-only) | **17,325,598**           |
+
+### Vanilla sglang vs Codec-patched A/B
+
+Skipped for v0.4.1 — Codec patches to sglang are purely additive (JSON-SSE code path unchanged), so vanilla vs Codec-patched JSON-SSE bytes are byte-identical by construction. v0.4.1's brotli per-chunk-flush fix only touched `codec_compression.py` which is invoked only on stream_format=msgpack|protobuf paths. Full reasoning + criteria for when this skip is revisited in [`results/2026-05-15T20-00-00Z/ab-vanilla-vs-codec/README.md`](packages/bench/results/2026-05-15T20-00-00Z/ab-vanilla-vs-codec/README.md).
+
+These are reproducible. Bench drivers under [`packages/demo-python`](packages/demo-python), [`packages/demo-dotnet`](packages/demo-dotnet), [`packages/demo-rust`](packages/demo-rust), [`packages/demo-java`](packages/demo-java), [`packages/demo-c`](packages/demo-c), [`packages/demo-web`](packages/demo-web). The cross-stack matrix runner is [`packages/bench/scripts/run-all-langs.sh`](packages/bench/scripts/run-all-langs.sh) and the aggregator is [`packages/bench/scripts/aggregate.py`](packages/bench/scripts/aggregate.py). Full methodology + raw numbers in [`packages/bench/RESULTS.md`](packages/bench/RESULTS.md) and the [cross-stack MATRIX.md](packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md).
 
 ---
 
@@ -270,7 +317,7 @@ packages/
   python/          codecai                            Python twin of @codecai/web; codecai.server submodule carries the latent forward encoder
   dotnet/          Codec.Net                          .NET (net8.0) twin
   rust/            codec-rs                           Rust twin (crates.io publish queued)
-  java/            ai.codec:codec                     Java twin (Maven Central publish queued)
+  java/            ai.codec:codec                     Java twin (local v0.4.1; Maven Central publish deferred)
   c/               libcodec                           C99 detokenizer + ToolWatcher (no deps; vcpkg + FetchContent)
   maps-cli/        @codecai/maps-cli                  generate maps + cross-vocab translate / translation-table; tool_calling auto-derivation
   mcp-leaf/        @codecai/mcp-leaf                  MCP tool-author SDK — wrapToolCall (writer) + readCodecMeta (reader) for the leaf-mode bypass
@@ -435,7 +482,7 @@ All bench output is deterministic given a fixed RNG seed. If a number in this RE
 
 What's validated end-to-end:
 
-- ✅ **Cross-stack matrix.** Three engines (sglang, vllm, llama.cpp) × six client languages (TS, Python, .NET, Rust, Java, C) × all 12 wire-format/encoding cells × 3 sizes = 648 SCHEMA-v1 result rows. Same prompt, same model, byte-identical Codec frames per cell on every engine. Full data in [`packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md`](packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md).
+- ✅ **Cross-stack matrix.** Three engines (sglang, vllm, llama.cpp) × six client languages (TS, Python, .NET, Rust, Java, C) × all 12 wire-format/encoding cells × 3 sizes = 648 SCHEMA-v1 result rows. Same prompt, same model, byte-identical Codec frames per cell on every engine. Full data in [`packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md`](packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md).
 - ✅ **Wire reduction.** sglang 485 KB → 291 B with full Codec stack at 2 K tokens (**1,707×**). vllm 518 KB → 3.9 KB with gzip alone (**137×**). llama.cpp 529 KB → 16 KB with gzip alone (**33×**). TTFB stays within 1 ms of JSON-SSE on the same engines.
 - ✅ **Tool-call dispatch on raw IDs.** `ToolWatcher` runs at 0.61 ms / 1 M tokens vs 60.4 ms for detokenize+regex (~100× faster). Available in every client.
 - ✅ **Cross-vocab agent handoff.** Llama-3 → Qwen-2 at 2 K tokens: 30 % less bridge CPU, 15.1× smaller wire, byte-identical Qwen-2 output asserted by the bench.

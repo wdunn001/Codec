@@ -113,40 +113,97 @@ content differs. The synthetic table in §1 is the protocol-only measure.
 (Byte values < 1 KB carry the `b` (byte) suffix per the bench
 output's unit convention.)
 
-### Per-language tokenize / detokenize throughput (new in v0.4)
+### Per-language tokenize / detokenize throughput
 
-Companion micro-bench over the
-[`golden/qwen2.json`](golden/qwen2.json) corpus (35 samples, 287
-tokens, 200 measured reps + 20 warmup). Wire bench measures bytes
-on the network; this measures CPU time inside each language's
-client lib.
+Rerun at v0.4.1 against the [`golden/qwen2.json`](golden/qwen2.json) corpus
+(35 samples, 287 tokens, 200 measured reps + 20 warmup) — see
+[`results/2026-05-15T20-00-00Z/token/`](results/2026-05-15T20-00-00Z/token/).
+Wire bench measures bytes on the network; this measures CPU time inside
+each language's client lib.
 
-| Lang   | encode (tok/sec)        | decode (tok/sec)         |
-|--------|------------------------:|-------------------------:|
-| python | 1,845,208               | 775,654                  |
-| web    | 3,258,957               | 726,171                  |
-| dotnet | 3,319,838               | 2,179,195                |
-| rust   | **4,880,122**           | 7,103,785                |
-| java   | 1,291,461               | 2,313,304                |
-| c      | n/a (libcodec is decode-only) | **17,346,602**     |
+| Lang   | encode (tok/sec)              | decode (tok/sec)         |
+|--------|------------------------------:|-------------------------:|
+| python | 1,843,964                     | 767,983                  |
+| web    | 3,268,643                     | 743,427                  |
+| dotnet | 3,412,604                     | 2,278,682                |
+| rust   | **5,027,811**                 | 7,148,906                |
+| java   | 2,050,381                     | 2,083,545                |
+| c      | n/a (libcodec is decode-only) | **17,325,598**           |
 
-Per-cell median ms + p99 in
-[`results/2026-05-11T00-12-00Z/MATRIX.md`](results/2026-05-11T00-12-00Z/MATRIX.md)
-§X. Drivers under `packages/demo-*/token_bench.{py,ts,rs,cs,java,c}`,
-runner at `packages/bench/scripts/run-all-token-benches.sh`.
+Per-cell median ms + p99 in the result JSONs. Drivers under
+`packages/demo-*/token_bench.{py,ts,rs,cs,java,c}`, runner at
+`packages/bench/scripts/run-all-token-benches.sh`.
 
-### Delta vs v0.3.x previous run (`2026-05-09T17-09-35Z`)
+### Cross-vocab translator microbench (v0.4.1 rerun)
 
-- sglang dict-zstd @ 2K tokens: 291 b vs prior 291 b — unchanged (sglang's
-  dict-zstd has been stable at this size across cuts).
-- vllm @ 2K: 3,874 b vs prior 3,874 b — unchanged.
-- llama.cpp @ 2K: 16.1 KB vs prior 16.1 KB — unchanged.
-- **New: per-language tokenize/detok cells** (§X above) — no prior
-  baseline; this run is the first.
-- **Cross-language equality**: 24/24 on every engine, same as prior
-  cuts. Reproduced after the codec-maps convert-tiktoken merge-fix
-  (regenerated o200k/cl100k/p50k/r50k/p50k_edit maps now greedy-BPE
-  byte-identical to HuggingFace).
+[`packages/bench/scripts/translator_bench.py`](scripts/translator_bench.py) —
+Llama-3 → Qwen-2 round-trip; the two paths produce byte-identical Qwen-2
+IDs by construction. Bench reports wire + bridge CPU on each. Captured at
+[`results/2026-05-15T20-00-00Z/translator/python.json`](results/2026-05-15T20-00-00Z/translator/python.json):
+
+| size  | path                  | wire    | bridge CPU |
+|------:|-----------------------|--------:|-----------:|
+|    64 | Codec msgpack+gzip    |   215 B |    1.1 ms  |
+|    64 | JSON-SSE+gzip         |   585 B |    1.0 ms  |
+|   512 | Codec msgpack+gzip    |   672 B |    4.4 ms  |
+|   512 | JSON-SSE+gzip         | 2,923 B |    4.9 ms  |
+|  2048 | Codec msgpack+gzip    |   709 B |    8.2 ms  |
+|  2048 | JSON-SSE+gzip         |10,683 B |   10.0 ms  |
+
+**15× wire reduction at the bridge** at 2K tokens; bridge CPU within
+~20% either path (tokenize work dominates, wire framing is essentially
+free at typical bridge sizes).
+
+### Agent-loop benches — full two-turn round-trip (v0.4.1 rerun)
+
+[`packages/demo-python/src/codec_demo/agent_bench.py`](../demo-python/src/codec_demo/agent_bench.py)
+captures the complete tool-calling loop (prompt → model emits tool call →
+dispatch via real tool registry → tool result fed back → final answer).
+Wire numbers measured against codec-sglang:v0.4.1 + Qwen2.5-0.5B-Instruct
+at [`results/2026-05-15T20-00-00Z/agent-loop/`](results/2026-05-15T20-00-00Z/agent-loop/):
+
+| Tool                    | JSON-SSE wire | Codec wire | Reduction | JSON total | Codec total | Speedup |
+|-------------------------|--------------:|-----------:|----------:|-----------:|------------:|--------:|
+| mock get_weather        | 13,419 B      | 794 B      | **16.9×** |  1,662 ms  |   189 ms    | **8.8×** |
+| SearXNG (live web)      | 42,302 B      | 2,348 B    | **18.0×** |  2,078 ms  | 1,257 ms    | **1.65×** |
+| MetaMCP (Time MCP)      | 18,072 B      | 1,061 B    | **17.0×** |    210 ms  |   216 ms    | ~neutral |
+
+Wire-reduction ratios are stable across cuts. Total-time speedups depend
+heavily on the tool's dispatch latency — when the tool itself is fast
+(get_weather mock, MetaMCP Time), the wire savings dominate; when the
+tool is slow (SearXNG live web), tool latency dominates.
+
+### ToolWatcher CPU microbench (v0.4.1 rerun)
+
+`packages/c/examples/bench_watcher` — libcodec C99 measurement of
+`codec_tool_watcher_feed` vs `codec_detokenizer_render` on a 1M
+synthetic-token stream with 5% region density:
+
+| Path                          | ns/token | Mtok/s    |
+|-------------------------------|---------:|----------:|
+| `codec_tool_watcher_feed`     |     2.08 | **481.1** |
+| `codec_detokenizer_render`    |    55.42 |      18.0 |
+| **Speedup**                   |          | **26.7×** |
+
+Captured on the lab's AMD EPYC 8124P + gcc:13. Earlier README claim
+(0.61 ns/token, 1,648 Mtok/s, ~100×) was from a different CPU/compiler
+combination not documented in that capture; current numbers are
+reproducible from `packages/bench/results/2026-05-15T20-00-00Z/microbench/toolwatcher.txt`.
+
+The **speedup ratio (26.7×)** is the marketing-relevant number — ToolWatcher
+remains an order of magnitude faster than detokenize-then-scan regardless
+of the absolute throughput on a given machine.
+
+### Delta vs prior cut
+
+- §1 headline now split into protocol-only (synthetic streams) vs engine-
+  output (content-dependent). The synthetic table is the apples-to-apples
+  protocol measurement; engine output ratios depend on what each engine's
+  model decides to generate.
+- Cross-language decode-unanimity gate added (24/24 wire AND 24/24 decode
+  on every engine).
+- All 6 client packages now actually implement dict-zstd (was Python-only).
+- llama.cpp gains brotli + zstd Content-Encoding (was identity + gzip only).
 
 The v0.4 cut is **wire-additive over v0.3**: no field removals, no
 frame-type re-assignments, no closed-enum tightening. Diff audit in
