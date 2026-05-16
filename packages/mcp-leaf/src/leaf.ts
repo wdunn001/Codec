@@ -106,16 +106,21 @@ export interface MakeMetaTokenizerOptions
 export async function makeMetaTokenizer(
   opts: MakeMetaTokenizerOptions,
 ): Promise<MetaTokenizer> {
+  // Validate the hash shape BEFORE the network fetch — a malformed hash
+  // should fail fast with the validation error, not eventually surface as
+  // "fetch failed" (which is what happens when loadMap's hash-mismatch
+  // check fires AFTER the fetch). The test
+  // `test/leaf.test.ts → rejects malformed hashes` enforces this contract.
+  const normalisedHash = normaliseHash(opts.mapHash);
   const map = await loadMap({
     url: opts.mapUrl,
-    hash: opts.mapHash,
+    hash: normalisedHash,
     cache: opts.cache,
     fetchImpl: opts.fetchImpl,
     signal: opts.signal,
     cacheKey: opts.cacheKey,
   });
   const tokenizer = pickTokenizer(map);
-  const normalisedHash = normaliseHash(opts.mapHash);
   return {
     mapHash: normalisedHash,
     tokenizer,
