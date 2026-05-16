@@ -23,30 +23,32 @@ Source-available under [BSL 1.1](LICENSE).
 
 ## What ships today
 
-> **Latest release: v0.3.x — all three pathways measured end-to-end on the lab.**
+> **Latest release: v0.4.1 — protocol-only headline measured end-to-end across 3 engines × 6 clients.**
+>
+> Codec's wire+compression efficiency, measured on synthetic streams (no engine, no model):
+>
+> | Token distribution | Best ratio over Codec identity | Best ratio over JSON-SSE identity |
+> |---|---:|---:|
+> | Uniform random (worst case)         | **4.8×**   | ~50×    |
+> | Comma-dominated (50% one ID)        | 6.6×       | ~70×    |
+> | Low entropy (50 unique IDs)         | **16.6×**  | ~170×   |
+> | Cyclic period 10 (best case)        | **392×**   | ~4,000× |
+>
+> Engine-output (real model running) ratios are content-dependent and span 135× (vllm) to 3,868× (llama.cpp F16) — see [`packages/bench/RESULTS.md`](packages/bench/RESULTS.md) §1b for the full breakdown.
+>
+> All three pathways still measured end-to-end:
 >
 > | Pathway | Wire reduction | Image |
 > |---|---:|---|
-> | **Text-tokens** (sglang / vLLM / llama.cpp) | **13–18×** vs JSON-SSE | `wdunn001/codec-{sglang,vllm,llamacpp}:latest` |
+> | **Text-tokens** (sglang / vLLM / llama.cpp) | see §1 above | `wdunn001/codec-{sglang,vllm,llamacpp}:v0.4.1` |
 > | **MCP tool calls** (metamcp + leaf-mode bypass) | **3.6×** on `tools/list` (40 tools) | `wdunn001/codec-metamcp:v0.3.2` + [`codec-time-leaf`](https://hub.docker.com/r/wdunn001/codec-time-leaf) |
 > | **Latents** (diffusers / ComfyUI) | **3.9×** int4 vs raw, ~5–10× vs JPEG | `wdunn001/codec-diffusers:v0.3.4` |
 >
-> The `[Codec][leaf]` log line fires end-to-end — the architectural target
-> (gateway as transparent ID pipe, tokenizer at the leaf) is observable on real
-> wire traffic. Customer-facing release notes: [What's new](https://codecai.net/changelog/)
+> The `[Codec][leaf]` log line fires end-to-end. Customer-facing release notes: [What's new](https://codecai.net/changelog/)
 > · engineering changelog: [GitHub Releases](https://github.com/wdunn001/Codec/releases)
 > · visual diagram of all three pathways: [/protocol-map](https://codecai.net/protocol-map).
 >
-> **v0.4 in flight** — safety-policy negotiation as a TLS-style
-> capability axis + per-version documentation framework + the
-> formal [versioning policy](spec/versions/v0.4.md#versioning-policy)
-> — minor versions are wire-additive; breaking changes require a
-> major bump. Six client languages ship descriptor-parity. Operator-
-> side enforcement primitives (banned-token logits processor,
-> multi-token Aho-Corasick matcher, embedding-space classifier
-> scaffolding, classifier registry, delay-k streaming decisioning)
-> live in [`codec-supervisor`](https://github.com/wdunn001/codec-supervisor).
-> Publish gated on [the release checklist](docs/RELEASE_CHECKLIST.md).
+> **v0.4.1 highlights** — all 6 client packages gain real dict-zstd interop (was Python-only); llama.cpp gains brotli + zstd Content-Encoding (was identity+gzip only); §1 headline split into protocol-only vs engine-output to stop conflating wire efficiency with model behaviour; bench gate hardened to fail on errored cells + track decode-unanimity. See [GitHub Release v0.4.1](https://github.com/wdunn001/Codec/releases/tag/v0.4.1).
 >
 > **Every v0.4 wire addition is opt-on** ([spec](spec/versions/v0.4.md#capabilities-are-opt-on-at-the-server-two-stage)):
 > two-stage enable + enforce, default OFF. A controlled fleet running
@@ -78,9 +80,9 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 
 | Lang | Package | Registry | Surface |
 |---|---|---|---|
-| TypeScript / JS | [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) | npm 0.4.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · pretok-program runtime · `LatentStreamEncoder` / `Decoder` (v0.3) · `tool_calling` block · `SafetyPolicyDescriptor` + `discoverSafetyPolicy` (v0.4) |
-| TypeScript / JS | [`@codecai/web-safety`](packages/web-safety) | npm 0.4.0 (v0.4 candidate) | Optional sibling — `scanText` prefilter (secrets/PII regex + Shannon entropy) · `SafetyGate` state machine · `SafetyClassifier` interface + registry · Prompt Guard 86M (Transformers.js) + Llama Guard 3 1B (codec-web-llm) classifiers (v0.4) |
-| TypeScript / JS | [`@codecai/web-llm`](packages/web-llm) | npm 0.4.0 (v0.4 candidate) | Optional sibling — `wrapEngine(mlcEngine, { mapId })` turns a browser-local `@mlc-ai/web-llm` (WebGPU) engine into a Codec source. Same `decodeMsgpackStream` from `@codecai/web` consumes from it byte-identically to a remote vLLM / sglang server. Enables peer-to-peer mesh LLM (e.g. Unstable Legion) over WebRTC at Codec's binary frame size (~7% of JSON-SSE on a 500-token completion). |
+| TypeScript / JS | [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) | npm 0.4.1 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · pretok-program runtime · `LatentStreamEncoder` / `Decoder` (v0.3) · `tool_calling` block · `SafetyPolicyDescriptor` + `discoverSafetyPolicy` (v0.4) |
+| TypeScript / JS | [`@codecai/web-safety`](packages/web-safety) | npm 0.4.1 (v0.4 candidate) | Optional sibling — `scanText` prefilter (secrets/PII regex + Shannon entropy) · `SafetyGate` state machine · `SafetyClassifier` interface + registry · Prompt Guard 86M (Transformers.js) + Llama Guard 3 1B (codec-web-llm) classifiers (v0.4) |
+| TypeScript / JS | [`@codecai/web-llm`](packages/web-llm) | npm 0.4.1 (v0.4 candidate) | Optional sibling — `wrapEngine(mlcEngine, { mapId })` turns a browser-local `@mlc-ai/web-llm` (WebGPU) engine into a Codec source. Same `decodeMsgpackStream` from `@codecai/web` consumes from it byte-identically to a remote vLLM / sglang server. Enables peer-to-peer mesh LLM (e.g. Unstable Legion) over WebRTC at Codec's binary frame size (~7% of JSON-SSE on a 500-token completion). |
 | Python | [`codecai`](https://pypi.org/project/codecai/) | PyPI 0.1.0 (local 0.2.0) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `discover_safety_policy` (v0.4) |
 | .NET | [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) | NuGet 0.1.0 (local 0.2.0) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `SafetyPolicy.{Validate,Hash,Load,Discover}Async` (v0.4) |
 | Rust | [`codec-rs`](packages/rust) | local 0.1.0 (crates.io publish queued) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `discover_safety_policy` (v0.4, `http` feature) |
