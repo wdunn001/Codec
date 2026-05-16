@@ -38,6 +38,12 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       - name: Cargo publish
-        run: cargo publish
+        # --allow-dirty: `cargo test` (above) auto-updates Cargo.lock if the
+        # version in Cargo.toml changed since the last commit. Without this
+        # flag, `cargo publish` aborts on the now-uncommitted lockfile.
+        # Release-commits SHOULD bump Cargo.lock alongside Cargo.toml (v0.4.1
+        # commit 664c917 added that pattern), but --allow-dirty guards against
+        # the case where it's forgotten on future cuts.
+        run: cargo publish --allow-dirty
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
