@@ -41,7 +41,11 @@ async function buildMeta() {
 describe('makeMetaTokenizer', () => {
   it('normalises a bare hex hash to sha256:<hex>', async () => {
     const cache = new MemoryMapCache();
-    await cache.set(`${MAP_URL}#${MAP_HASH_HEX}`, MAP_FIXTURE);
+    // makeMetaTokenizer normalises the bare hex to `sha256:<hex>` BEFORE
+    // calling loadMap (per bef03a1's "validate before fetch" rule), so
+    // loadMap's cacheKey is `${url}#sha256:${hex}` regardless of which
+    // form the caller passed. Pre-populate with the normalised key.
+    await cache.set(`${MAP_URL}#sha256:${MAP_HASH_HEX}`, MAP_FIXTURE);
     const meta = await makeMetaTokenizer({
       mapUrl: MAP_URL,
       mapHash: MAP_HASH_HEX,
