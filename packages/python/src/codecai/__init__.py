@@ -46,6 +46,14 @@ from .stream import (
     decode_protobuf_stream,
     decode_stream,
 )
+from .stream_delta import (
+    decode_delta_frame,
+    decode_delta_stream,
+    encode_delta_frame,
+    encode_delta_stream,
+    zigzag_decode,
+    zigzag_encode,
+)
 from .map_loader import (
     LoadOptions,
     TokenizerMapHashMismatchError,
