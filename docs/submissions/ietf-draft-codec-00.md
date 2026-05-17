@@ -171,14 +171,185 @@ human-readable rendering between them.
 
 # Wire Format
 
-[... full wire-format section follows the structure of
-spec/versions/v0.5.md § "Wire Formats". For the v0.5 cut this draft
-ships as a placeholder; the kdrfc-formatted body will be filled in
-during the IETF submission pass. The mkdir + skeleton are the
-v0.5-shipping deliverable per Task #82's "acceptance criterion for
-v0.5 cut: the I-D is submitted (datatracker assigns a draft-XX-00 or
-similar)". The submission itself happens in a separate session against
-the I-D submission portal at https://datatracker.ietf.org. ]
+Codec defines two interchangeable wire encodings for streamed token
+identifiers, selected by the client via the request-body
+`stream_format` field:
+
+- `"msgpack"` — MessagePack {{MSGPACK}} maps with named keys.
+- `"protobuf"` — Length-prefixed Protocol Buffers {{PROTOBUF}}
+  messages.
+
+Both produce a stream of frames. Each frame represents one or more
+generated tokens (the number is implementation-defined; servers
+typically emit one token per frame, but MAY batch).
+
+## MessagePack frame
+
+A MessagePack frame is a single map with the following fields. Field
+order is not normative.
+
+| Field           | MessagePack type | Required | Semantics                                                            |
+|-----------------|------------------|----------|----------------------------------------------------------------------|
+| `ids`           | array of uint32  | MUST     | The token identifiers in this frame.                                 |
+| `done`          | bool             | MUST     | True iff this is the terminal frame of the stream.                   |
+| `finish_reason` | string           | MAY      | Present iff `done` is true. Implementation-defined values.           |
+| `tool_calls`    | array of map     | MAY      | Server-side tool-watcher emissions; structure defined in {{TOOL}}.   |
+
+## Protocol Buffers frame
+
+The Protocol Buffers schema:
+
+~~~
+syntax = "proto3";
+
+message CodecFrame {
+  repeated uint32 ids           = 1 [packed = true];
+  bool            done          = 2;
+  optional string finish_reason = 3;
+  repeated ToolCall tool_calls  = 4;
+}
+
+message ToolCall {
+  optional string name           = 1;
+  string          arguments_json = 2;
+  optional string id             = 3;
+}
+~~~
+
+Each frame on the wire is preceded by a 4-byte big-endian length
+prefix indicating the byte length of the following encoded
+`CodecFrame` message.
+
+## Stream framing
+
+A Codec response body consists of one or more concatenated frames.
+The HTTP response Content-Type MUST be:
+
+- `application/x-msgpack` when `stream_format` is `"msgpack"`.
+- `application/x-protobuf` when `stream_format` is `"protobuf"`.
+
+A frame with `done = true` MUST be the last frame of the stream; the
+server MUST NOT emit further frames after it.
+
+## Negotiation
+
+Codec negotiation reuses the standard HTTP `Accept-Encoding` /
+`Content-Encoding` axis for compression and adds:
+
+- A `stream_format` field on the request body (a JSON or
+  Codec-request object). Permitted values: `"json"` (default;
+  backwards-compatible JSON-SSE), `"msgpack"`, `"protobuf"`. The
+  server MAY support additional implementation-defined values
+  (e.g. `"msgpack-delta"`, see {{DELTA}}); clients SHOULD ignore
+  unknown values from the server's `/codec/schema` response.
+
+- An optional response header `Codec-Server-Version: <major.minor>`
+  identifying the highest Codec protocol minor version the server
+  implements. Clients MAY gate per-version feature use on this
+  header value.
+
+- An optional GET endpoint `<origin>/codec/version` returning a JSON
+  object describing the server's capabilities:
+
+  ~~~
+  { "version": "0.5",
+    "stream_formats": ["msgpack", "protobuf"],
+    "delta_varint": false,
+    "bolt_on_dispatch": false }
+  ~~~
+
+  Clients MAY probe this endpoint before opening a generation
+  request. The runtime `Codec-Server-Version` header is
+  authoritative.
+
+- An optional GET endpoint `<origin>/codec/schema` returning the
+  Protocol Buffers schema text (Content-Type `text/plain`). Clients
+  MAY fetch this to generate decoder code at deploy time.
+
+## Compression
+
+The Codec response body MAY be compressed using standard HTTP
+content encoding ({{Section 8.4 of !RFC7231}}). Servers SHOULD
+support at minimum `identity` and `gzip`; `br` and `zstd` are
+RECOMMENDED. When the server emits `Content-Encoding: zstd` with a
+pre-trained dictionary, it MUST include a `Codec-Zstd-Dict:
+sha256:<lowercase hex>` response header identifying the
+dictionary, and the dictionary bytes MUST be retrievable from the
+well-known surface (see {{DISCOVERY}}).
+
+## Discoverable artefacts {#DISCOVERY}
+
+Codec defines a `<origin>/.well-known/codec/` URI prefix for
+discovery of out-of-band data clients need to interpret a Codec
+stream:
+
+- `.well-known/codec/maps/<id>.json` — tokenizer maps (the
+  vocabulary + byte-encoding metadata needed to detokenize identifiers
+  to text). Mutable per-`id` path; clients MAY also fetch a
+  content-addressed sibling at `.well-known/codec/maps/sha256/<hex>.json`.
+
+- `.well-known/codec/policies/<id>.json` — published safety-policy
+  descriptors. Both mutable per-`id` path and a content-addressed
+  sibling at `.well-known/codec/policies/sha256/<hex>.json`.
+
+- `.well-known/codec/dicts/<sha256-hex>.zstd` — pre-trained ZSTD
+  dictionaries (binary). Path is always content-addressed; there is
+  no mutable per-id form.
+
+- `.well-known/codec/version-policy.json` — optional document
+  declaring the server's minimum supported Codec version and required
+  features. Clients MAY probe before opening a connection to avoid
+  wasting a `426 Upgrade Required` round-trip.
+
+All `.well-known/codec/` paths MUST be served over HTTPS.
+
+## Optional axes
+
+Implementations MAY support additional axes negotiated through the
+same `stream_format` and capability mechanisms above. Two examples
+defined by the reference implementation:
+
+- {{DELTA}}: delta-varint stream encoding (`stream_format:
+  "msgpack-delta"` / `"protobuf-delta"`), exploiting locality in
+  adjacent token identifiers for 10-15% wire reduction pre-zstd.
+
+- Tool-watcher emissions: server-side detection of delimited regions
+  (tool calls, reasoning blocks) in the model's output, surfaced as
+  the `tool_calls` field on the frame in which the region terminates.
+  See {{TOOL}}.
+
+## Delta-varint axis {#DELTA}
+
+When the request specifies `stream_format: "msgpack-delta"` or
+`"protobuf-delta"`, each frame carries:
+
+- `base_id` (uint32) — the encoder's last-id-seen-at-end-of-previous-
+  frame (0 for the first frame in a stream).
+- `ids_delta` (array of zigzag-encoded signed integer) — chained
+  deltas. The first delta is `zigzag(ids[0] - base_id)`; subsequent
+  deltas are `zigzag(ids[k] - ids[k-1])`.
+
+The receiver reconstructs `ids` by cumulative-sum from `base_id`.
+Each frame carries its own `base_id` so the framing is stateless —
+a proxy that drops a frame in the middle of a stream does NOT
+desynchronise the decoder.
+
+## Tool-watcher field {#TOOL}
+
+Each entry in the optional `tool_calls` array on a frame describes
+one tool-call region the server detected (by special-token match) in
+the model's output. The fields:
+
+- `name` (optional string) — parsed from the call body when the model
+  uses the standard `{"name": "...", "arguments": {...}}` JSON shape.
+- `arguments_json` (string) — the raw JSON body between the start
+  and end markers.
+- `id` (optional string) — server-generated call identifier, e.g.
+  `tc_<hex>`.
+
+The `tool_calls` field is informational from the wire perspective;
+the model's own output stream (the `ids` field) continues to be
+authoritative.
 
 # Security Considerations
 
