@@ -188,6 +188,60 @@ Missing the gate = release-blocker, same severity as a missing
 test suite. The whole point is that silent degradation is not
 acceptable for any release that markets zstd numbers.
 
+### 1.9 · Engine image protocol-critical dep audit (v0.5+)
+
+Added at v0.5 after **two** silent dep regressions surfaced during the
+v0.5 cut:
+
+1. `wdunn001/codec-sglang:v0.5.0` first attempt lost `brotli` +
+   `zstandard` because the `FROM lmsysorg/sglang:latest` base
+   silently dropped them between v0.4.1 and v0.5 builds. Engine
+   degraded to identity-encoded responses without warning.
+2. `wdunn001/codec-llamacpp:v0.5.0` first attempt was MISSING
+   `brotli` + `zstandard` + `msgpack` ENTIRELY because the Dockerfile
+   only installed them transitively via `codec-supervisor`, whose
+   `pyproject.toml` had never declared them as direct deps —
+   they'd been coming along by accident from upstream lmsysorg
+   images for two releases.
+
+Both regressions would have been caught earlier by these gates:
+
+- [ ] **Dockerfile static audit** — every engine Dockerfile (sglang,
+      vllm, llamacpp, comfyui, diffusers) MUST EXPLICITLY install
+      `brotli`, `zstandard`, `msgpack` either:
+  - As named args on its own `pip install` line, OR
+  - Via `pip install codec-supervisor` where codec-supervisor's
+    `pyproject.toml` declares all three as direct dependencies
+    (belt + suspenders: do both).
+  - Run `grep -rE 'brotli|zstandard|msgpack' codec-supervisor/Dockerfile.*
+    codec-docker/Dockerfile codec-supervisor/pyproject.toml` and
+    verify each engine's path has the deps named explicitly.
+- [ ] **Built-image dep verification** — after each engine image
+      builds, BEFORE pushing or running engine-acceptance pytest:
+
+      docker run --rm --entrypoint python3 wdunn001/codec-<engine>:vX.Y \
+        -c "import brotli, zstandard, msgpack; print(brotli.__version__,
+            zstandard.__version__, msgpack.version)"
+
+      MUST exit 0 with three version strings printed. Catches both
+      "Dockerfile changed under us silently" AND "install succeeded
+      but module is broken in this Python env". Wire-format protocol
+      modules are NOT optional — a missing module degrades the engine
+      to identity-encoded silently, which is exactly the regression
+      class this gate exists to prevent.
+- [ ] **Source-of-truth pin** — codec-supervisor's `pyproject.toml`
+      lists `msgpack`, `brotli`, `zstandard` under `dependencies`
+      (NOT optional-dependencies, NOT extras). Confirm before tag
+      cut. If a future supervisor release drops one, this gate fires
+      at the next engine build.
+
+Missing the gate = release-blocker. Silent fallthrough to identity
+on a Codec response is the worst possible failure mode — clients
+think they got Codec, byte counts match the "best Codec" numbers
+the website advertises, but the wire is identity bytes. Indistinguishable
+from a correct Codec response from the client side until someone
+runs a comparison bench.
+
 ### 1.8 · Root `RESULTS.md` pointer refresh
 
 Added at v0.5 after the v0.4.1 post-mortem caught that the
