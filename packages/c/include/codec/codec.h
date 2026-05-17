@@ -36,7 +36,13 @@ typedef enum codec_status {
     CODEC_ERR_OUT_OF_MEMORY = -6,
     CODEC_ERR_NOT_FOUND = -7,
     CODEC_ERR_TRUNCATED = -8,
-    CODEC_ERR_INVALID_UTF8 = -9
+    CODEC_ERR_INVALID_UTF8 = -9,
+    /* Returned by any text-encoder / translator entry point when the
+     * library was built with -DCODEC_WITH_BPE_ENCODER=OFF (size-stripped
+     * IoT / embedded builds). Decode-side APIs (Detokenizer, ToolWatcher,
+     * stream decoders, frame codec, compression, safety-policy) work
+     * unchanged. */
+    CODEC_ERR_NOT_BUILT = -10
 } codec_status_t;
 
 /* Returns a static, human-readable description for `status`. */

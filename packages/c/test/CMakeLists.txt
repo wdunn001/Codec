@@ -13,13 +13,18 @@ set(CODEC_TESTS
     test_stream
     test_tool_watcher
     test_tool_calling
-    test_pretok_program
-    test_bpe
-    test_translator
     test_safety_policy
     test_version_signaling
     test_compression
 )
+# BPE encoder + Translator + pretok program live in optional sources;
+# their tests only get built when the encoder side is in the library.
+if(CODEC_WITH_BPE_ENCODER)
+    list(APPEND CODEC_TESTS
+        test_pretok_program
+        test_bpe
+        test_translator)
+endif()
 
 foreach(t ${CODEC_TESTS})
     add_executable(${t} ${t}.c)

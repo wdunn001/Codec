@@ -370,11 +370,21 @@ The bench keeps memory allocation deliberately naive (a fresh `codec_frame_t` an
 
 - `Detokenizer` (IDs → UTF-8)
 - **`BPEEncoder` (text → IDs)** — `codec_bpe_encoder_new` / `codec_bpe_encode` / `codec_bpe_encoder_free`. Byte-level + metaspace pre-tokenizers, both supported. Pretok runs on the [pretokenizer-program runtime](../../spec/PRETOKENIZER_PROGRAM.md) (no PCRE2 dependency — Unicode `\p{L}` / `\p{N}` queries go through generated tables in `codec_unicode_tables.c`). Round-trips against the real Qwen-2 tokenizer fixture under `test/test_bpe.c`.
-- `Translator` (cross-vocab `ids_A → utf-8 → ids_B`) — `codec_translator_new` / `_translate` / `_reset` / `_free`. Streaming-safe (buffers to whitespace before flushing BPE).
+- `Translator` (cross-vocab `ids_A → utf-8 → ids_B`) — `codec_translator_new` / `_translate` / `_finish` / `_free`. Streaming-safe (buffers to whitespace before flushing BPE).
 - `ToolWatcher` (control-ID region detection)
 - Wire frame encode + decode (msgpack + protobuf)
 - Compression (gzip / brotli / dict-zstd via system libs)
 - Safety-policy parser + sha256 verify + well-known URL builder
+
+**Optional at build time** (size-strip for embedded / IoT):
+
+The BPE encoder + Translator + pretok runtime + Unicode tables are ~25 KB of object code that most embedded callers never need. Decode-only consumers (firmware that consumes responses, IoT endpoints that ship pre-cached IDs via the [`@codecai/tool-kit`](../codec-tool-kit/) pattern, observers/middleware that route raw token streams without BPE) can drop them at configure time:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DCODEC_WITH_BPE_ENCODER=OFF
+```
+
+Result: ~25 KB lighter static lib on x86-64 (more like 15-30 KB on Cortex-M / Xtensa / RISC-V depending on toolchain). The public-API symbols still link — they return `CODEC_ERR_NOT_BUILT` consistently — so consumer code doesn't need any `#ifdef` guards. Calling `codec_bpe_encode` / `codec_translator_translate` / `codec_pretok_run_program` on a decode-only build is a clean runtime error, not a link failure.
 
 **Deliberately not in scope**:
 

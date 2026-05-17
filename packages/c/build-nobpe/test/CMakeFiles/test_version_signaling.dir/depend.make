@@ -1,0 +1,2 @@
+# Empty dependencies file for test_version_signaling.
+# This may be replaced when dependencies are built.

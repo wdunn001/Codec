@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_tool_watcher.dir/test_tool_watcher.c.o -o test_tool_watcher  ../libcodec.a 

@@ -1,0 +1,10 @@
+test_frame 1 0.00440155
+test_detokenize 1 0.004436
+test_map 1 0.00429779
+test_stream 1 0.00407374
+test_tool_watcher 1 0.00406793
+test_tool_calling 1 0.00405695
+test_safety_policy 1 0.0046036
+test_version_signaling 1 0.00529961
+test_compression 1 0.0098233
+---

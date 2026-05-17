@@ -18,7 +18,7 @@
 cmake_minimum_required(VERSION 3.14)
 
 project(codec
-        VERSION 0.4.0
+        VERSION 0.4.1
         DESCRIPTION "Token-native binary transport protocol for AI APIs (C library)"
         HOMEPAGE_URL "https://github.com/wdunn001/Codec"
         LANGUAGES C)
@@ -34,6 +34,19 @@ option(CODEC_BUILD_TESTS   "Build unit tests"       ${PROJECT_IS_TOP_LEVEL})
 option(CODEC_BUILD_EXAMPLES "Build examples"        ${PROJECT_IS_TOP_LEVEL})
 option(CODEC_INSTALL       "Generate install rules" ${PROJECT_IS_TOP_LEVEL})
 option(CODEC_COVERAGE      "Enable gcov/lcov coverage instrumentation" OFF)
+
+# Text → IDs encoder (BPE + pretok-program runtime + Unicode tables +
+# Translator). ~25 KB of compiled code + data on x86-64 Linux (varies
+# by toolchain; cross-compile to Cortex-M / Xtensa / RISC-V where it's
+# more like 15-30 KB). Embedded / IoT consumers that only consume
+# decode-side APIs (Detokenizer, ToolWatcher, stream decoders, frame
+# codec, compression, safety policy) can drop this with
+# -DCODEC_WITH_BPE_ENCODER=OFF. Public-API symbols still link
+# (returning CODEC_ERR_NOT_BUILT) so consumer code doesn't need ifdefs.
+# Tools built on the @codecai/tool-kit pre-cached pattern never call
+# runtime BPE — they ship cached IDs at build time. Default ON to
+# preserve current behaviour.
+option(CODEC_WITH_BPE_ENCODER "Include BPE encoder + Translator + pretok runtime + Unicode tables (~25 KB)" ON)
 
 if(NOT CODEC_BUILD_SHARED AND NOT CODEC_BUILD_STATIC)
     message(FATAL_ERROR "At least one of CODEC_BUILD_SHARED / CODEC_BUILD_STATIC must be ON")
@@ -70,14 +83,22 @@ set(CODEC_SOURCES
     src/detokenize.c
     src/stream.c
     src/tool_watcher.c
-    src/codec_unicode_tables.c
-    src/pretok_program.c
-    src/bpe.c
-    src/translator.c
     src/codec_safety_policy.c
     src/codec_version_signaling.c
     src/codec_compression.c
 )
+if(CODEC_WITH_BPE_ENCODER)
+    list(APPEND CODEC_SOURCES
+        src/codec_unicode_tables.c
+        src/pretok_program.c
+        src/bpe.c
+        src/translator.c)
+    message(STATUS "libcodec: BPE encoder + Translator + pretok runtime enabled")
+else()
+    list(APPEND CODEC_SOURCES
+        src/bpe_stub.c)
+    message(STATUS "libcodec: BPE encoder DISABLED (decode-only build, ~25 KB lighter on x86-64); encoder symbols return CODEC_ERR_NOT_BUILT")
+endif()
 set(CODEC_HEADERS
     include/codec/codec.h
     include/codec/codec_safety_policy.h

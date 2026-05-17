@@ -9,9 +9,32 @@ Docker Hub artifacts sees change between versions.
 
 ---
 
-## Unreleased — `@codecai/tool-kit` setup (2026-05-17)
+## Unreleased — libcodec size-strip option + `@codecai/tool-kit` setup (2026-05-17)
 
-Setup pass on the codec-tool-kit package which had been scaffolded earlier but never integrated into the family:
+### libcodec: optional BPE encoder for embedded / IoT builds
+
+New CMake option `CODEC_WITH_BPE_ENCODER` (default ON) lets embedded / IoT consumers drop the BPE encoder + Translator + pretok-program runtime + Unicode tables at build time. Decode-only firmware, observers/middleware that route raw token streams, and tools built on the `@codecai/tool-kit` pre-cached pattern never call runtime BPE — for them the ~25 KB of compiled code + data is dead weight.
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DCODEC_WITH_BPE_ENCODER=OFF
+```
+
+- libcodec.a: **128,278 → 103,178 bytes** on x86-64 Linux Release (~25 KB lighter). Cortex-M / Xtensa / RISC-V cross-compiles save proportionally more after `-Os` strips Unicode tables.
+- Decode-side API surface (Detokenizer, ToolWatcher, stream decoders, frame codec, compression, safety-policy) unchanged.
+- Public-API symbols for the dropped surface still link — `codec_bpe_encoder_new` / `codec_bpe_encode` / `codec_translator_new` / `codec_translator_translate` / `codec_translator_finish` / `codec_pretok_run_program` / `codec_pretok_run_metaspace` and their `_free` counterparts return `CODEC_ERR_NOT_BUILT` (new in `codec_status_t`) so consumer code doesn't need `#ifdef` guards.
+- BPE / Translator / pretok tests skipped from the test suite when the option is OFF; tests pass at 12/12 ON and 9/9 OFF.
+- `codec_status_t` gains `CODEC_ERR_NOT_BUILT = -10` (additive — existing callers see an `int` they didn't recognize, treat as generic error).
+- CMakeLists version bumped 0.4.0 → 0.4.1 (was a stale leftover).
+
+### Docs honesty pass on libcodec
+
+User asked "why is libcodec decode only" — answer was it isn't, hadn't been for a while; I'd been quoting a stale README section. Fixed `packages/c/README.md` and the root README polyglot-clients table to correctly list `Detokenizer · BPEEncoder · ToolWatcher · Translator · stream decoders · pretok-program runtime (no PCRE2, generated Unicode tables)` for the C99 row. Roadmap items "C BPE encoder + Translator" dropped — they shipped.
+
+### @codecai/tool-kit setup
+
+
+
+Companion: setup pass on the codec-tool-kit package which had been scaffolded earlier but never integrated into the family:
 
 - **Renamed** `codec-tool-kit` → `@codecai/tool-kit` for consistency with the rest of the @codecai/* family.
 - **Bumped** to `0.4.1` to join the family at the current cohort version.

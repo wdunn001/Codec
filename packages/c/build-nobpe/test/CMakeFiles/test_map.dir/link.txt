@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_map.dir/test_map.c.o -o test_map  ../libcodec.a 

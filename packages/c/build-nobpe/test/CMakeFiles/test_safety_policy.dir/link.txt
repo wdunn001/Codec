@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_safety_policy.dir/test_safety_policy.c.o -o test_safety_policy  ../libcodec.a 
