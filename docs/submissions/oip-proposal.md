@@ -60,7 +60,7 @@ publish their tokenizer maps at the standard well-known paths.
 
 | Server                | Estimated effort | Codec patch availability       |
 |-----------------------|------------------|--------------------------------|
-| **Hugging Face TGI**  | 2-3 weeks         | Fork at `wdunn001/text-generation-inference` (v0.5 candidate, Task #89) |
+| ~~Hugging Face TGI~~  | n/a               | Dropped from the Codec engine cohort (TGI treated as dead 2026-05-17). OIP submission can still cite generic OIP-v2 implementers without naming TGI. |
 | **NVIDIA Triton**     | 1-2 weeks         | Not yet started; codec patches model the sglang/vllm work |
 | **KServe**            | 1 week            | Layer on top of the framework; OIP-aware client libs auto-pick up |
 | **Seldon Core**       | 1 week            | Same as KServe                 |

@@ -40,7 +40,7 @@ Source-available under [BSL 1.1](LICENSE).
 >
 > | Pathway | Wire reduction | Image |
 > |---|---:|---|
-> | **Text-tokens** (sglang / vLLM / llama.cpp / tgi) | see §1 above | `wdunn001/codec-{sglang,vllm,llamacpp,tgi}:v0.5.0` |
+> | **Text-tokens** (sglang / vLLM / llama.cpp) | see §1 above | `wdunn001/codec-{sglang,vllm,llamacpp}:v0.5.0` |
 > | **MCP tool calls** (metamcp + leaf-mode bypass) | **3.6×** on `tools/list` (40 tools) | `wdunn001/codec-metamcp:v0.3.2` + [`codec-time-leaf`](https://hub.docker.com/r/wdunn001/codec-time-leaf) |
 > | **Latents** (diffusers / ComfyUI) | **3.9×** int4 vs raw, ~5–10× vs JPEG | `wdunn001/codec-diffusers:v0.3.4` |
 >
@@ -48,7 +48,7 @@ Source-available under [BSL 1.1](LICENSE).
 > · engineering changelog: [GitHub Releases](https://github.com/wdunn001/Codec/releases)
 > · visual diagram of all three pathways: [/protocol-map](https://codecai.net/protocol-map).
 >
-> **v0.5.0 highlights** — opt-in delta-varint stream encoding (`stream_format: "msgpack-delta"` / `"protobuf-delta"`); discoverable ZSTD dictionaries at `.well-known/codec/dicts/<sha>.zstd` (hash-pinned, hard-fails on mismatch — closes the silent-degradation regression class); GPU-side latent quantize fast path (`LatentStreamEncoderOptions.gpu_quantize`); content-aware + per-stack-aware compression picker rewrite with typed `PickReasonCode` enum; bolt-on tool dispatcher contract on the engine side, paired with `@codecai/tool-kit` on the client side; Hugging Face TGI joins as the 4th cross-stack engine; `@codecai/wire-compress` promoted to the `@codecai/` org. v0.4.1 → v0.5.0 is **non-breaking** (wire-additive only). See [v0.5 spec](spec/versions/v0.5.md), [v0.5 release notes](https://github.com/wdunn001/Codec/releases/tag/v0.5.0). The previous **v0.4.1 highlights** — all 6 client packages gained real dict-zstd interop (was Python-only); llama.cpp gained brotli + zstd Content-Encoding (was identity+gzip only) — are preserved in [GitHub Release v0.4.1](https://github.com/wdunn001/Codec/releases/tag/v0.4.1).
+> **v0.5.0 highlights** — opt-in delta-varint stream encoding (`stream_format: "msgpack-delta"` / `"protobuf-delta"`); discoverable ZSTD dictionaries at `.well-known/codec/dicts/<sha>.zstd` (hash-pinned, hard-fails on mismatch — closes the silent-degradation regression class); GPU-side latent quantize fast path (`LatentStreamEncoderOptions.gpu_quantize`); content-aware + per-stack-aware compression picker rewrite with typed `PickReasonCode` enum; bolt-on tool dispatcher contract on the engine side, paired with `@codecai/tool-kit` on the client side; `@codecai/wire-compress` promoted to the `@codecai/` org. v0.4.1 → v0.5.0 is **non-breaking** (wire-additive only). See [v0.5 spec](spec/versions/v0.5.md), [v0.5 release notes](https://github.com/wdunn001/Codec/releases/tag/v0.5.0). The previous **v0.4.1 highlights** — all 6 client packages gained real dict-zstd interop (was Python-only); llama.cpp gained brotli + zstd Content-Encoding (was identity+gzip only) — are preserved in [GitHub Release v0.4.1](https://github.com/wdunn001/Codec/releases/tag/v0.4.1).
 >
 > **Every v0.4 wire addition is opt-on** ([spec](spec/versions/v0.4.md#capabilities-are-opt-on-at-the-server-two-stage)):
 > two-stage enable + enforce, default OFF. A controlled fleet running

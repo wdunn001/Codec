@@ -291,8 +291,9 @@ optional field made mandatory).
 6. Picker `reason_code` open vs closed enum across stacks.
 7. Bidirectional duplex over HTTP/2 multi-stream vs HTTP/1.1
    dual-stream.
-8. TGI integration drop-in compatibility (no wire incompatibility
-   surfaced in the v0.5 fork work).
+8. ~~TGI integration drop-in compatibility~~ **DROPPED.** Hugging Face
+   TGI is treated as a dead project as of 2026-05-17; not in the
+   v0.5+ engine cohort. See `[[project-codec-engine-cohort-no-tgi]]`.
 
 ---
 
