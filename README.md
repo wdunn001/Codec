@@ -338,7 +338,8 @@ packages/
     examples/time-server/                              reference Codec-aware MCP server (codec-time-leaf), shipped to npm + Docker Hub
   bench/           benchmark suite                    cross-stack matrix · wire / handoff / live / mcp-live / latent-live / compression / watcher / translator
   wire-compress/   standalone Accept-Encoding picker  (zero-dep, framework-agnostic)
-  codec-tool-kit/  SDK for Codec-native bolt-on tools (cached IDs in / cached IDs out)
+  codec-tool-kit/  @codecai/tool-kit                  SDK for Codec-native bolt-on tools (cached IDs in / cached IDs out)
+    examples/time-tool/                                @codecai/codec-time-tool — reference bolt-on (precompile cache + runtime)
   demo-{web,python,dotnet,rust,java,c}                per-language demo runners
   demo/            high-level agent-to-agent walkthrough
   core/            legacy frame codec                 (kept for compatibility; @codecai/web supersedes)
@@ -440,12 +441,12 @@ res.setHeader('Content-Encoding', choice.encoding);
 
 Works for any bursty small-frame streaming workload (SSE, gRPC-Web text, log streams, telemetry) — not just Codec.
 
-### Bolt-on tools: [`codec-tool-kit`](packages/codec-tool-kit)
+### Bolt-on tools: [`@codecai/tool-kit`](packages/codec-tool-kit)
 
-Tools should remain modular — independently versioned, deployed, and authored, hosted in their own repos. `codec-tool-kit` is the SDK for building Codec-native bolt-ons that pre-cache the tokenizer at build time so the gateway stays a pure token router.
+Tools should remain modular — independently versioned, deployed, and authored, hosted in their own repos. `@codecai/tool-kit` is the SDK for building Codec-native bolt-ons that pre-cache the tokenizer at build time so the gateway stays a pure token router. Companion to [`@codecai/mcp-leaf`](packages/mcp-leaf): leaf wraps *existing* MCP servers; tool-kit is for authoring *net-new* Codec-native tools.
 
 ```ts
-import { precache } from 'codec-tool-kit/precache';
+import { precache } from '@codecai/tool-kit/precache';
 
 // Build time: tokenize once, ship the cache.
 const cache = precache({
@@ -459,7 +460,7 @@ const cache = precache({
 ```
 
 ```ts
-import { type CodecTool, tokensResult, renderTemplate } from 'codec-tool-kit';
+import { type CodecTool, tokensResult, renderTemplate } from '@codecai/tool-kit';
 
 // Runtime hot path: cached IDs in, cached IDs out — gateway sees no text.
 export const tool: CodecTool = {
@@ -472,7 +473,7 @@ export const tool: CodecTool = {
 };
 ```
 
-See [`packages/codec-tool-kit/README.md`](packages/codec-tool-kit/) for the full architecture and `RESULTS.md §1e` for why bolt-ons beat in-process MCP dispatch.
+Runnable reference tool at [`packages/codec-tool-kit/examples/time-tool/`](packages/codec-tool-kit/examples/time-tool/) (`@codecai/codec-time-tool` on npm) — full precompile + runtime example that returns the current UTC time as cached token IDs. See [`packages/codec-tool-kit/README.md`](packages/codec-tool-kit/) for the full architecture and `RESULTS.md §1e` for why bolt-ons beat in-process MCP dispatch.
 
 ---
 

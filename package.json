@@ -5,7 +5,8 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "packages/mcp-leaf/examples/time-server"
+    "packages/mcp-leaf/examples/time-server",
+    "packages/codec-tool-kit/examples/time-tool"
   ],
   "scripts": {
     "demo": "tsx packages/demo/src/benchmark.ts",

@@ -1,0 +1,29 @@
+{
+  "schema": "1",
+  "name": "get_current_time",
+  "version": "0.4.1",
+  "description": "Return the current UTC time as pre-cached token IDs. Reference bolt-on built on @codecai/tool-kit demonstrating the precache-at-build-time pattern: the gateway pays zero tokenization on the hot path, response IDs are memcpy'd into the generation context.",
+  "argumentsSchema": {
+    "type": "object",
+    "properties": {
+      "format": {
+        "type": "string",
+        "enum": [
+          "iso",
+          "human"
+        ],
+        "default": "iso",
+        "description": "iso = 2026-05-17T02:30:15Z; human = 'It is currently 02:30:15 UTC.'"
+      }
+    },
+    "additionalProperties": false
+  },
+  "models": [
+    {
+      "modelId": "Qwen/Qwen2.5-0.5B-Instruct",
+      "tokenizerHash": "sha256:00000000000000000000000000000000000000000000000000000000fcdc87ca",
+      "cacheFile": "cache/qwen25-0.5b-instruct.json"
+    }
+  ],
+  "homepage": "https://github.com/wdunn001/Codec/tree/main/packages/codec-tool-kit/examples/time-tool"
+}

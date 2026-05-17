@@ -21,7 +21,7 @@ on:
         required: true
         default: "all"
         type: choice
-        options: [all, web, web-safety, web-llm, maps-cli, mcp-leaf]
+        options: [all, web, web-safety, web-llm, maps-cli, mcp-leaf, tool-kit]
 
 permissions:
   contents: read
@@ -147,6 +147,27 @@ jobs:
             echo "@codecai/mcp-leaf@$v already on npm — skipping"
           else
             npm publish --access public -w @codecai/mcp-leaf
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ── @codecai/tool-kit ──────────────────────────────────────────
+      - name: Build @codecai/tool-kit
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'tool-kit' }}
+        run: npm run -w @codecai/tool-kit build
+
+      - name: Test @codecai/tool-kit
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'tool-kit' }}
+        run: npm test -w @codecai/tool-kit
+
+      - name: Publish @codecai/tool-kit
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'tool-kit' }}
+        run: |
+          v=$(node -p "require('./packages/codec-tool-kit/package.json').version")
+          if npm view @codecai/tool-kit@$v version 2>/dev/null | grep -q "^$v$"; then
+            echo "@codecai/tool-kit@$v already on npm — skipping"
+          else
+            npm publish --access public -w @codecai/tool-kit
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

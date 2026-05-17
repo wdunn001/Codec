@@ -9,6 +9,24 @@ Docker Hub artifacts sees change between versions.
 
 ---
 
+## Unreleased — `@codecai/tool-kit` setup (2026-05-17)
+
+Setup pass on the codec-tool-kit package which had been scaffolded earlier but never integrated into the family:
+
+- **Renamed** `codec-tool-kit` → `@codecai/tool-kit` for consistency with the rest of the @codecai/* family.
+- **Bumped** to `0.4.1` to join the family at the current cohort version.
+- **Added** to the `publish-npm.yml` workflow alongside web, web-safety, web-llm, maps-cli, mcp-leaf — same idempotent skip-if-version-exists guard.
+- **Built reference tool**: `packages/codec-tool-kit/examples/time-tool/` (`@codecai/codec-time-tool` on npm) — runnable bolt-on with manifest + build-time precache script + runtime + CLI demo + tests (4/4 pass). Returns the current UTC time as pre-cached token IDs, demonstrating the gateway-pays-nothing pattern end-to-end. Companion to `codec-time-leaf` (which demonstrates the leaf-mode wrap pattern for existing MCP servers).
+- **Workspace** registered the new example as a workspace member.
+- **Docs**:
+  - codec-website: new `/docs/codec-tool-kit/` page mirroring the `/docs/codec-leaf/` format
+  - codec-website: `/protocol-map/` MCP tool-calls section now explains both SDKs side-by-side (leaf wraps existing servers, tool-kit authors new ones)
+  - root README updated: `codec-tool-kit` → `@codecai/tool-kit` references; example tool linked alongside
+
+SDK tests stay green (16/16). Reference tool tests green (4/4). No spec changes; no wire changes. Just promotes a scaffolded package to a published, referenced, working family member.
+
+---
+
 ## v0.4.1 — 2026-05-16
 
 **Theme: protocol-only honesty + cross-client dict-zstd interop + bench gate hardening.**
