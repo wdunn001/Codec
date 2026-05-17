@@ -55,7 +55,12 @@ pub use version_signaling::{
 #[cfg(feature = "http")]
 pub use version_signaling::discover_version_policy_blocking;
 pub use byte_encoder::{decode_byte_level_token, encode_byte_level_chars, METASPACE};
-pub use compression::{hash_zstd_dict, select_zstd_dict_for_response, CodecZstdDictError};
+pub use compression::{
+    hash_zstd_dict, select_zstd_dict_for_response, well_known_dict_url, CodecZstdDictError,
+    ZstdDictDiscoveryError,
+};
+#[cfg(feature = "http")]
+pub use compression::{discover_zstd_dict, discover_zstd_dict_blocking};
 pub use detokenize::{Detokenizer, DetokenizeOptions};
 pub use frame::{CodecFrame, IMapCache, MapCache, MemoryMapCache};
 pub use longest_match::{LongestMatchTokenizer, Tokenize};

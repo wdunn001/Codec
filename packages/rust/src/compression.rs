@@ -168,6 +168,206 @@ fn is_canonical_sha256(value: &str) -> bool {
     hex.len() == 64 && hex.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
 
+// ── Discoverable zstd dictionaries (.well-known/codec/dicts/<sha>.zstd, v0.5+) ──
+
+/// Errors raised by the v0.5 zstd-dictionary discovery surface.
+///
+/// The discovery path is hard-fail by design (no silent fallback to identity
+/// bytes) — see `spec/WELL_KNOWN_DISCOVERY.md § Resolution failures`. Silent
+/// dict-load failure was the v0.4.1 sglang COPY-dicts regression class this
+/// surface eliminates.
+#[derive(Debug, thiserror::Error)]
+pub enum ZstdDictDiscoveryError {
+    /// Hash input was not `sha256:<64 hex>` or bare `<64 hex>`.
+    #[error("Invalid dict hash {hash:?}: expected 'sha256:<64 hex>' or '<64 hex>'")]
+    InvalidHash { hash: String },
+    /// `.well-known/codec/dicts/<hex>.zstd` returned HTTP 404.
+    #[error("No zstd dict at {url} (HTTP 404)")]
+    NotFound { url: String },
+    /// Fetched bytes did not hash to the `<hex>` path component in the URL.
+    /// Treat as byte-tampering: never decompress.
+    #[error("Zstd dict hash mismatch at {url}\n  expected: {expected}\n  actual:   {actual}")]
+    HashMismatch {
+        url: String,
+        expected: String,
+        actual: String,
+    },
+    /// HTTP transport-layer failure (reqwest). Surfaced separately from 404 so
+    /// callers can distinguish "origin doesn't publish this dict" from "we
+    /// couldn't reach the origin at all."
+    #[cfg(feature = "http")]
+    #[error("HTTP error fetching {url}: {source}")]
+    Http {
+        url: String,
+        #[source]
+        source: reqwest::Error,
+    },
+}
+
+/// Validate + normalise an sha256 dict hash to bare lowercase hex.
+///
+/// Accepts either `sha256:<hex>` or bare `<hex>`. Used both as a URL builder
+/// guard and as the expected verifier in [`discover_zstd_dict_blocking`].
+fn parse_dict_hash(hash: &str) -> Result<String, ZstdDictDiscoveryError> {
+    let s = hash.trim();
+    let stripped = s.strip_prefix("sha256:").unwrap_or(s);
+    let lower = stripped.to_ascii_lowercase();
+    if lower.len() != 64 || !lower.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f')) {
+        return Err(ZstdDictDiscoveryError::InvalidHash {
+            hash: hash.to_string(),
+        });
+    }
+    Ok(lower)
+}
+
+/// Per-dict document URL for an origin + sha256 hash (v0.5+).
+///
+/// Returns `<origin>/.well-known/codec/dicts/<sha256-hex>.zstd`. The URL is
+/// fully derived from the hash — there is no mutable per-id form for dicts.
+///
+/// # Errors
+///
+/// [`ZstdDictDiscoveryError::InvalidHash`] when the hash is not the expected
+/// `sha256:<hex>` / bare `<hex>` shape.
+pub fn well_known_dict_url(origin: &str, hash: &str) -> Result<String, ZstdDictDiscoveryError> {
+    let hex = parse_dict_hash(hash)?;
+    let origin = origin.strip_suffix('/').unwrap_or(origin);
+    Ok(format!("{origin}/.well-known/codec/dicts/{hex}.zstd"))
+}
+
+#[cfg(feature = "http")]
+fn sha256_hex_bytes(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    hex::encode(hasher.finalize())
+}
+
+/// Synchronously resolve a zstd dictionary via
+/// `.well-known/codec/dicts/<hex>.zstd` (v0.5+).
+///
+/// Fetches `<origin>/.well-known/codec/dicts/<sha256-hex>.zstd`, verifies the
+/// fetched bytes hash to `<hex>`, and returns the raw dict bytes ready to
+/// feed into `zstd::dict::DecoderDictionary::copy(...)` or equivalent.
+///
+/// # Example
+///
+/// ```no_run
+/// use codec_rs::discover_zstd_dict_blocking;
+///
+/// let dict = discover_zstd_dict_blocking(
+///     "https://codec.example",
+///     "sha256:abc1230000000000000000000000000000000000000000000000000000000000",
+/// )?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+///
+/// # Errors
+///
+/// - [`ZstdDictDiscoveryError::InvalidHash`] if the hash is malformed
+///   (rejected before any HTTP request)
+/// - [`ZstdDictDiscoveryError::NotFound`] for HTTP 404
+/// - [`ZstdDictDiscoveryError::HashMismatch`] if origin served wrong bytes
+/// - [`ZstdDictDiscoveryError::Http`] for transport-layer failures
+#[cfg(feature = "http")]
+pub fn discover_zstd_dict_blocking(
+    origin: &str,
+    hash: &str,
+) -> Result<Vec<u8>, ZstdDictDiscoveryError> {
+    let expected = parse_dict_hash(hash)?;
+    let url = well_known_dict_url(origin, hash)?;
+
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("codec-rs/0.4")
+        .build()
+        .map_err(|e| ZstdDictDiscoveryError::Http {
+            url: url.clone(),
+            source: e,
+        })?;
+
+    let resp = client
+        .get(&url)
+        .send()
+        .map_err(|e| ZstdDictDiscoveryError::Http {
+            url: url.clone(),
+            source: e,
+        })?;
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Err(ZstdDictDiscoveryError::NotFound { url });
+    }
+    let resp = resp
+        .error_for_status()
+        .map_err(|e| ZstdDictDiscoveryError::Http {
+            url: url.clone(),
+            source: e,
+        })?;
+    let bytes = resp.bytes().map_err(|e| ZstdDictDiscoveryError::Http {
+        url: url.clone(),
+        source: e,
+    })?;
+    let actual = sha256_hex_bytes(&bytes);
+    if actual != expected {
+        return Err(ZstdDictDiscoveryError::HashMismatch {
+            url,
+            expected,
+            actual,
+        });
+    }
+    Ok(bytes.to_vec())
+}
+
+/// Async variant of [`discover_zstd_dict_blocking`]. Requires a Tokio runtime.
+#[cfg(feature = "http")]
+pub async fn discover_zstd_dict(
+    origin: &str,
+    hash: &str,
+) -> Result<Vec<u8>, ZstdDictDiscoveryError> {
+    let expected = parse_dict_hash(hash)?;
+    let url = well_known_dict_url(origin, hash)?;
+
+    let client = reqwest::Client::builder()
+        .user_agent("codec-rs/0.4")
+        .build()
+        .map_err(|e| ZstdDictDiscoveryError::Http {
+            url: url.clone(),
+            source: e,
+        })?;
+
+    let resp =
+        client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| ZstdDictDiscoveryError::Http {
+                url: url.clone(),
+                source: e,
+            })?;
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Err(ZstdDictDiscoveryError::NotFound { url });
+    }
+    let resp = resp
+        .error_for_status()
+        .map_err(|e| ZstdDictDiscoveryError::Http {
+            url: url.clone(),
+            source: e,
+        })?;
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| ZstdDictDiscoveryError::Http {
+            url: url.clone(),
+            source: e,
+        })?;
+    let actual = sha256_hex_bytes(&bytes);
+    if actual != expected {
+        return Err(ZstdDictDiscoveryError::HashMismatch {
+            url,
+            expected,
+            actual,
+        });
+    }
+    Ok(bytes.to_vec())
+}
+
 // ── unit tests ────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -226,5 +426,66 @@ mod tests {
             Err(CodecZstdDictError::MalformedHash(v)) => assert_eq!(v, "md5:abc"),
             other => panic!("expected MalformedHash, got {other:?}"),
         }
+    }
+
+    // ── well_known_dict_url / parse_dict_hash (v0.5) ─────────────────────────
+
+    #[test]
+    fn well_known_dict_url_strips_sha256_prefix() {
+        let h = "a".repeat(64);
+        assert_eq!(
+            well_known_dict_url("https://codec.example", &format!("sha256:{h}")).unwrap(),
+            format!("https://codec.example/.well-known/codec/dicts/{h}.zstd"),
+        );
+    }
+
+    #[test]
+    fn well_known_dict_url_accepts_bare_hex() {
+        let h = "b".repeat(64);
+        assert_eq!(
+            well_known_dict_url("https://codec.example", &h).unwrap(),
+            format!("https://codec.example/.well-known/codec/dicts/{h}.zstd"),
+        );
+    }
+
+    #[test]
+    fn well_known_dict_url_strips_trailing_slash() {
+        let h = "c".repeat(64);
+        assert_eq!(
+            well_known_dict_url("https://codec.example/", &h).unwrap(),
+            format!("https://codec.example/.well-known/codec/dicts/{h}.zstd"),
+        );
+    }
+
+    #[test]
+    fn well_known_dict_url_normalises_uppercase_hex() {
+        let upper = "D".repeat(64);
+        let expected = "d".repeat(64);
+        assert_eq!(
+            well_known_dict_url("https://codec.example", &upper).unwrap(),
+            format!("https://codec.example/.well-known/codec/dicts/{expected}.zstd"),
+        );
+    }
+
+    #[test]
+    fn well_known_dict_url_rejects_short_hash() {
+        let err = well_known_dict_url("https://codec.example", "deadbeef").unwrap_err();
+        assert!(matches!(err, ZstdDictDiscoveryError::InvalidHash { .. }));
+    }
+
+    #[test]
+    fn well_known_dict_url_rejects_wrong_algorithm() {
+        let err = well_known_dict_url(
+            "https://codec.example",
+            &format!("md5:{}", "a".repeat(32)),
+        )
+        .unwrap_err();
+        assert!(matches!(err, ZstdDictDiscoveryError::InvalidHash { .. }));
+    }
+
+    #[test]
+    fn well_known_dict_url_rejects_nonhex_chars() {
+        let err = well_known_dict_url("https://codec.example", &"z".repeat(64)).unwrap_err();
+        assert!(matches!(err, ZstdDictDiscoveryError::InvalidHash { .. }));
     }
 }

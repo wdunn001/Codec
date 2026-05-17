@@ -140,6 +140,7 @@ For huge prompts (>50K tokens, e.g. RAG with long context), the dedicated `/v1/c
 | Type | Purpose |
 |---|---|
 | `MapLoader::load_blocking(opts)` / `MapLoader::load(opts).await` | Fetch + sha256-verify + cache a dialect map |
+| `discover_zstd_dict_blocking(origin, hash)` / `discover_zstd_dict(origin, hash).await` (v0.5) | Resolve a zstd dict at `.well-known/codec/dicts/<sha256-hex>.zstd`. Hash-pin-verified against the URL's path component; hard-fails on 404 / mismatch (no silent fallback). `well_known_dict_url` builds the URL on its own for callers using a custom HTTP stack. |
 | `MemoryMapCache` / `MapCache` trait | Default in-memory cache; implement for Redis / disk / IDB |
 | `TokenizerMap::from_json(...)` / `TokenizerMap::validate(...)` | Parse + schema check |
 | `TokenizerMap::verify_sha256(bytes, expected)` | Standalone sha256 verify |
