@@ -1,0 +1,20 @@
+{
+  "schema_version": "1",
+  "cost_source": "published (per ENERGY_METHODOLOGY.md table)",
+  "nj_per_byte": {
+    "json_parse": 1.8,
+    "json_serialise": 2.1,
+    "gzip_compress": 0.9,
+    "gzip_decompress": 0.15,
+    "bpe_tokenise": 14.0,
+    "bpe_detokenise": 6.0,
+    "msgpack_encode": 2.1,
+    "msgpack_decode": 2.1,
+    "lan_egress": 10.0,
+    "lan_ingress": 10.0,
+    "internet_backbone_per_hop": 50.0,
+    "last_mile_docsis_or_fibre": 150.0,
+    "ran_4g_5g_rx": 1000.0,
+    "starlink_dishy": 3500.0
+  }
+}

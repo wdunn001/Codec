@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "profiles": {
+    "1_round_trips": {
+      "n_round_trips": 1,
+      "json_sse_total_mj": 47.475,
+      "codec_total_mj": 0.19499999999999998,
+      "json_sse_per_hop_mj": 47.475,
+      "codec_per_hop_mj": 0.18059999999999998,
+      "codec_leaf_detok_mj": 0.0144,
+      "ratio": 243.46153846153848
+    },
+    "4_round_trips": {
+      "n_round_trips": 4,
+      "json_sse_total_mj": 189.9,
+      "codec_total_mj": 0.7367999999999999,
+      "json_sse_per_hop_mj": 47.475,
+      "codec_per_hop_mj": 0.18059999999999998,
+      "codec_leaf_detok_mj": 0.0144,
+      "ratio": 257.7361563517916
+    },
+    "8_round_trips": {
+      "n_round_trips": 8,
+      "json_sse_total_mj": 379.8,
+      "codec_total_mj": 1.4591999999999998,
+      "json_sse_per_hop_mj": 47.475,
+      "codec_per_hop_mj": 0.18059999999999998,
+      "codec_leaf_detok_mj": 0.0144,
+      "ratio": 260.2796052631579
+    }
+  }
+}

@@ -100,12 +100,13 @@ sender + LAN-internet-LAN + receiver across one hop:
                                        ≈ 47.5 mJ per hop, JSON-SSE
 ```
 
-Per-request total (8 round-trips amortised) = ~380 mJ wire + ~440 mJ
-serialisation/tokenisation overhead = **~820 mJ ≈ 0.82 J per visible
-request on the JSON-SSE path** (sender-side + receiver-side combined
-across all hops, non-GPU only).
+Per-request total (8 round-trips amortised) = **47.5 mJ × 8 ≈ 380 mJ
+per visible request on the JSON-SSE path** (non-GPU only; serialise,
+tokenise, compress, network, decompress, detokenise, parse are all
+already inside the 47.5 mJ/hop figure — do NOT double-count by adding
+them again on top).
 
-Note: this is per-byte work scales with payload size. On a 50 KB
+Note: this is per-byte work that scales with payload size. On a 50 KB
 payload (10× smaller) the per-hop work drops to ~5 mJ, ~40 mJ per
 request — Codec doesn't change shape, it changes size, and the energy
 scales linearly with the bytes it eliminates.
@@ -135,26 +136,32 @@ Final hop to the user's browser DOES detokenise (it has to render):
 + ~14 nJ/byte × 2400 bytes ≈ 0.03 mJ. Negligible on the per-request
 total.
 
-Per-request total (8 round-trips) = **~1.5 mJ wire + ~0.1 mJ
-serialisation = ~1.6 mJ per visible request on the Codec path**, with
-ONE detokenise at the leaf (user browser) of ~0.03 mJ on top.
+Per-request total (8 round-trips) = **0.18 mJ × 8 + 0.03 mJ leaf
+detokenise ≈ 1.5 mJ per visible request on the Codec path** (non-GPU
+only).
 
 ### Reduction summary
 
 | Path     | Per request | Per hop      | Source of saving                            |
 |----------|------------:|-------------:|---------------------------------------------|
-| JSON-SSE |     820 mJ  |    ~47.5 mJ  | baseline                                    |
-| Codec    |       2 mJ  |    ~0.18 mJ  | 200× wire bytes + zero intermediate-hop tokenise |
+| JSON-SSE |     380 mJ  |    ~47.5 mJ  | baseline                                    |
+| Codec    |     1.5 mJ  |    ~0.18 mJ  | 200× wire bytes + zero intermediate-hop tokenise |
 
-**Non-GPU energy per request: 6.6 J → 40 mJ** (~165× reduction) using
-the conservative lab numbers. The website + LinkedIn article quote
-"6.6 J → 40 mJ" rounded to one sig-fig. Production fleet numbers are
-likely lower on both sides; the ratio is what matters.
+**Non-GPU energy per request: 380 mJ → 1.5 mJ** (~250× reduction) at
+the standard 8-round-trip heavy-agent compound on the conservative
+lab cost table. Production hardware typically lands 2-3× more
+efficient per byte than this lab NUC; ratios stay close.
 
-The "6.6 J → 40 mJ" headline in the article is an aggregate
-INCLUDING client-side blocked-doomed-prompts that Codec eliminates
-entirely (every blocked prompt = 1 × full hop energy avoided), which
-amplifies the gap above the pure per-hop ratio.
+> **What this number is and isn't.** The ~250× reduction is for the
+> non-GPU CPU + network energy path SPECIFICALLY. GPU compute
+> dominates total per-request energy on modern accelerators (typically
+> ~10-30 J/request for a heavy text generation, vs the 0.38 J of
+> non-GPU overhead above). Codec doesn't change GPU compute; the
+> savings here are a multiplier on the small slice we DO change.
+> Earlier drafts of the website/LinkedIn copy quoted "6.6 J → 40 mJ"
+> for this slice — that was inferred from incomplete arithmetic and
+> should be read as "the ratio is 100-250×; the absolute values are
+> in the hundreds of mJ, not single-digit J."
 
 ---
 
@@ -172,40 +179,70 @@ Worldwide AI request volume as of 2026-05:
 
 Conservatively round to **~5B requests/day worldwide**.
 
-At 820 mJ non-GPU per JSON-SSE request: ~4.1 GJ/day non-GPU wire
-overhead. Annualised: ~1.5 TJ ≈ 415 MWh/yr.
+At 380 mJ non-GPU per JSON-SSE request (heavy-agent compound, 8
+round-trips per visible reply): the unit chain to annual savings is
 
-At the same volume on Codec at 2 mJ/request: ~10 MJ/day, ~3.6 GJ/yr
-≈ 1.0 MWh/yr.
+```
+380 mJ/request × 5B requests/day × 365 days/yr
+  = 6.94 × 10^14  mJ/yr                  (raw)
+  = 6.94 × 10^11  J/yr   (÷ 1e3)
+  = 693          GJ/yr   (÷ 1e9)
+  = 1.93 × 10^5  kWh/yr  (× 0.2778)
+  = 193           MWh/yr
+```
 
-**Wire-side non-GPU annual savings at full-fleet adoption: ~414 MWh** —
-the headline equivalence on the website cost card.
+(Sanity check: 193 MWh ≈ the annual electricity of ~20 average US
+households. Multiply by your preferred 2030 traffic scale-up factor —
+4× brings it to ~772 MWh ≈ ~80 households.)
+
+Codec at the same volume: 1.5 mJ/request → 2.74 GJ/yr ≈ 760 kWh/yr
+(rounding error against 193 MWh).
+
+**Wire-side non-GPU annual savings at full-fleet adoption today:
+~192 MWh.** Multiply by 4× for the 2030 projection → ~770 MWh.
 
 ### Car-equivalence conversion
 
 Average US passenger car burns ~120 GJ/yr of refined-fuel energy and
-emits ~4.6 tonnes CO2e/yr (EPA reference 2024 fleet average). At 414
-MWh ≈ 1.49 TJ of grid electricity, with US grid-mix CO2 intensity at
-~0.37 kg CO2e/kWh (2026 EIA): 414 MWh × 0.37 kg/kWh = ~153 tonnes
-CO2e/yr.
+emits ~4.6 tonnes CO2e/yr (EPA reference 2024 fleet average). At
+193 MWh of grid electricity, with US grid-mix CO2 intensity at
+~0.37 kg CO2e/kWh (2026 EIA):
 
-153 / 4.6 = **~33 cars/year** in CO2 equivalent, with one round-trip
-of conservative assumptions. The website cards quote "~400 cars/yr" —
-that figure is the **heavy-agent compound at 8 round-trips per visible
-reply** + the bidirectional + the ~10% client-side doomed-prompt loss
-+ the 4× scale-up to 2030 projected traffic, which compounds the
-per-request gap. The single-round-trip number above is the
-**lower-bound floor**.
+```
+193 MWh × 0.37 kg CO2e/kWh = 71.4 tonnes CO2e/yr
+71.4 / 4.6 = 15.5 cars/year equivalent
+```
 
-This is intentionally framed as a range: at conservative
-single-round-trip-amortised numbers, the saving is ~30 cars/yr
-TODAY; at the more realistic heavy-agent compound (where real
-platforms actually live), the saving is ~400 cars/yr today, ~4,000
-cars/yr by 2030 at projected traffic scaling.
+**Today, conservative lab cost table, 8-round-trip compound: ~15
+cars/yr CO2-equivalent.** At the projected 4× 2030 traffic scale-up:
+~60 cars/yr.
 
-The website + LinkedIn article use the realistic compound. This
-document carries both so reviewers can pick their preferred
-assumption set.
+> **Earlier drafts cited ~400 cars/yr — that was wrong.** The
+> arithmetic came from a per-request value that double-counted
+> serialisation+tokenisation (820 mJ instead of the correct 380 mJ).
+> See [[feedback_unit_conversion_sanity_check]] — flagged + corrected
+> 2026-05-17 via `packages/bench/scripts/energy_bench.py`. Website +
+> LinkedIn copy will be updated to match.
+
+The honest framing: at the conservative lab numbers, today's worldwide
+non-GPU savings are real but modest (~15 cars/yr CO2 equivalent).
+Where Codec's impact is meaningful is:
+
+1. **Per-deployment cost**: this is a fleet-aggregate number divided
+   over every Codec deployment worldwide; a single Anthropic-or-OpenAI-
+   scale deployment captures a sizable fraction.
+2. **Network access** (the IoT / LoRaWAN / Sigfox angle in the
+   LinkedIn article): wire-byte reduction unlocks workloads on
+   networks where JSON-SSE simply doesn't fit at all. That's a
+   discrete-go/no-go win, not a continuous energy win.
+3. **Latency-bounded interactions** (mobile, edge, agent meshes):
+   the time saved on the wire dominates the user-perceived experience
+   even when the absolute joules are small.
+
+The energy savings exist; they're real; they're roughly an order of
+magnitude smaller than earlier marketing copy claimed. The other three
+framings in the LinkedIn article (cost, accessibility, IoT) are not
+affected.
 
 ---
 
@@ -289,6 +326,16 @@ terms but should be consistent in the JSON-SSE → Codec ratio (~150-
 - **v0.5 (2026-05-17)** — initial publication; covers heavy-agent
   compound, IoT carriers excluded, GPU compute excluded. Reproduction
   harness landed at `packages/bench/scripts/energy_bench.py`.
+- **v0.5.1 (2026-05-17, same-day correction)** — bench harness output
+  caught a double-count bug in the original per-request math: the
+  47.5 mJ/hop figure already includes serialise + tokenise + parse +
+  detokenise; the earlier "~820 mJ per request" line was adding those
+  in a second time on top of the per-hop total. Corrected: per-request
+  at 8-rt is 380 mJ JSON / 1.5 mJ Codec; annual savings 192 MWh, not
+  414 MWh; car-equivalent ~15/yr today, not ~400/yr. The unit-chain
+  derivation in § "Worldwide aggregate" is now written out explicitly
+  per [[feedback_unit_conversion_sanity_check]]. Website + LinkedIn
+  copy needs a follow-up update.
 
 Companion artefact for the v0.5 release. See
 [`docs/RELEASE_CHECKLIST.md`](../../../docs/RELEASE_CHECKLIST.md) for

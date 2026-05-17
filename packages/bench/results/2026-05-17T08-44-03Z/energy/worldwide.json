@@ -1,0 +1,14 @@
+{
+  "schema_version": "1",
+  "heavy_agent_compound": {
+    "requests_per_day": 5000000000,
+    "json_sse_gj_per_year": 693.135,
+    "codec_gj_per_year": 2.6630399999999996,
+    "saved_gj_per_year": 690.47196,
+    "saved_kwh_per_year": 191797.92010488,
+    "saved_tonnes_co2_per_year": 70.9652304388056,
+    "car_equivalents_per_year": 15.427224008436003,
+    "us_grid_kgco2_per_kwh": 0.37,
+    "epa_car_tonnes_co2_per_year": 4.6
+  }
+}
