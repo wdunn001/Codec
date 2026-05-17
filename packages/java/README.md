@@ -100,6 +100,7 @@ For huge prompts (>50K tokens, e.g. RAG with long context), the dedicated `/v1/c
 | Type | Purpose |
 |---|---|
 | `MapLoader.load(opts)` / `loadAsync` | Fetch + sha256-verify + cache a dialect map |
+| `ZstdDictDiscovery.discover(origin, hash)` / `discoverAsync(origin, hash, http)` (v0.5) | Resolve a zstd dict at `.well-known/codec/dicts/<sha256-hex>.zstd`. Hash-pin-verified against the URL's path component; hard-fails on 404 / mismatch (no silent fallback). |
 | `InMemoryMapCache` | Default in-memory `MapCache`. Implement for IDB / KV / disk |
 | `TokenizerMap.fromJson(...)` / `validate(...)` | Parse + schema check |
 | `TokenizerMap.verifySha256(bytes, hash)` | Standalone hash check (utility) |
