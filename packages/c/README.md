@@ -364,11 +364,22 @@ decoded 100,000 frames in 6,740 ms
 
 The bench keeps memory allocation deliberately naive (a fresh `codec_frame_t` and rendered string per chunk) to mirror the typical client pattern. Production callers can hold buffers across chunks for higher throughput.
 
-## What's not in v0.1
+## What's shipped (and what's deliberately not)
 
-- **`BPETokenizer` (text → IDs)** — deferred to v0.2. The bidirectional Codec endpoint (sending token-ID prompts) requires client-side BPE, which in C means either (a) a Unicode regex dependency for byte_level (PCRE2), or (b) a hand-rolled regex specialised for the GPT-2-family pre-tokenizer. Both are valid choices but neither is small. The other language ports ship pure-language BPE; libcodec callers who need it today can shell out to a BPE encoder or use the matching Python/JS/.NET client over IPC.
+**Shipped** (bit-identical to the higher-level bindings, verified against the cross-stack matrix):
+
+- `Detokenizer` (IDs → UTF-8)
+- **`BPEEncoder` (text → IDs)** — `codec_bpe_encoder_new` / `codec_bpe_encode` / `codec_bpe_encoder_free`. Byte-level + metaspace pre-tokenizers, both supported. Pretok runs on the [pretokenizer-program runtime](../../spec/PRETOKENIZER_PROGRAM.md) (no PCRE2 dependency — Unicode `\p{L}` / `\p{N}` queries go through generated tables in `codec_unicode_tables.c`). Round-trips against the real Qwen-2 tokenizer fixture under `test/test_bpe.c`.
+- `Translator` (cross-vocab `ids_A → utf-8 → ids_B`) — `codec_translator_new` / `_translate` / `_reset` / `_free`. Streaming-safe (buffers to whitespace before flushing BPE).
+- `ToolWatcher` (control-ID region detection)
+- Wire frame encode + decode (msgpack + protobuf)
+- Compression (gzip / brotli / dict-zstd via system libs)
+- Safety-policy parser + sha256 verify + well-known URL builder
+
+**Deliberately not in scope**:
+
 - **HTTP client** — `codec_map_from_json` takes bytes you've already fetched. Use libcurl, libsoup, libfetch, etc. to do the GET. This stays opinion-free about networking.
-- **Pre-trained ZSTD dictionaries** (Codec spec §"Future") — the dictionary distribution mechanism is still being designed at the spec level.
+- **Safety-policy descriptor publishing** — server-side concern; lives in the higher-level languages (Python / .NET / TS). C has parse + hash + URL only.
 
 ## Map sources
 

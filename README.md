@@ -69,7 +69,7 @@ Source-available under [BSL 1.1](LICENSE).
 | **Map schema (text)** | [`spec/tokenizer-map.schema.json`](spec/tokenizer-map.schema.json) | v2.1 — vocab + merges + encoder + optional `pre_tokenizer_program` + `tool_calling` block (auto-derived from chat templates) |
 | **Map schema (latent)** | [`spec/latent-space-map.schema.json`](spec/latent-space-map.schema.json) | v0.3 — latent-space identity, shape/dtype, `vae_scale_factor`, accepted pipelines, decoder reference, per-pipeline zstd dicts |
 | **Safety policy schema** | [`spec/safety-policy.schema.json`](spec/safety-policy.schema.json) | v0.4 — sanitized publishable descriptor (categories + actions + classifier family + summary stats; never operator-internal banned-id lists or thresholds) |
-| **Pretok program spec** | [`spec/PRETOKENIZER_PROGRAM.md`](spec/PRETOKENIZER_PROGRAM.md) | v1 op-list form the maps-cli compiles regex pre-tokenizers into; unblocks the C BPE encoder |
+| **Pretok program spec** | [`spec/PRETOKENIZER_PROGRAM.md`](spec/PRETOKENIZER_PROGRAM.md) | v1 op-list form the maps-cli compiles regex pre-tokenizers into; powers the C BPE encoder (no PCRE2 dep) |
 | **Pipelines spec** | [`spec/PIPELINES.md`](spec/PIPELINES.md) | v0.3 — normative forward + inverse math for the 7 latent transforms (raw / int8 / int4 / int8-adaptive / int4-adaptive / delta+int8 / delta+int4) |
 | **Release checklist** | [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) | v0.4 — gate every release passes through (validation → coverage → benches → docs → READMEs → website → tags → publishes) |
 | **Version history convention** | [`docs/PROTOCOL_VERSION_HISTORY.md`](docs/PROTOCOL_VERSION_HISTORY.md) | v0.4 — how per-version `## Open questions (v0.X)` sections evolve across releases |
@@ -87,7 +87,7 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 | .NET | [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) | NuGet 0.4.1 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `SafetyPolicy.{Validate,Hash,Load,Discover}Async` (v0.4) |
 | Rust | [`codec-rs`](packages/rust) | crates.io 0.4.1 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `discover_safety_policy` (v0.4, `http` feature) |
 | Java | [`ai.codec:codec`](packages/java) | local v0.4.1 (Maven Central publish deferred) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `SafetyPolicy.{validate,hash,load,discover}` (v0.4) |
-| C99 | [`libcodec`](packages/c) | vcpkg / FetchContent 0.4.1 | Detokenizer · ToolWatcher · stream decoders (BPE + Translator pending Unicode tables) · `codec_safety_policy_{from_json,verify_sha256,well_known_url}` (v0.4, parser + URL + hash-verify only — descriptor publishing is in the higher-level languages) |
+| C99 | [`libcodec`](packages/c) | vcpkg / FetchContent 0.4.1 | Detokenizer · BPEEncoder · ToolWatcher · Translator · stream decoders · pretok-program runtime (no PCRE2, generated Unicode tables) · `codec_safety_policy_{from_json,verify_sha256,well_known_url}` (v0.4, parser + URL + hash-verify only — descriptor publishing is in the higher-level languages) |
 
 ### Tooling and registry
 
@@ -501,7 +501,7 @@ What's validated end-to-end:
 - ✅ **Wire reduction.** sglang 485 KB → 291 B with full Codec stack at 2 K tokens (**1,707×**). vllm 518 KB → 3.9 KB with gzip alone (**137×**). llama.cpp 529 KB → 16 KB with gzip alone (**33×**). TTFB stays within 1 ms of JSON-SSE on the same engines.
 - ✅ **Tool-call dispatch on raw IDs.** `ToolWatcher` runs at 0.61 ms / 1 M tokens vs 60.4 ms for detokenize+regex (~100× faster). Available in every client.
 - ✅ **Cross-vocab agent handoff.** Llama-3 → Qwen-2 at 2 K tokens: 30 % less bridge CPU, 15.1× smaller wire, byte-identical Qwen-2 output asserted by the bench.
-- ✅ **Polyglot clients shipped** — TS / Python / .NET / Rust / Java / C all built and tested in the matrix. Three on public registries today (`@codecai/web` on npm, `codecai` on PyPI, `Codec.Net` on NuGet); Rust + Java built locally with crates.io / Maven Central publishes queued. Frame format + Detokenizer + ToolWatcher + Translator + BPE encoder in TS / Python / .NET / Rust / Java; C has Detokenizer + ToolWatcher (BPE + Translator deferred until Unicode tables land).
+- ✅ **Polyglot clients shipped** — TS / Python / .NET / Rust / Java / C all built and tested in the matrix. Frame format + Detokenizer + BPE encoder + ToolWatcher + Translator are now in **every** binding (C99 included — the pretok-program runtime + generated Unicode tables ship with libcodec, no PCRE2 dep). Public registries: `@codecai/{web,web-safety,web-llm,maps-cli,mcp-leaf,tool-kit}` on npm, `codecai` on PyPI, `Codec.Net` on NuGet, `codec-rs` on crates.io; `ai.codec:codec` Maven Central publish deferred at v0.4.1.
 - ✅ **vLLM / SGLang / llama.cpp PRs open** — same wire surface across all three; engines tested in the cross-stack matrix.
 - ✅ **MetaMCP PR open** — gateway-side Codec + token-aware tool dispatch ([`metatool-ai/metamcp#287`](https://github.com/metatool-ai/metamcp/pull/287)). Image: `wdunn001/codec-metamcp:0.2.4`.
 - ✅ **Pretok program v2.1** — maps-cli compiles regex pre-tokenizers into a regex-free op list. Equivalence verified on 23 stress inputs against the real Qwen-2 / Llama-3 regexes.
@@ -509,8 +509,7 @@ What's validated end-to-end:
 
 What's still on the roadmap:
 
-- **Public-registry publishes for Rust + Java** — `codec-rs` to crates.io and `ai.codec:codec` to Maven Central. Both built and matrix-tested locally; the publish step is mechanical (CI workflow + signing key).
-- **C BPE encoder + Translator** — needs the pretok program runtime in C plus Unicode `\p{L}` / `\p{N}` interval-list tables (one-shot generator from UCD). The pretok-program work landed specifically to make this tractable.
+- **Maven Central publish for `ai.codec:codec`** — Java client built + matrix-tested + locally published; Maven Central credential plumbing deferred at v0.4.1. The publish step is mechanical once credentials land.
 - **Pretok program runtime in Python + .NET** — both have `\p{L}` support today, so the regex path works fine; porting the program runtime gives ~10–30 % encode-startup speedup.
 - **Server-side dictionary loading** — sglang's `codec_compression.py` ships dict-zstd; the vllm fork has dicts pre-baked but the lifespan loader hook is in flight. llama.cpp's libcpp-httplib transport ships gzip only. Dict artifacts and schema are in place; the engine-side wiring is the next PR.
 - **Streaming chunked tokenization at the MetaMCP gateway** — today MCP `tools/call` results are tokenized whole at the response seam. Streaming chunks (incremental tokenize as the underlying tool produces text) is the next gateway PR; until then long file-read tools hold the response until completion before re-emitting Codec frames.
