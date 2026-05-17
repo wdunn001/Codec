@@ -205,4 +205,64 @@ public class CompressionTests
         var picked = Compression.SelectZstdDictForResponse(headers, loaded);
         Assert.NotNull(picked);
     }
+
+    // ── ZstdDictDiscovery (v0.5+) ─────────────────────────────────────────
+
+    [Fact]
+    public void WellKnownDictUrl_StripsSha256Prefix()
+    {
+        var h = new string('a', 64);
+        Assert.Equal(
+            $"https://codec.example/.well-known/codec/dicts/{h}.zstd",
+            ZstdDictDiscovery.WellKnownDictUrl("https://codec.example", $"sha256:{h}"));
+    }
+
+    [Fact]
+    public void WellKnownDictUrl_AcceptsBareHex()
+    {
+        var h = new string('b', 64);
+        Assert.Equal(
+            $"https://codec.example/.well-known/codec/dicts/{h}.zstd",
+            ZstdDictDiscovery.WellKnownDictUrl("https://codec.example", h));
+    }
+
+    [Fact]
+    public void WellKnownDictUrl_StripsTrailingSlash()
+    {
+        var h = new string('c', 64);
+        Assert.Equal(
+            $"https://codec.example/.well-known/codec/dicts/{h}.zstd",
+            ZstdDictDiscovery.WellKnownDictUrl("https://codec.example/", h));
+    }
+
+    [Fact]
+    public void WellKnownDictUrl_NormalisesUppercaseHex()
+    {
+        var upper = new string('D', 64);
+        var expected = new string('d', 64);
+        Assert.Equal(
+            $"https://codec.example/.well-known/codec/dicts/{expected}.zstd",
+            ZstdDictDiscovery.WellKnownDictUrl("https://codec.example", upper));
+    }
+
+    [Fact]
+    public void WellKnownDictUrl_RejectsShortHash()
+    {
+        Assert.Throws<ZstdDictDiscoveryException>(() =>
+            ZstdDictDiscovery.WellKnownDictUrl("https://codec.example", "deadbeef"));
+    }
+
+    [Fact]
+    public void WellKnownDictUrl_RejectsWrongAlgorithm()
+    {
+        Assert.Throws<ZstdDictDiscoveryException>(() =>
+            ZstdDictDiscovery.WellKnownDictUrl("https://codec.example", "md5:" + new string('a', 32)));
+    }
+
+    [Fact]
+    public void WellKnownDictUrl_RejectsNonHexChars()
+    {
+        Assert.Throws<ZstdDictDiscoveryException>(() =>
+            ZstdDictDiscovery.WellKnownDictUrl("https://codec.example", new string('z', 64)));
+    }
 }

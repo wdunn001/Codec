@@ -87,6 +87,7 @@ For huge prompts (>50K tokens, e.g. RAG with long context), the dedicated `/v1/c
 | Type | Purpose |
 |---|---|
 | `MapLoader.LoadAsync(opts)` | Fetch + sha256-verify + cache a dialect map |
+| `ZstdDictDiscovery.DiscoverAsync(origin, hash)` / `WellKnownDictUrl(origin, hash)` (v0.5) | Resolve a zstd dict at `.well-known/codec/dicts/<sha256-hex>.zstd`. Hash-pin-verified against the URL's path component; hard-fails on 404 / mismatch (no silent fallback). |
 | `MemoryMapCache` | Default in-memory `IMapCache`. Implement for IDB / KV |
 | `TokenizerMap.FromJson(...)` / `Validate(...)` | Parse + schema check |
 | `Detokenizer` | Stateful detokenizer: byte_level + metaspace + byte fallback + partial UTF-8 |

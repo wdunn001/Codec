@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: MIT
+using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Codec;
 
@@ -159,4 +165,130 @@ public class CodecZstdDictException : Exception
 {
     public CodecZstdDictException(string message) : base(message) { }
     public CodecZstdDictException(string message, Exception inner) : base(message, inner) { }
+}
+
+/// <summary>
+/// Discoverable zstd dictionary surface (v0.5+).
+///
+/// Spec: <c>spec/WELL_KNOWN_DISCOVERY.md § "Zstd dictionaries (v0.5+)"</c>.
+///
+/// .NET twin of <c>codecai.discover_zstd_dict</c> (Python),
+/// <c>@codecai/web#discoverZstdDict</c> (TypeScript), and
+/// <c>codec_rs::discover_zstd_dict</c> (Rust). The discovery surface is
+/// hard-fail by design — silent fallback to identity bytes was the v0.4.1
+/// sglang COPY-dicts regression class this surface eliminates.
+/// </summary>
+public static class ZstdDictDiscovery
+{
+    /// <summary>Fixed base path under which Codec dict documents live.</summary>
+    public const string DictsWellKnownBase = "/.well-known/codec/dicts";
+
+    private static readonly Regex DictHashRe = new("^[0-9a-f]{64}$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Per-dict document URL for an origin + sha256 hash (v0.5+).
+    /// Accepts either <c>sha256:&lt;hex&gt;</c> or bare <c>&lt;hex&gt;</c>.
+    /// Returns <c>&lt;origin&gt;/.well-known/codec/dicts/&lt;sha256-hex&gt;.zstd</c>.
+    /// </summary>
+    /// <exception cref="ZstdDictDiscoveryException">
+    /// Thrown when the hash input is not the expected 64-hex-char sha256 form.
+    /// </exception>
+    public static string WellKnownDictUrl(string origin, string hash)
+    {
+        var hex = ParseDictHash(hash);
+        return $"{StripTrailingSlash(origin)}{DictsWellKnownBase}/{hex}.zstd";
+    }
+
+    /// <summary>
+    /// Resolve a zstd dictionary via <c>.well-known/codec/dicts/&lt;hex&gt;.zstd</c>.
+    /// Fetches the bytes, verifies they hash to the URL's path component, returns
+    /// the raw dict bytes ready to feed into a zstd decoder.
+    /// </summary>
+    /// <param name="origin">HTTPS origin serving the dict (e.g. <c>https://codec.example</c>).</param>
+    /// <param name="hash">SHA-256 hash, as <c>sha256:&lt;hex&gt;</c> or bare <c>&lt;hex&gt;</c>.</param>
+    /// <param name="http">Optional <see cref="HttpClient"/>. If omitted, a default client is used.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <exception cref="ZstdDictDiscoveryException">404 from origin, or malformed hash input.</exception>
+    /// <exception cref="ZstdDictHashMismatchException">Origin served bytes that don't match the URL's hash.</exception>
+    public static async Task<byte[]> DiscoverAsync(
+        string origin,
+        string hash,
+        HttpClient? http = null,
+        CancellationToken ct = default)
+    {
+        var expected = ParseDictHash(hash);
+        var url = WellKnownDictUrl(origin, hash);
+        var client = http ?? DefaultHttp;
+
+        using var resp = await client.GetAsync(url, ct).ConfigureAwait(false);
+        if (resp.StatusCode == HttpStatusCode.NotFound)
+            throw new ZstdDictDiscoveryException($"No zstd dict at {url} (HTTP 404)", url);
+        if (!resp.IsSuccessStatusCode)
+            throw new ZstdDictDiscoveryException(
+                $"Failed to fetch {url}: HTTP {(int)resp.StatusCode}", url);
+
+        var body = await resp.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+        var actual = Sha256HexBytes(body);
+        if (!string.Equals(actual, expected, StringComparison.Ordinal))
+            throw new ZstdDictHashMismatchException(url, expected, actual);
+        return body;
+    }
+
+    private static string ParseDictHash(string hash)
+    {
+        var s = hash.Trim();
+        if (s.StartsWith("sha256:", StringComparison.Ordinal))
+            s = s.Substring("sha256:".Length);
+        s = s.ToLowerInvariant();
+        if (!DictHashRe.IsMatch(s))
+            throw new ZstdDictDiscoveryException(
+                $"Invalid dict hash '{hash}': expected 'sha256:<64 hex>' or '<64 hex>'");
+        return s;
+    }
+
+    private static string Sha256HexBytes(ReadOnlySpan<byte> bytes)
+    {
+        Span<byte> hash = stackalloc byte[32];
+        SHA256.HashData(bytes, hash);
+        var sb = new StringBuilder(64);
+        foreach (var b in hash) sb.Append(b.ToString("x2"));
+        return sb.ToString();
+    }
+
+    private static string StripTrailingSlash(string s) =>
+        s.EndsWith("/", StringComparison.Ordinal) ? s.Substring(0, s.Length - 1) : s;
+
+    private static readonly HttpClient DefaultHttp = new HttpClient
+    {
+        Timeout = TimeSpan.FromSeconds(30),
+    };
+}
+
+/// <summary>
+/// Raised when <c>.well-known/codec/dicts/&lt;hex&gt;.zstd</c> discovery fails.
+/// Covers: 404 from origin, malformed hash input.
+/// </summary>
+public class ZstdDictDiscoveryException : Exception
+{
+    public string? Url { get; }
+    public ZstdDictDiscoveryException(string message, string? url = null) : base(message)
+    {
+        Url = url;
+    }
+}
+
+/// <summary>
+/// Raised when fetched dict bytes don't hash to the URL's path component.
+/// Treat as byte-tampering: never decompress.
+/// </summary>
+public sealed class ZstdDictHashMismatchException : ZstdDictDiscoveryException
+{
+    public string Expected { get; }
+    public string Actual { get; }
+    public ZstdDictHashMismatchException(string url, string expected, string actual)
+        : base($"Zstd dict hash mismatch at {url}\n  expected: {expected}\n  actual:   {actual}", url)
+    {
+        Expected = expected;
+        Actual = actual;
+    }
 }
