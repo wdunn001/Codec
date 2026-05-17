@@ -1,0 +1,7 @@
+/mnt/h/dev/Project Codec/Codec/packages/demo-c/build/CMakeFiles/codec-token-bench.dir
+/mnt/h/dev/Project Codec/Codec/packages/demo-c/build/CMakeFiles/edit_cache.dir
+/mnt/h/dev/Project Codec/Codec/packages/demo-c/build/CMakeFiles/rebuild_cache.dir
+/mnt/h/dev/Project Codec/Codec/packages/demo-c/build/libcodec/CMakeFiles/codec_static.dir
+/mnt/h/dev/Project Codec/Codec/packages/demo-c/build/libcodec/CMakeFiles/codec_shared.dir
+/mnt/h/dev/Project Codec/Codec/packages/demo-c/build/libcodec/CMakeFiles/edit_cache.dir
+/mnt/h/dev/Project Codec/Codec/packages/demo-c/build/libcodec/CMakeFiles/rebuild_cache.dir
