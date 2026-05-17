@@ -103,13 +103,85 @@ export interface PickInput {
    * dictionaries" and packages/bench/RESULTS.md §1g.
    */
   zstdHasDict?: boolean;
+  /**
+   * Optional per-stack profile (v0.5). When supplied, the picker uses the
+   * profile's `wireCoeff` / `ttftRatio` to override the bundled defaults.
+   * Pick the closest match via `profileFor(stackName)` or supply a custom
+   * `StackProfile`.
+   *
+   * Behaviour:
+   *   - An encoding's `ttftRatio > MAX_TTFT_RATIO` (default 5) gets removed
+   *     from candidates — e.g. sglang's buffered-zstd ttftRatio=334 means
+   *     zstd is dropped on that stack even when both client + server
+   *     advertise it.
+   *   - Among the remaining candidates, the encoding with the lowest
+   *     `wireCoeff` wins. Ties broken by the legacy preference order
+   *     (zstd > gzip > br > identity).
+   *
+   * Defaults to STACK_PROFILES.default if absent.
+   */
+  stackProfile?: StackProfile;
+  /**
+   * Optional content sample (v0.5). When provided, the picker computes
+   * the Shannon entropy of the first N bytes and uses it as a tiebreaker:
+   *   - low entropy (< 3 bits/byte): prefer brotli (its static dict
+   *     captures structural repetition Codec can't)
+   *   - high entropy (>= 3 bits/byte): prefer dict-zstd
+   *
+   * Typically N=256. Set this from the first bytes the server has buffered
+   * before committing the Content-Encoding header. Optional — the picker
+   * works without it.
+   */
+  sampleBytes?: Uint8Array;
 }
+
+/** Per-stack profiles where an encoding with ttftRatio above this gets dropped. */
+export const MAX_TTFT_RATIO = 5;
+/** Shannon-entropy boundary (bits/byte) for the content-aware tiebreaker. */
+export const LOW_ENTROPY_THRESHOLD = 3.0;
+
+/**
+ * Enum of pick() decisions. Each value identifies one branch of the picker's
+ * decision tree, so dashboards can group/count outcomes without parsing free
+ * text. The closed enum is the v0.5 contract; new picker branches require a
+ * new enum value (additive — never reassign / never remove existing ones,
+ * same trust posture as the wire-format versioning policy).
+ */
+export type PickReasonCode =
+  /** Both zstd gates passed, no per-stack override. */
+  | 'dict_zstd_default'
+  /** Per-stack profile downgraded zstd (e.g. sglang ttftRatio > threshold). */
+  | 'per_stack_overrode_zstd'
+  /** zstd gated off because client didn't advertise it. */
+  | 'gzip_no_zstd_in_accept'
+  /** zstd gated off because zstdHasDict=false (no dict for this request). */
+  | 'gzip_no_dict'
+  /** zstd gated off because zstdEnabled=false (middleware not confirmed streaming). */
+  | 'gzip_middleware_disabled'
+  /** Content sample suggested low entropy + br outperforms gzip on that. */
+  | 'br_content_sample_low_entropy'
+  /** br is the only non-identity option (no gzip / no zstd accepted). */
+  | 'br_fallback_no_gzip'
+  /** Per-stack profile downgraded br (e.g. sglang's broken per-frame compression). */
+  | 'per_stack_overrode_br'
+  /** Client supports nothing compressible. Last-resort. */
+  | 'identity_last_resort';
 
 export interface PickOutput {
   /** The Content-Encoding to apply. 'identity' means: send raw, no encoding header. */
   encoding: Encoding;
-  /** A short human-readable rationale for logs. */
+  /**
+   * Closed-enum decision code (v0.5). Use this for dashboard grouping.
+   * The `reason` string carries the human-readable expansion.
+   */
+  reason_code: PickReasonCode;
+  /**
+   * Short human-readable rationale for logs. Format may change between
+   * minor versions — use `reason_code` for programmatic dispatch.
+   */
   reason: string;
+  /** The candidate set considered, post all gates. For debugging. */
+  considered?: Encoding[];
 }
 
 /**
@@ -172,20 +244,28 @@ export interface StackProfile {
 export const STACK_PROFILES: Record<string, StackProfile> = {
   default: {
     name: 'default',
+    // v0.5: zstd ttftRatio dropped from 100 → 1.0 (sglang / vllm /
+    // llama.cpp all stream zstd correctly at v0.4.1+; v0.4's defensive
+    // assumption is no longer justified). Operators with confirmed
+    // buffered-zstd middleware should supply a custom StackProfile.
     encodings: {
       gzip: { wireCoeff: 0.05, ttftRatio: 1.0 },
       br: { wireCoeff: 0.5, ttftRatio: 1.0 },
-      zstd: { wireCoeff: 0.05, ttftRatio: 100 },
+      zstd: { wireCoeff: 0.04, ttftRatio: 1.0 },
     },
   },
   sglang: {
     name: 'sglang',
-    // Measured 2024-05; see RESULTS.md §1f. br is broken (per-frame
-    // compression sometimes expands the payload); zstd buffers full response.
+    // Originally measured 2024-05 (buffered-zstd era). v0.4.1 cohort
+    // re-bench (2026-05-15) shows streaming-zstd works correctly:
+    // ttftRatio dropped 334 → 1.0. br fix is still pending in the
+    // sglang fork (per-frame compression occasionally expands the
+    // payload; see RESULTS.md §1f). Until that lands, br stays
+    // weighted out via wireCoeff.
     encodings: {
       gzip: { wireCoeff: 0.023, ttftRatio: 1.0 },
       br: { wireCoeff: 0.733, ttftRatio: 1.0 },
-      zstd: { wireCoeff: 0.017, ttftRatio: 334 },
+      zstd: { wireCoeff: 0.017, ttftRatio: 1.0 },
     },
   },
   'llama.cpp': {
@@ -306,10 +386,14 @@ export function pick(input: PickInput): PickOutput {
   const {
     acceptEncoding,
     estimatedSize,
-    thresholds = DEFAULT_THRESHOLDS,
     interactive = true,
-    zstdEnabled = false,
+    zstdEnabled = true,  // v0.5: default flipped (was false in v0.4).
+                          // sglang/vllm/llamacpp all stream zstd correctly
+                          // at v0.4.1+; operators with buffered-zstd
+                          // middleware MUST set this false explicitly.
     zstdHasDict = false,
+    stackProfile = STACK_PROFILES.default!,
+    sampleBytes,
   } = input;
   const serverCandidates: Set<Encoding> = new Set(
     input.serverSupports ?? ['identity', 'gzip', 'br', 'zstd'],
@@ -319,56 +403,117 @@ export function pick(input: PickInput): PickOutput {
   const candidates = new Set<Encoding>();
   for (const enc of client.accepted) if (serverCandidates.has(enc)) candidates.add(enc);
 
-  // zstd has TWO gates, both must be true.
-  //
-  // 1. `zstdHasDict`: do we have a pre-trained dictionary for this
-  //    request's (tokenizer, format)? Without a dict, zstd's wire-byte
-  //    advantage over gzip is essentially zero on Codec streams (RESULTS.md
-  //    §1f), and shipped middleware adds a catastrophic TTFB cliff
-  //    (§1d) — so no-dict zstd is the worst of both worlds. The dict is
-  //    not an optimization; it's the precondition.
-  //
-  // 2. `zstdEnabled`: has the operator confirmed the middleware uses
-  //    streaming-zstd-with-flush, not buffered finalisation? If they
-  //    haven't, even with-dict zstd will eat the TTFB cliff.
-  //
-  // Either gate failing → drop zstd from the candidate set entirely; the
-  // picker falls through to gzip (or br for clients without gzip).
-  if (!zstdHasDict || !zstdEnabled) candidates.delete('zstd');
+  // ── Stage 1: hard zstd gates (unchanged from v0.4) ──────────────────────
+  let droppedZstdReason: PickReasonCode | null = null;
+  if (!candidates.has('zstd')) {
+    droppedZstdReason = 'gzip_no_zstd_in_accept';
+  } else if (!zstdHasDict) {
+    candidates.delete('zstd');
+    droppedZstdReason = 'gzip_no_dict';
+  } else if (!zstdEnabled) {
+    candidates.delete('zstd');
+    droppedZstdReason = 'gzip_middleware_disabled';
+  }
 
+  // ── Stage 2: per-stack profile drops (v0.5) ─────────────────────────────
+  // Drop any encoding whose ttftRatio on this stack exceeds the safe limit.
+  let perStackOverroteZstd = false;
+  let perStackOverroteBr = false;
+  for (const enc of ['zstd', 'br', 'gzip'] as const) {
+    if (!candidates.has(enc)) continue;
+    const chars = stackProfile.encodings[enc];
+    if (chars && chars.ttftRatio > MAX_TTFT_RATIO) {
+      candidates.delete(enc);
+      if (enc === 'zstd') perStackOverroteZstd = true;
+      if (enc === 'br') perStackOverroteBr = true;
+    }
+  }
+
+  const considered = Array.from(candidates).sort();
   const has = (e: Encoding) => candidates.has(e);
 
-  // After both gates above, zstd in the candidate set means: dict loaded
-  // for this (tokenizer, format) AND streaming middleware confirmed. In
-  // that world dict-zstd beats gzip at every size (RESULTS.md §1g: 16-38%
-  // fewer bytes) with a streaming-TTFB overhead of +0.13 ms — sub-ms,
-  // dwarfed by network. So zstd wins for both interactive and agent
-  // traffic when present. The size threshold and interactive special
-  // case (which previously avoided no-dict zstd's TTFT cliff) are no
-  // longer needed.
-  if (has('zstd')) {
-    return {
-      encoding: 'zstd',
-      reason:
-        `dict-zstd (zstdHasDict & zstdEnabled set; ` +
+  // ── Stage 3: content-aware tiebreaker (v0.5) ────────────────────────────
+  // When the caller supplied a content sample AND both br + zstd are still
+  // viable, pick whichever the entropy suggests will compress better. Low
+  // entropy → brotli (its static dict captures structural patterns); high
+  // entropy → dict-zstd (its trained dict captures token-bigram patterns).
+  if (sampleBytes && has('br') && has('zstd')) {
+    const ent = shannonEntropyBitsPerByte(sampleBytes);
+    if (ent < LOW_ENTROPY_THRESHOLD) {
+      return mkResult('br', 'br_content_sample_low_entropy',
+        `br (content sample entropy=${ent.toFixed(2)} < ${LOW_ENTROPY_THRESHOLD}; ` +
         `${interactive ? 'interactive' : 'agent'}; size=${estimatedSize})`,
-    };
+        considered);
+    }
+    // High entropy → fall through to the default zstd-wins branch below.
   }
+
+  if (has('zstd')) {
+    return mkResult('zstd', 'dict_zstd_default',
+      `dict-zstd (both gates passed; stack=${stackProfile.name}; ` +
+      `${interactive ? 'interactive' : 'agent'}; size=${estimatedSize})`,
+      considered);
+  }
+
+  if (perStackOverroteZstd) {
+    if (has('gzip')) {
+      return mkResult('gzip', 'per_stack_overrode_zstd',
+        `gzip (stack=${stackProfile.name} ttftRatio for zstd > ${MAX_TTFT_RATIO}; ` +
+        `size=${estimatedSize})`,
+        considered);
+    }
+  }
+
   if (has('gzip')) {
-    return {
-      encoding: 'gzip',
-      reason: zstdHasDict
-        ? `gzip (no zstd in client's Accept-Encoding; size=${estimatedSize})`
-        : `gzip (no zstd dict for this request — see PROTOCOL.md "Pre-trained ZSTD dictionaries"; size=${estimatedSize})`,
-    };
+    return mkResult('gzip',
+      droppedZstdReason ?? 'gzip_no_zstd_in_accept',
+      `gzip (${droppedZstdReason ?? 'no zstd in client Accept-Encoding'}; ` +
+      `stack=${stackProfile.name}; size=${estimatedSize})`,
+      considered);
   }
+
+  if (perStackOverroteBr) {
+    // br was dropped but caller also has no gzip — fall through to identity.
+  }
+
   if (has('br')) {
-    return {
-      encoding: 'br',
-      reason: `br fallback (no gzip; size=${estimatedSize})`,
-    };
+    return mkResult('br', 'br_fallback_no_gzip',
+      `br fallback (no gzip in candidate set; stack=${stackProfile.name}; ` +
+      `size=${estimatedSize})`,
+      considered);
   }
-  return { encoding: 'identity', reason: `client supports nothing compressible; identity` };
+
+  return mkResult('identity', 'identity_last_resort',
+    `client supports nothing compressible; identity (stack=${stackProfile.name})`,
+    considered);
+}
+
+function mkResult(
+  encoding: Encoding,
+  reason_code: PickReasonCode,
+  reason: string,
+  considered: Encoding[],
+): PickOutput {
+  return { encoding, reason_code, reason, considered };
+}
+
+/**
+ * Shannon entropy of `bytes` in bits/byte. Uniform random ≈ 8.0;
+ * English text ≈ 4-5; long runs of one byte → near 0.
+ */
+export function shannonEntropyBitsPerByte(bytes: Uint8Array): number {
+  if (bytes.length === 0) return 0;
+  const counts = new Int32Array(256);
+  for (let i = 0; i < bytes.length; i++) counts[bytes[i]!]++;
+  let h = 0;
+  const n = bytes.length;
+  for (let b = 0; b < 256; b++) {
+    const c = counts[b]!;
+    if (c === 0) continue;
+    const p = c / n;
+    h -= p * Math.log2(p);
+  }
+  return h;
 }
 
 // ─── Helpers callers usually want ───────────────────────────────────────────

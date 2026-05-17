@@ -1,6 +1,6 @@
 {
   "name": "@codecai/wire-compress",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Pick the right Content-Encoding for streaming responses based on client support and payload size. Measured thresholds, framework-agnostic, zero deps. Companion to the @codecai/* client packages.",
   "license": "MIT",
   "type": "module",
