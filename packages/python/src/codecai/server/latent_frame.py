@@ -37,10 +37,39 @@ packages/bench/golden/pipelines/<name>/.
 from __future__ import annotations
 
 import struct
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import msgspec.msgpack
 import numpy as np
+
+# Optional torch — only loaded when the caller actually opts into the v0.5
+# gpu_quantize fast path. Importing torch is expensive (~hundreds of ms +
+# pulls in CUDA libs), so we keep it lazy.
+try:
+    import torch as _torch  # type: ignore[import-not-found]
+    _TORCH_AVAILABLE = True
+except ImportError:  # pragma: no cover - exercised only in torch-installed envs
+    _torch = None  # type: ignore[assignment]
+    _TORCH_AVAILABLE = False
+
+
+def _is_cuda_tensor(x: Any) -> bool:
+    """True iff ``x`` is a torch.Tensor on a CUDA device. Safe with no torch."""
+    if not _TORCH_AVAILABLE:
+        return False
+    return isinstance(x, _torch.Tensor) and x.is_cuda
+
+
+def _to_numpy_for_quantize(x: Any) -> np.ndarray:
+    """Normalise input to numpy for the numpy quantize path.
+
+    - numpy arrays pass through unchanged
+    - torch tensors (any device) are moved to CPU + converted; the existing
+      numpy-side quantize math runs on the result
+    """
+    if _TORCH_AVAILABLE and isinstance(x, _torch.Tensor):
+        return x.detach().cpu().numpy()
+    return x
 
 # ---------------------------------------------------------------------------
 # Pipeline registry (mirrors spec/PIPELINES.md)
@@ -210,6 +239,77 @@ def _saturating_int4_diff(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
+# GPU fast paths (v0.5+, opt-in via LatentStreamEncoder(gpu_quantize=True))
+#
+# The torch-on-CUDA path runs the per-channel quantize math on-device, then
+# transfers the smaller int8 tensor across PCIe instead of the full fp16/fp32
+# latent. Bit-identical to the numpy path under the same scales (required +
+# verified by the per-pipeline golden fixtures in
+# packages/bench/golden/pipelines/<name>/).
+#
+# Quantize math reproduces _quantize_int8 / _quantize_int4 exactly:
+#   per channel c:
+#       if scales[c] == 0: output channel is all zeros
+#       else:              clip(round-half-to-even(latent[c] / scales[c] * max_q),
+#                               -max_q, +max_q).int8
+#
+# Round-half-to-even is the default for torch's tensor.round() (matches
+# numpy.rint + IEEE 754 roundTiesToEven), so the math is the same.
+# ---------------------------------------------------------------------------
+
+
+def _quantize_int8_gpu(latent: Any, scales: np.ndarray) -> np.ndarray:
+    """Quantize a CUDA tensor to int8 on-device, return numpy int8 array.
+
+    Bit-identical to ``_quantize_int8`` under the same ``scales``. Caller MUST
+    have already gated this through ``_is_cuda_tensor(latent)``.
+    """
+    assert _TORCH_AVAILABLE, "_quantize_int8_gpu requires torch"
+    # Cast both to fp32 on-device for the multiply/divide; same precision
+    # guarantee as the numpy path's "Cast to fp32 to avoid fp16 artifacts".
+    lat32 = latent.to(dtype=_torch.float32)
+    # scales is shape (C,) on CPU; move to the same device, reshape for broadcast
+    # over the spatial axes.
+    sc = _torch.from_numpy(scales.astype(np.float32)).to(lat32.device)
+    sc_b = sc.reshape((sc.shape[0],) + (1,) * (lat32.ndim - 1))
+
+    # Avoid division-by-zero for channels with scale=0 — output is all-zero
+    # for those channels per the numpy spec.
+    safe = sc_b.clone()
+    safe[safe == 0] = 1.0  # placeholder; we zero those channels post-quantize
+    q = (lat32 / safe * 127.0).round().clamp(-127, 127).to(_torch.int8)
+    if (sc == 0).any():
+        zero_mask = (sc == 0).reshape((sc.shape[0],) + (1,) * (lat32.ndim - 1))
+        q = _torch.where(zero_mask, _torch.zeros_like(q), q)
+    return q.cpu().numpy()
+
+
+def _quantize_int4_gpu(latent: Any, scales: np.ndarray) -> np.ndarray:
+    """Quantize a CUDA tensor to int4 on-device (returned as int8 in [-7,7]).
+
+    Bit-identical to ``_quantize_int4`` under the same ``scales``.
+    """
+    assert _TORCH_AVAILABLE, "_quantize_int4_gpu requires torch"
+    lat32 = latent.to(dtype=_torch.float32)
+    sc = _torch.from_numpy(scales.astype(np.float32)).to(lat32.device)
+    sc_b = sc.reshape((sc.shape[0],) + (1,) * (lat32.ndim - 1))
+    safe = sc_b.clone()
+    safe[safe == 0] = 1.0
+    q = (lat32 / safe * 7.0).round().clamp(-7, 7).to(_torch.int8)
+    if (sc == 0).any():
+        zero_mask = (sc == 0).reshape((sc.shape[0],) + (1,) * (lat32.ndim - 1))
+        q = _torch.where(zero_mask, _torch.zeros_like(q), q)
+    return q.cpu().numpy()
+
+
+def _compute_scales_gpu(latent: Any) -> np.ndarray:
+    """Per-channel max(abs) on-device, returned as a CPU fp16 numpy array."""
+    assert _TORCH_AVAILABLE, "_compute_scales_gpu requires torch"
+    flat = latent.reshape(latent.shape[0], -1).abs().amax(dim=1)
+    return flat.to(_torch.float16).cpu().numpy()
+
+
+# ---------------------------------------------------------------------------
 # Stateful encoder — holds keyframe state for delta pipelines, dispatches
 # to the right pipeline math, emits header + frame bytes.
 # ---------------------------------------------------------------------------
@@ -240,6 +340,7 @@ class LatentStreamEncoder:
         fps: Optional[int] = None,
         total_frames: Optional[int] = None,
         vae_scale_factor: Optional[float] = None,
+        gpu_quantize: bool = False,
     ) -> None:
         if pipeline not in PIPELINE_NAMES:
             raise ValueError(
@@ -264,6 +365,10 @@ class LatentStreamEncoder:
         self.fps = fps
         self.total_frames = total_frames
         self.vae_scale_factor = vae_scale_factor
+        # v0.5: opt-in torch-on-device quantize fast path. No-op for non-CUDA
+        # inputs even when True — the numpy path stays the cross-runtime
+        # default. See spec/PIPELINES.md § "Encoder fast paths (v0.5+)".
+        self.gpu_quantize = gpu_quantize
 
         if static_scales is not None:
             scales_fp16 = np.asarray(static_scales, dtype=np.float16)
@@ -313,7 +418,7 @@ class LatentStreamEncoder:
 
     def frame(
         self,
-        latent: np.ndarray,
+        latent: Any,
         *,
         seq: int,
         keyframe: bool,
@@ -324,10 +429,16 @@ class LatentStreamEncoder:
             raise ValueError(
                 f"seq must be monotonically increasing; got {seq} after {self._last_seq}"
             )
-        if latent.shape != self.shape:
+        if tuple(latent.shape) != self.shape:
             raise ValueError(
-                f"latent shape {latent.shape} does not match stream shape {self.shape}"
+                f"latent shape {tuple(latent.shape)} does not match stream shape {self.shape}"
             )
+        # GPU fast path only kicks in when gpu_quantize was opted in AND the
+        # input is a CUDA tensor. Non-CUDA torch tensors and numpy arrays
+        # always take the numpy path, even with gpu_quantize=True — the flag
+        # is advisory; the runtime decides per frame.
+        if not (self.gpu_quantize and _is_cuda_tensor(latent)):
+            latent = _to_numpy_for_quantize(latent)
 
         # Apply the configured pipeline.
         data = self._encode_pipeline(latent, keyframe=keyframe)
@@ -351,19 +462,38 @@ class LatentStreamEncoder:
 
     # ── Pipeline dispatch ─────────────────────────────────────────────────
 
-    def _encode_pipeline(self, latent: np.ndarray, *, keyframe: bool) -> bytes:
+    def _compute_scales_dispatch(self, latent: Any) -> np.ndarray:
+        if _is_cuda_tensor(latent):
+            return _compute_scales_gpu(latent)
+        return _compute_scales(latent)
+
+    def _quantize_int8_dispatch(self, latent: Any, scales: np.ndarray) -> np.ndarray:
+        if _is_cuda_tensor(latent):
+            return _quantize_int8_gpu(latent, scales)
+        return _quantize_int8(latent, scales)
+
+    def _quantize_int4_dispatch(self, latent: Any, scales: np.ndarray) -> np.ndarray:
+        if _is_cuda_tensor(latent):
+            return _quantize_int4_gpu(latent, scales)
+        return _quantize_int4(latent, scales)
+
+    def _encode_pipeline(self, latent: Any, *, keyframe: bool) -> bytes:
         p = self.pipeline
         if p == "raw":
+            # Raw has no quantize step; if we're handed a CUDA tensor, the
+            # caller paid the full PCIe transfer here.
+            if _is_cuda_tensor(latent):
+                latent = latent.cpu().numpy()
             return _to_contiguous_le(latent, self.dtype).tobytes()
 
         if p == "int8":
             assert self._static_scales is not None
-            q = _quantize_int8(latent, self._static_scales)
+            q = self._quantize_int8_dispatch(latent, self._static_scales)
             return q.tobytes()
 
         if p == "int4":
             assert self._static_scales is not None
-            q = _quantize_int4(latent, self._static_scales)
+            q = self._quantize_int4_dispatch(latent, self._static_scales)
             return _pack_int4_low_first(q)
 
         if p == "int8-adaptive":
@@ -371,8 +501,8 @@ class LatentStreamEncoder:
                 raise ValueError(
                     "int8-adaptive: every frame must be keyframe=True (delta is unsupported)"
                 )
-            scales = _compute_scales(latent)
-            q = _quantize_int8(latent, scales)
+            scales = self._compute_scales_dispatch(latent)
+            q = self._quantize_int8_dispatch(latent, scales)
             return _scales_to_bytes(scales) + q.tobytes()
 
         if p == "int4-adaptive":
@@ -380,14 +510,14 @@ class LatentStreamEncoder:
                 raise ValueError(
                     "int4-adaptive: every frame must be keyframe=True (delta is unsupported)"
                 )
-            scales = _compute_scales(latent)
-            q = _quantize_int4(latent, scales)
+            scales = self._compute_scales_dispatch(latent)
+            q = self._quantize_int4_dispatch(latent, scales)
             return _scales_to_bytes(scales) + _pack_int4_low_first(q)
 
         if p == "delta+int8":
             if keyframe:
-                scales = _compute_scales(latent)
-                q = _quantize_int8(latent, scales)
+                scales = self._compute_scales_dispatch(latent)
+                q = self._quantize_int8_dispatch(latent, scales)
                 self._last_keyframe_q = q
                 self._last_keyframe_scales = scales
                 return _scales_to_bytes(scales) + q.tobytes()
@@ -397,14 +527,14 @@ class LatentStreamEncoder:
                         "delta+int8: first frame in stream must be keyframe=True"
                     )
                 # Quantize current latent against the keyframe's scales (consistent grid).
-                q_now = _quantize_int8(latent, self._last_keyframe_scales)
+                q_now = self._quantize_int8_dispatch(latent, self._last_keyframe_scales)
                 residual = _saturating_int8_diff(q_now, self._last_keyframe_q)
                 return residual.tobytes()
 
         if p == "delta+int4":
             if keyframe:
-                scales = _compute_scales(latent)
-                q = _quantize_int4(latent, scales)
+                scales = self._compute_scales_dispatch(latent)
+                q = self._quantize_int4_dispatch(latent, scales)
                 self._last_keyframe_q = q
                 self._last_keyframe_scales = scales
                 return _scales_to_bytes(scales) + _pack_int4_low_first(q)
@@ -413,7 +543,7 @@ class LatentStreamEncoder:
                     raise ValueError(
                         "delta+int4: first frame in stream must be keyframe=True"
                     )
-                q_now = _quantize_int4(latent, self._last_keyframe_scales)
+                q_now = self._quantize_int4_dispatch(latent, self._last_keyframe_scales)
                 residual = _saturating_int4_diff(q_now, self._last_keyframe_q)
                 return _pack_int4_low_first(residual)
 

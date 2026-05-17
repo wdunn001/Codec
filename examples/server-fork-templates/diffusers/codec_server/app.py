@@ -121,6 +121,12 @@ def _build_encoder(
         fps=fps,
         total_frames=total_frames,
         vae_scale_factor=vae_scale_factor,
+        # v0.5: when CODEC_GPU_QUANTIZE=1 is set in the engine env, opt the
+        # encoder into the torch-on-device fast path. Caller still has to
+        # hand the encoder a torch.cuda.Tensor on each .frame(...) call
+        # for the GPU path to actually fire; numpy + CPU torch inputs fall
+        # through to the cross-runtime numpy path unchanged.
+        gpu_quantize=bool(int(os.environ.get("CODEC_GPU_QUANTIZE", "0"))),
     )
 
 
