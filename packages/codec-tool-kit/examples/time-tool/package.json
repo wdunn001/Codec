@@ -1,6 +1,6 @@
 {
   "name": "@codecai/codec-time-tool",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Reference Codec-native bolt-on tool built on @codecai/tool-kit. Returns the current UTC time as pre-cached token IDs — the gateway memcpy's the response into the model's generation context with no detokenize/retokenize anywhere on the hot path. The canonical demo of the precache-at-build-time pattern.",
   "license": "MIT",
   "type": "module",
@@ -22,7 +22,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@codecai/tool-kit": "^0.4.1"
+    "@codecai/tool-kit": "*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

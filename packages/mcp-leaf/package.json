@@ -1,6 +1,6 @@
 {
   "name": "@codecai/mcp-leaf",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Codec-aware MCP leaf helper. Annotates each text content block with a per-block _meta['ai.codec/leaf-tokenization'] payload so a Codec-aware gateway (or client) skips re-tokenization. The thin layer between an MCP tool author and the leaf-mode contract in Codec spec § Tool-call calling conventions in the map.",
   "license": "MIT",
   "type": "module",
@@ -21,7 +21,7 @@
     "test": "node --test --import tsx test/*.test.ts"
   },
   "dependencies": {
-    "@codecai/web": "^0.4.0"
+    "@codecai/web": "^0.5.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

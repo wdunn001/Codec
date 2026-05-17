@@ -1,6 +1,6 @@
 {
   "name": "@codecai/tool-kit",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Build Codec-native tools as independently-hosted bolt-ons. Pre-cache the tokenizer at build time so the gateway stays a pure token router. Companion to @codecai/mcp-leaf — leaf wraps existing MCP servers; tool-kit is the SDK for authoring net-new Codec-native tools.",
   "license": "MIT",
   "type": "module",

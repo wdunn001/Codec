@@ -18,7 +18,7 @@
 cmake_minimum_required(VERSION 3.14)
 
 project(codec
-        VERSION 0.4.1
+        VERSION 0.5.0
         DESCRIPTION "Token-native binary transport protocol for AI APIs (C library)"
         HOMEPAGE_URL "https://github.com/wdunn001/Codec"
         LANGUAGES C)

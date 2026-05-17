@@ -6,7 +6,7 @@
 
     <groupId>io.github.wdunn001</groupId>
     <artifactId>codec</artifactId>
-    <version>0.4.1</version>
+    <version>0.5.0</version>
     <packaging>jar</packaging>
 
     <name>Codec for Java</name>

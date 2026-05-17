@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@codecai/mcp-leaf": "^0.3.2",
-    "@codecai/web": "^0.4.0",
+    "@codecai/web": "^0.5.0",
     "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "devDependencies": {
