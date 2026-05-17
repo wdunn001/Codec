@@ -1,0 +1,44 @@
+{
+  "schema_version": "1",
+  "kind": "duplex_bench",
+  "mode": "synthetic",
+  "params": {
+    "tokens_per_direction": 2048,
+    "chunk_size": 1,
+    "vocab_size": 128000,
+    "reps": 5,
+    "warmup": 2
+  },
+  "cells": [
+    {
+      "codec": "json-sse",
+      "wire_bytes_total": 479824,
+      "wire_bytes_per_direction": 239912,
+      "cpu_ns": 15214763
+    },
+    {
+      "codec": "msgpack",
+      "wire_bytes_total": 65447,
+      "wire_bytes_per_direction": 32724,
+      "cpu_ns": 7261472
+    },
+    {
+      "codec": "protobuf",
+      "wire_bytes_total": 44539,
+      "wire_bytes_per_direction": 22270,
+      "cpu_ns": 3792466
+    }
+  ],
+  "ratios_vs_json_sse": [
+    {
+      "codec": "msgpack",
+      "wire_reduction": 7.331489602273596,
+      "cpu_reduction": 2.0952725563081427
+    },
+    {
+      "codec": "protobuf",
+      "wire_reduction": 10.773120186802577,
+      "cpu_reduction": 4.011838998688452
+    }
+  ]
+}
