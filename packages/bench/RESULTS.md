@@ -1324,17 +1324,8 @@ extra fetch.
 
 ### Caveats
 
-- **Synthetic corpus only.** These numbers prove the pipeline; a
-  live-trained dict against real sglang traffic will likely score
-  higher on small streams (closer to the ~30% spec estimate
-  *over no-dict zstd at typical sizes*) and similar on large.
-- **Server-side enablement is the next step.** sglang's
-  `codec_compression.py` ignores the `zstd_dictionaries[]` field today.
-  Until it's taught to load a dict, the picker
-  (`packages/wire-compress`) refuses to select zstd at all (see below)
-  — so on-the-wire `Content-Encoding: zstd` responses won't appear in
-  production until that PR lands. The dicts shipped in `dictionaries/`
-  are inert in production until then.
+- **Synthetic corpus only (still the current state).** These numbers prove the pipeline against a synthesised corpus; a **live-trained dict against real sglang traffic** is the next bench (tracked as v0.5 task #49) — predicted to score higher on small streams (closer to the ~30% spec estimate *over no-dict zstd at typical sizes*) and similar on large.
+- **~~Server-side enablement is the next step.~~ Resolved at v0.4.1.** sglang's `codec_compression.py` now loads the `zstd_dictionaries[]` field at startup; vllm + llama.cpp forks were brought into parity at the v0.4.1 cohort (llama.cpp specifically gained `codec_brotli_streamer` + `codec_zstd_streamer` + `codec_zstd_dict_registry` in v0.4.1). `Content-Encoding: zstd` responses with the `Codec-Zstd-Dict: sha256:…` header now ship in production across all three engines. Cross-client dict-zstd decode interop landed across all 6 clients (TS/Web, Python, .NET, Rust, Java, C) at v0.4.1 — verified by the 24/24 decode-unanimous cells in the cross-stack matrix.
 - **The dict is the precondition for zstd, not an optimization on
   top.** RESULTS.md §1f showed gzip and no-dict zstd are within noise
   of each other on Codec streams (~3.4 B/token both); RESULTS.md §1d
@@ -1553,18 +1544,20 @@ new maps emit both. Adding the runtime to a client takes ~250 LOC
 
 ## 10. Headlines
 
+Refreshed against the v0.4.1 cohort (2026-05-15T20-00-00Z). Wire ratios are protocol properties and stable across cuts; total-latency speedups depend on where the bottleneck is per workload (wire-dominant → big speedup; tool-latency-dominant → small/neutral). See §1b (engine-output) for the per-engine 137× / 1,707× / 3,868× breakdown and §1 for the protocol-only synthetic split.
+
 | Claim | Measured | Where |
 |---|---|---|
-| Wire reduction msgpack vs JSON-SSE | **9.6× → 16× → 69× with gzip** | §1 |
-| Wire reduction protobuf vs JSON-SSE | **14.2× → 24× → 70× with gzip** | §1 |
-| Per-token cost reduction | **243 B/tok → 3.5 B/tok** | §1 |
-| Polyglot interop (4 clients, identical wire) | wire bytes match exactly | §2 |
-| Tool-call detection — server vs client | **wire reduced 15×, ~zero client CPU** | §3 |
-| Agent loop with mock tool | **16.9× wire reduction** | §4 |
-| Agent loop with SearXNG | **18.2× wire, 20% faster end-to-end** | §5 |
-| Agent loop with MetaMCP (Time MCP server) | **17.8× wire, 20% faster end-to-end** | §6 |
-| MCP leaf-mode (tool-result-side, tiny result) | **+211 B wire, 12.4× consumer-CPU speedup** | §6.5 |
-| libcodec ToolWatcher vs detokenize | **~100× faster (CPU)** | §7 |
+| Wire reduction §1b @ 2K msgpack+dict-zstd | sglang **1,707×** · vllm **137×** · llama.cpp fp16 **3,868×** | §1b |
+| Wire reduction §1 protocol-only synthetic | **4.8×–392×** depending on content (uniform-random → cyclic-period-10) | §1 |
+| Per-token cost reduction (sglang dict-zstd, 2K) | **237 B/tok → 0.14 B/tok** (synthetic low-entropy: **12.8 B/tok → 0.78 B/tok**) | §1, §1b |
+| Polyglot interop — 6 clients | **24/24 wire AND 24/24 decode unanimous on every engine** (v0.4.1 added the decode side; was only wire before) | §2 |
+| Tool-call detection — ToolWatcher CPU microbench (libcodec C99, EPYC 8124P / gcc:13) | **26.7× faster** (2.08 ns/token vs 55.42 ns/token); prior README claim ~100× was undocumented CPU/compiler combo | §7 |
+| Agent loop — mock `get_weather` (in-process, wire-dominant) | **16.9× wire · 8.8× total wall-clock** (1,662 ms → 189 ms) | §4 |
+| Agent loop — SearXNG (live web tool, tool-latency-mixed) | **18.0× wire · 1.65× total wall-clock** (2,078 ms → 1,257 ms = ~40% faster) | §5 |
+| Agent loop — MetaMCP gateway (Time MCP, tool-latency-dominant) | **17.0× wire · ~neutral total** (210 ms → 216 ms — wire savings present but tool latency dominates wall-clock) | §6 |
+| MCP leaf-mode (tool-result-side, ~30-char timestamp) | **+211 bytes wire** (leaf 3× larger on tiny — fixed `_meta` envelope) · **12.4× consumer-CPU speedup** (0.052 ms → 0.004 ms). Wire crossover where leaf ≤ plain sits at ~300+ chars/text-block. | §6.5 |
+| Cross-vocab translator (Llama-3 → Qwen-2, 2K msgpack+gzip) | **15.1× wire · bridge CPU within noise** of JSON-SSE+retokenize path; byte-identical Qwen-2 output asserted | §1d |
 | Pretok program ≡ regex output | **bit-identical on 23 stress + real Qwen-2** | §8 |
 
 ---
