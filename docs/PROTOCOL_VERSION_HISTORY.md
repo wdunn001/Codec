@@ -79,7 +79,7 @@ release-cut and not just append.
 
 ---
 
-## Current state of per-version sections (as of v0.4 release-cut)
+## Current state of per-version sections (as of v0.5 release-cut)
 
 This is a snapshot. The authoritative version lives in
 `spec/versions/v0.X.md` (one file per version); this document
@@ -209,14 +209,12 @@ land before the next version closes any of them.)
    result that fully fires a stop is reserved for a future additive
    `_meta` key (e.g. `ai.codec/policy-violation`).
 
-4. **Token-ID list authoring tooling.** Operators populate
-   `multi_token_patterns[*].tokenizers[<id>]` by running enumerator
-   scripts offline against their tokenizer. v0.4 ships
-   `safety_adversarial.enumerate_text_variants` as a coverage assist
-   but no end-to-end "literal → enumerated tokenizations" CLI yet.
-   Open: should `@codecai/maps-cli` gain a `policies enumerate`
-   subcommand that consumes a tokenizer map + a literals list and
-   writes the per-tokenizer-id token-sequence arrays?
+4. ~~**Token-ID list authoring tooling.**~~ **Resolved at v0.5.**
+   Shipped as `codecai-maps policies-enumerate`. See
+   `spec/versions/v0.5.md § "Open questions (v0.5)"` item 4 for the
+   resolved-direction note (variant-set v1: verbatim / leading-space /
+   leading-newline / lowercase / titlecase / uppercase / trimmed;
+   intentionally small so the output stays reviewable by hand).
 
 5. **Cross-tokenizer policy bundling.** A policy bound to multiple
    tokenizers must publish per-tokenizer descriptor variants today
@@ -228,6 +226,73 @@ land before the next version closes any of them.)
    empty per-tokenizer placeholders today. Open: who curates
    community lists; what audit trail does a registered list need
    before it's accepted upstream?
+
+### v0.5 — efficiency, observability, submission
+
+**Concerns:**
+
+1. **Efficiency cluster** — wire-additive extensions that improve
+   per-request CPU + bytes without changing the v0.4 happy path
+   byte-for-byte:
+   - Delta-varint stream encoding (`stream_format: "msgpack-delta"`
+     / `"protobuf-delta"`) — chained zigzag varints between adjacent
+     ids, ~10–15% wire reduction pre-zstd. Stateless framing
+     preserved via `base_id` on every frame.
+   - GPU-side latent quantize fast path (`gpu_quantize: bool` on
+     `LatentStreamEncoderOptions`) — when the encoder receives a
+     `torch.cuda.Tensor` AND `gpu_quantize=true`, quantize on-device
+     before PCIe transfer (~75% bytes saved on int4). Bit-identical
+     to the numpy path under the same `quality_thresholds`.
+   - Content-aware + per-stack-aware compression picker rewrite —
+     `pick()` now samples response bytes for entropy + uses per-stack
+     `ttftRatio` thresholds to drop encodings that buffer; returns a
+     typed `reason_code` enum so dashboards can group decisions.
+
+2. **Observability cluster** — make protocol state legible to
+   operators:
+   - Discoverable ZSTD dictionaries (`.well-known/codec/dicts/<sha>.zstd`)
+     — hash-pinned, fetched at engine boot, hard-fail on mismatch.
+     Eliminates the v0.4.1 sglang regression class (silent COPY-dicts
+     drop → identity bytes).
+   - Bolt-on tool dispatcher contract (`@codecai/tool-kit` on the
+     client side, `codec_dispatcher.py` on each engine fork). Closes
+     the `<tool_call>` → dispatch → reinject loop without ever
+     decoding the model's stream to text.
+   - Picker coverage bench — verifies every `PickReasonCode` enum
+     value is reachable from realistic inputs.
+
+3. **Submission cluster** — graduate Codec from "Quasarke's protocol"
+   to "neutrally-stewarded open spec":
+   - IETF Internet-Draft via the Independent Submission Stream
+     (`docs/submissions/ietf-draft-codec-00.md`).
+   - Open Inference Protocol (OIP v2) binary-transport extension
+     proposal (`docs/submissions/oip-proposal.md`).
+   - Reproducible sustainability artefact
+     (`packages/bench/scripts/energy_bench.py` +
+     `packages/bench/docs/ENERGY_METHODOLOGY.md`).
+
+**Wire-compatibility audit:** v0.4.1 → v0.5.0 is **non-breaking**
+(diff against `spec/versions/v0.4.md` shows only prologue rewrites,
+the v0.4-OQ4 strike-through, and additive subsections under "v0.5
+amendments"; no removed wire fields, no field-semantics changes, no
+reassigned frame-type bytes, no canonical-bytes format changes, no
+removed discovery paths, no closed-enum tightening, no previously-
+optional field made mandatory).
+
+**Open questions** (target v0.6 — see `spec/proposals/v0.6-prompt-dialects.md`):
+
+1. Capability bitmap + OPTIONS-preflight contract (deferred from
+   v0.5 — needs `spec/CAPS_REGISTRY.md` authored first).
+2. Delta-varint base_id carriage (per-frame vs mid-stream refresh).
+3. Multi-dict per origin for multi-tenant deployments.
+4. GPU-quantize fallback semantics (silent vs raise on non-CUDA).
+5. Bolt-on dispatch failure modes (hard-fail / drop+warn /
+   degraded text-fallback as default).
+6. Picker `reason_code` open vs closed enum across stacks.
+7. Bidirectional duplex over HTTP/2 multi-stream vs HTTP/1.1
+   dual-stream.
+8. TGI integration drop-in compatibility (no wire incompatibility
+   surfaced in the v0.5 fork work).
 
 ---
 

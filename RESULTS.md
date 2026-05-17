@@ -2,9 +2,28 @@
 
 This top-level file is a pointer. The numbers, methodology, and raw SCHEMA-v1 result JSONs live below — pick the entry point that matches what you want.
 
-## Cross-stack matrix (current, v0.4.1 cohort, 2026-05-15)
+## v0.5 cohort (partial; protocol-only + bench-harness runs, 2026-05-17)
 
-The cross-stack run pits **3 inference engines** (sglang, vllm, llama.cpp) against **6 client languages** (Python, TypeScript, .NET, Rust, Java, C) on the same prompt + model + hardware, then aggregates into one machine-generated MATRIX.md.
+The v0.5 release runs landed in `packages/bench/results/2026-05-17T09-00-00Z/`. **§1b cross-stack engine-output cells are NOT YET POPULATED for v0.5** — they require the `wdunn001/codec-{sglang,vllm,llamacpp,tgi}:v0.5.0` images, which are scoped in `docs/engine-fork-tasks/v0.5-rollout.md` but haven't been built + pushed yet. Operator action gates that step.
+
+What's captured for v0.5 from this session's bench runs:
+
+- **§1 synthetic protocol-only** at `results/2026-05-17T09-00-00Z/synthetic/wire.json` (256 cells × 4 corpora × 4 sizes × 4 encodings × 2 formats):
+
+  | Content distribution at 2048 tokens   | Codec identity | Best Codec                     | Reduction |
+  |----------------------------------------|---------------:|--------------------------------|----------:|
+  | Uniform random (worst case)            | 33,118 B       | 6,828 B (protobuf+gzip)        |   **4.9×**|
+  | Comma-dominated (50% one ID)           | 29,790 B       | 4,354 B (protobuf+gzip)        |   **6.8×**|
+  | Low entropy (50 unique IDs)            | 26,648 B       | 1,595 B (protobuf+zstd)        |  **16.7×**|
+  | Cyclic period 10 (best case)           | 26,648 B       |    51 B (protobuf+br)          | **522.5×**|
+
+- **Picker bench (v0.5 NEW)** at `results/2026-05-17T09-00-00Z/picker/coverage.json`: 576 cells × 3 stack profiles × 4 payload sizes × 3 entropy buckets × 4 gate states × 4 Accept headers. 7 of 9 v0.5 `PickReasonCode` enum values surfaced by the grid; the other 2 are unit-tested.
+- **Duplex bench (v0.5 NEW)** at `results/2026-05-17T09-00-00Z/duplex.json`: 2K-token bidirectional A↔B, JSON-SSE 468.6 KB / msgpack 63.9 KB (7.3×) / protobuf 43.5 KB (10.8×). CPU: msgpack 2.2× faster than JSON-SSE; protobuf 6.6× faster.
+- **Energy bench (v0.5 NEW)** at `results/2026-05-17T09-00-00Z/energy/`: per-hop / per-request / worldwide-aggregate budgets generated from the published per-byte cost table. At heavy-agent compound (8 round-trips): ~380 mJ/request JSON-SSE vs ~1.5 mJ/request Codec → ~250× non-GPU energy reduction. Annual at 5B requests/day = ~192 MWh saved ≈ ~15 US-cars/yr CO2-equivalent.
+
+## Cross-stack matrix (last full run, v0.4.1 cohort, 2026-05-15)
+
+The cross-stack run pits **3 inference engines** (sglang, vllm, llama.cpp) against **6 client languages** (Python, TypeScript, .NET, Rust, Java, C) on the same prompt + model + hardware, then aggregates into one machine-generated MATRIX.md. The v0.5 equivalent is pending the RC engine-image builds; refer to the v0.4.1 row until then.
 
 → **[`packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md`](packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md)**
 

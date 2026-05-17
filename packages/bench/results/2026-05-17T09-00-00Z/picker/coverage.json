@@ -1,0 +1,5818 @@
+{
+  "schema_version": "1",
+  "kind": "picker_bench_coverage",
+  "grid_axes": {
+    "stack_profiles": [
+      "default",
+      "sglang",
+      "custom-buffered-zstd"
+    ],
+    "payload_sizes": [
+      128,
+      1024,
+      8192,
+      32768
+    ],
+    "entropy_buckets": [
+      "none",
+      "low",
+      "high"
+    ],
+    "gate_states": [
+      {
+        "has_dict": true,
+        "enabled": true
+      },
+      {
+        "has_dict": true,
+        "enabled": false
+      },
+      {
+        "has_dict": false,
+        "enabled": true
+      },
+      {
+        "has_dict": false,
+        "enabled": false
+      }
+    ],
+    "accept_headers": [
+      "zstd, gzip, br",
+      "gzip, br",
+      "gzip",
+      ""
+    ]
+  },
+  "cells_count": 576,
+  "reason_codes_seen": [
+    "br_content_sample_low_entropy",
+    "dict_zstd_default",
+    "gzip_middleware_disabled",
+    "gzip_no_dict",
+    "gzip_no_zstd_in_accept",
+    "identity_last_resort",
+    "per_stack_overrode_zstd"
+  ],
+  "cells": [
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "br",
+      "reason_code": "br_content_sample_low_entropy"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "br",
+      "reason_code": "br_content_sample_low_entropy"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "br",
+      "reason_code": "br_content_sample_low_entropy"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "br",
+      "reason_code": "br_content_sample_low_entropy"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "default",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "br",
+      "reason_code": "br_content_sample_low_entropy"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "br",
+      "reason_code": "br_content_sample_low_entropy"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "br",
+      "reason_code": "br_content_sample_low_entropy"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "br",
+      "reason_code": "br_content_sample_low_entropy"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "zstd",
+      "reason_code": "dict_zstd_default"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "sglang",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "per_stack_overrode_zstd"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "per_stack_overrode_zstd"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "per_stack_overrode_zstd"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 128,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "per_stack_overrode_zstd"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "per_stack_overrode_zstd"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "per_stack_overrode_zstd"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 1024,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "per_stack_overrode_zstd"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "per_stack_overrode_zstd"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "per_stack_overrode_zstd"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 8192,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "per_stack_overrode_zstd"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "none",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "per_stack_overrode_zstd"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "low",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "per_stack_overrode_zstd"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_middleware_disabled"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": true,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": true,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "zstd, gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_dict"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip, br",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "gzip",
+      "encoding": "gzip",
+      "reason_code": "gzip_no_zstd_in_accept"
+    },
+    {
+      "stack": "custom-buffered-zstd",
+      "size": 32768,
+      "entropy": "high",
+      "has_dict": false,
+      "enabled": false,
+      "accept": "",
+      "encoding": "identity",
+      "reason_code": "identity_last_resort"
+    }
+  ]
+}

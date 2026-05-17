@@ -1,0 +1,29 @@
+{
+  "schema_version": "1",
+  "json_sse": {
+    "payload_bytes": 500000,
+    "label": "json-sse",
+    "serialise_mj": 1.05,
+    "tokenise_mj": 7.0,
+    "compress_mj": 0.44999999999999996,
+    "lan_egress_mj": 5.0,
+    "backbone_mj": 25.0,
+    "lan_ingress_mj": 5.0,
+    "decompress_mj": 0.075,
+    "detokenise_mj": 3.0,
+    "parse_mj": 0.8999999999999999
+  },
+  "codec": {
+    "payload_bytes": 2400,
+    "label": "codec",
+    "serialise_mj": 0.005039999999999999,
+    "tokenise_mj": 0.0,
+    "compress_mj": 0.00216,
+    "lan_egress_mj": 0.024,
+    "backbone_mj": 0.12,
+    "lan_ingress_mj": 0.024,
+    "decompress_mj": 0.00035999999999999997,
+    "detokenise_mj": 0.0,
+    "parse_mj": 0.005039999999999999
+  }
+}

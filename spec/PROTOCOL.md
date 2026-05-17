@@ -2,17 +2,33 @@
 
 This file is a **navigation index**. The actual per-version specs live
 under [`spec/versions/`](./versions/). The latest version is currently
-**v0.4**.
+**v0.5**.
 
 If you're implementing a Codec client or server today, read
-[**versions/v0.4.md**](./versions/v0.4.md) — it's wire-compatible with
-every earlier minor of this major (v0.2, v0.3) per the
+[**versions/v0.5.md**](./versions/v0.5.md) — it's wire-compatible with
+every earlier minor of this major (v0.2, v0.3, v0.4) per the
 [Versioning Policy](./versions/v0.4.md#versioning-policy) codified in
 v0.4.
 
 ## Versions
 
-- [**v0.4 (current)**](./versions/v0.4.md) — safety-policy
+- [**v0.5 (current)**](./versions/v0.5.md) — efficiency + observability
+  + submission cluster. Wire-additive over v0.4: optional delta-varint
+  stream encoding (`stream_format: "msgpack-delta"` / `"protobuf-delta"`),
+  discoverable ZSTD dictionaries at
+  `.well-known/codec/dicts/<sha>.zstd` (hash-pinned, hard-fail on
+  mismatch — closes the v0.4.1 silent-COPY-dicts-drop regression
+  class), GPU-side latent quantize fast path
+  (`LatentStreamEncoderOptions.gpu_quantize` for `torch.cuda.Tensor`
+  inputs), content-aware + per-stack-aware compression picker with
+  typed `PickReasonCode` enum + flipped `zstdEnabled` default,
+  bolt-on tool dispatcher contract (closes the `<tool_call>` →
+  dispatch → reinject loop without ever detokenizing the model's
+  stream — pairs with `@codecai/tool-kit` on the client side).
+  Reproducible sustainability artefact at
+  `packages/bench/scripts/energy_bench.py` +
+  `packages/bench/docs/ENERGY_METHODOLOGY.md`.
+- [**v0.4**](./versions/v0.4.md) — safety-policy
   negotiation as a TLS-style capability axis on the existing
   HELLO/READY shape; sanitized published descriptors at
   `.well-known/codec/policies/<id>.json` with content-addressed
@@ -94,8 +110,8 @@ mixed in. Open-questions sections inside each snapshot are
 *living* — they get marked **Resolved.** as later versions close
 items, but the wire-format text in each version's body is frozen.
 
-When v0.5 ships, this index gains a "v0.5 (current)" entry,
-`versions/v0.5.md` is created (typically by copying the prior
+When v0.6 ships, this index gains a "v0.6 (current)" entry,
+`versions/v0.6.md` is created (typically by copying the prior
 current and applying the new additive changes), and the prior
-`versions/v0.4.md` keeps its content unchanged — except for items
-v0.5 resolves in v0.4's open-questions section.
+`versions/v0.5.md` keeps its content unchanged — except for items
+v0.6 resolves in v0.5's open-questions section.
