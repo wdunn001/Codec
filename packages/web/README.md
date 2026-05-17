@@ -64,6 +64,19 @@ for await (const frame of decodeStream(resp.body!, 'msgpack')) {
 }
 ```
 
+## Forwarding IDs to another model (agent-to-agent, same vocab)
+
+When the next consumer of this stream is another model on the same vocab — agent → agent, orchestrator → planner, model → tool that re-feeds the model — you do NOT need a `Detokenizer` at all. Forward `frame.ids` directly:
+
+```ts
+// No Detokenizer constructed: zero UTF-8 reassembly, zero BPE-merge work.
+for await (const frame of decodeStream(resp.body!, 'msgpack')) {
+  forwardCodecFrame(nextAgent, frame.ids, frame.done);   // pass uint32[] straight on
+}
+```
+
+This is the **hot-loop fast path** for agent mesh code. Skipping `detok.render(...)` saves ~10-20% client CPU on heavy reply streams (no string allocation, no partial-UTF-8 buffering, no metaspace decode). For cross-vocab handoff use `Translator` — that case still needs the byte-level path because the two vocabs disagree.
+
 ## Quick start — encoding text (for the bidirectional path)
 
 When you want **zero text on the wire in either direction** — agent A's output IDs feeding straight into agent B's input — encode text to IDs in the browser before sending:

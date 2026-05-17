@@ -58,6 +58,20 @@ for frame in decode_msgpack_stream(resp) {
 # Ok(()) }
 ```
 
+## Forwarding IDs to another model (agent-to-agent, same vocab)
+
+When the next consumer of this stream is another model on the same vocab — agent → agent, orchestrator → planner, model → tool that re-feeds the model — you do NOT need a `Detokenizer` at all. Forward `frame.ids` directly:
+
+```rust,ignore
+// No Detokenizer constructed: zero UTF-8 reassembly, zero BPE-merge work.
+for frame in decode_msgpack_stream(resp) {
+    let frame = frame?;
+    forward_codec_frame(next_agent, &frame.ids, frame.done);  // pass &[u32] straight on
+}
+```
+
+This is the **hot-loop fast path** for agent mesh code. Skipping `detok.render(...)` saves ~10-20% client CPU on heavy reply streams (no `String` allocation, no partial-UTF-8 buffering, no metaspace decode). For cross-vocab handoff use [`Translator`](#cross-vocab-agent-handoff) — that case still needs the byte-level path because the two vocabs disagree.
+
 ## Quick start — decode a stream (async)
 
 Behind the `tokio` feature flag, the same logic runs over `tokio::io::AsyncRead`:

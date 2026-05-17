@@ -115,6 +115,28 @@ int main(void) {
 
 See [`examples/stream_decode.c`](examples/stream_decode.c) for the working end-to-end example (loads a real codec-maps file, encodes a synthetic stream, decodes it back).
 
+## Forwarding IDs to another model (agent-to-agent, same vocab)
+
+When the next consumer of this stream is another model on the same vocab — agent → agent, orchestrator → planner, model → tool that re-feeds the model — you do NOT need a `codec_detokenizer_t` at all. Forward `frame.ids` directly:
+
+```c
+/* No detokenizer constructed: zero UTF-8 reassembly, zero BPE-merge work. */
+codec_msgpack_stream_t *stream = NULL;
+codec_msgpack_stream_new(&stream);
+codec_msgpack_stream_feed(stream, http_chunk, http_chunk_len);
+
+codec_frame_t frame;
+while (codec_msgpack_stream_next(stream, &frame) == CODEC_OK) {
+    forward_codec_frame(next_agent, frame.ids, frame.ids_len, frame.done);
+    bool done = frame.done;
+    codec_frame_destroy(&frame);
+    if (done) break;
+}
+codec_msgpack_stream_free(stream);
+```
+
+This is the **hot-loop fast path** for agent mesh code. Skipping `codec_detokenizer_render(...)` saves significant CPU on heavy reply streams (no string allocation, no partial-UTF-8 buffering, no metaspace decode). And on `libcodec` builds with `CODEC_WITH_BPE_ENCODER=OFF` the agent-to-agent path is the **only** path that works — `codec_bpe_encoder_new` / `codec_translator_new` return `CODEC_ERR_NOT_BUILT` in that configuration, but the decode/forward loop above does not depend on either.
+
 ## Detect tool calls without decoding
 
 Most current chat-tuned models delimit tool calls with **special tokens** —
