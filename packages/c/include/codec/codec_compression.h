@@ -142,6 +142,75 @@ codec_zstd_dict_result_t codec_select_zstd_dict_for_response(
     const uint8_t                **out_dict_bytes,
     size_t                        *out_dict_len);
 
+/*
+ * ── Discoverable zstd dictionaries (.well-known/codec/dicts/<sha>.zstd, v0.5+) ──
+ *
+ * libcodec is HTTP-agnostic: the caller owns the fetch (libcurl, libsoup,
+ * a custom stack). This module gives you the two pieces that are specific
+ * to Codec:
+ *   - building the well-known URL from an origin + hash
+ *   - verifying fetched bytes hash to the expected sha256
+ *
+ * Spec: spec/WELL_KNOWN_DISCOVERY.md § "Zstd dictionaries (v0.5+)".
+ *
+ * The discovery surface is hard-fail by design — silent fallback to
+ * identity bytes was the v0.4.1 sglang COPY-dicts regression class this
+ * surface eliminates.
+ */
+
+/*
+ * Buffer length needed for the largest possible well-known URL with a
+ * "reasonable" origin (origin up to 200 chars + ".well-known/codec/dicts/"
+ * (23) + 64 hex + ".zstd" (5) + NUL).
+ */
+#define CODEC_WELL_KNOWN_DICT_URL_BUF_LEN 320
+
+/*
+ * Build the well-known URL for a zstd dict.
+ *
+ *   <origin>/.well-known/codec/dicts/<sha256-hex>.zstd
+ *
+ * ``origin`` is the HTTPS origin (trailing '/' stripped).
+ * ``hash`` may be either ``sha256:<hex>`` or bare ``<hex>``; it is
+ * validated for length (64 hex chars after the optional prefix) and
+ * character set (lowercase hex; uppercase is normalised to lowercase on
+ * its way into the URL).
+ *
+ * Writes the URL into ``out_url`` (NUL-terminated). ``out_url_buf_len``
+ * MUST be at least CODEC_WELL_KNOWN_DICT_URL_BUF_LEN to fit any
+ * reasonable origin.
+ *
+ * Returns CODEC_OK on success,
+ *         CODEC_ERR_INVALID_ARG for NULL pointers / undersized buffer,
+ *         CODEC_ERR_VALIDATION when ``hash`` is not the expected shape.
+ */
+codec_status_t codec_well_known_dict_url(
+    const char *origin,
+    const char *hash,
+    char       *out_url,
+    size_t      out_url_buf_len);
+
+/*
+ * Verify that ``bytes`` (length ``len``) hash to ``expected_hash``.
+ *
+ * ``expected_hash`` accepts either ``sha256:<hex>`` or bare ``<hex>``;
+ * uppercase hex is accepted and matched case-insensitively.
+ *
+ * Returns CODEC_OK on match, CODEC_ERR_HASH_MISMATCH on mismatch,
+ * CODEC_ERR_VALIDATION when ``expected_hash`` is not the expected shape,
+ * CODEC_ERR_INVALID_ARG for NULL ``bytes`` / ``expected_hash``.
+ *
+ * Typical usage:
+ *   1. codec_well_known_dict_url(...) to build the URL
+ *   2. fetch the bytes with your HTTP stack of choice
+ *   3. codec_verify_zstd_dict_bytes(...) to confirm the origin served
+ *      the right bytes — never feed unverified bytes into a zstd decoder
+ */
+codec_status_t codec_verify_zstd_dict_bytes(
+    const uint8_t *bytes,
+    size_t         len,
+    const char    *expected_hash);
+
 #ifdef __cplusplus
 }
 #endif

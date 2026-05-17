@@ -294,6 +294,149 @@ static void test_select_empty_registry_is_unknown(void) {
               CODEC_ZSTD_DICT_UNKNOWN_HASH);
 }
 
+/* ── well_known_dict_url + verify_zstd_dict_bytes (v0.5) ─────────────── */
+
+static void test_well_known_dict_url_strips_sha256_prefix(void) {
+    char url[CODEC_WELL_KNOWN_DICT_URL_BUF_LEN];
+    char hash[8 + 64 + 1];
+    memcpy(hash, "sha256:", 7);
+    memset(hash + 7, 'a', 64);
+    hash[7 + 64] = 0;
+
+    CT_EQ_INT(codec_well_known_dict_url("https://codec.example", hash,
+                                         url, sizeof(url)),
+              CODEC_OK);
+    char expected[256];
+    snprintf(expected, sizeof(expected),
+             "https://codec.example/.well-known/codec/dicts/%.*s.zstd",
+             64, hash + 7);
+    CT_EQ_STR(url, expected);
+}
+
+static void test_well_known_dict_url_accepts_bare_hex(void) {
+    char url[CODEC_WELL_KNOWN_DICT_URL_BUF_LEN];
+    char hex[65]; memset(hex, 'b', 64); hex[64] = 0;
+    CT_EQ_INT(codec_well_known_dict_url("https://codec.example", hex,
+                                         url, sizeof(url)),
+              CODEC_OK);
+    char expected[256];
+    snprintf(expected, sizeof(expected),
+             "https://codec.example/.well-known/codec/dicts/%s.zstd", hex);
+    CT_EQ_STR(url, expected);
+}
+
+static void test_well_known_dict_url_strips_trailing_slash(void) {
+    char url[CODEC_WELL_KNOWN_DICT_URL_BUF_LEN];
+    char hex[65]; memset(hex, 'c', 64); hex[64] = 0;
+    CT_EQ_INT(codec_well_known_dict_url("https://codec.example/", hex,
+                                         url, sizeof(url)),
+              CODEC_OK);
+    char expected[256];
+    snprintf(expected, sizeof(expected),
+             "https://codec.example/.well-known/codec/dicts/%s.zstd", hex);
+    CT_EQ_STR(url, expected);
+}
+
+static void test_well_known_dict_url_normalises_uppercase_hex(void) {
+    char url[CODEC_WELL_KNOWN_DICT_URL_BUF_LEN];
+    char hex[65]; memset(hex, 'D', 64); hex[64] = 0;
+    CT_EQ_INT(codec_well_known_dict_url("https://codec.example", hex,
+                                         url, sizeof(url)),
+              CODEC_OK);
+    char expected_hex[65]; memset(expected_hex, 'd', 64); expected_hex[64] = 0;
+    char expected[256];
+    snprintf(expected, sizeof(expected),
+             "https://codec.example/.well-known/codec/dicts/%s.zstd",
+             expected_hex);
+    CT_EQ_STR(url, expected);
+}
+
+static void test_well_known_dict_url_rejects_short_hash(void) {
+    char url[CODEC_WELL_KNOWN_DICT_URL_BUF_LEN];
+    CT_EQ_INT(codec_well_known_dict_url("https://codec.example", "deadbeef",
+                                         url, sizeof(url)),
+              CODEC_ERR_VALIDATION);
+}
+
+static void test_well_known_dict_url_rejects_wrong_algorithm(void) {
+    char url[CODEC_WELL_KNOWN_DICT_URL_BUF_LEN];
+    char bad[32 + 5];
+    memcpy(bad, "md5:", 4);
+    memset(bad + 4, 'a', 32);
+    bad[4 + 32] = 0;
+    CT_EQ_INT(codec_well_known_dict_url("https://codec.example", bad,
+                                         url, sizeof(url)),
+              CODEC_ERR_VALIDATION);
+}
+
+static void test_well_known_dict_url_rejects_nonhex_chars(void) {
+    char url[CODEC_WELL_KNOWN_DICT_URL_BUF_LEN];
+    char bad[65]; memset(bad, 'z', 64); bad[64] = 0;
+    CT_EQ_INT(codec_well_known_dict_url("https://codec.example", bad,
+                                         url, sizeof(url)),
+              CODEC_ERR_VALIDATION);
+}
+
+static void test_well_known_dict_url_rejects_undersized_buffer(void) {
+    char tiny[32];
+    char hex[65]; memset(hex, 'a', 64); hex[64] = 0;
+    CT_EQ_INT(codec_well_known_dict_url("https://codec.example", hex,
+                                         tiny, sizeof(tiny)),
+              CODEC_ERR_INVALID_ARG);
+}
+
+static void test_well_known_dict_url_rejects_null_args(void) {
+    char url[CODEC_WELL_KNOWN_DICT_URL_BUF_LEN];
+    char hex[65]; memset(hex, 'a', 64); hex[64] = 0;
+    CT_EQ_INT(codec_well_known_dict_url(NULL, hex, url, sizeof(url)),
+              CODEC_ERR_INVALID_ARG);
+    CT_EQ_INT(codec_well_known_dict_url("https://codec.example", NULL,
+                                         url, sizeof(url)),
+              CODEC_ERR_INVALID_ARG);
+    CT_EQ_INT(codec_well_known_dict_url("https://codec.example", hex,
+                                         NULL, sizeof(url)),
+              CODEC_ERR_INVALID_ARG);
+}
+
+static void test_verify_zstd_dict_bytes_matches_correct_hash(void) {
+    /* sha256("hello world") = b94d27b9... — same fixture used elsewhere. */
+    static const char EXPECTED[] =
+        "sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
+    CT_EQ_INT(codec_verify_zstd_dict_bytes(
+                  (const uint8_t *)"hello world", 11, EXPECTED),
+              CODEC_OK);
+}
+
+static void test_verify_zstd_dict_bytes_accepts_bare_hex(void) {
+    static const char EXPECTED_BARE[] =
+        "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
+    CT_EQ_INT(codec_verify_zstd_dict_bytes(
+                  (const uint8_t *)"hello world", 11, EXPECTED_BARE),
+              CODEC_OK);
+}
+
+static void test_verify_zstd_dict_bytes_rejects_mismatch(void) {
+    /* All-zeros expected vs real bytes hash → mismatch. */
+    char zeros[65]; memset(zeros, '0', 64); zeros[64] = 0;
+    CT_EQ_INT(codec_verify_zstd_dict_bytes(
+                  (const uint8_t *)"hello world", 11, zeros),
+              CODEC_ERR_HASH_MISMATCH);
+}
+
+static void test_verify_zstd_dict_bytes_rejects_malformed_hash(void) {
+    CT_EQ_INT(codec_verify_zstd_dict_bytes(
+                  (const uint8_t *)"x", 1, "not-a-real-hash"),
+              CODEC_ERR_VALIDATION);
+}
+
+static void test_verify_zstd_dict_bytes_accepts_empty_input(void) {
+    /* sha256("") known value. */
+    static const char EXPECTED_EMPTY[] =
+        "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    CT_EQ_INT(codec_verify_zstd_dict_bytes(NULL, 0, EXPECTED_EMPTY),
+              CODEC_OK);
+}
+
 /* ── main ──────────────────────────────────────────────────────────────── */
 
 int main(void) {
@@ -313,6 +456,21 @@ int main(void) {
     CT_RUN(test_select_with_fixture_dict);
     CT_RUN(test_select_handles_extra_whitespace);
     CT_RUN(test_select_empty_registry_is_unknown);
+
+    CT_RUN(test_well_known_dict_url_strips_sha256_prefix);
+    CT_RUN(test_well_known_dict_url_accepts_bare_hex);
+    CT_RUN(test_well_known_dict_url_strips_trailing_slash);
+    CT_RUN(test_well_known_dict_url_normalises_uppercase_hex);
+    CT_RUN(test_well_known_dict_url_rejects_short_hash);
+    CT_RUN(test_well_known_dict_url_rejects_wrong_algorithm);
+    CT_RUN(test_well_known_dict_url_rejects_nonhex_chars);
+    CT_RUN(test_well_known_dict_url_rejects_undersized_buffer);
+    CT_RUN(test_well_known_dict_url_rejects_null_args);
+    CT_RUN(test_verify_zstd_dict_bytes_matches_correct_hash);
+    CT_RUN(test_verify_zstd_dict_bytes_accepts_bare_hex);
+    CT_RUN(test_verify_zstd_dict_bytes_rejects_mismatch);
+    CT_RUN(test_verify_zstd_dict_bytes_rejects_malformed_hash);
+    CT_RUN(test_verify_zstd_dict_bytes_accepts_empty_input);
 
     CT_DONE();
 }

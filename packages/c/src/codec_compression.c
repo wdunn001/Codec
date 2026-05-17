@@ -162,3 +162,86 @@ codec_zstd_dict_result_t codec_select_zstd_dict_for_response(
     }
     return CODEC_ZSTD_DICT_UNKNOWN_HASH;
 }
+
+/* ── Discoverable zstd dictionaries (v0.5+) ────────────────────────────── */
+
+/* Parse a hash that may be "sha256:<hex>" or bare "<hex>" into the
+ * 64 lowercase hex chars in out_hex64 (NOT NUL-terminated). Returns 1
+ * on success, 0 on shape failure. */
+static int parse_dict_hash_bare(const char *raw, char out_hex64[64]) {
+    if (!raw) return 0;
+    const char *end = NULL;
+    const char *s = trim(raw, &end);
+    size_t n = (size_t)(end - s);
+    if (n == 7 + 64) {
+        /* sha256:<hex> form */
+        if (!(s[0] == 's' || s[0] == 'S') ||
+            !(s[1] == 'h' || s[1] == 'H') ||
+            !(s[2] == 'a' || s[2] == 'A') ||
+            s[3] != '2' || s[4] != '5' || s[5] != '6' || s[6] != ':') {
+            return 0;
+        }
+        s += 7;
+        n -= 7;
+    } else if (n != 64) {
+        return 0;
+    }
+    for (size_t i = 0; i < 64; i++) {
+        char c = s[i];
+        if (c >= 'A' && c <= 'F') c = (char)(c - 'A' + 'a');
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return 0;
+        out_hex64[i] = c;
+    }
+    return 1;
+}
+
+codec_status_t codec_well_known_dict_url(
+    const char *origin,
+    const char *hash,
+    char       *out_url,
+    size_t      out_url_buf_len) {
+
+    if (!origin || !hash || !out_url) return CODEC_ERR_INVALID_ARG;
+
+    char hex64[64];
+    if (!parse_dict_hash_bare(hash, hex64)) return CODEC_ERR_VALIDATION;
+
+    /* Trim a single trailing slash from origin. */
+    size_t origin_len = strlen(origin);
+    if (origin_len > 0 && origin[origin_len - 1] == '/') origin_len--;
+
+    static const char SUFFIX[] = "/.well-known/codec/dicts/";
+    static const size_t SUFFIX_LEN = sizeof(SUFFIX) - 1; /* 25 */
+    /* total = origin_len + 25 + 64 + ".zstd"(5) + NUL(1) */
+    size_t total = origin_len + SUFFIX_LEN + 64 + 5 + 1;
+    if (total > out_url_buf_len) return CODEC_ERR_INVALID_ARG;
+
+    char *p = out_url;
+    memcpy(p, origin, origin_len); p += origin_len;
+    memcpy(p, SUFFIX, SUFFIX_LEN); p += SUFFIX_LEN;
+    memcpy(p, hex64, 64);          p += 64;
+    memcpy(p, ".zstd", 5);         p += 5;
+    *p = 0;
+    return CODEC_OK;
+}
+
+codec_status_t codec_verify_zstd_dict_bytes(
+    const uint8_t *bytes,
+    size_t         len,
+    const char    *expected_hash) {
+
+    if (!expected_hash) return CODEC_ERR_INVALID_ARG;
+    if (!bytes && len != 0) return CODEC_ERR_INVALID_ARG;
+
+    char expected[64];
+    if (!parse_dict_hash_bare(expected_hash, expected)) return CODEC_ERR_VALIDATION;
+
+    /* Compute actual digest into 64 lowercase hex chars. */
+    uint8_t digest[32];
+    codec_sha256(bytes, len, digest);
+    char actual[64];
+    for (int i = 0; i < 32; i++) byte_to_hex_lower(digest[i], &actual[i * 2]);
+
+    if (memcmp(expected, actual, 64) != 0) return CODEC_ERR_HASH_MISMATCH;
+    return CODEC_OK;
+}

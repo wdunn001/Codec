@@ -367,6 +367,10 @@ A few things worth knowing while wiring this up:
 | `codec_detokenizer_reset(...)`        | Drop pending partial UTF-8 bytes (call between conversations).       |
 | `codec_msgpack_stream_*`              | Incremental decoder for msgpack-framed streams.                      |
 | `codec_protobuf_stream_*`             | Incremental decoder for length-prefixed protobuf streams.            |
+| `codec_hash_zstd_dict(bytes, len, out_hex)` | Hash dict bytes to canonical `sha256:<hex>` form.              |
+| `codec_select_zstd_dict_for_response(...)` | Match a response's `Codec-Zstd-Dict` header against loaded dicts. |
+| `codec_well_known_dict_url(origin, hash, out_url, len)` (v0.5) | Build `<origin>/.well-known/codec/dicts/<sha>.zstd`. URL builder only — libcodec is HTTP-agnostic; caller does the fetch. |
+| `codec_verify_zstd_dict_bytes(bytes, len, expected_hash)` (v0.5) | After fetching dict bytes with your HTTP stack of choice, verify they hash to the expected sha256 before feeding into libzstd. Hard-fails on mismatch (`CODEC_ERR_HASH_MISMATCH`). |
 
 Header is `<codec/codec.h>`. Full Doxygen-style comments documenting every function are in the header.
 
