@@ -57,8 +57,12 @@ from .discover import (
     MapIndex,
     MapPointer,
     WELL_KNOWN_BASE,
+    ZstdDictDiscoveryError,
+    ZstdDictHashMismatchError,
     discover_index,
     discover_map,
+    discover_zstd_dict,
+    well_known_dict_url,
     well_known_index_url,
     well_known_map_url,
 )

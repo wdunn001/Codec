@@ -127,6 +127,7 @@ For huge prompts (>50K tokens, e.g. RAG with long context), `/v1/completions/cod
 | `Translator`, `translate(...)`, `static_translation_table(...)` | Cross-vocab agent handoff: `ids_A → text → ids_B` with streaming-safe word-boundary buffering |
 | `SafetyPolicyDescriptor`, `validate_safety_policy`, `hash_safety_policy` (v0.4) | Sanitized publishable safety-policy descriptor — load and verify a server's advertised policy without operator-internal fields ever crossing the wire |
 | `load_safety_policy(url=..., hash=...)`, `discover_safety_policy(origin=..., id=..., hash=...)` (v0.4) | Async loader + `.well-known/codec/policies/` discovery; cross-stack canonical-bytes hash matches the TS / Rust / .NET / Java / supervisor implementations bit-for-bit |
+| `discover_zstd_dict(origin=..., hash=...)`, `well_known_dict_url(origin, hash)` (v0.5) | Resolve a zstd dictionary at `.well-known/codec/dicts/<sha256-hex>.zstd`. Hash-pin-verified against the URL's path component; hard-fails on 404 or mismatch (no silent fallback). |
 
 ## Detect tool calls without decoding
 

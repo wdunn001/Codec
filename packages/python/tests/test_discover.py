@@ -12,8 +12,12 @@ from codecai import (
     MapDiscoveryNotFoundError,
     MemoryMapCache,
     TokenizerMapHashMismatchError,
+    ZstdDictDiscoveryError,
+    ZstdDictHashMismatchError,
     discover_index,
     discover_map,
+    discover_zstd_dict,
+    well_known_dict_url,
     well_known_index_url,
     well_known_map_url,
 )
@@ -236,3 +240,109 @@ async def test_discover_index_malformed_entries_rejected() -> None:
     async with _client({well_known_index_url(ORIGIN): body}) as client:
         with pytest.raises(MapDiscoveryError):
             await discover_index(origin=ORIGIN, client=client)
+
+
+# ── Zstd dict (v0.5+) ──────────────────────────────────────────────────────
+
+
+def test_well_known_dict_url_strips_sha256_prefix() -> None:
+    h = "a" * 64
+    assert (
+        well_known_dict_url("https://codec.example", f"sha256:{h}")
+        == f"https://codec.example/.well-known/codec/dicts/{h}.zstd"
+    )
+
+
+def test_well_known_dict_url_accepts_bare_hex() -> None:
+    h = "b" * 64
+    assert (
+        well_known_dict_url("https://codec.example", h)
+        == f"https://codec.example/.well-known/codec/dicts/{h}.zstd"
+    )
+
+
+def test_well_known_dict_url_strips_trailing_slash() -> None:
+    h = "c" * 64
+    assert (
+        well_known_dict_url("https://codec.example/", h)
+        == f"https://codec.example/.well-known/codec/dicts/{h}.zstd"
+    )
+
+
+def test_well_known_dict_url_normalises_uppercase_hex() -> None:
+    h_upper = "D" * 64
+    expected = "d" * 64
+    assert (
+        well_known_dict_url("https://codec.example", h_upper)
+        == f"https://codec.example/.well-known/codec/dicts/{expected}.zstd"
+    )
+
+
+def test_well_known_dict_url_rejects_short_hash() -> None:
+    with pytest.raises(ZstdDictDiscoveryError, match="64 hex"):
+        well_known_dict_url("https://codec.example", "deadbeef")
+
+
+def test_well_known_dict_url_rejects_wrong_algorithm() -> None:
+    with pytest.raises(ZstdDictDiscoveryError):
+        well_known_dict_url("https://codec.example", "md5:" + "a" * 32)
+
+
+def test_well_known_dict_url_rejects_nonhex_chars() -> None:
+    with pytest.raises(ZstdDictDiscoveryError):
+        well_known_dict_url("https://codec.example", "z" * 64)
+
+
+@pytest.mark.asyncio
+async def test_discover_zstd_dict_returns_bytes_when_hash_matches() -> None:
+    dict_bytes = b"\x28\xb5\x2f\xfd" + b"fake-zstd-dict-payload-bytes-for-test"
+    hash_hex = hashlib.sha256(dict_bytes).hexdigest()
+    url = well_known_dict_url(ORIGIN, hash_hex)
+
+    async with _client({url: dict_bytes}) as client:
+        got = await discover_zstd_dict(
+            origin=ORIGIN, hash=f"sha256:{hash_hex}", client=client
+        )
+    assert got == dict_bytes
+
+
+@pytest.mark.asyncio
+async def test_discover_zstd_dict_accepts_bare_hex() -> None:
+    dict_bytes = b"another-payload"
+    hash_hex = hashlib.sha256(dict_bytes).hexdigest()
+    url = well_known_dict_url(ORIGIN, hash_hex)
+
+    async with _client({url: dict_bytes}) as client:
+        got = await discover_zstd_dict(origin=ORIGIN, hash=hash_hex, client=client)
+    assert got == dict_bytes
+
+
+@pytest.mark.asyncio
+async def test_discover_zstd_dict_404_raises_discovery_error() -> None:
+    hash_hex = "f" * 64
+    url = well_known_dict_url(ORIGIN, hash_hex)
+    async with _client({url: (404, b"missing")}) as client:
+        with pytest.raises(ZstdDictDiscoveryError, match="404"):
+            await discover_zstd_dict(origin=ORIGIN, hash=hash_hex, client=client)
+
+
+@pytest.mark.asyncio
+async def test_discover_zstd_dict_hash_mismatch_raises() -> None:
+    """Origin serves bytes that don't hash to the URL's path component — never trust them."""
+    declared_hex = "0" * 64
+    url = well_known_dict_url(ORIGIN, declared_hex)
+    wrong_bytes = b"this-payload-does-not-hash-to-zeros"
+
+    async with _client({url: wrong_bytes}) as client:
+        with pytest.raises(ZstdDictHashMismatchError) as exc_info:
+            await discover_zstd_dict(origin=ORIGIN, hash=declared_hex, client=client)
+    assert exc_info.value.expected == declared_hex
+    assert exc_info.value.actual == hashlib.sha256(wrong_bytes).hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_discover_zstd_dict_rejects_malformed_hash_before_fetch() -> None:
+    # No HTTP routes registered — if we fetched we'd get a 404. Reject up front.
+    async with _client({}) as client:
+        with pytest.raises(ZstdDictDiscoveryError, match="64 hex"):
+            await discover_zstd_dict(origin=ORIGIN, hash="not-a-real-hash", client=client)
