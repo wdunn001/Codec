@@ -147,6 +147,68 @@ Hard-gate the publish phase. A failed cell means the release
 either degrades to a patch (no wire change) or escalates to a
 major bump.
 
+### 1.7 · Zstd dictionary availability (v0.5+)
+
+Added after the v0.4.1 sglang regression where an upstream merge
+silently dropped the `COPY dicts/` line in the engine Dockerfile and
+zstd compression quietly degraded to identity bytes at runtime — caught
+only by the cross-stack bench cohort flagging anomalous wire sizes.
+v0.5 promotes the zstd dictionary to a first-class discoverable
+artefact (`.well-known/codec/dicts/<sha>.zstd`, see
+`spec/WELL_KNOWN_DISCOVERY.md` § Zstd dictionaries) and adds this
+gate to make dictionary drift a release-blocker rather than a
+silent runtime degradation.
+
+For every engine image cut at v0.5+ (`wdunn001/codec-{sglang,vllm,llamacpp}:vX.Y`):
+
+- [ ] **Dict reachability** — image MUST satisfy at least one of:
+  - Bakes `/opt/codec/dicts/msgpack-v1.zstd` AND `/opt/codec/dicts/protobuf-v1.zstd`
+    into the layer at build time (legacy path), OR
+  - Has `CODEC_ZSTD_DICT_MSGPACK_URL` AND `CODEC_ZSTD_DICT_PROTOBUF_URL`
+    configured in the deploy environment (URL path). The URLs MUST resolve
+    to a 200, the bytes MUST hash to the `<hex>` in the URL path
+    component, and the engine MUST hard-fail boot if either fails.
+- [ ] **Probe at container startup** — `docker run --rm <image>
+      /opt/codec/check-dict-availability.sh` exits 0. The script
+      verifies the active dict registry (whether baked or fetched)
+      has both `msgpack` + `protobuf` entries with non-zero byte
+      length.
+- [ ] **Wire-level confirmation in the bench** — for each engine,
+      §1b cell at 2K tokens with `Accept-Encoding: zstd` MUST hit a
+      dict-zstd code path (`Codec-Zstd-Dict: sha256:<short>` in
+      response headers). A response with `Content-Encoding: zstd`
+      but no `Codec-Zstd-Dict:` header means the dict didn't load
+      and zstd silently fell back to dict-less zstd — release-blocker.
+- [ ] **Hash unanimity** — every engine in the cohort serving the
+      same model MUST announce the same `Codec-Zstd-Dict:` sha
+      (modulo deliberately-different dicts for engines that train
+      their own — record any divergence in the release notes).
+
+Missing the gate = release-blocker, same severity as a missing
+test suite. The whole point is that silent degradation is not
+acceptable for any release that markets zstd numbers.
+
+### 1.8 · Root `RESULTS.md` pointer refresh
+
+Added at v0.5 after the v0.4.1 post-mortem caught that the
+top-level `RESULTS.md` was 4 releases stale (still pointed at the
+v0.3 bench results directory). The root file is the single most
+linked-to artefact from external pages (LinkedIn article, README
+headlines, third-party blog posts). Drift here is a credibility
+hit out of proportion to its content.
+
+- [ ] Root `RESULTS.md` pointer URL bumped to the current
+      cohort's `packages/bench/results/<UTC>/MATRIX.md`.
+- [ ] Headline-numbers table in §"Headline numbers from the vX.Y
+      cohort" reflects the current cohort's §1b best cells per engine.
+- [ ] §"What's new in vX.Y" section regenerated from the release
+      notes draft.
+- [ ] §"Agent-loop end-to-end" table refreshed if agent-loop benches
+      ran this cohort.
+- [ ] `packages/bench/RESULTS.md` §10 Headlines table re-rendered
+      from the same source — drift between root and packages
+      means one was edited by hand.
+
 ### 2 · Coverage
 
 - [ ] Coverage % per language, captured in `packages/*/COVERAGE.md` (or

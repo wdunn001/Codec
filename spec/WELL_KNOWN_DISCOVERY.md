@@ -41,6 +41,7 @@ current pinned hash without a code change.
 https://<origin>/.well-known/codec/maps/<id>.json        ← per-tokenizer-map document
 https://<origin>/.well-known/codec/policies/<id>.json    ← per-safety-policy document (mutable pointer / inline)
 https://<origin>/.well-known/codec/policies/<hash>.json  ← per-safety-policy document (immutable, content-addressed)
+https://<origin>/.well-known/codec/dicts/<hash>.zstd     ← per-zstd-dict bytes (v0.5+, content-addressed)
 https://<origin>/.well-known/codec/index.json            ← directory (optional)
 ```
 
@@ -297,6 +298,86 @@ MAY be cached up to `valid_until` (or 1 hour if absent).
 A deployment without mandatory features SHOULD NOT publish this
 document — its presence advertises that older clients will be
 rejected, which is information itself.
+
+---
+
+## Zstd dictionaries (v0.5+)
+
+Codec's zstd compression path uses pre-trained dictionaries (separate per
+wire encoding: msgpack vs protobuf). Prior to v0.5 these were build-time
+artefacts baked into each engine image's `/opt/codec/dicts/`. v0.5
+promotes the dictionary to a discoverable, content-addressed artefact on
+the well-known surface so that:
+
+- Dictionary version drift between an engine image and its client cohort
+  fails loudly (404 / hash mismatch) instead of silently degrading to
+  identity bytes.
+- Third-party Codec implementers can fetch the same dictionary the
+  server announces in its `Codec-Zstd-Dict: sha256:<short>` response
+  header, without coordinating out-of-band.
+- Dictionaries can rotate without rebuilding engine images.
+
+### URL pattern
+
+```
+https://<origin>/.well-known/codec/dicts/<sha256-hex>.zstd
+```
+
+The path component IS the dictionary's sha256 hash. Clients that fetched
+the bytes MUST verify the hash matches the URL — same content-addressing
+trust posture as the `.well-known/codec/policies/sha256/<hex>.json` path.
+Mutable per-id paths are NOT used for dictionaries; there is no
+`.well-known/codec/dicts/<id>.zstd` form.
+
+### Engine startup
+
+Each engine (sglang / vllm / llama.cpp) reads two env vars at boot:
+
+```
+CODEC_ZSTD_DICT_MSGPACK_URL=https://codec.example/.well-known/codec/dicts/<hex>.zstd
+CODEC_ZSTD_DICT_PROTOBUF_URL=https://codec.example/.well-known/codec/dicts/<hex>.zstd
+```
+
+If set, the engine fetches the dict at startup, verifies the bytes hash
+to the `<hex>` in the URL path, caches to a local file, and registers
+with the zstd dict registry. The existing `CODEC_ZSTD_DICT_MSGPACK_PATH`
+/ `CODEC_ZSTD_DICT_PROTOBUF_PATH` env vars (file-path form) remain valid
+and take precedence over `_URL` for air-gapped deployments.
+
+### Client side
+
+Clients SHOULD ship a `discoverZstdDict({origin, hash})` helper parallel
+to `discoverTokenizerMap`. The URL is mechanically constructed from the
+`Codec-Zstd-Dict: sha256:<short>` response header announced by the
+server — clients only need the origin (from the response URL) and the
+full hash (looked up from a cohort known-dicts list, OR provided in full
+via a future `Codec-Zstd-Dict-Url` header at v0.6).
+
+### Release-checklist gate
+
+Every engine image targeting v0.5+ MUST satisfy at least one of:
+
+- Bakes dicts into `/opt/codec/dicts/` at build time (legacy path), OR
+- Has `CODEC_ZSTD_DICT_MSGPACK_URL` + `CODEC_ZSTD_DICT_PROTOBUF_URL`
+  configured at deploy time (URL path).
+
+Missing both is a release-blocker — see
+[`docs/RELEASE_CHECKLIST.md`](../docs/RELEASE_CHECKLIST.md) Pre-publish
+gate §1.7. The v0.4.1 sglang regression (silently dropped `COPY dicts/`
+in an upstream merge, zstd degraded to identity) was the motivating
+incident.
+
+### Resolution failures
+
+| Failure                                  | Engine behaviour                                   |
+|------------------------------------------|----------------------------------------------------|
+| 404 on dict URL                          | Hard-fail engine boot (loud regression)            |
+| Hash mismatch on fetched bytes           | Hard-fail engine boot                              |
+| URL set but unreachable at boot          | Hard-fail engine boot (no degradation to identity) |
+| Neither `_URL` nor `_PATH` set, no bake  | Hard-fail per the release-checklist gate           |
+
+Hard-fail (rather than degrade to identity) is the deliberate choice —
+the v0.5 release motivation was eliminating silent degradation.
 
 ---
 

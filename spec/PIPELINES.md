@@ -157,6 +157,34 @@ The `latents validate` subcommand bundles both halves; a map cannot ship without
 
 ---
 
+## Encoder fast paths (v0.5+)
+
+The forward transforms above are normative on the **wire bytes**, not on the
+implementation. The Python reference encoder ships two interchangeable
+fast paths for the per-channel quantize step:
+
+| Fast path           | Triggered when                                          | Pre-quantize transfer cost                          |
+|---------------------|---------------------------------------------------------|-----------------------------------------------------|
+| `numpy` (default)   | Input is a numpy array, OR a torch tensor on CPU        | full fp16/fp32 latent across PCIe                   |
+| `torch-gpu`         | `gpu_quantize: true` AND input is `torch.cuda.Tensor`   | post-quantize int8/int4 across PCIe (75% smaller)  |
+
+The `torch-gpu` path runs `(latent * scale).round().clamp(-q, +q).to(int8)`
+on-device and transfers the quantized tensor. Bit-exact equality with the
+numpy path under the same `quality_thresholds` is **required** and
+verified by the per-pipeline fixture round-trip
+(`packages/bench/golden/pipelines/<name>/`). A fork that swaps numpy for
+torch-gpu without passing the bit-identity gate is non-conformant.
+
+The flag is opt-in on `LatentStreamEncoderOptions.gpu_quantize` (default
+`false`). Cross-runtime callers (clients that don't carry a torch
+dependency) see no behavioural change — the numpy path stays the default.
+
+The fast path applies to all `int8` / `int4` / `int8-adaptive` /
+`int4-adaptive` / `delta+*` pipelines. The `raw` pipeline has no quantize
+step and is unaffected.
+
+---
+
 ## Compression interaction
 
 Latent zstd dictionaries are keyed by `(latent_space_id, format, pipeline)` — see `latent-space-map.schema.json#/properties/zstd_dictionaries`. A dict trained on `raw` bytes is meaningless against `int8` bytes (different distributions). A server MUST NOT respond with `Content-Encoding: zstd` unless it has loaded a dict whose `(format, pipeline)` triple matches the response.
