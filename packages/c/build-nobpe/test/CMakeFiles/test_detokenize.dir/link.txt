@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_detokenize.dir/test_detokenize.c.o -o test_detokenize  ../libcodec.a 

@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_compression.dir/test_compression.c.o -o test_compression  ../libcodec.a 

@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_version_signaling.dir/test_version_signaling.c.o -o test_version_signaling  ../libcodec.a 

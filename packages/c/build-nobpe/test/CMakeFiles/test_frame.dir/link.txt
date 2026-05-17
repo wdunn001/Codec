@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG CMakeFiles/test_frame.dir/test_frame.c.o -o test_frame  ../libcodec.a 
