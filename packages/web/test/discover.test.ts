@@ -4,10 +4,14 @@ import assert from 'node:assert/strict';
 import {
   discoverMap,
   discoverIndex,
+  discoverZstdDict,
   wellKnownMapUrl,
   wellKnownIndexUrl,
+  wellKnownDictUrl,
   MapDiscoveryError,
   MapDiscoveryNotFoundError,
+  ZstdDictDiscoveryError,
+  ZstdDictHashMismatchError,
 } from '../src/discover.js';
 import {
   MemoryMapCache,
@@ -268,4 +272,149 @@ test('discoverIndex: malformed entries are rejected', async () => {
     discoverIndex({ origin: ORIGIN, fetchImpl: fakeFetch }),
     MapDiscoveryError,
   );
+});
+
+// ── Zstd dict (v0.5+) ────────────────────────────────────────────────────────
+
+function makeBinaryFetch(
+  routes: Record<string, Uint8Array | { status: number }>,
+): typeof fetch {
+  return (async (input: RequestInfo | URL): Promise<Response> => {
+    const url = typeof input === 'string' ? input : input.toString();
+    const route = routes[url];
+    if (route === undefined) {
+      return new Response(`no route for ${url}`, { status: 404 });
+    }
+    if (route instanceof Uint8Array) {
+      return new Response(
+        route.buffer.slice(route.byteOffset, route.byteOffset + route.byteLength) as ArrayBuffer,
+        {
+          status: 200,
+          headers: { 'content-type': 'application/octet-stream' },
+        },
+      );
+    }
+    return new Response('', { status: route.status });
+  }) as typeof fetch;
+}
+
+test('wellKnownDictUrl strips sha256: prefix', () => {
+  const h = 'a'.repeat(64);
+  assert.equal(
+    wellKnownDictUrl('https://codec.example', `sha256:${h}`),
+    `https://codec.example/.well-known/codec/dicts/${h}.zstd`,
+  );
+});
+
+test('wellKnownDictUrl accepts bare hex', () => {
+  const h = 'b'.repeat(64);
+  assert.equal(
+    wellKnownDictUrl('https://codec.example', h),
+    `https://codec.example/.well-known/codec/dicts/${h}.zstd`,
+  );
+});
+
+test('wellKnownDictUrl strips trailing slash from origin', () => {
+  const h = 'c'.repeat(64);
+  assert.equal(
+    wellKnownDictUrl('https://codec.example/', h),
+    `https://codec.example/.well-known/codec/dicts/${h}.zstd`,
+  );
+});
+
+test('wellKnownDictUrl normalises uppercase hex to lowercase', () => {
+  const hUpper = 'D'.repeat(64);
+  const expected = 'd'.repeat(64);
+  assert.equal(
+    wellKnownDictUrl('https://codec.example', hUpper),
+    `https://codec.example/.well-known/codec/dicts/${expected}.zstd`,
+  );
+});
+
+test('wellKnownDictUrl rejects short hash', () => {
+  assert.throws(
+    () => wellKnownDictUrl('https://codec.example', 'deadbeef'),
+    ZstdDictDiscoveryError,
+  );
+});
+
+test('wellKnownDictUrl rejects wrong algorithm', () => {
+  assert.throws(
+    () => wellKnownDictUrl('https://codec.example', 'md5:' + 'a'.repeat(32)),
+    ZstdDictDiscoveryError,
+  );
+});
+
+test('wellKnownDictUrl rejects non-hex chars', () => {
+  assert.throws(
+    () => wellKnownDictUrl('https://codec.example', 'z'.repeat(64)),
+    ZstdDictDiscoveryError,
+  );
+});
+
+test('discoverZstdDict returns bytes when hash matches', async () => {
+  const dictBytes = new Uint8Array([0x28, 0xb5, 0x2f, 0xfd, ...new TextEncoder().encode('fake-zstd-dict-payload-bytes-for-test')]);
+  const hashHex = await sha256Hex(dictBytes);
+  const url = wellKnownDictUrl(ORIGIN, hashHex);
+
+  const fakeFetch = makeBinaryFetch({ [url]: dictBytes });
+  const got = await discoverZstdDict({
+    origin: ORIGIN,
+    hash: `sha256:${hashHex}`,
+    fetchImpl: fakeFetch,
+  });
+  assert.deepEqual(got, dictBytes);
+});
+
+test('discoverZstdDict accepts bare hex hash', async () => {
+  const dictBytes = new TextEncoder().encode('another-payload');
+  const hashHex = await sha256Hex(dictBytes);
+  const url = wellKnownDictUrl(ORIGIN, hashHex);
+
+  const fakeFetch = makeBinaryFetch({ [url]: dictBytes });
+  const got = await discoverZstdDict({
+    origin: ORIGIN,
+    hash: hashHex,
+    fetchImpl: fakeFetch,
+  });
+  assert.deepEqual(got, dictBytes);
+});
+
+test('discoverZstdDict: 404 raises ZstdDictDiscoveryError', async () => {
+  const hashHex = 'f'.repeat(64);
+  const url = wellKnownDictUrl(ORIGIN, hashHex);
+  const fakeFetch = makeBinaryFetch({ [url]: { status: 404 } });
+  await assert.rejects(
+    discoverZstdDict({ origin: ORIGIN, hash: hashHex, fetchImpl: fakeFetch }),
+    ZstdDictDiscoveryError,
+  );
+});
+
+test('discoverZstdDict: hash mismatch raises ZstdDictHashMismatchError', async () => {
+  const declaredHex = '0'.repeat(64);
+  const url = wellKnownDictUrl(ORIGIN, declaredHex);
+  const wrongBytes = new TextEncoder().encode('this-payload-does-not-hash-to-zeros');
+
+  const fakeFetch = makeBinaryFetch({ [url]: wrongBytes });
+  try {
+    await discoverZstdDict({ origin: ORIGIN, hash: declaredHex, fetchImpl: fakeFetch });
+    assert.fail('Expected ZstdDictHashMismatchError');
+  } catch (err) {
+    assert.ok(err instanceof ZstdDictHashMismatchError, `got ${err}`);
+    assert.equal(err.expected, declaredHex);
+    assert.equal(err.actual, await sha256Hex(wrongBytes));
+  }
+});
+
+test('discoverZstdDict: malformed hash is rejected before fetch', async () => {
+  let fetched = false;
+  const fakeFetch = (async () => {
+    fetched = true;
+    return new Response('', { status: 200 });
+  }) as typeof fetch;
+  await assert.rejects(
+    discoverZstdDict({ origin: ORIGIN, hash: 'not-a-real-hash', fetchImpl: fakeFetch }),
+    ZstdDictDiscoveryError,
+  );
+  assert.equal(fetched, false, 'should not have fetched before validating the hash');
 });

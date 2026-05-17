@@ -77,15 +77,20 @@ export {
 export {
   discoverMap,
   discoverIndex,
+  discoverZstdDict,
   wellKnownMapUrl,
   wellKnownIndexUrl,
+  wellKnownDictUrl,
   WELL_KNOWN_BASE,
   MapDiscoveryError,
   MapDiscoveryNotFoundError,
+  ZstdDictDiscoveryError,
+  ZstdDictHashMismatchError,
   type MapPointer,
   type MapIndex,
   type DiscoverMapOptions,
   type DiscoverIndexOptions,
+  type DiscoverZstdDictOptions,
 } from './discover.js';
 
 export {

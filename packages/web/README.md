@@ -142,6 +142,7 @@ const ids = tok.encode(text);
 | `loadMap(opts)`             | Fetch + sha256-verify + cache a tokenizer map                 |
 | `discoverMap({ origin, id })` | Resolve a map via the `.well-known/codec/` convention       |
 | `discoverIndex({ origin })` | Fetch `.well-known/codec/index.json` (optional directory)     |
+| `discoverZstdDict({ origin, hash })` (v0.5) | Resolve a zstd dict at `.well-known/codec/dicts/<sha256-hex>.zstd`. Hash-pin-verified against the URL's path component; hard-fails on 404 / mismatch (no silent fallback). |
 | `MemoryMapCache`            | Default in-memory cache. Implement `MapCache` for IDB / KV    |
 | `validateMap(unknown)`      | Type-narrowing schema check                                   |
 | `Detokenizer`               | Stateful detokenizer: byte-level + metaspace + byte fallback + partial UTF-8 buffering |

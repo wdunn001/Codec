@@ -30,8 +30,50 @@ export function wellKnownIndexUrl(origin: string): string {
   return `${stripTrailingSlash(origin)}${WELL_KNOWN_BASE}/index.json`;
 }
 
+const DICT_HASH_RE = /^[0-9a-f]{64}$/;
+
+/**
+ * Per-dict document URL for an origin + sha256 hash (v0.5+).
+ *
+ * Accepts either `sha256:<hex>` or bare `<hex>`. Returns
+ * `<origin>/.well-known/codec/dicts/<sha256-hex>.zstd`.
+ */
+export function wellKnownDictUrl(origin: string, hash: string): string {
+  const hex = parseDictHash(hash);
+  return `${stripTrailingSlash(origin)}${WELL_KNOWN_BASE}/dicts/${hex}.zstd`;
+}
+
+function parseDictHash(hashStr: string): string {
+  let s = hashStr.trim();
+  if (s.startsWith('sha256:')) s = s.slice('sha256:'.length);
+  s = s.toLowerCase();
+  if (!DICT_HASH_RE.test(s)) {
+    throw new ZstdDictDiscoveryError(
+      `Invalid dict hash ${JSON.stringify(hashStr)}: expected 'sha256:<64 hex>' or '<64 hex>'`,
+    );
+  }
+  return s;
+}
+
 function stripTrailingSlash(s: string): string {
   return s.endsWith('/') ? s.slice(0, -1) : s;
+}
+
+async function sha256HexBytes(bytes: Uint8Array): Promise<string> {
+  const subtle = (globalThis as { crypto?: { subtle?: SubtleCrypto } }).crypto?.subtle;
+  if (!subtle) {
+    throw new Error(
+      '@codecai/web requires a SubtleCrypto implementation (Web Crypto API). ' +
+        'Available in browsers, Node 18+, Cloudflare Workers, Deno.',
+    );
+  }
+  const digest = await subtle.digest(
+    'SHA-256',
+    bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 /**
@@ -83,6 +125,40 @@ export class MapDiscoveryNotFoundError extends MapDiscoveryError {
   constructor(url: string, status: number) {
     super(`No map document at ${url} (HTTP ${status})`);
     this.name = 'MapDiscoveryNotFoundError';
+  }
+}
+
+/**
+ * Raised when `.well-known/codec/dicts/<hex>.zstd` discovery fails (v0.5+).
+ *
+ * Covers: 404 from the origin, hash mismatch between fetched bytes and the
+ * URL's path component, or malformed hash input.
+ *
+ * The dict-discovery surface is hard-fail by design — see
+ * `spec/WELL_KNOWN_DISCOVERY.md § Resolution failures`. Silent fallback to
+ * identity bytes is what motivated v0.5 in the first place (the v0.4.1
+ * sglang COPY-dicts regression).
+ */
+export class ZstdDictDiscoveryError extends Error {
+  readonly url?: string;
+  constructor(message: string, url?: string) {
+    super(message);
+    this.name = 'ZstdDictDiscoveryError';
+    this.url = url;
+  }
+}
+
+export class ZstdDictHashMismatchError extends ZstdDictDiscoveryError {
+  readonly expected: string;
+  readonly actual: string;
+  constructor(url: string, expected: string, actual: string) {
+    super(
+      `Zstd dict hash mismatch at ${url}\n  expected: ${expected}\n  actual:   ${actual}`,
+      url,
+    );
+    this.name = 'ZstdDictHashMismatchError';
+    this.expected = expected;
+    this.actual = actual;
   }
 }
 
@@ -200,6 +276,63 @@ export async function discoverMap(opts: DiscoverMapOptions): Promise<TokenizerMa
     );
   }
   return parsed;
+}
+
+export interface DiscoverZstdDictOptions {
+  /** HTTPS origin serving the dict (e.g. `https://codec.example`). */
+  origin: string;
+  /** SHA-256 hash, as `sha256:<hex>` or bare `<hex>`. Used as the URL path component AND as the verifier. */
+  hash: string;
+  /** AbortSignal forwarded to the underlying fetch. */
+  signal?: AbortSignal;
+  /** Custom fetch implementation. Defaults to `globalThis.fetch`. */
+  fetchImpl?: typeof fetch;
+}
+
+/**
+ * Resolve a zstd dictionary via `.well-known/codec/dicts/<hex>.zstd` (v0.5+).
+ *
+ * Fetches `<origin>/.well-known/codec/dicts/<sha256-hex>.zstd`, verifies the
+ * fetched bytes hash to `<hex>`, returns the raw dict bytes. The URL is
+ * derived deterministically from the hash — there is no mutable per-id form
+ * for dictionaries.
+ *
+ *   const dictBytes = await discoverZstdDict({
+ *     origin: 'https://codec.example',
+ *     hash:   'sha256:abc123…',  // typically from the tokenizer map's
+ *                                // zstd_dictionaries[] entry, or a
+ *                                // cohort registry
+ *   });
+ *
+ * Throws `ZstdDictDiscoveryError` for 404 / malformed hash, and
+ * `ZstdDictHashMismatchError` for byte-tampering (origin served wrong
+ * bytes — never trust them).
+ */
+export async function discoverZstdDict(opts: DiscoverZstdDictOptions): Promise<Uint8Array> {
+  const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
+  if (!fetchImpl) {
+    throw new ZstdDictDiscoveryError(
+      '@codecai/web: no global fetch available. Pass `fetchImpl` or upgrade to Node 18+.',
+    );
+  }
+
+  // Validate + normalise hash up front so we don't make a wasted HTTP request.
+  const expectedHex = parseDictHash(opts.hash);
+  const url = wellKnownDictUrl(opts.origin, opts.hash);
+
+  const resp = await fetchImpl(url, withCodecClientVersion({ signal: opts.signal }));
+  if (resp.status === 404) {
+    throw new ZstdDictDiscoveryError(`No zstd dict at ${url} (HTTP 404)`, url);
+  }
+  if (!resp.ok) {
+    throw new ZstdDictDiscoveryError(`Failed to fetch ${url}: HTTP ${resp.status}`, url);
+  }
+  const body = new Uint8Array(await resp.arrayBuffer());
+  const actualHex = await sha256HexBytes(body);
+  if (actualHex !== expectedHex) {
+    throw new ZstdDictHashMismatchError(url, expectedHex, actualHex);
+  }
+  return body;
 }
 
 export interface DiscoverIndexOptions {
