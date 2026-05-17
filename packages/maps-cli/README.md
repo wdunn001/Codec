@@ -255,6 +255,19 @@ codecai-maps policies-hash ./acme-strict-v3.policy.json
 # can fetch + verify without a redirect hop.
 codecai-maps policies-well-known --descriptor=./acme-strict-v3.policy.json \
   --inline --out-dir=./public
+
+# v0.5 (resolves v0.4-OQ4): productize the offline enumerator scripts.
+# Reads a JSON array of literal strings, generates surface variants
+# (verbatim / leading-space / leading-newline / lowercase / titlecase /
+# uppercase / trimmed), tokenizes each variant through the supplied
+# tokenizer map, deduplicates by token sequence, and writes a JSON file
+# ready to paste into your internal policy's 'multi_token_patterns'
+# field. The output pins the tokenizer-map sha256 so the enumeration is
+# verifiably tied to the exact map bytes the runtime will tokenize
+# against.
+codecai-maps policies-enumerate --map=./qwen_qwen2.json \
+  --literals=./adversarial-strings.json \
+  --out=./enumerated-patterns.json
 ```
 
 The descriptor never contains operator-internal contents — that's the

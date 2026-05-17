@@ -106,6 +106,8 @@ interface Flags {
   convention?: string;
   /** --tokenizer-config=<path>: explicit tokenizer_config.json (for `convert`). */
   'tokenizer-config'?: string;
+  /** --literals=<path>: JSON array of strings to enumerate (`policies-enumerate`). */
+  literals?: string;
   /** --descriptor=<path>: published safety-policy descriptor (sanitized). */
   descriptor?: string;
   /** --internal=<path>: operator's internal full-detail policy config (input to sanitize). */
@@ -568,6 +570,134 @@ async function cmdPoliciesSanitize(_args: string[], flags: Flags): Promise<void>
   stdout.write(`  hash            ${hash}\n`);
 }
 
+async function cmdPoliciesEnumerate(_args: string[], flags: Flags): Promise<void> {
+  if (!flags.map) {
+    fail('policies-enumerate requires --map=<path-to-tokenizer-map.json>');
+  }
+  if (!flags.literals) {
+    fail(
+      'policies-enumerate requires --literals=<path-to-literals.json>. '
+      + 'The file is a JSON array of strings, one per pattern to enumerate '
+      + '(e.g. ["ignore previous instructions", "system prompt is", ...]).',
+    );
+  }
+
+  const rawMap = await readFile(flags.map!, 'utf-8');
+  const mapJson: unknown = JSON.parse(rawMap);
+  validateMap(mapJson);
+
+  const tokMap = mapJson as { id: string; version?: string };
+  const tokenizer = pickTokenizer(tokMap as Parameters<typeof pickTokenizer>[0]);
+  // The output is keyed by the canonical hash, NOT the mutable id, so the
+  // operator can pin which exact map bytes the enumeration was produced
+  // against — same trust posture as safety-policy hash pinning.
+  const mapHash = 'sha256:' + (await sha256HexOfText(rawMap));
+
+  const literalsRaw = JSON.parse(await readFile(flags.literals!, 'utf-8'));
+  if (!Array.isArray(literalsRaw) || !literalsRaw.every((s) => typeof s === 'string')) {
+    fail(`literals file ${flags.literals} must contain a JSON array of strings`);
+  }
+  const literals = literalsRaw as string[];
+  if (literals.length === 0) {
+    fail(`literals file ${flags.literals} is empty`);
+  }
+
+  const result = {
+    tokenizer_map_id: tokMap.id,
+    tokenizer_map_hash: mapHash,
+    enumerated_at: new Date().toISOString(),
+    variant_set: VARIANT_SET_NAMES,
+    patterns: literals.map((literal) => {
+      const variants = enumerateVariants(literal);
+      // Each variant becomes one allowed tokenization for the pattern.
+      // Dedupe by the joined-IDs string — different surface variants often
+      // collapse to the same token sequence, and we want one entry per
+      // unique sequence.
+      const seen = new Set<string>();
+      const tokenizations: Array<{ variant: string; ids: number[] }> = [];
+      for (const v of variants) {
+        const ids = tokenizer.encode(v);
+        const key = ids.join(',');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        tokenizations.push({ variant: v, ids });
+      }
+      return {
+        literal,
+        variants_enumerated: variants.length,
+        tokenizations_unique: tokenizations.length,
+        tokenizations,
+      };
+    }),
+  };
+
+  const out = flags.out ?? 'enumerated-patterns.json';
+  await writeFile(out, JSON.stringify(result, null, 2) + '\n', 'utf-8');
+
+  stdout.write(`✓ enumerated ${literals.length} literal(s) → ${out}\n`);
+  stdout.write(`  tokenizer       ${tokMap.id}\n`);
+  stdout.write(`  map hash        ${mapHash}\n`);
+  const totalTokenizations = result.patterns.reduce(
+    (acc, p) => acc + p.tokenizations_unique, 0,
+  );
+  stdout.write(`  unique seqs     ${totalTokenizations} across all patterns\n`);
+  stdout.write(`  variant set     ${VARIANT_SET_NAMES.join(', ')}\n`);
+  stdout.write(`\n`);
+  stdout.write(`Next: hand-review the output, then paste the 'patterns'\n`);
+  stdout.write(`array into your internal policy config's\n`);
+  stdout.write(`'multi_token_patterns' field, then 'policies-sanitize'.\n`);
+}
+
+/**
+ * Variant set v1 — the patterns we cover. KEPT INTENTIONALLY SMALL so the
+ * output file stays reviewable by hand. Operators who need more aggressive
+ * coverage (homoglyph attacks, leetspeak, multilingual variants) should
+ * extend the literals file directly with the variant strings they care
+ * about.
+ *
+ * Order matters: variant[0] is the input verbatim, so a caller who
+ * only wants the literal tokenization can take just the first entry.
+ */
+const VARIANT_SET_NAMES = [
+  'verbatim',
+  'leading-space',
+  'leading-newline',
+  'lowercase',
+  'titlecase',
+  'uppercase',
+  'trimmed',
+] as const;
+
+function enumerateVariants(literal: string): string[] {
+  const out: string[] = [];
+  const push = (s: string) => {
+    if (s && !out.includes(s)) out.push(s);
+  };
+  push(literal);                                  // verbatim
+  push(' ' + literal);                            // leading-space (BPE often
+                                                  //   emits a distinct token
+                                                  //   for " word" vs "word")
+  push('\n' + literal);                           // leading-newline (same)
+  push(literal.toLowerCase());                    // lowercase
+  push(literal.charAt(0).toUpperCase() + literal.slice(1).toLowerCase());  // titlecase
+  push(literal.toUpperCase());                    // uppercase
+  push(literal.trim());                           // trimmed (idempotent for
+                                                  //   already-trimmed inputs)
+  return out;
+}
+
+async function sha256HexOfText(text: string): Promise<string> {
+  const subtle = (globalThis as { crypto?: { subtle?: SubtleCrypto } }).crypto?.subtle;
+  if (!subtle) {
+    throw new Error('Node 18+ required for crypto.subtle');
+  }
+  const enc = new TextEncoder().encode(text);
+  const digest = await subtle.digest('SHA-256', enc.buffer.slice(enc.byteOffset, enc.byteOffset + enc.byteLength) as ArrayBuffer);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 async function cmdPoliciesWellKnown(_args: string[], flags: Flags): Promise<void> {
   if (!flags.descriptor) fail('policies-well-known requires --descriptor=<path-to-descriptor.json>');
   const outDir = flags['out-dir'] ?? '.';
@@ -699,6 +829,17 @@ Commands:
     descriptor exposes the SHAPE of enforcement without revealing its
     contents. The output is what gets published at .well-known.
 
+  policies-enumerate --map=<tokenizer-map.json> --literals=<literals.json> [--out=<path>]
+    Productize the v0.4 enumerator scripts (v0.5; resolves v0.4-OQ4).
+    Reads a JSON array of literal strings, generates surface variants
+    of each (verbatim, leading-space, leading-newline, lowercase,
+    titlecase, uppercase, trimmed), tokenizes every variant through
+    the supplied tokenizer map, deduplicates by token-sequence, and
+    writes a JSON file ready to paste into an internal policy config's
+    'multi_token_patterns' array. The output also pins the tokenizer
+    map hash so operators can verify the enumeration was produced
+    against the same map bytes the runtime ships.
+
   policies-well-known --descriptor=<path> (--url=<hosted-url> | --inline) [--out-dir=<dir>]
     Emit a .well-known/codec/policies/<id>.json document AND a
     content-addressed sibling at .well-known/codec/policies/sha256/<hex>.json
@@ -723,6 +864,9 @@ Examples:
                                  --out=./acme-strict-v3.policy.json
   codecai-maps policies-validate ./acme-strict-v3.policy.json
   codecai-maps policies-hash ./acme-strict-v3.policy.json
+  codecai-maps policies-enumerate --map=./qwen_qwen2.json \\
+                                  --literals=./adversarial-strings.json \\
+                                  --out=./enumerated-patterns.json
   codecai-maps policies-well-known --descriptor=./acme-strict-v3.policy.json \\
                                    --inline \\
                                    --out-dir=./public
@@ -746,6 +890,7 @@ async function main(): Promise<void> {
       case 'policies-validate': return await cmdPoliciesValidate(positional);
       case 'policies-hash': return await cmdPoliciesHash(positional);
       case 'policies-sanitize': return await cmdPoliciesSanitize(positional, flags);
+      case 'policies-enumerate': return await cmdPoliciesEnumerate(positional, flags);
       case 'policies-well-known': return await cmdPoliciesWellKnown(positional, flags);
       case 'help':
       case '--help':

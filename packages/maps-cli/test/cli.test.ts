@@ -275,6 +275,141 @@ test(
   },
 );
 
+// ── policies-enumerate (v0.5, resolves v0.4-OQ4) ────────────────────────────
+
+test(
+  'cli policies-enumerate: produces a JSON file with tokenizations per literal',
+  { skip: !haveBuilt && 'run npm run build first' },
+  () => {
+    const dir = tmpDir();
+    const hfPath = path.join(dir, 'tokenizer.json');
+    const mapPath = path.join(dir, 'test.json');
+    const literalsPath = path.join(dir, 'literals.json');
+    const outPath = path.join(dir, 'enumerated.json');
+
+    fs.writeFileSync(hfPath, JSON.stringify(makeByteLevelHF()), 'utf-8');
+    run(['convert', hfPath, '--id=test/byte-level', `--out=${mapPath}`]);
+
+    // Keep the literals byte-level-tokenisable in the test fixture (which
+    // only has ASCII single-byte tokens). The semantics under test are the
+    // enumerate/dedupe/output-shape contract, not the BPE vocab.
+    fs.writeFileSync(literalsPath, JSON.stringify(['abc']), 'utf-8');
+
+    const r = run([
+      'policies-enumerate',
+      `--map=${mapPath}`,
+      `--literals=${literalsPath}`,
+      `--out=${outPath}`,
+    ]);
+    assert.equal(r.code, 0, `stderr was: ${r.stderr}`);
+    assert.match(r.stdout, /✓ enumerated 1 literal/);
+
+    const enumerated = JSON.parse(fs.readFileSync(outPath, 'utf-8'));
+    assert.equal(enumerated.tokenizer_map_id, 'test/byte-level');
+    assert.match(enumerated.tokenizer_map_hash, /^sha256:[0-9a-f]{64}$/);
+    assert.ok(Array.isArray(enumerated.variant_set));
+    assert.ok(enumerated.variant_set.includes('verbatim'));
+    assert.ok(enumerated.variant_set.includes('leading-space'));
+
+    assert.equal(enumerated.patterns.length, 1);
+    const pattern = enumerated.patterns[0];
+    assert.equal(pattern.literal, 'abc');
+    assert.ok(
+      pattern.tokenizations_unique >= 1,
+      'at least the verbatim variant should tokenize',
+    );
+    assert.ok(
+      pattern.tokenizations.length === pattern.tokenizations_unique,
+      'tokenizations_unique should match the dedupe count',
+    );
+    for (const t of pattern.tokenizations) {
+      assert.equal(typeof t.variant, 'string');
+      assert.ok(Array.isArray(t.ids));
+      assert.ok(t.ids.every((id: unknown) => typeof id === 'number'));
+    }
+
+    fs.rmSync(dir, { recursive: true });
+  },
+);
+
+test(
+  'cli policies-enumerate: missing --map fails fast',
+  { skip: !haveBuilt && 'run npm run build first' },
+  () => {
+    const dir = tmpDir();
+    const literalsPath = path.join(dir, 'literals.json');
+    fs.writeFileSync(literalsPath, JSON.stringify(['x']), 'utf-8');
+
+    const r = run(['policies-enumerate', `--literals=${literalsPath}`]);
+    assert.notEqual(r.code, 0);
+    assert.match(r.stderr, /requires --map/);
+    fs.rmSync(dir, { recursive: true });
+  },
+);
+
+test(
+  'cli policies-enumerate: missing --literals fails fast',
+  { skip: !haveBuilt && 'run npm run build first' },
+  () => {
+    const dir = tmpDir();
+    const hfPath = path.join(dir, 'tokenizer.json');
+    const mapPath = path.join(dir, 'test.json');
+    fs.writeFileSync(hfPath, JSON.stringify(makeByteLevelHF()), 'utf-8');
+    run(['convert', hfPath, '--id=test/byte-level', `--out=${mapPath}`]);
+
+    const r = run(['policies-enumerate', `--map=${mapPath}`]);
+    assert.notEqual(r.code, 0);
+    assert.match(r.stderr, /requires --literals/);
+    fs.rmSync(dir, { recursive: true });
+  },
+);
+
+test(
+  'cli policies-enumerate: empty literals array is rejected',
+  { skip: !haveBuilt && 'run npm run build first' },
+  () => {
+    const dir = tmpDir();
+    const hfPath = path.join(dir, 'tokenizer.json');
+    const mapPath = path.join(dir, 'test.json');
+    const literalsPath = path.join(dir, 'literals.json');
+    fs.writeFileSync(hfPath, JSON.stringify(makeByteLevelHF()), 'utf-8');
+    fs.writeFileSync(literalsPath, JSON.stringify([]), 'utf-8');
+    run(['convert', hfPath, '--id=test/byte-level', `--out=${mapPath}`]);
+
+    const r = run([
+      'policies-enumerate',
+      `--map=${mapPath}`,
+      `--literals=${literalsPath}`,
+    ]);
+    assert.notEqual(r.code, 0);
+    assert.match(r.stderr, /empty/);
+    fs.rmSync(dir, { recursive: true });
+  },
+);
+
+test(
+  'cli policies-enumerate: non-array literals JSON is rejected',
+  { skip: !haveBuilt && 'run npm run build first' },
+  () => {
+    const dir = tmpDir();
+    const hfPath = path.join(dir, 'tokenizer.json');
+    const mapPath = path.join(dir, 'test.json');
+    const literalsPath = path.join(dir, 'literals.json');
+    fs.writeFileSync(hfPath, JSON.stringify(makeByteLevelHF()), 'utf-8');
+    fs.writeFileSync(literalsPath, JSON.stringify({ not: 'an array' }), 'utf-8');
+    run(['convert', hfPath, '--id=test/byte-level', `--out=${mapPath}`]);
+
+    const r = run([
+      'policies-enumerate',
+      `--map=${mapPath}`,
+      `--literals=${literalsPath}`,
+    ]);
+    assert.notEqual(r.code, 0);
+    assert.match(r.stderr, /array of strings/);
+    fs.rmSync(dir, { recursive: true });
+  },
+);
+
 test(
   'cli well-known: re-running with same id replaces the index entry',
   { skip: !haveBuilt && 'run npm run build first' },
