@@ -20,22 +20,22 @@ But before the response reaches you, the cloud does something wasteful: it conve
 
 A typical modern AI request makes about **eight wire round-trips** before the user sees the answer: model emit, agent-to-agent handoff, tool call, tool result, sub-agent dispatch, synthesis, response, render. Every single one of those round-trips does the same conversion ritual: **numbers → text → JSON → ship → JSON → text → numbers**.
 
-The model never reads any of it. The model is downstream of the conversions. The AI is the *consumer* of token IDs, not text.
+And the request side of every round-trip carries its own envelope too — 5 to 50 KB of system prompt, history, tool schemas, all serialized at the client, parsed and re-tokenized at the gateway, re-parsed at the server. **The bidirectional, multi-round-trip reality of a single AI request is about 4 megabytes of JSON moving across the wire, in both directions, every time someone asks an AI a question.**
 
-The wire layer is doing work — at every hop, billions of times a day, across every middleware in every cloud — that the AI itself never benefits from. It's pure overhead, dressed as protocol.
+The model never reads any of it. The model is downstream of the conversions. The AI is the *consumer* of token IDs, not text.
 
 ## What the bill looks like
 
 Across the AI industry today — **about 5 billion conversational AI requests per day** (one-third of all Google search traffic, per public estimates from OpenAI, Anthropic, and Google) — the JSON-envelope architecture burns:
 
-- **~$320 million/year** in cloud bandwidth fees, just shipping envelopes the model never reads
-- **~$50 million/year** in GPU compute spent on doomed prompts (broken syntax, policy violations, malformed inputs) that should never have left the client
-- **~$35 million/year** in satellite bandwidth — Starlink alone, on metered tiers
-- **~400 US cars' worth of CO₂** every year from the radio + network + middleware electricity
+- **~$320 million/year** in cloud bandwidth fees at the heavy-agent baseline that Claude, ChatGPT, and Gemini actually run today (per-platform: Claude ~$56M/yr, ChatGPT ~$160M/yr, Gemini ~$36M/yr)
+- **~$50–100 million/year** in GPU compute spent on doomed prompts (broken syntax, policy violations, malformed inputs) that should never have left the client
+- **~$150 million+/year** in Starlink bandwidth alone, on the metered tiers (Roam, Mobile Priority, Maritime)
+- **~400 US cars' worth of CO₂** every year from the radio + network + middleware electricity, compounded across all the round-trips
 
-**Total: well over $400 million/year**, going up the chimney, with nothing to show for it.
+**Total: ~$400–700 million/year**, depending on agent-topology depth, going up the chimney with nothing to show for it.
 
-At the 2030 AI volume most analysts project (~10× today), that becomes **~$4 billion/year of waste** and the equivalent of **~4,000 cars off the road every year** — locked in by the same architecture decision, in perpetuity.
+At the 2030 AI volume most analysts project (~10× today), this becomes **~$4–7 billion/year of waste** and the equivalent of **~4,000 cars off the road every year** — locked in by the same architecture decision, in perpetuity.
 
 ## The waste behind the dollar number
 
@@ -55,17 +55,36 @@ The flawed architecture isn't just expensive — it actively prices billions of 
 
 Half the world is on **mobile-only metered connections**: most of the Middle East, Southeast Asia, India, Latin America, and the rural fringes of Europe and North America. Mobile-only doesn't mean poor. It means the wire matters.
 
-- **The Gulf states** — Saudi Arabia, UAE, Qatar, Bahrain, Oman — are mobile-dominant markets where 5G is widespread but international data bundles and roaming plans charge per-MB. JSON envelopes on regional or cross-border traffic add up fast.
-- **Egypt, Morocco, Jordan, Turkey, Lebanon** — mobile-first populations of hundreds of millions where 1 GB of data isn't free and AI usage growth is constrained more by data costs than by interest.
-- **Indonesia, Philippines, Vietnam, Pakistan, Bangladesh** — about 700 million people on prepaid mobile, all sensitive to per-byte costs.
-- **Rural Australia, the Canadian north, the US Plains, Alaska, Siberia** — bandwidth-limited regardless of national wealth.
-- **Anyone on a plane, a ship, a train, a hotspot, or in a basement office** — paying per-MB on Starlink, in-flight Wi-Fi, maritime satellite, or mobile tethering.
+At the heavy-agent baseline — ~4 MB of JSON moving per AI request — the per-request data cost is what shows up on a metered customer's bill:
 
-Concrete numbers from the current JSON-SSE architecture:
+| Region / connection | $/GB | Cost per AI request |
+|---|---|---|
+| US, postpaid mobile (add'l data) | ~$10 | **$0.040** |
+| India, prepaid mobile | ~$0.20 | $0.0008 |
+| Sub-Saharan Africa average | ~$2–5 | $0.008–0.020 |
+| Starlink Roam (add'l data) | ~$2 | $0.008 |
+| Starlink Maritime Mobile Priority | ~$10 | **$0.040** |
+| Iridium satellite (legacy maritime) | ~$5–15/MB | **$20–60** |
 
-- **Starlink Maritime ($10/GB)**: a 20-crew offshore vessel running AI tools pays ~$1,455/month *just for JSON envelopes* — $17,500/year per vessel.
-- **2G / satellite-voice links (~256 Kbps)** — common in rural Saudi Arabia, central Asia, parts of Latin America: a single JSON AI reply takes **15+ seconds** to physically arrive. Unusable.
-- **Cheap Android phones (the global majority)**: parsing 485 KB JSON + re-tokenizing for each step burns enough battery that agent loops aren't practical.
+Bottom row: at Iridium maritime rates, a single agentic AI request currently bills **$20–60 just for envelopes**. The same answer on a tokens-native wire bills under 4 cents. That's not a small efficiency win — it's the difference between "AI on this connection" and "AI is impossible on this connection."
+
+And the wall-clock at low bandwidths is even more decisive:
+
+| Link | JSON-SSE per request | Tokens-native per request |
+|---|---|---|
+| Mobile 4G — 10 Mbps | ~3.5 seconds | ~0.4 seconds |
+| Edge / weak mobile — 1 Mbps | ~32 seconds | ~0.4 seconds |
+| 2G / satellite-voice — 256 Kbps | **~2 minutes** | ~0.5 seconds |
+
+JSON-SSE on a 1 Mbps edge link takes **half a minute per agentic AI request**. On a 256 Kbps satellite link, **2 minutes**. Unusable. The same workload on a binary token-stream wire stays under half a second on every connection.
+
+The lockout falls on:
+
+- **The Gulf states** — Saudi Arabia, UAE, Qatar, Bahrain, Oman — where 5G is everywhere but international and roaming plans charge per-MB
+- **Egypt, Morocco, Jordan, Turkey, Lebanon** — mobile-first populations of hundreds of millions sensitive to data costs
+- **Indonesia, Philippines, Vietnam, Pakistan, Bangladesh** — about 700 million people on prepaid mobile
+- **Rural Australia, the Canadian north, the US Plains, Alaska, Siberia** — bandwidth-limited regardless of national wealth
+- **Anyone on a plane, ship, train, hotspot, or in a basement office** — paying per-MB on Starlink, in-flight Wi-Fi, maritime satellite, mobile tethering
 
 This isn't 2.6 billion people the industry is "failing to serve." This is **the global majority of human internet users** structurally excluded from real AI adoption — not because the model couldn't help them, but because the **transport layer** prices them out before they ever reach it.
 
@@ -73,8 +92,8 @@ This isn't 2.6 billion people the industry is "failing to serve." This is **the 
 
 The next part is the most under-discussed: there are entire categories of devices that **physically cannot fit a JSON-SSE AI conversation in their network budget**. Not "too expensive" — physically impossible. The AI industry has quietly written them off.
 
-- **LoRaWAN sensors** — agricultural soil monitors, environmental stations, asset trackers, smart-meter endpoints — have a payload window of **11 to 242 bytes per uplink** and may transmit only a handful of times per day to preserve battery. A 485 KB JSON-SSE response is 2,000× too big to even attempt. A 291-byte binary token-stream response **fits in a single packet**.
-- **NB-IoT and LTE-M** devices — millions deployed for utility metering, fleet telematics, healthcare wearables, industrial monitoring — operate on data budgets of a few hundred KB per *day* per device to keep batteries lasting years. JSON-SSE fits roughly *half* of one AI response. The same daily budget on a binary token wire fits thousands.
+- **LoRaWAN sensors** — agricultural soil monitors, environmental stations, asset trackers, smart-meter endpoints — have a payload window of **11 to 242 bytes per uplink** and may transmit only a handful of times per day to preserve battery. A 4 MB per-request JSON-SSE conversation is roughly 20,000× too big to even attempt. A binary token-stream response **fits in one or two packets**.
+- **NB-IoT and LTE-M** devices — millions deployed for utility metering, fleet telematics, healthcare wearables, industrial monitoring — operate on data budgets of a few hundred KB per *day* per device to keep batteries lasting years. JSON-SSE at heavy-agent scale can't fit *one* AI request in the daily budget. A binary token wire can fit hundreds.
 - **Sigfox** — 12 bytes per message, 140 messages/day per device: binary control-frame responses fit; JSON doesn't even start.
 - **Satellite IoT** — Iridium SBD, Swarm, Astrocast — charges per-byte at rates that make JSON AI traffic economically nonsensical.
 - **Mesh networks** — Meshtastic, Helium, Reticulum, tactical mesh used in conservation, expedition, search-and-rescue, disaster comms — operate at link rates of tens to hundreds of bps. AI was simply unavailable to them.
@@ -82,12 +101,12 @@ The next part is the most under-discussed: there are entire categories of device
 
 What this opens up:
 
-- **Smart agriculture** — soil sensors that send AI-derived irrigation or fertilization recommendations on a daily uplink budget that was previously enough only for raw telemetry.
-- **Wildlife conservation** — anti-poaching collars and trail cameras with on-the-fly AI-assisted classification and alerting, where the satellite link previously allowed only timestamp + GPS.
+- **Smart agriculture** — soil sensors that send AI-derived irrigation or fertilization recommendations on a daily uplink budget that previously fit only raw telemetry.
+- **Wildlife conservation** — anti-poaching collars and trail cameras with on-the-fly AI-assisted classification, where the satellite link previously allowed only timestamp + GPS.
 - **Cold-chain logistics** — pharma and food shipments with AI-driven anomaly alerts en route, instead of waiting for port arrival.
 - **Disaster response and field medicine** — degraded-network environments where AI triage and translation can now ride the small comms budget that was previously voice-only.
-- **Pipeline, grid, and remote infrastructure monitoring** — AI-assisted predictive maintenance at sites where the connection has always been the limiting factor.
-- **Maritime, aviation, and expedition telemetry** — small AI-derived advisories travelling on the satellite link that previously could only carry position pings.
+- **Pipeline, grid, and remote infrastructure monitoring** — AI-assisted predictive maintenance where the connection has always been the limiting factor.
+- **Maritime, aviation, and expedition telemetry** — AI advisories on the same satellite link that previously could only carry position pings.
 - **Smart-city endpoints** — parking, lighting, water, waste — adaptive AI behaviour on the same NB-IoT links they already use.
 
 These are **massive markets the industry has treated as out of scope** because the architecture made them out of scope. They're not out of scope for AI capability. They're out of scope for JSON envelopes.
@@ -108,10 +127,10 @@ None of this is hard. None of it requires new ML capability. None of it changes 
 
 And the result of that small shift:
 
-- **Up to 1,700× less data on the wire** for the same response
-- **Up to 10× faster** AI responses on mobile connections
-- **Up to 165× less non-GPU energy** per response
-- **Cloud bills shrink by hundreds of millions** across the industry
+- **Up to 1,700× less data per round-trip**, compounded across the 8 round-trips a real AI request makes (~4 MB JSON → ~2.4 KB on a tokens-native wire per AI request)
+- **Wall-clock collapses on slow links** — ~3.5 s → ~0.4 s on mobile 4G; ~32 s → ~0.4 s on 1 Mbps edge; ~2 minutes → ~0.5 s on satellite voice links
+- **Cloud bills shrink by $300–700 million/year** across the industry
+- **GPU compute on doomed prompts disappears** — ~$50–100M/year recovered by catching ~10% of bad inputs client-side instead of after a full GPU pass
 - **Datacenter and grid pressure ease** — bytes that don't ship don't need switching, cooling, or backup
 - **The accessibility ceiling lifts globally** — AI works on Gulf-region roaming, $0.20/GB Indian prepaid, $50 Android phones, Starlink Maritime, rural Australian hotspots, in-flight Wi-Fi
 - **Entire device categories come online** — LoRaWAN sensors, NB-IoT meters, Sigfox endpoints, satellite-IoT trackers, mesh-network nodes — all viable AI clients for the first time
@@ -120,7 +139,7 @@ And the result of that small shift:
 
 It isn't happening because the centralized JSON architecture is the **default**, and defaults are sticky. Every AI product gets built on top of someone else's gateway, which uses JSON because the upstream provider uses JSON, which uses JSON because every framework expects JSON, which expects JSON because that's how the first generation of AI APIs shipped in 2022.
 
-Each individual provider keeps doing what worked yesterday because none of them are individually paying the full bill. They each pay their slice. The aggregate $400M/yr waste, the datacenter capacity pressure, the locked-out global majority, and the trillion-sensor device market are everyone's problem and therefore no one's problem.
+Each individual provider keeps doing what worked yesterday because none of them are individually paying the full bill. They each pay their slice. The aggregate $400–700M/yr waste, the datacenter capacity pressure, the locked-out global majority, and the trillion-sensor device market are everyone's problem and therefore no one's problem.
 
 An open protocol called **Codec** ([codecai.net](https://codecai.net)) is the small structural change. Six client libraries (TypeScript, Python, Rust, Java, .NET, C — the C99 library is small enough for microcontrollers) plug into existing AI servers (sglang, vLLM, llama.cpp) with no code rewrite. Same model. Same prompts. Same answers. Different transport. Different defaults. Different economics. Different addressable market.
 
