@@ -31,11 +31,11 @@ Across the AI industry today — **about 5 billion conversational AI requests pe
 - **~$320 million/year** in cloud bandwidth fees at the heavy-agent baseline that Claude, ChatGPT, and Gemini actually run today (per-platform: Claude ~$56M/yr, ChatGPT ~$160M/yr, Gemini ~$36M/yr)
 - **~$50–100 million/year** in GPU compute spent on doomed prompts (broken syntax, policy violations, malformed inputs) that should never have left the client
 - **~$150 million+/year** in Starlink bandwidth alone, on the metered tiers (Roam, Mobile Priority, Maritime)
-- **~400 US cars' worth of CO₂** every year from the radio + network + middleware electricity, compounded across all the round-trips
+- **~190 MWh/year of grid electricity** — about 20 US households' annual usage — burned on the CPU + network energy of detokenizing, retokenizing, parsing, and reserializing across all the round-trips (non-GPU; CO₂-equivalent is ~15 US cars/year today, the cars are a small share of the story but the kWh meter still ticks)
 
 **Total: ~$400–700 million/year**, depending on agent-topology depth, going up the chimney with nothing to show for it.
 
-At the 2030 AI volume most analysts project (~10× today), this becomes **~$4–7 billion/year of waste** and the equivalent of **~4,000 cars off the road every year** — locked in by the same architecture decision, in perpetuity.
+At the 2030 AI volume most analysts project (~10× today), this becomes **~$4–7 billion/year of waste** and ~150 cars-equivalent worth of CO₂ — still smaller than the cost-side story by a wide margin, but locked in by the same architecture decision, in perpetuity.
 
 ## The waste behind the dollar number
 
