@@ -21,7 +21,7 @@ on:
         required: true
         default: "all"
         type: choice
-        options: [all, web, web-safety, web-llm, maps-cli, mcp-leaf, tool-kit]
+        options: [all, web, web-safety, web-llm, maps-cli, mcp-leaf, tool-kit, wire-compress]
 
 permissions:
   contents: read
@@ -168,6 +168,27 @@ jobs:
             echo "@codecai/tool-kit@$v already on npm — skipping"
           else
             npm publish --access public -w @codecai/tool-kit
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ── @codecai/wire-compress ─────────────────────────────────────
+      - name: Build @codecai/wire-compress
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'wire-compress' }}
+        run: npm run -w @codecai/wire-compress build
+
+      - name: Test @codecai/wire-compress
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'wire-compress' }}
+        run: npm test -w @codecai/wire-compress
+
+      - name: Publish @codecai/wire-compress
+        if: ${{ github.event_name == 'push' || inputs.package == 'all' || inputs.package == 'wire-compress' }}
+        run: |
+          v=$(node -p "require('./packages/wire-compress/package.json').version")
+          if npm view @codecai/wire-compress@$v version 2>/dev/null | grep -q "^$v$"; then
+            echo "@codecai/wire-compress@$v already on npm — skipping"
+          else
+            npm publish --access public -w @codecai/wire-compress
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,6 +1,8 @@
-# wire-compress
+# @codecai/wire-compress
 
 Pick the right `Content-Encoding` for streaming responses based on what the client supports and how big the payload is. Framework-agnostic, zero dependencies, ~5 KB.
+
+Companion to the [`@codecai/*`](https://www.npmjs.com/org/codecai) client packages. Promoted from the bare-named `wire-compress` package at Codec v0.5 — the library is reusable outside Codec (any streaming HTTP server picking between gzip / brotli / zstd benefits from the measured thresholds), but landing it under `@codecai/*` makes the relationship explicit and lets it ship on the same npm publish workflow + version cadence.
 
 The conventional advice is "always brotli for HTTP." That's right for static web assets. It's wrong for **streaming responses with bursty small frames** — SSE, Codec, gRPC-Web text, server-streamed JSON. Brotli's per-block overhead doesn't amortise across 10-25 byte frames, gzip and zstd do.
 
@@ -9,7 +11,7 @@ This library encodes that decision so you don't have to relitigate it per server
 ## Install
 
 ```bash
-npm install wire-compress
+npm install @codecai/wire-compress
 ```
 
 Works with any HTTP framework — Express, Fastify, Hono, Node's `http`, Bun, Deno, Cloudflare Workers. Pure functions, no middleware.
@@ -19,7 +21,7 @@ Works with any HTTP framework — Express, Fastify, Hono, Node's `http`, Bun, De
 Server side — pick what to apply:
 
 ```ts
-import { pick } from 'wire-compress';
+import { pick } from '@codecai/wire-compress';
 
 app.get('/stream', (req, res) => {
   const dictForThisRequest = lookupZstdDict(req);  // see "zstd & dicts" below
@@ -39,7 +41,7 @@ app.get('/stream', (req, res) => {
 Client side — build the request header:
 
 ```ts
-import { buildAcceptEncoding } from 'wire-compress';
+import { buildAcceptEncoding } from '@codecai/wire-compress';
 
 fetch('/stream', {
   headers: { 'Accept-Encoding': buildAcceptEncoding() },
