@@ -130,52 +130,52 @@ Bodies and headers tend to arrive in the same TCP segment for non-buffered encod
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
-| 64 | identity | 40.9 | 38.4 |
-| 64 | gzip | 38.6 | 38.9 |
+| 64 | identity | 43.5 | 38.6 |
+| 64 | gzip | 38.3 | 38.6 |
 | 64 | br | 195 | 38.2 |
-| 64 | zstd | 197 | 41.2 |
-| 512 | identity | 42.8 | 39.8 |
-| 512 | gzip | 40.8 | 39.9 |
-| 512 | br | 1307 | 39.6 |
-| 512 | zstd | 1308 | 39.5 |
-| 2048 | identity | 40.8 | 40.8 |
-| 2048 | gzip | 40.5 | 41.0 |
-| 2048 | br | 5167 | 43.5 |
-| 2048 | zstd | 5164 | 41.0 |
+| 64 | zstd | 195 | 44.4 |
+| 512 | identity | 40.6 | 41.4 |
+| 512 | gzip | 43.0 | 39.9 |
+| 512 | br | 1312 | 40.1 |
+| 512 | zstd | 1311 | 40.4 |
+| 2048 | identity | 41.4 | 40.7 |
+| 2048 | gzip | 44.7 | 40.7 |
+| 2048 | br | 5164 | 41.1 |
+| 2048 | zstd | 5167 | 41.6 |
 
 ### sglang — msgpack TTFB (median ms across reps)
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
-| 64 | identity | 45.1 | 36.9 |
-| 64 | gzip | 47.7 | 41.0 |
-| 64 | br | 153 | 36.6 |
-| 64 | zstd | 153 | 36.6 |
-| 512 | identity | 44.8 | 37.8 |
-| 512 | gzip | 45.3 | 37.1 |
-| 512 | br | 950 | 37.0 |
-| 512 | zstd | 952 | 41.8 |
-| 2048 | identity | 47.7 | 42.6 |
-| 2048 | gzip | 46.5 | 37.5 |
-| 2048 | br | 3917 | 37.4 |
-| 2048 | zstd | 3917 | 37.3 |
+| 64 | identity | 45.1 | 37.2 |
+| 64 | gzip | 44.2 | 36.5 |
+| 64 | br | 152 | 36.5 |
+| 64 | zstd | 153 | 40.9 |
+| 512 | identity | 46.2 | 40.5 |
+| 512 | gzip | 47.6 | 37.5 |
+| 512 | br | 951 | 36.9 |
+| 512 | zstd | 951 | 37.0 |
+| 2048 | identity | 45.7 | 37.0 |
+| 2048 | gzip | 45.7 | 37.3 |
+| 2048 | br | 3919 | 40.9 |
+| 2048 | zstd | 3919 | 37.1 |
 
 ### vllm — msgpack TTFB (median ms across reps)
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
-| 64 | identity | 59.6 | 54.5 |
-| 64 | gzip | 61.5 | 54.1 |
-| 64 | br | 200 | 53.7 |
-| 64 | zstd | 202 | 53.7 |
-| 512 | identity | 60.4 | 53.5 |
-| 512 | gzip | 61.4 | 53.9 |
-| 512 | br | 1217 | 53.6 |
-| 512 | zstd | 1215 | 53.7 |
-| 2048 | identity | 60.8 | 53.6 |
-| 2048 | gzip | 61.3 | 54.2 |
-| 2048 | br | 4714 | 53.5 |
-| 2048 | zstd | 4716 | 53.8 |
+| 64 | identity | 60.2 | 53.5 |
+| 64 | gzip | 60.2 | 53.2 |
+| 64 | br | 202 | 54.3 |
+| 64 | zstd | 200 | 53.5 |
+| 512 | identity | 60.2 | 54.0 |
+| 512 | gzip | 61.6 | 53.7 |
+| 512 | br | 1213 | 53.6 |
+| 512 | zstd | 1214 | 53.9 |
+| 2048 | identity | 61.4 | 54.8 |
+| 2048 | gzip | 61.5 | 54.2 |
+| 2048 | br | 4719 | 53.9 |
+| 2048 | zstd | 4718 | 54.6 |
 
 ## §5. Methodology fingerprints
 
@@ -183,9 +183,9 @@ Every row above came from a SCHEMA-v1 result file with a methodology fingerprint
 
 | engine | fingerprint | image | model | compression_supported |
 |---|---|---|---|---|
-| llama.cpp | `d00fbdd293ae68ca…` | `wdunn001/codec-llamacpp:v0.5.0@sha256:cc48ac62f5f77d81442f5a2bfece7e4c7fb68d7…` | `Qwen/Qwen2.5-0.5B-Instruct` | identity, gzip, br, zstd |
-| sglang | `62348a1039bdc017…` | `wdunn001/codec-sglang:v0.5.0@sha256:e6b892747e4f436ff84ebaff898b7ff947a8dffbe…` | `Qwen/Qwen2.5-0.5B-Instruct` | identity, gzip, br, zstd |
-| vllm | `105721d2da456705…` | `wdunn001/codec-vllm:v0.5.0@sha256:6182e8d3dc3144dc3ef496031f296f0ed4b5a1b45b2…` | `Qwen/Qwen2.5-0.5B-Instruct` | identity, gzip, br, zstd |
+| llama.cpp | `c8ed8d89931ed7e6…` | `None` | `Qwen/Qwen2.5-0.5B-Instruct` | identity, gzip, br, zstd |
+| sglang | `b639bf5fbf5a2df6…` | `None` | `Qwen/Qwen2.5-0.5B-Instruct` | identity, gzip, br, zstd |
+| vllm | `4e364ff86faf79d0…` | `None` | `Qwen/Qwen2.5-0.5B-Instruct` | identity, gzip, br, zstd |
 
 ## §6. Quarantine
 

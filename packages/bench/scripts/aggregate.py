@@ -71,9 +71,14 @@ def load_results(run_id: str) -> dict[str, dict[str, dict]]:
     base = RESULTS_DIR / run_id
     if not base.exists():
         sys.exit(f"run dir not found: {base}")
-    # Skip non-engine subdirs: token/ for tokenize/detokenize micro-bench,
-    # synthetic/ for the pure-library wire bench (both have their own loaders).
-    NON_ENGINE_DIRS = {"token", "synthetic"}
+    # Skip non-engine subdirs: per-bench-surface output dirs that live
+    # alongside the engine result dirs but are loaded by separate loaders
+    # (token_bench has its own loader; synthetic + translator + agent-loop
+    # are written but not currently aggregated into MATRIX.md). The list is
+    # belt + the kind-check below is suspenders — either alone catches the
+    # "translator/python.json got iterated as an engine" regression caught
+    # post-v0.5 cut.
+    NON_ENGINE_DIRS = {"token", "synthetic", "translator", "agent-loop"}
     for engine_dir in sorted(base.iterdir()):
         if not engine_dir.is_dir() or engine_dir.name in NON_ENGINE_DIRS:
             continue
@@ -89,9 +94,18 @@ def load_results(run_id: str) -> dict[str, dict[str, dict]]:
             if doc.get("schema_version") != "1":
                 print(f"  WARN: {json_file} not SCHEMA-v1", file=sys.stderr)
                 continue
-            if doc.get("kind") and doc.get("kind") not in ("matrix_run", "engine_bench"):
-                # Skip docs that happen to live alongside engine results but
-                # are a different bench kind (synthetic_wire_bench, token_bench).
+            # Structural discriminator: cross-stack matrix JSONs carry
+            # both `methodology` and `rows`. Other bench surfaces that
+            # happen to drop JSON alongside (translator, future kinds)
+            # lack one or both. This is paired with the NON_ENGINE_DIRS
+            # list above — the directory exclusion catches the common
+            # case, this check catches the edge case where someone
+            # drops a non-matrix JSON into an engine dir.
+            if "methodology" not in doc or "rows" not in doc:
+                continue
+            # Also skip explicitly-tagged non-matrix kinds when `kind`
+            # is set (synthetic_wire_bench, token_bench).
+            if doc.get("kind") and doc["kind"] not in ("matrix_run", "engine_bench"):
                 continue
             out[engine][lang] = doc
     return out
