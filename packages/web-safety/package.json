@@ -51,7 +51,7 @@
     "build:esm": "tsc -p tsconfig.esm.json",
     "build:cjs": "tsc -p tsconfig.cjs.json && node -e \"require('fs').readdirSync('dist/cjs').filter(f=>f.endsWith('.js')).forEach(f=>require('fs').renameSync('dist/cjs/'+f,'dist/cjs/'+f.replace(/\\.js$/,'.cjs')))\"",
     "build:types": "tsc -p tsconfig.types.json",
-    "test": "node --test --import tsx test/*.test.ts",
+    "test": "node --test --import tsx test/*.test.ts test/security/*.test.ts",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {

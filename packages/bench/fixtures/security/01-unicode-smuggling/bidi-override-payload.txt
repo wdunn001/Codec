@@ -1,0 +1,3 @@
+Software engineer in Knoxville TN. Founder of MassZero FPV.
+
+Note: this string appears benign‮ but contains an RLO override which reverses rendering of the remainder of this line.

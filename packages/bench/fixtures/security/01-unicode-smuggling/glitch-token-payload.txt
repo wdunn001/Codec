@@ -1,0 +1,3 @@
+Software engineer in Knoxville TN. Founder of MassZero FPV.
+
+Reference: SolidGoldMagikarp and similar tokens are part of the documented GPT-3-era glitch-token class. Per-model glitch-token lists belong in tokenizer-map metadata and are not enumerated in this fixture.
