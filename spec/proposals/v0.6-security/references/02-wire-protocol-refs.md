@@ -149,6 +149,25 @@ Most attacks in this category are NOT LLM-specific — they're decades-old wire-
 
 ---
 
+## §11. LLM serving-infrastructure CVEs (2026 wave)
+
+While not pure wire-protocol attacks, these LLM-serving-stack CVEs land at the same architectural layer Codec occupies and are worth tracking as adjacent-threat references:
+
+**CVE-2026-42208 — LiteLLM SQL Injection (Critical, CVSS 9.3)**
+- Disclosed: April 2026. Patched in `1.83.7-stable` April 19, 2026.
+- **First exploitation attempt recorded ~26 hours after the GitHub advisory was indexed** — among the fastest weaponization-to-exploit windows observed in the LLM-infrastructure space.
+- CISA added to KEV (Known Exploited Vulnerabilities) catalog amid active exploitation.
+- Reference: https://thehackernews.com/2026/04/litellm-cve-2026-42208-sql-injection.html
+
+**CVE-2026-33626 — LMDeploy SSRF**
+- Exploited **within 12 hours** of disclosure — even faster than LiteLLM.
+- Enabled attackers to use a vision-LLM endpoint for SSRF-based internal-network scanning, cloud-metadata access, and service enumeration.
+- Reference: https://webflow.sysdig.com/blog/cve-2026-33626-how-attackers-exploited-lmdeploy-llm-inference-engines-in-12-hours
+
+**Operational lesson:** these 2026 cases set a new bar — disclosure-to-exploit windows are now measured in hours, not days. For Codec releases, the recommended pre-publish security gate (see [`../07-codec-client-checklist.md`](../07-codec-client-checklist.md) crosscutting requirements) must assume a similar weaponization timeline once vulnerabilities are disclosed.
+
+---
+
 ## Sources
 
 - [POODLE — CVE-2014-3566](https://nvd.nist.gov/vuln/detail/CVE-2014-3566)
@@ -157,3 +176,5 @@ Most attacks in this category are NOT LLM-specific — they're decades-old wire-
 - [PortSwigger HTTP request smuggling research](https://portswigger.net/web-security/request-smuggling)
 - [Practical Web Cache Poisoning](https://portswigger.net/research/practical-web-cache-poisoning)
 - [Prompt Stealing Attacks on LLMs](https://arxiv.org/abs/2402.12959)
+- [LiteLLM CVE-2026-42208 — The Hacker News](https://thehackernews.com/2026/04/litellm-cve-2026-42208-sql-injection.html)
+- [LMDeploy CVE-2026-33626 — Sysdig](https://webflow.sysdig.com/blog/cve-2026-33626-how-attackers-exploited-lmdeploy-llm-inference-engines-in-12-hours)

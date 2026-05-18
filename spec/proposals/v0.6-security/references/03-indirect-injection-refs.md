@@ -128,6 +128,21 @@ Same papers as §3 (Bagdasaryan et al.). The "audio" half of "Abusing Images and
 
 ---
 
+## 2026 disclosure update (Jan–May 2026)
+
+**Reprompt attack — January 2026.** Single-click Microsoft Copilot data exfiltration. A single click on a legitimate Microsoft link is enough to compromise victims; Copilot processes adversarial content the click delivers and exfiltrates conversation context.
+- Disclosed by Varonis: https://www.varonis.com/blog/reprompt
+- Hacker News coverage: https://thehackernews.com/2026/01/researchers-reveal-reprompt-attack.html
+- Microsoft addressed via backend patch following disclosure; not affecting M365 Copilot enterprise tier.
+
+**CellShock — Anthropic Claude for Excel (2026).** Prompt injection in Excel content (workbook cells, formulas) causes Claude to output unsafe formulas that exfiltrate data from the user's file. Exploits crafted instructions hidden in untrusted data sources (imported sheets, external links). Significant because it's the **first widely-publicized Claude-product-specific indirect injection** with a named attack.
+
+**ZombieAgent (variant of ShadowLeak)** — exploits ChatGPT connections to third-party apps to turn indirect prompt injections into zero-click data-exfiltration attacks. Builds on ShadowLeak (Radware, Sep 2025; OpenAI-patched Dec 2025) but with new variants.
+
+**Anthropic Claude/Microsoft 365 — broader pattern.** A through-line of early-2026 disclosures: agent-class products integrated with productivity tools (Excel, SharePoint, Outlook, Salesforce) repeatedly fall to indirect-injection chains. VentureBeat tracked this across vendors in Q1 2026: https://venturebeat.com/security/microsoft-salesforce-copilot-agentforce-prompt-injection-cve-agent-remediation-playbook
+
+---
+
 ## Sources
 
 - [Greshake et al. arxiv 2302.12173](https://arxiv.org/abs/2302.12173)
@@ -136,3 +151,6 @@ Same papers as §3 (Bagdasaryan et al.). The "audio" half of "Abusing Images and
 - [Simon Willison prompt-injection tag](https://simonwillison.net/tags/prompt-injection/)
 - [Image Hijacks paper](https://arxiv.org/abs/2309.00236)
 - [Abusing Images and Sounds paper](https://arxiv.org/abs/2307.10490)
+- [Reprompt — Varonis disclosure](https://www.varonis.com/blog/reprompt)
+- [Reprompt — The Hacker News](https://thehackernews.com/2026/01/researchers-reveal-reprompt-attack.html)
+- [VentureBeat — agent-class disclosure pattern](https://venturebeat.com/security/microsoft-salesforce-copilot-agentforce-prompt-injection-cve-agent-remediation-playbook)

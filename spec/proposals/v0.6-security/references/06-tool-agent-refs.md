@@ -127,6 +127,45 @@ Fastest-evolving category in 2025. MCP-specific CVEs began appearing in April 20
 
 ---
 
+## 2026 disclosure update (Jan–May 2026) — **the wave year for MCP**
+
+The MCP security landscape has changed dramatically in early 2026. April 2026 saw a coordinated wave of disclosures led by Ox Security and others. Headline numbers:
+
+**Systemic Anthropic MCP STDIO design flaw (April 2026, Ox Security).**
+- A "by design" weakness in the official Anthropic MCP SDK across **Python, TypeScript, Java, and Rust** that can lead to remote code execution.
+- Affects more than **7,000 publicly accessible servers** and software packages totaling more than **150 million downloads.**
+- **Anthropic's response:** confirmed the behavior is by design and declined to modify the protocol, stating "the STDIO execution model represents a secure default and that sanitization is the developer's responsibility."
+- This created significant industry pushback; positioned MCP host implementations (not the protocol itself) as the locus of mitigation.
+- References:
+  - The Hacker News: https://thehackernews.com/2026/04/anthropic-mcp-design-vulnerability.html
+  - The Register: https://www.theregister.com/2026/04/16/anthropic_mcp_design_flaw/
+  - Infosecurity Magazine: https://www.infosecurity-magazine.com/news/systemic-flaw-mcp-expose-150/
+  - Ox Security full advisory: https://www.ox.security/blog/the-mother-of-all-ai-supply-chains-critical-systemic-vulnerability-at-the-core-of-the-mcp/
+  - Ox Security STDIO command-injection advisory: https://www.ox.security/blog/mcp-supply-chain-advisory-rce-vulnerabilities-across-the-ai-ecosystem/
+
+**Ox Security's 30+ disclosures (April 2026):**
+- Coordinated multi-vendor disclosure cycle covering >30 MCP servers/packages.
+- Yielded **>10 high or critical-severity CVEs.**
+- Catalog summary: Khayyam H., "The Model Context Protocol Crisis: What 30 CVEs Teach Us About Building Secure AI Agents" — https://medium.com/@khayyam.h/the-model-context-protocol-crisis-what-30-cves-teach-us-about-building-secure-ai-agents-95e16497d249
+
+**Specific 2026 CVEs (selected):**
+
+| CVE | Component | Class | Severity |
+|---|---|---|---|
+| **CVE-2026-25536** | MCP server with `StreamableHTTPServerTransport` | Cross-client response leak when a single `McpServer` instance is reused across multiple clients — responses leak across client boundaries | High |
+| **CVE-2026-23744** | MCPJam Inspector | RCE — listens on 0.0.0.0 with no authentication on a critical endpoint; a crafted HTTP request installs an MCP server and executes arbitrary code on the host | Critical |
+| **CVE-2026-30615** | Windsurf | Prompt injection allowing remote attackers to execute arbitrary commands on a victim system | High |
+
+CVE numbers for the rest of the Ox Security wave aren't fully enumerated here; the comprehensive index is at **The Vulnerable MCP Project**: https://vulnerablemcp.info/
+
+**Continuous red-teaming response:**
+- Penligent.ai analysis on continuous-red-teaming as the response posture: https://www.penligent.ai/hackinglabs/anthropic-mcp-vulnerability-7000-servers-and-the-case-for-continuous-red-teaming/
+- CyberSecure Fox technical writeup on the MCP RCE class: https://cybersecurefox.com/en/model-context-protocol-mcp-remote-code-execution-vulnerability/
+
+**Codec-relevance:** the 2026 MCP wave is the single strongest argument for the v0.6 normative requirements in [`../07-codec-client-checklist.md`](../07-codec-client-checklist.md) §11 (tool-result trust tagging) and §9 (tokenizer-map signing). Anthropic's "developer responsibility" posture means the protocol layer will NOT solve this; the burden falls entirely on client implementations like the ones Codec is positioned to enable.
+
+---
+
 ## Sources
 
 - [OWASP MCP Top 10 — Tool Poisoning](https://owasp.org/www-project-mcp-top-10/2025/MCP03-2025%E2%80%93Tool-Poisoning)
@@ -135,3 +174,8 @@ Fastest-evolving category in 2025. MCP-specific CVEs began appearing in April 20
 - [AuthZed — Timeline of MCP Security Breaches](https://authzed.com/blog/timeline-mcp-breaches)
 - [MCP threat-modeling paper — arxiv 2603.22489](https://arxiv.org/abs/2603.22489)
 - [Greshake et al. — foundational indirect-injection paper](https://arxiv.org/abs/2302.12173)
+- [The Vulnerable MCP Project — comprehensive CVE database](https://vulnerablemcp.info/)
+- [The Hacker News — Anthropic MCP design vulnerability (April 2026)](https://thehackernews.com/2026/04/anthropic-mcp-design-vulnerability.html)
+- [The Register — MCP design flaw 200k servers (April 2026)](https://www.theregister.com/2026/04/16/anthropic_mcp_design_flaw/)
+- [Ox Security — mother-of-all-AI-supply-chains advisory](https://www.ox.security/blog/the-mother-of-all-ai-supply-chains-critical-systemic-vulnerability-at-the-core-of-the-mcp/)
+- [Khayyam H. — 30 CVEs from MCP](https://medium.com/@khayyam.h/the-model-context-protocol-crisis-what-30-cves-teach-us-about-building-secure-ai-agents-95e16497d249)

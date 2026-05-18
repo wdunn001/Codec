@@ -120,3 +120,20 @@ Companion to [`../01-unicode-smuggling.md`](../01-unicode-smuggling.md).
 - https://github.com/google-deepmind/synthid-text — adjacent tooling for output watermarking; not glitch-token specific but same space
 
 **LLM-application angle:** model-specific. Per-model glitch-token lists belong in tokenizer-map metadata (see [`../02-wire-protocol-attacks.md`](../02-wire-protocol-attacks.md) §2), not in core Codec encoding logic. New frontier models have been more carefully trained and have fewer glitch tokens; older / specialized models still have catalogued issues.
+
+---
+
+## 2026 disclosure update (Jan–May 2026)
+
+**Attack-success-rate research:**
+- **October 2025 / early 2026 research:** variation-selector sequences achieving **72–100% attack success rate** in controlled experiments on open-source models. Referenced widely in Q1 2026 defensive-tooling vendor blogs.
+
+**Vendor / defensive responses:**
+- **AWS, "Defending LLM applications against Unicode character smuggling"** — official AWS Security Blog post (2026). https://aws.amazon.com/blogs/security/defending-llm-applications-against-unicode-character-smuggling/ — direct AWS guidance on tag-block + zero-width filtering.
+- **Cisco AI Defense skill-scanner PR #94** — added Unicode Tag Block detection to their open-source scanner. https://github.com/cisco-ai-defense/skill-scanner/pull/94
+- **Promptfoo ASCII Smuggling plugin** — red-team test plugin: https://www.promptfoo.dev/docs/red-team/plugins/ascii-smuggling/
+- **Cycode "Invisible Code & Hidden Prompts"** — SAST-level Unicode-attack detection writeup (2026): https://cycode.com/blog/invisible-code-hidden-prompts-unicode-attacks-sast/
+- **AI Agents Attack Matrix — ASCII Smuggling technique entry:** https://ttps.ai/technique/ascii_smuggling.html — formal taxonomy entry.
+- **Repello AI on emoji-based prompt injection** (2026): https://repello.ai/blog/prompt-injection-using-emojis — covers VS-attached-to-emoji case in production-facing terms.
+
+**Codec-relevance note:** the AWS guidance specifically recommends filtering Tag Block code points "in both prompts and responses at the API layer" — exactly the bidirectional strip pattern that [`../07-codec-client-checklist.md`](../07-codec-client-checklist.md) §1–§2 codify. Use the AWS post as the public-vendor citation when justifying the v0.6 normative MUST.

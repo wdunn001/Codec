@@ -117,6 +117,32 @@ This category contains the **most severe documented real-world incidents** in th
 
 ---
 
+## 2026 disclosure update (Jan–May 2026)
+
+The EchoLeak class continued producing variants throughout Q1 2026. Highlights:
+
+**CVE-2026-21520 — Microsoft Copilot Studio indirect prompt injection.**
+- CVSS 7.5
+- Discovered by **Capsule Security** November 24, 2025; Microsoft confirmed December 5, 2025; patched **January 15, 2026.**
+- **Mechanism:** injected payload overrode the agent's original instructions in Capsule's PoC, directing it to query connected SharePoint Lists for customer data and send that data via Outlook to an attacker-controlled email address.
+- Notable: even after Microsoft patched, follow-up research demonstrated **the data exfiltrated anyway** via alternate channels — VentureBeat coverage: https://venturebeat.com/security/microsoft-salesforce-copilot-agentforce-prompt-injection-cve-agent-remediation-playbook
+
+**CVE-2026-26144 — Excel + Copilot Agent zero-click exfiltration.**
+- Cross-site scripting flaw in Excel chained to Copilot Agent enables **silent, clickless** exfiltration of spreadsheet data to attacker-controlled endpoints.
+- Microsoft patch in standard cycle.
+- Reference: https://system.plus/2026/03/12/zero-click-microsoft-copilot-bug-cve-2026-26144/ ; TechRadar coverage: https://www.techradar.com/pro/security/this-fascinating-microsoft-excel-security-flaw-teams-up-spreadsheets-and-copilot-agent-to-steal-data
+
+**CVE-2026-24299 — "Copirate 365" (Microsoft Copilot, DEF CON disclosure).**
+- Documented by Johann Rehberger (Embrace The Red) and presented at DEF CON.
+- Continues the EchoLeak family: indirect injection → exfiltration via rendered output.
+- Reference: https://embracethered.com/blog/posts/2026/defcon-talk-copirate-365/
+
+**Pattern observations from Q1 2026:**
+- **Disclosure-to-patch windows have shortened** (CVE-2026-21520 was patched within ~7 weeks of report) but **patches are increasingly bypassed** by follow-up research — the EchoLeak family demonstrates that input-side defenses alone repeatedly fail.
+- **The output-side filter pattern documented in [`../04-output-exfiltration.md`](../04-output-exfiltration.md) §1 is the more durable defense** — every 2026 CVE in this category eventually came down to "output rendering caused the leak," not "input filtering failed."
+
+---
+
 ## Sources and OWASP framing
 
 - [OWASP LLM Top 10 — LLM01:2025 Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
@@ -125,3 +151,6 @@ This category contains the **most severe documented real-world incidents** in th
 - [The Hacker News — EchoLeak coverage](https://thehackernews.com/2025/06/zero-click-ai-vulnerability-exposes.html)
 - [Embrace The Red — exfiltration catalog](https://embracethered.com/blog/)
 - [DOMPurify](https://github.com/cure53/DOMPurify)
+- [VentureBeat — Copilot Studio CVE-2026-21520 patch-bypass coverage](https://venturebeat.com/security/microsoft-salesforce-copilot-agentforce-prompt-injection-cve-agent-remediation-playbook)
+- [Embrace The Red — Copirate 365 / CVE-2026-24299](https://embracethered.com/blog/posts/2026/defcon-talk-copirate-365/)
+- [System.plus — CVE-2026-26144 zero-click Copilot bug](https://system.plus/2026/03/12/zero-click-microsoft-copilot-bug-cve-2026-26144/)
