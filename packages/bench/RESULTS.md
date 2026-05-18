@@ -10,6 +10,18 @@ All numbers are real, captured this session — no projections, no
 
 ---
 
+## v0.5 cohort — 2026-05-17T23-06-45Z lab run
+
+**Cross-stack matrix** at [`results/2026-05-17T23-06-45Z/MATRIX.md`](results/2026-05-17T23-06-45Z/MATRIX.md). **72 / 72 cells wire-unanimous AND 72 / 72 cells decode-unanimous across all 6 client languages on every engine** (sglang, vllm, llama.cpp).
+
+v0.5's headline §1 + §1b numbers are **byte-identical to v0.4.1 below** — confirms the v0.5 wire-additive invariant (delta-varint, discoverable zstd dicts, content-aware picker rewrite, bolt-on tool dispatcher are all reached only via opt-in axes; the v0.4 happy-path wire is unchanged). The root [`RESULTS.md`](../../RESULTS.md) headline table reflects the v0.5 cohort.
+
+Operational note for vllm: required `REPS=4` to median-out the documented `~10–20 %` scheduler variance at T=0; ran clean on the second pass.
+
+**Auxiliary benches** (per-language token bench, cross-vocab translator, agent-loop end-to-end, MCP leaf-mode) were **not re-run** for v0.5 — those benches measure layers that are not wire-format-sensitive (tokenize/detokenize per-language perf, agent round-trip latency dominated by tool execution). The v0.4.1 numbers below remain authoritative.
+
+---
+
 ## v0.4.1 release headline — 2026-05-15T20-00-00Z lab run
 
 Full cross-stack matrix in

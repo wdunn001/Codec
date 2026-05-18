@@ -1,0 +1,82 @@
+{
+  "schema_version": "1",
+  "captured_at": "2026-05-17T23:11:39Z",
+  "run_id": "2026-05-17T23-06-45Z",
+  "hardware": {
+    "host": "DESKTOP-UJ3VMGR",
+    "cpu_model": "AMD Ryzen 7 5800X 8-Core Processor",
+    "gpu_model": "NVIDIA GeForce RTX 2080 Ti",
+    "gpu_count": 1,
+    "gpu_driver": "591.86",
+    "ram_gb": 31.3,
+    "kernel": "Linux 6.6.87.2-microsoft-standard-WSL2"
+  },
+  "engine": {
+    "name": "vllm",
+    "version": "",
+    "branch": "",
+    "commit": "",
+    "container_image": "wdunn001/codec-vllm:v0.5.0@sha256:6182e8d3dc3144dc3ef496031f296f0ed4b5a1b45b233d2bfd9c577747915972",
+    "launch_flags": [
+      "--gpu-memory-utilization",
+      "0.5",
+      "CUDA_VISIBLE_DEVICES=1"
+    ],
+    "endpoint": "http://192.168.1.88:30003",
+    "endpoint_kind": "lan",
+    "stream_format_supported": [
+      "json",
+      "msgpack",
+      "protobuf"
+    ],
+    "compression_supported": [
+      "identity",
+      "gzip",
+      "br",
+      "zstd"
+    ],
+    "compression_probe_format": "msgpack"
+  },
+  "model": {
+    "id": "Qwen/Qwen2.5-0.5B-Instruct",
+    "quantization": "fp16",
+    "tokenizer_sha256": "",
+    "vocab_size": null,
+    "model_sha256": null
+  },
+  "client": null,
+  "bench_tool": null,
+  "workload": {
+    "prompts_file": "methodology/prompts.json",
+    "prompts_sha256": "eff837b6cbbad632c15efb99a7bfaef1e173276be2b81734833ca4bcf0fb3604",
+    "stream": true,
+    "temperature": 0.0
+  },
+  "git": {
+    "repo_commit": "c3702150800cbd5a6fb497520d706b3a548a9cd5",
+    "repo_branch": "main",
+    "repo_clean": false,
+    "repo_dirty_files": [
+      ".venv/bin/httpx",
+      ".venv/lib/python3.12/site-packages/__pycache__/",
+      ".venv/lib/python3.12/site-packages/anyio-4.13.0.dist-info/",
+      ".venv/lib/python3.12/site-packages/anyio/",
+      ".venv/lib/python3.12/site-packages/certifi-2026.4.22.dist-info/",
+      ".venv/lib/python3.12/site-packages/certifi/",
+      ".venv/lib/python3.12/site-packages/h11-0.16.0.dist-info/",
+      ".venv/lib/python3.12/site-packages/h11/",
+      ".venv/lib/python3.12/site-packages/httpcore-1.0.9.dist-info/",
+      ".venv/lib/python3.12/site-packages/httpcore/",
+      ".venv/lib/python3.12/site-packages/httpx-0.28.1.dist-info/",
+      ".venv/lib/python3.12/site-packages/httpx/",
+      ".venv/lib/python3.12/site-packages/idna-3.15.dist-info/",
+      ".venv/lib/python3.12/site-packages/idna/",
+      ".venv/lib/python3.12/site-packages/typing_extensions-4.15.0.dist-info/",
+      ".venv/lib/python3.12/site-packages/typing_extensions.py",
+      "packages/bench/methodology/2026-05-17T23-06-45Z/",
+      "packages/bench/tests/__pycache__/"
+    ]
+  },
+  "notes": "v0.5 cohort run \u2014 vllm v0.5.0 rebuilt with PR review fixes (vllm-project/vllm#42896). Pinned to GPU 1 to coexist with sglang on GPU 0.",
+  "fingerprint": "105721d2da45670571a6aff4450f6f7c3e06b98c75e1124e8fc836937e5ac471"
+}

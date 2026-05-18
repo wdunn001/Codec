@@ -2,32 +2,13 @@
 
 This top-level file is a pointer. The numbers, methodology, and raw SCHEMA-v1 result JSONs live below — pick the entry point that matches what you want.
 
-## v0.5 cohort (partial; protocol-only + bench-harness runs, 2026-05-17)
+## Cross-stack matrix (current — v0.5 cohort, 2026-05-17)
 
-The v0.5 release runs landed in `packages/bench/results/2026-05-17T09-00-00Z/`. **§1b cross-stack engine-output cells are NOT YET POPULATED for v0.5** — they require the `wdunn001/codec-{sglang,vllm,llamacpp,tgi}:v0.5.0` images, which are scoped in `docs/engine-fork-tasks/v0.5-rollout.md` but haven't been built + pushed yet. Operator action gates that step.
+The cross-stack run pits **3 inference engines** (sglang, vllm, llama.cpp) against **6 client languages** (Python, TypeScript, .NET, Rust, Java, C) on the same prompt + model + hardware, then aggregates into one machine-generated MATRIX.md.
 
-What's captured for v0.5 from this session's bench runs:
+→ **[`packages/bench/results/2026-05-17T23-06-45Z/MATRIX.md`](packages/bench/results/2026-05-17T23-06-45Z/MATRIX.md)**
 
-- **§1 synthetic protocol-only** at `results/2026-05-17T09-00-00Z/synthetic/wire.json` (256 cells × 4 corpora × 4 sizes × 4 encodings × 2 formats):
-
-  | Content distribution at 2048 tokens   | Codec identity | Best Codec                     | Reduction |
-  |----------------------------------------|---------------:|--------------------------------|----------:|
-  | Uniform random (worst case)            | 33,118 B       | 6,828 B (protobuf+gzip)        |   **4.9×**|
-  | Comma-dominated (50% one ID)           | 29,790 B       | 4,354 B (protobuf+gzip)        |   **6.8×**|
-  | Low entropy (50 unique IDs)            | 26,648 B       | 1,595 B (protobuf+zstd)        |  **16.7×**|
-  | Cyclic period 10 (best case)           | 26,648 B       |    51 B (protobuf+br)          | **522.5×**|
-
-- **Picker bench (v0.5 NEW)** at `results/2026-05-17T09-00-00Z/picker/coverage.json`: 576 cells × 3 stack profiles × 4 payload sizes × 3 entropy buckets × 4 gate states × 4 Accept headers. 7 of 9 v0.5 `PickReasonCode` enum values surfaced by the grid; the other 2 are unit-tested.
-- **Duplex bench (v0.5 NEW)** at `results/2026-05-17T09-00-00Z/duplex.json`: 2K-token bidirectional A↔B, JSON-SSE 468.6 KB / msgpack 63.9 KB (7.3×) / protobuf 43.5 KB (10.8×). CPU: msgpack 2.2× faster than JSON-SSE; protobuf 6.6× faster.
-- **Energy bench (v0.5 NEW)** at `results/2026-05-17T09-00-00Z/energy/`: per-hop / per-request / worldwide-aggregate budgets generated from the published per-byte cost table. At heavy-agent compound (8 round-trips): ~380 mJ/request JSON-SSE vs ~1.5 mJ/request Codec → ~250× non-GPU energy reduction. Annual at 5B requests/day = ~192 MWh saved ≈ ~15 US-cars/yr CO2-equivalent.
-
-## Cross-stack matrix (last full run, v0.4.1 cohort, 2026-05-15)
-
-The cross-stack run pits **3 inference engines** (sglang, vllm, llama.cpp) against **6 client languages** (Python, TypeScript, .NET, Rust, Java, C) on the same prompt + model + hardware, then aggregates into one machine-generated MATRIX.md. The v0.5 equivalent is pending the RC engine-image builds; refer to the v0.4.1 row until then.
-
-→ **[`packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md`](packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md)**
-
-### Headline numbers from the v0.4.1 cohort
+### Headline numbers from the v0.5 cohort
 
 **§1b engine-output @ 2K tokens, Codec msgpack+dict-zstd, content-dependent:**
 
@@ -37,7 +18,9 @@ The cross-stack run pits **3 inference engines** (sglang, vllm, llama.cpp) again
 | vllm       | 517.8 KB  | 3.9 KB (msgpack+gzip)            | **137×**   |
 | llama.cpp  | 528.8 KB  | 140 B (msgpack+dict-zstd, fp16)  | **3,868×** |
 
-llama.cpp jumped from 33× (v0.4.0, gzip-only) to 3,868× (v0.4.1) after the fork gained brotli + dict-zstd + the `codec_zstd_dict_registry` + the `/codec/schema` endpoint. vllm still gzip-only on its best cell — content-bound at temp=0, not protocol-bound. See `packages/bench/RESULTS.md` §1b for the per-engine breakdown.
+**Numbers identical to v0.4.1** — confirms the v0.5 additions (delta-varint axis, discoverable zstd dicts, content-aware picker rewrite, bolt-on tool dispatcher) are wire-additive over v0.4 per the [Versioning Policy](spec/versions/v0.4.md#versioning-policy). The v0.5 happy-path wire is byte-for-byte the v0.4 happy-path wire; the new surfaces are reached only via opt-in headers or `stream_format` axes.
+
+vllm still gzip-only on its best cell — content-bound at temp=0, not protocol-bound. See `packages/bench/RESULTS.md` §1b for the per-engine breakdown.
 
 **§1 protocol-only synthetic (no engine, no model — pure library):**
 
@@ -50,27 +33,46 @@ llama.cpp jumped from 33× (v0.4.0, gzip-only) to 3,868× (v0.4.1) after the for
 
 Codec's protocol-only contribution is **4.8×–392×** depending on content compressibility. Versus JSON-SSE identity, multiply by ~10× (Codec's msgpack-over-JSON framing advantage): so the JSON-SSE→Codec range spans ~50× to ~4,000×. Live engine output sits inside that range per §1b above.
 
-### What's new in v0.4.1
+### Cross-language interop — gold-standard pass
 
-- **Cross-client dict-zstd interop** — all 6 clients now decode dict-zstd correctly (was Python-only; the other 5 silently produced garbage or errored). Caught by the new decode-unanimity gate.
-- **24/24 wire AND 24/24 decode unanimous on every engine** — v0.4.1 added the decode-side check that previously only verified wire bytes.
-- **llama.cpp gains brotli + dict-zstd** — was identity+gzip only.
-- **Synthetic-stream bench (§1)** — protocol-only measurement decoupled from any specific model's token-generation behaviour.
-- **Bench gate hardening** — `aggregate.py` exits non-zero on any errored cell; new engine-acceptance pytest runs 9 protocol probes against any candidate engine image before the cross-stack bench.
+| Engine     | wire-unanimous | decode-unanimous |
+|------------|---------------:|-----------------:|
+| sglang     | **24 / 24** ✅ | **24 / 24** ✅   |
+| vllm       | **24 / 24** ✅ | **24 / 24** ✅   |
+| llama.cpp  | **24 / 24** ✅ | **24 / 24** ✅   |
 
-- Cross-language byte-equality: **24/24 wire + 24/24 decode unanimous on every engine** (sglang, vllm, llama.cpp).
-- TTFB at 2K tokens (msgpack + gzip, body-byte): llama.cpp 40.8 ms · sglang 44.7 ms · vllm 59.0 ms.
+**72 / 72 wire-unanimous AND 72 / 72 decode-unanimous across the cohort × 6 client languages.** vllm matrix required `REPS=4` to median-out the documented `~10–20%` wire-byte scheduler variance at T=0; ran clean on the second pass.
 
-Reproduce the entire matrix end-to-end:
+### What's new in v0.5
+
+- **All v0.5 numbers byte-identical to v0.4.1** at the engine-output level — confirms the additive-only invariant. No regression from the new surfaces.
+- **`§1.7` zstd dict gate fully cleared** — sub-gate 1 (image bake-in), sub-gate 2 (`/opt/codec/check-dict-availability.sh` probe), sub-gate 3 (wire-level confirmation), sub-gate 4 (hash unanimity at `sha256:29a810f3...` across all 3 engines).
+- **`§1.9` engine dep audit fully cleared** — every engine image dep-verified for `brotli + zstandard + msgpack` before push.
+- **llamacpp regression caught + fixed mid-cut** — v0.5.0 initial cut accidentally targeted `wdunn001/llama.cpp/master` (vanilla upstream, no codec patches) and shipped serving identity-encoded msgpack. Caught by §1.7 wire probe; fixed by merging `feat/codec-br-zstd-v0.4.1` into master (commit `5b8f73b86`) and rebuilding. Memory rule [[codec-engine-fork-branch-policy]] updated to prevent recurrence.
+- **vllm + sglang upstream PRs filed** — `sgl-project/sglang#25544` and `vllm-project/vllm#42896`, both with DCO-signed commits + 5 review-fix iterations from the gemini-code-assist bot.
+
+### v0.5 cohort companion runs
+
+The v0.5 cut also produced these auxiliary measurements at `packages/bench/results/2026-05-17T09-00-00Z/`:
+
+- **Picker bench (v0.5 NEW)** — 576 cells × 3 stack profiles × 4 payload sizes × 3 entropy buckets × 4 gate states × 4 Accept headers. 7 of 9 v0.5 `PickReasonCode` enum values surfaced by the grid; the other 2 are unit-tested.
+- **Duplex bench (v0.5 NEW)** — 2K-token bidirectional A↔B, JSON-SSE 468.6 KB / msgpack 63.9 KB (7.3×) / protobuf 43.5 KB (10.8×). CPU: msgpack 2.2× faster than JSON-SSE; protobuf 6.6× faster.
+
+Reproduce the v0.5 matrix end-to-end:
 
 ```bash
-# Requires the wdunn001/codec-{sglang,vllm,llamacpp}:v0.4.1 containers running.
-bash packages/bench/scripts/run-all-langs.sh 2026-05-15T20-00-00Z sglang
-bash packages/bench/scripts/run-all-langs.sh 2026-05-15T20-00-00Z vllm
-bash packages/bench/scripts/run-all-langs.sh 2026-05-15T20-00-00Z llama.cpp
-python packages/bench/scripts/synthetic_wire_bench.py 2026-05-15T20-00-00Z  # §1 synthetic
-python packages/bench/scripts/aggregate.py 2026-05-15T20-00-00Z
+# Requires the wdunn001/codec-{sglang,vllm,llamacpp}:v0.5.0 containers running
+# (vllm pinned to GPU 1 via CUDA_VISIBLE_DEVICES=1 on a 2-GPU box).
+bash packages/bench/scripts/run-all-langs.sh 2026-05-17T23-06-45Z sglang
+REPS=4 bash packages/bench/scripts/run-all-langs.sh 2026-05-17T23-06-45Z vllm
+bash packages/bench/scripts/run-all-langs.sh 2026-05-17T23-06-45Z llama.cpp
+python packages/bench/scripts/synthetic_wire_bench.py 2026-05-17T23-06-45Z  # §1 synthetic
+python packages/bench/scripts/aggregate.py 2026-05-17T23-06-45Z
 ```
+
+### Historical comparison — v0.4.1 cohort (2026-05-15)
+
+For longitudinal context the prior run is preserved at [`packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md`](packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md). v0.5 numbers (above) are byte-identical to v0.4.1 at the engine-output level, confirming no regression from the v0.5 protocol additions.
 
 ## Agent-loop end-to-end (v0.4.1 cohort)
 

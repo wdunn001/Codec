@@ -1,0 +1,896 @@
+{
+  "methodology": {
+    "bench_tool": {
+      "aggregation": "median",
+      "commit": "84f0ec23687c3e038a20ab0d5e8d07bce739a4e1",
+      "name": "demo-rust/codec-bench matrix_run",
+      "reps": 2,
+      "total_ms_definition": "wall-clock from request POST to last byte",
+      "ttft_definition": "wall-clock from reqwest::send() return to first received byte (no auto-decompress)",
+      "version": "0.1.0",
+      "warmup_reps": 0,
+      "wire_bytes_definition": "raw socket bytes from bytes_stream() before any Content-Encoding decompression"
+    },
+    "captured_at": "2026-05-17T23:08:10Z",
+    "client": {
+      "lang": "rust",
+      "lib_commit": "84f0ec23687c3e038a20ab0d5e8d07bce739a4e1",
+      "lib_name": "codec-rs",
+      "lib_version": "0.1.0",
+      "runtime": "rustc 1.95.0 (59807616e 2026-04-14) / reqwest 0.12 / tokio 1"
+    },
+    "engine": {
+      "branch": "",
+      "commit": "",
+      "compression_probe_format": "msgpack",
+      "compression_supported": [
+        "identity",
+        "gzip",
+        "br",
+        "zstd"
+      ],
+      "container_image": "wdunn001/codec-llamacpp:v0.5.0@sha256:cc48ac62f5f77d81442f5a2bfece7e4c7fb68d7df08b70bb411ca8bcc287145e",
+      "endpoint": "http://192.168.1.88:30004",
+      "endpoint_kind": "lan",
+      "launch_flags": [
+        "--ctx-size",
+        "4096",
+        "--gpu-layers",
+        "999"
+      ],
+      "name": "llama.cpp",
+      "stream_format_supported": [
+        "json",
+        "msgpack",
+        "protobuf"
+      ],
+      "version": ""
+    },
+    "fingerprint": "d00fbdd293ae68cac188b719792c61051ca65cd98902c59c73b2e038e1821bfb",
+    "git": {
+      "repo_branch": "main",
+      "repo_clean": false,
+      "repo_commit": "c3702150800cbd5a6fb497520d706b3a548a9cd5",
+      "repo_dirty_files": [
+        ".venv/bin/httpx",
+        ".venv/lib/python3.12/site-packages/__pycache__/",
+        ".venv/lib/python3.12/site-packages/anyio-4.13.0.dist-info/",
+        ".venv/lib/python3.12/site-packages/anyio/",
+        ".venv/lib/python3.12/site-packages/certifi-2026.4.22.dist-info/",
+        ".venv/lib/python3.12/site-packages/certifi/",
+        ".venv/lib/python3.12/site-packages/h11-0.16.0.dist-info/",
+        ".venv/lib/python3.12/site-packages/h11/",
+        ".venv/lib/python3.12/site-packages/httpcore-1.0.9.dist-info/",
+        ".venv/lib/python3.12/site-packages/httpcore/",
+        ".venv/lib/python3.12/site-packages/httpx-0.28.1.dist-info/",
+        ".venv/lib/python3.12/site-packages/httpx/",
+        ".venv/lib/python3.12/site-packages/idna-3.15.dist-info/",
+        ".venv/lib/python3.12/site-packages/idna/",
+        ".venv/lib/python3.12/site-packages/typing_extensions-4.15.0.dist-info/",
+        ".venv/lib/python3.12/site-packages/typing_extensions.py",
+        "packages/bench/methodology/2026-05-17T23-06-45Z/",
+        "packages/bench/tests/__pycache__/"
+      ]
+    },
+    "hardware": {
+      "cpu_model": "AMD Ryzen 7 5800X 8-Core Processor",
+      "gpu_count": 1,
+      "gpu_driver": "591.86",
+      "gpu_model": "NVIDIA GeForce RTX 2080 Ti",
+      "host": "DESKTOP-UJ3VMGR",
+      "kernel": "Linux 6.6.87.2-microsoft-standard-WSL2",
+      "ram_gb": 31.3
+    },
+    "model": {
+      "id": "Qwen/Qwen2.5-0.5B-Instruct",
+      "model_sha256": null,
+      "quantization": "fp16",
+      "tokenizer_sha256": "",
+      "vocab_size": null
+    },
+    "notes": "v0.5 cohort run — llamacpp v0.5.0 rebuilt with codec-patched master merge + §1.7 dict-bake. wdunn001/llama.cpp master HEAD 5b8f73b86",
+    "run_id": "2026-05-17T23-06-45Z",
+    "schema_version": "1",
+    "workload": {
+      "prompts_file": "methodology/prompts.json",
+      "prompts_sha256": "eff837b6cbbad632c15efb99a7bfaef1e173276be2b81734833ca4bcf0fb3604",
+      "stream": true,
+      "temperature": 0.0
+    }
+  },
+  "rows": [
+    {
+      "encoding": "identity",
+      "error": null,
+      "format": "json",
+      "rep_total_ms": [
+        213.945467,
+        199.040784
+      ],
+      "rep_ttft_ms": [
+        44.261606,
+        38.378135
+      ],
+      "rep_wire_bytes": [
+        17606,
+        17594
+      ],
+      "size": 64,
+      "tokens_emitted": 65,
+      "total_ms": 206.49312550000002,
+      "ttft_ms": 41.3198705,
+      "wire_bytes": 17600
+    },
+    {
+      "encoding": "gzip",
+      "error": null,
+      "format": "json",
+      "rep_total_ms": [
+        194.67493199999998,
+        194.178396
+      ],
+      "rep_ttft_ms": [
+        38.444716,
+        38.325287
+      ],
+      "rep_wire_bytes": [
+        17591,
+        17595
+      ],
+      "size": 64,
+      "tokens_emitted": 65,
+      "total_ms": 194.426664,
+      "ttft_ms": 38.3850015,
+      "wire_bytes": 17593
+    },
+    {
+      "encoding": "br",
+      "error": null,
+      "format": "json",
+      "rep_total_ms": [
+        194.18427699999998,
+        193.77926000000002
+      ],
+      "rep_ttft_ms": [
+        38.034298,
+        37.765480999999994
+      ],
+      "rep_wire_bytes": [
+        17594,
+        17593
+      ],
+      "size": 64,
+      "tokens_emitted": 65,
+      "total_ms": 193.9817685,
+      "ttft_ms": 37.8998895,
+      "wire_bytes": 17593
+    },
+    {
+      "encoding": "zstd",
+      "error": null,
+      "format": "json",
+      "rep_total_ms": [
+        190.339201,
+        189.533226
+      ],
+      "rep_ttft_ms": [
+        34.491674,
+        33.722224000000004
+      ],
+      "rep_wire_bytes": [
+        17593,
+        17593
+      ],
+      "size": 64,
+      "tokens_emitted": 65,
+      "total_ms": 189.9362135,
+      "ttft_ms": 34.106949,
+      "wire_bytes": 17593
+    },
+    {
+      "encoding": "identity",
+      "error": null,
+      "format": "msgpack",
+      "rep_total_ms": [
+        190.768848,
+        194.529674
+      ],
+      "rep_ttft_ms": [
+        34.715378,
+        38.389957
+      ],
+      "rep_wire_bytes": [
+        987,
+        987
+      ],
+      "size": 64,
+      "tokens_emitted": 64,
+      "total_ms": 192.649261,
+      "ttft_ms": 36.5526675,
+      "wire_bytes": 987
+    },
+    {
+      "encoding": "gzip",
+      "error": null,
+      "format": "msgpack",
+      "rep_total_ms": [
+        193.819859,
+        193.94542
+      ],
+      "rep_ttft_ms": [
+        37.846142,
+        38.296893999999995
+      ],
+      "rep_wire_bytes": [
+        728,
+        728
+      ],
+      "size": 64,
+      "tokens_emitted": 64,
+      "total_ms": 193.8826395,
+      "ttft_ms": 38.071518,
+      "wire_bytes": 728
+    },
+    {
+      "encoding": "br",
+      "error": null,
+      "format": "msgpack",
+      "rep_total_ms": [
+        194.971312,
+        194.502294
+      ],
+      "rep_ttft_ms": [
+        38.074806,
+        38.37927
+      ],
+      "rep_wire_bytes": [
+        227,
+        227
+      ],
+      "size": 64,
+      "tokens_emitted": 64,
+      "total_ms": 194.736803,
+      "ttft_ms": 38.227038,
+      "wire_bytes": 227
+    },
+    {
+      "encoding": "zstd",
+      "error": null,
+      "format": "msgpack",
+      "rep_total_ms": [
+        194.476856,
+        204.315305
+      ],
+      "rep_ttft_ms": [
+        38.221219,
+        48.390888
+      ],
+      "rep_wire_bytes": [
+        218,
+        218
+      ],
+      "size": 64,
+      "tokens_emitted": 64,
+      "total_ms": 199.39608049999998,
+      "ttft_ms": 43.3060535,
+      "wire_bytes": 218
+    },
+    {
+      "encoding": "identity",
+      "error": null,
+      "format": "protobuf",
+      "rep_total_ms": [
+        194.406489,
+        194.431718
+      ],
+      "rep_ttft_ms": [
+        38.367211,
+        38.389438999999996
+      ],
+      "rep_wire_bytes": [
+        657,
+        657
+      ],
+      "size": 64,
+      "tokens_emitted": 64,
+      "total_ms": 194.4191035,
+      "ttft_ms": 38.378325,
+      "wire_bytes": 657
+    },
+    {
+      "encoding": "gzip",
+      "error": null,
+      "format": "protobuf",
+      "rep_total_ms": [
+        194.828284,
+        195.153078
+      ],
+      "rep_ttft_ms": [
+        39.018126,
+        38.489055
+      ],
+      "rep_wire_bytes": [
+        694,
+        694
+      ],
+      "size": 64,
+      "tokens_emitted": 64,
+      "total_ms": 194.990681,
+      "ttft_ms": 38.7535905,
+      "wire_bytes": 694
+    },
+    {
+      "encoding": "br",
+      "error": null,
+      "format": "protobuf",
+      "rep_total_ms": [
+        194.75203199999999,
+        194.68527699999999
+      ],
+      "rep_ttft_ms": [
+        38.295345000000005,
+        37.957653
+      ],
+      "rep_wire_bytes": [
+        221,
+        221
+      ],
+      "size": 64,
+      "tokens_emitted": 64,
+      "total_ms": 194.71865449999999,
+      "ttft_ms": 38.126499,
+      "wire_bytes": 221
+    },
+    {
+      "encoding": "zstd",
+      "error": null,
+      "format": "protobuf",
+      "rep_total_ms": [
+        194.262832,
+        194.155888
+      ],
+      "rep_ttft_ms": [
+        38.123183999999995,
+        38.202498
+      ],
+      "rep_wire_bytes": [
+        222,
+        222
+      ],
+      "size": 64,
+      "tokens_emitted": 64,
+      "total_ms": 194.20936,
+      "ttft_ms": 38.162841,
+      "wire_bytes": 222
+    },
+    {
+      "encoding": "identity",
+      "error": null,
+      "format": "json",
+      "rep_total_ms": [
+        1317.336828,
+        1313.0059219999998
+      ],
+      "rep_ttft_ms": [
+        43.463651999999996,
+        39.72493
+      ],
+      "rep_wire_bytes": [
+        136482,
+        136471
+      ],
+      "size": 512,
+      "tokens_emitted": 513,
+      "total_ms": 1315.171375,
+      "ttft_ms": 41.594291,
+      "wire_bytes": 136476
+    },
+    {
+      "encoding": "gzip",
+      "error": null,
+      "format": "json",
+      "rep_total_ms": [
+        1312.776003,
+        1313.205937
+      ],
+      "rep_ttft_ms": [
+        39.520909,
+        40.049125
+      ],
+      "rep_wire_bytes": [
+        136470,
+        136471
+      ],
+      "size": 512,
+      "tokens_emitted": 513,
+      "total_ms": 1312.9909699999998,
+      "ttft_ms": 39.785016999999996,
+      "wire_bytes": 136470
+    },
+    {
+      "encoding": "br",
+      "error": null,
+      "format": "json",
+      "rep_total_ms": [
+        1313.610711,
+        1313.292303
+      ],
+      "rep_ttft_ms": [
+        39.948781000000004,
+        39.618758
+      ],
+      "rep_wire_bytes": [
+        136471,
+        136470
+      ],
+      "size": 512,
+      "tokens_emitted": 513,
+      "total_ms": 1313.451507,
+      "ttft_ms": 39.783769500000005,
+      "wire_bytes": 136470
+    },
+    {
+      "encoding": "zstd",
+      "error": null,
+      "format": "json",
+      "rep_total_ms": [
+        1314.0336459999999,
+        1312.804142
+      ],
+      "rep_ttft_ms": [
+        39.434867999999994,
+        39.134681
+      ],
+      "rep_wire_bytes": [
+        136472,
+        136466
+      ],
+      "size": 512,
+      "tokens_emitted": 513,
+      "total_ms": 1313.418894,
+      "ttft_ms": 39.2847745,
+      "wire_bytes": 136469
+    },
+    {
+      "encoding": "identity",
+      "error": null,
+      "format": "msgpack",
+      "rep_total_ms": [
+        1313.415586,
+        1312.846325
+      ],
+      "rep_ttft_ms": [
+        39.512233,
+        39.251363
+      ],
+      "rep_wire_bytes": [
+        7623,
+        7623
+      ],
+      "size": 512,
+      "tokens_emitted": 512,
+      "total_ms": 1313.1309555,
+      "ttft_ms": 39.381798,
+      "wire_bytes": 7623
+    },
+    {
+      "encoding": "gzip",
+      "error": null,
+      "format": "msgpack",
+      "rep_total_ms": [
+        1312.817801,
+        1312.8077199999998
+      ],
+      "rep_ttft_ms": [
+        40.076473,
+        39.697900000000004
+      ],
+      "rep_wire_bytes": [
+        4972,
+        4972
+      ],
+      "size": 512,
+      "tokens_emitted": 512,
+      "total_ms": 1312.8127605,
+      "ttft_ms": 39.8871865,
+      "wire_bytes": 4972
+    },
+    {
+      "encoding": "br",
+      "error": null,
+      "format": "msgpack",
+      "rep_total_ms": [
+        1312.267865,
+        1312.133691
+      ],
+      "rep_ttft_ms": [
+        39.51623,
+        39.37202
+      ],
+      "rep_wire_bytes": [
+        738,
+        738
+      ],
+      "size": 512,
+      "tokens_emitted": 512,
+      "total_ms": 1312.200778,
+      "ttft_ms": 39.444125,
+      "wire_bytes": 738
+    },
+    {
+      "encoding": "zstd",
+      "error": null,
+      "format": "msgpack",
+      "rep_total_ms": [
+        1312.7273989999999,
+        1313.034973
+      ],
+      "rep_ttft_ms": [
+        39.427047,
+        39.338796
+      ],
+      "rep_wire_bytes": [
+        840,
+        840
+      ],
+      "size": 512,
+      "tokens_emitted": 512,
+      "total_ms": 1312.881186,
+      "ttft_ms": 39.3829215,
+      "wire_bytes": 840
+    },
+    {
+      "encoding": "identity",
+      "error": null,
+      "format": "protobuf",
+      "rep_total_ms": [
+        1313.7496820000001,
+        1313.216988
+      ],
+      "rep_ttft_ms": [
+        39.62364,
+        40.003824
+      ],
+      "rep_wire_bytes": [
+        5155,
+        5155
+      ],
+      "size": 512,
+      "tokens_emitted": 512,
+      "total_ms": 1313.483335,
+      "ttft_ms": 39.813732,
+      "wire_bytes": 5155
+    },
+    {
+      "encoding": "gzip",
+      "error": null,
+      "format": "protobuf",
+      "rep_total_ms": [
+        1311.587547,
+        1313.263961
+      ],
+      "rep_ttft_ms": [
+        39.658575,
+        40.423573999999995
+      ],
+      "rep_wire_bytes": [
+        4795,
+        4795
+      ],
+      "size": 512,
+      "tokens_emitted": 512,
+      "total_ms": 1312.425754,
+      "ttft_ms": 40.04107449999999,
+      "wire_bytes": 4795
+    },
+    {
+      "encoding": "br",
+      "error": null,
+      "format": "protobuf",
+      "rep_total_ms": [
+        1314.5963809999998,
+        1312.624474
+      ],
+      "rep_ttft_ms": [
+        39.777762,
+        39.696899
+      ],
+      "rep_wire_bytes": [
+        792,
+        792
+      ],
+      "size": 512,
+      "tokens_emitted": 512,
+      "total_ms": 1313.6104274999998,
+      "ttft_ms": 39.7373305,
+      "wire_bytes": 792
+    },
+    {
+      "encoding": "zstd",
+      "error": null,
+      "format": "protobuf",
+      "rep_total_ms": [
+        1310.325312,
+        1312.4612419999999
+      ],
+      "rep_ttft_ms": [
+        39.744367000000004,
+        39.755112000000004
+      ],
+      "rep_wire_bytes": [
+        919,
+        919
+      ],
+      "size": 512,
+      "tokens_emitted": 512,
+      "total_ms": 1311.393277,
+      "ttft_ms": 39.749739500000004,
+      "wire_bytes": 919
+    },
+    {
+      "encoding": "identity",
+      "error": null,
+      "format": "json",
+      "rep_total_ms": [
+        5164.978897,
+        5163.63228
+      ],
+      "rep_ttft_ms": [
+        44.099909,
+        40.646173
+      ],
+      "rep_wire_bytes": [
+        541511,
+        541500
+      ],
+      "size": 2048,
+      "tokens_emitted": 2049,
+      "total_ms": 5164.305588499999,
+      "ttft_ms": 42.373041,
+      "wire_bytes": 541505
+    },
+    {
+      "encoding": "gzip",
+      "error": null,
+      "format": "json",
+      "rep_total_ms": [
+        5167.218981,
+        5169.001910000001
+      ],
+      "rep_ttft_ms": [
+        41.043567,
+        40.03942
+      ],
+      "rep_wire_bytes": [
+        541496,
+        541499
+      ],
+      "size": 2048,
+      "tokens_emitted": 2049,
+      "total_ms": 5168.1104455,
+      "ttft_ms": 40.5414935,
+      "wire_bytes": 541497
+    },
+    {
+      "encoding": "br",
+      "error": null,
+      "format": "json",
+      "rep_total_ms": [
+        5168.823022,
+        5167.224875999999
+      ],
+      "rep_ttft_ms": [
+        41.18482100000001,
+        40.882659000000004
+      ],
+      "rep_wire_bytes": [
+        541499,
+        541498
+      ],
+      "size": 2048,
+      "tokens_emitted": 2049,
+      "total_ms": 5168.023948999999,
+      "ttft_ms": 41.03374000000001,
+      "wire_bytes": 541498
+    },
+    {
+      "encoding": "zstd",
+      "error": null,
+      "format": "json",
+      "rep_total_ms": [
+        5159.455591999999,
+        5160.0332849999995
+      ],
+      "rep_ttft_ms": [
+        40.899191,
+        40.499810999999994
+      ],
+      "rep_wire_bytes": [
+        541499,
+        541493
+      ],
+      "size": 2048,
+      "tokens_emitted": 2049,
+      "total_ms": 5159.7444385,
+      "ttft_ms": 40.699501,
+      "wire_bytes": 541496
+    },
+    {
+      "encoding": "identity",
+      "error": null,
+      "format": "msgpack",
+      "rep_total_ms": [
+        5162.004305,
+        5166.537203
+      ],
+      "rep_ttft_ms": [
+        40.60328,
+        40.942795
+      ],
+      "rep_wire_bytes": [
+        30369,
+        30369
+      ],
+      "size": 2048,
+      "tokens_emitted": 2048,
+      "total_ms": 5164.270754,
+      "ttft_ms": 40.7730375,
+      "wire_bytes": 30369
+    },
+    {
+      "encoding": "gzip",
+      "error": null,
+      "format": "msgpack",
+      "rep_total_ms": [
+        5164.553135,
+        5163.605283
+      ],
+      "rep_ttft_ms": [
+        41.545506,
+        38.880449
+      ],
+      "rep_wire_bytes": [
+        16517,
+        16517
+      ],
+      "size": 2048,
+      "tokens_emitted": 2048,
+      "total_ms": 5164.0792089999995,
+      "ttft_ms": 40.2129775,
+      "wire_bytes": 16517
+    },
+    {
+      "encoding": "br",
+      "error": null,
+      "format": "msgpack",
+      "rep_total_ms": [
+        5167.109519000001,
+        5176.173654
+      ],
+      "rep_ttft_ms": [
+        40.560785,
+        52.184471
+      ],
+      "rep_wire_bytes": [
+        161,
+        161
+      ],
+      "size": 2048,
+      "tokens_emitted": 2048,
+      "total_ms": 5171.6415865,
+      "ttft_ms": 46.372628000000006,
+      "wire_bytes": 161
+    },
+    {
+      "encoding": "zstd",
+      "error": null,
+      "format": "msgpack",
+      "rep_total_ms": [
+        5161.164465,
+        5200.940371
+      ],
+      "rep_ttft_ms": [
+        40.409563000000006,
+        41.655133
+      ],
+      "rep_wire_bytes": [
+        140,
+        140
+      ],
+      "size": 2048,
+      "tokens_emitted": 2048,
+      "total_ms": 5181.052417999999,
+      "ttft_ms": 41.032348,
+      "wire_bytes": 140
+    },
+    {
+      "encoding": "identity",
+      "error": null,
+      "format": "protobuf",
+      "rep_total_ms": [
+        5162.181248,
+        5161.899028
+      ],
+      "rep_ttft_ms": [
+        40.752289,
+        41.380524
+      ],
+      "rep_wire_bytes": [
+        20305,
+        20305
+      ],
+      "size": 2048,
+      "tokens_emitted": 2048,
+      "total_ms": 5162.040138,
+      "ttft_ms": 41.0664065,
+      "wire_bytes": 20305
+    },
+    {
+      "encoding": "gzip",
+      "error": null,
+      "format": "protobuf",
+      "rep_total_ms": [
+        5164.141962000001,
+        5239.787592
+      ],
+      "rep_ttft_ms": [
+        40.569189,
+        40.030264
+      ],
+      "rep_wire_bytes": [
+        16496,
+        16496
+      ],
+      "size": 2048,
+      "tokens_emitted": 2048,
+      "total_ms": 5201.964777,
+      "ttft_ms": 40.299726500000006,
+      "wire_bytes": 16496
+    },
+    {
+      "encoding": "br",
+      "error": null,
+      "format": "protobuf",
+      "rep_total_ms": [
+        5219.8354819999995,
+        5169.178604
+      ],
+      "rep_ttft_ms": [
+        39.865641000000004,
+        40.147206
+      ],
+      "rep_wire_bytes": [
+        158,
+        158
+      ],
+      "size": 2048,
+      "tokens_emitted": 2048,
+      "total_ms": 5194.507043,
+      "ttft_ms": 40.0064235,
+      "wire_bytes": 158
+    },
+    {
+      "encoding": "zstd",
+      "error": null,
+      "format": "protobuf",
+      "rep_total_ms": [
+        5190.334621,
+        5161.367516
+      ],
+      "rep_ttft_ms": [
+        41.133786,
+        40.579905
+      ],
+      "rep_wire_bytes": [
+        158,
+        158
+      ],
+      "size": 2048,
+      "tokens_emitted": 2048,
+      "total_ms": 5175.8510685,
+      "ttft_ms": 40.8568455,
+      "wire_bytes": 158
+    }
+  ],
+  "schema_version": "1"
+}

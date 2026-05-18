@@ -1,0 +1,2578 @@
+{
+  "schema_version": "1",
+  "kind": "synthetic_wire_bench",
+  "run_id": "2026-05-17T23-06-45Z",
+  "encoder_versions": {
+    "msgpack": "1.1.2",
+    "brotli": "1.2.0",
+    "zstandard": "0.25.0"
+  },
+  "dicts": {
+    "msgpack": "sha256:29a810f3fbded045d55f1cd4435c7d2959f6dbc9c697dc7fe41fb44bd2e891db",
+    "protobuf": "sha256:ecbfacb309c84270cda1356191bb917de9ceada61ca4fd49faf87b861d736c5c"
+  },
+  "corpora": [
+    {
+      "name": "uniform-random-vocab-152064",
+      "n_tokens": 16,
+      "first_10_ids": [
+        13571,
+        117690,
+        99536,
+        66737,
+        65846,
+        130561,
+        13069,
+        106044,
+        30636,
+        14320
+      ]
+    },
+    {
+      "name": "uniform-random-vocab-152064",
+      "n_tokens": 32,
+      "first_10_ids": [
+        13571,
+        117690,
+        99536,
+        66737,
+        65846,
+        130561,
+        13069,
+        106044,
+        30636,
+        14320
+      ]
+    },
+    {
+      "name": "uniform-random-vocab-152064",
+      "n_tokens": 64,
+      "first_10_ids": [
+        13571,
+        117690,
+        99536,
+        66737,
+        65846,
+        130561,
+        13069,
+        106044,
+        30636,
+        14320
+      ]
+    },
+    {
+      "name": "uniform-random-vocab-152064",
+      "n_tokens": 128,
+      "first_10_ids": [
+        13571,
+        117690,
+        99536,
+        66737,
+        65846,
+        130561,
+        13069,
+        106044,
+        30636,
+        14320
+      ]
+    },
+    {
+      "name": "uniform-random-vocab-152064",
+      "n_tokens": 256,
+      "first_10_ids": [
+        13571,
+        117690,
+        99536,
+        66737,
+        65846,
+        130561,
+        13069,
+        106044,
+        30636,
+        14320
+      ]
+    },
+    {
+      "name": "uniform-random-vocab-152064",
+      "n_tokens": 512,
+      "first_10_ids": [
+        13571,
+        117690,
+        99536,
+        66737,
+        65846,
+        130561,
+        13069,
+        106044,
+        30636,
+        14320
+      ]
+    },
+    {
+      "name": "uniform-random-vocab-152064",
+      "n_tokens": 1024,
+      "first_10_ids": [
+        13571,
+        117690,
+        99536,
+        66737,
+        65846,
+        130561,
+        13069,
+        106044,
+        30636,
+        14320
+      ]
+    },
+    {
+      "name": "uniform-random-vocab-152064",
+      "n_tokens": 2048,
+      "first_10_ids": [
+        13571,
+        117690,
+        99536,
+        66737,
+        65846,
+        130561,
+        13069,
+        106044,
+        30636,
+        14320
+      ]
+    },
+    {
+      "name": "cyclic-period-10",
+      "n_tokens": 16,
+      "first_10_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "name": "cyclic-period-10",
+      "n_tokens": 32,
+      "first_10_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "name": "cyclic-period-10",
+      "n_tokens": 64,
+      "first_10_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "name": "cyclic-period-10",
+      "n_tokens": 128,
+      "first_10_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "name": "cyclic-period-10",
+      "n_tokens": 256,
+      "first_10_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "name": "cyclic-period-10",
+      "n_tokens": 512,
+      "first_10_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "name": "cyclic-period-10",
+      "n_tokens": 1024,
+      "first_10_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "name": "cyclic-period-10",
+      "n_tokens": 2048,
+      "first_10_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "name": "low-entropy-50-unique",
+      "n_tokens": 16,
+      "first_10_ids": [
+        4,
+        38,
+        32,
+        21,
+        21,
+        42,
+        4,
+        34,
+        10,
+        4
+      ]
+    },
+    {
+      "name": "low-entropy-50-unique",
+      "n_tokens": 32,
+      "first_10_ids": [
+        4,
+        38,
+        32,
+        21,
+        21,
+        42,
+        4,
+        34,
+        10,
+        4
+      ]
+    },
+    {
+      "name": "low-entropy-50-unique",
+      "n_tokens": 64,
+      "first_10_ids": [
+        4,
+        38,
+        32,
+        21,
+        21,
+        42,
+        4,
+        34,
+        10,
+        4
+      ]
+    },
+    {
+      "name": "low-entropy-50-unique",
+      "n_tokens": 128,
+      "first_10_ids": [
+        4,
+        38,
+        32,
+        21,
+        21,
+        42,
+        4,
+        34,
+        10,
+        4
+      ]
+    },
+    {
+      "name": "low-entropy-50-unique",
+      "n_tokens": 256,
+      "first_10_ids": [
+        4,
+        38,
+        32,
+        21,
+        21,
+        42,
+        4,
+        34,
+        10,
+        4
+      ]
+    },
+    {
+      "name": "low-entropy-50-unique",
+      "n_tokens": 512,
+      "first_10_ids": [
+        4,
+        38,
+        32,
+        21,
+        21,
+        42,
+        4,
+        34,
+        10,
+        4
+      ]
+    },
+    {
+      "name": "low-entropy-50-unique",
+      "n_tokens": 1024,
+      "first_10_ids": [
+        4,
+        38,
+        32,
+        21,
+        21,
+        42,
+        4,
+        34,
+        10,
+        4
+      ]
+    },
+    {
+      "name": "low-entropy-50-unique",
+      "n_tokens": 2048,
+      "first_10_ids": [
+        4,
+        38,
+        32,
+        21,
+        21,
+        42,
+        4,
+        34,
+        10,
+        4
+      ]
+    },
+    {
+      "name": "comma-dominated-50pct",
+      "n_tokens": 16,
+      "first_10_ids": [
+        99536,
+        66737,
+        30636,
+        14320,
+        109102,
+        11,
+        11,
+        11,
+        119532,
+        61192
+      ]
+    },
+    {
+      "name": "comma-dominated-50pct",
+      "n_tokens": 32,
+      "first_10_ids": [
+        99536,
+        66737,
+        30636,
+        14320,
+        109102,
+        11,
+        11,
+        11,
+        119532,
+        61192
+      ]
+    },
+    {
+      "name": "comma-dominated-50pct",
+      "n_tokens": 64,
+      "first_10_ids": [
+        99536,
+        66737,
+        30636,
+        14320,
+        109102,
+        11,
+        11,
+        11,
+        119532,
+        61192
+      ]
+    },
+    {
+      "name": "comma-dominated-50pct",
+      "n_tokens": 128,
+      "first_10_ids": [
+        99536,
+        66737,
+        30636,
+        14320,
+        109102,
+        11,
+        11,
+        11,
+        119532,
+        61192
+      ]
+    },
+    {
+      "name": "comma-dominated-50pct",
+      "n_tokens": 256,
+      "first_10_ids": [
+        99536,
+        66737,
+        30636,
+        14320,
+        109102,
+        11,
+        11,
+        11,
+        119532,
+        61192
+      ]
+    },
+    {
+      "name": "comma-dominated-50pct",
+      "n_tokens": 512,
+      "first_10_ids": [
+        99536,
+        66737,
+        30636,
+        14320,
+        109102,
+        11,
+        11,
+        11,
+        119532,
+        61192
+      ]
+    },
+    {
+      "name": "comma-dominated-50pct",
+      "n_tokens": 1024,
+      "first_10_ids": [
+        99536,
+        66737,
+        30636,
+        14320,
+        109102,
+        11,
+        11,
+        11,
+        119532,
+        61192
+      ]
+    },
+    {
+      "name": "comma-dominated-50pct",
+      "n_tokens": 2048,
+      "first_10_ids": [
+        99536,
+        66737,
+        30636,
+        14320,
+        109102,
+        11,
+        11,
+        11,
+        119532,
+        61192
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 288,
+      "bytes_per_token": 18.0
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 132,
+      "bytes_per_token": 8.25
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 126,
+      "bytes_per_token": 7.875
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 122,
+      "bytes_per_token": 7.625
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 184,
+      "bytes_per_token": 11.5
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 116,
+      "bytes_per_token": 7.25
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 112,
+      "bytes_per_token": 7.0
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 121,
+      "bytes_per_token": 7.5625
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 550,
+      "bytes_per_token": 17.1875
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 199,
+      "bytes_per_token": 6.2188
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 178,
+      "bytes_per_token": 5.5625
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 210,
+      "bytes_per_token": 6.5625
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 360,
+      "bytes_per_token": 11.25
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 186,
+      "bytes_per_token": 5.8125
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 159,
+      "bytes_per_token": 4.9688
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 195,
+      "bytes_per_token": 6.0938
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 1072,
+      "bytes_per_token": 16.75
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 332,
+      "bytes_per_token": 5.1875
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 287,
+      "bytes_per_token": 4.4844
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 390,
+      "bytes_per_token": 6.0938
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 708,
+      "bytes_per_token": 11.0625
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 322,
+      "bytes_per_token": 5.0312
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 279,
+      "bytes_per_token": 4.3594
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 350,
+      "bytes_per_token": 5.4688
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 2114,
+      "bytes_per_token": 16.5156
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 575,
+      "bytes_per_token": 4.4922
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 494,
+      "bytes_per_token": 3.8594
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 714,
+      "bytes_per_token": 5.5781
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 1407,
+      "bytes_per_token": 10.9922
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 539,
+      "bytes_per_token": 4.2109
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 497,
+      "bytes_per_token": 3.8828
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 648,
+      "bytes_per_token": 5.0625
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 4180,
+      "bytes_per_token": 16.3281
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 1021,
+      "bytes_per_token": 3.9883
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 917,
+      "bytes_per_token": 3.582
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 1345,
+      "bytes_per_token": 5.2539
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 2801,
+      "bytes_per_token": 10.9414
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 964,
+      "bytes_per_token": 3.7656
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 925,
+      "bytes_per_token": 3.6133
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 1241,
+      "bytes_per_token": 4.8477
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 8308,
+      "bytes_per_token": 16.2266
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 1913,
+      "bytes_per_token": 3.7363
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 1787,
+      "bytes_per_token": 3.4902
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 2342,
+      "bytes_per_token": 4.5742
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 5592,
+      "bytes_per_token": 10.9219
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 1813,
+      "bytes_per_token": 3.541
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 1775,
+      "bytes_per_token": 3.4668
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 2295,
+      "bytes_per_token": 4.4824
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 16606,
+      "bytes_per_token": 16.2168
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 3699,
+      "bytes_per_token": 3.6123
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 3515,
+      "bytes_per_token": 3.4326
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 3888,
+      "bytes_per_token": 3.7969
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 11167,
+      "bytes_per_token": 10.9053
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 3507,
+      "bytes_per_token": 3.4248
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 3494,
+      "bytes_per_token": 3.4121
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 3733,
+      "bytes_per_token": 3.6455
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 33118,
+      "bytes_per_token": 16.1709
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 7223,
+      "bytes_per_token": 3.5269
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 6957,
+      "bytes_per_token": 3.397
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 7542,
+      "bytes_per_token": 3.6826
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 22319,
+      "bytes_per_token": 10.8979
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 6828,
+      "bytes_per_token": 3.334
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 6940,
+      "bytes_per_token": 3.3887
+    },
+    {
+      "corpus": "uniform-random-vocab-152064",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 7270,
+      "bytes_per_token": 3.5498
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 232,
+      "bytes_per_token": 14.5
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 93,
+      "bytes_per_token": 5.8125
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 69,
+      "bytes_per_token": 4.3125
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 65,
+      "bytes_per_token": 4.0625
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 155,
+      "bytes_per_token": 9.6875
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 74,
+      "bytes_per_token": 4.625
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 48,
+      "bytes_per_token": 3.0
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 71,
+      "bytes_per_token": 4.4375
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 440,
+      "bytes_per_token": 13.75
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 95,
+      "bytes_per_token": 2.9688
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 71,
+      "bytes_per_token": 2.2188
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 67,
+      "bytes_per_token": 2.0938
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 299,
+      "bytes_per_token": 9.3438
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 74,
+      "bytes_per_token": 2.3125
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 49,
+      "bytes_per_token": 1.5312
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 73,
+      "bytes_per_token": 2.2812
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 856,
+      "bytes_per_token": 13.375
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 98,
+      "bytes_per_token": 1.5312
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 71,
+      "bytes_per_token": 1.1094
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 67,
+      "bytes_per_token": 1.0469
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 587,
+      "bytes_per_token": 9.1719
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 76,
+      "bytes_per_token": 1.1875
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 49,
+      "bytes_per_token": 0.7656
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 73,
+      "bytes_per_token": 1.1406
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 1688,
+      "bytes_per_token": 13.1875
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 105,
+      "bytes_per_token": 0.8203
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 71,
+      "bytes_per_token": 0.5547
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 67,
+      "bytes_per_token": 0.5234
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 1163,
+      "bytes_per_token": 9.0859
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 83,
+      "bytes_per_token": 0.6484
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 49,
+      "bytes_per_token": 0.3828
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 73,
+      "bytes_per_token": 0.5703
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 3352,
+      "bytes_per_token": 13.0938
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 117,
+      "bytes_per_token": 0.457
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 73,
+      "bytes_per_token": 0.2852
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 67,
+      "bytes_per_token": 0.2617
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 2315,
+      "bytes_per_token": 9.043
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 88,
+      "bytes_per_token": 0.3438
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 51,
+      "bytes_per_token": 0.1992
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 73,
+      "bytes_per_token": 0.2852
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 6680,
+      "bytes_per_token": 13.0469
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 130,
+      "bytes_per_token": 0.2539
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 73,
+      "bytes_per_token": 0.1426
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 67,
+      "bytes_per_token": 0.1309
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 4619,
+      "bytes_per_token": 9.0215
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 97,
+      "bytes_per_token": 0.1895
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 51,
+      "bytes_per_token": 0.0996
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 73,
+      "bytes_per_token": 0.1426
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 13336,
+      "bytes_per_token": 13.0234
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 157,
+      "bytes_per_token": 0.1533
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 73,
+      "bytes_per_token": 0.0713
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 67,
+      "bytes_per_token": 0.0654
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 9227,
+      "bytes_per_token": 9.0107
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 115,
+      "bytes_per_token": 0.1123
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 51,
+      "bytes_per_token": 0.0498
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 73,
+      "bytes_per_token": 0.0713
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 26648,
+      "bytes_per_token": 13.0117
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 211,
+      "bytes_per_token": 0.103
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 73,
+      "bytes_per_token": 0.0356
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 68,
+      "bytes_per_token": 0.0332
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 18443,
+      "bytes_per_token": 9.0054
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 146,
+      "bytes_per_token": 0.0713
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 51,
+      "bytes_per_token": 0.0249
+    },
+    {
+      "corpus": "cyclic-period-10",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 73,
+      "bytes_per_token": 0.0356
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 232,
+      "bytes_per_token": 14.5
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 99,
+      "bytes_per_token": 6.1875
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 88,
+      "bytes_per_token": 5.5
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 76,
+      "bytes_per_token": 4.75
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 155,
+      "bytes_per_token": 9.6875
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 79,
+      "bytes_per_token": 4.9375
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 65,
+      "bytes_per_token": 4.0625
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 75,
+      "bytes_per_token": 4.6875
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 440,
+      "bytes_per_token": 13.75
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 134,
+      "bytes_per_token": 4.1875
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 109,
+      "bytes_per_token": 3.4062
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 117,
+      "bytes_per_token": 3.6562
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 299,
+      "bytes_per_token": 9.3438
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 112,
+      "bytes_per_token": 3.5
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 78,
+      "bytes_per_token": 2.4375
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 106,
+      "bytes_per_token": 3.3125
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 856,
+      "bytes_per_token": 13.375
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 199,
+      "bytes_per_token": 3.1094
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 155,
+      "bytes_per_token": 2.4219
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 196,
+      "bytes_per_token": 3.0625
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 587,
+      "bytes_per_token": 9.1719
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 164,
+      "bytes_per_token": 2.5625
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 121,
+      "bytes_per_token": 1.8906
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 178,
+      "bytes_per_token": 2.7812
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 1688,
+      "bytes_per_token": 13.1875
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 295,
+      "bytes_per_token": 2.3047
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 257,
+      "bytes_per_token": 2.0078
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 350,
+      "bytes_per_token": 2.7344
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 1163,
+      "bytes_per_token": 9.0859
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 252,
+      "bytes_per_token": 1.9688
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 206,
+      "bytes_per_token": 1.6094
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 311,
+      "bytes_per_token": 2.4297
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 3352,
+      "bytes_per_token": 13.0938
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 484,
+      "bytes_per_token": 1.8906
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 460,
+      "bytes_per_token": 1.7969
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 664,
+      "bytes_per_token": 2.5938
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 2315,
+      "bytes_per_token": 9.043
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 422,
+      "bytes_per_token": 1.6484
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 391,
+      "bytes_per_token": 1.5273
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 582,
+      "bytes_per_token": 2.2734
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 6680,
+      "bytes_per_token": 13.0469
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 853,
+      "bytes_per_token": 1.666
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 887,
+      "bytes_per_token": 1.7324
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 1286,
+      "bytes_per_token": 2.5117
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 4619,
+      "bytes_per_token": 9.0215
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 756,
+      "bytes_per_token": 1.4766
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 782,
+      "bytes_per_token": 1.5273
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 1124,
+      "bytes_per_token": 2.1953
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 13336,
+      "bytes_per_token": 13.0234
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 1566,
+      "bytes_per_token": 1.5293
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 1741,
+      "bytes_per_token": 1.7002
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 1107,
+      "bytes_per_token": 1.0811
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 9227,
+      "bytes_per_token": 9.0107
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 1406,
+      "bytes_per_token": 1.373
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 1564,
+      "bytes_per_token": 1.5273
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 1108,
+      "bytes_per_token": 1.082
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 26648,
+      "bytes_per_token": 13.0117
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 2914,
+      "bytes_per_token": 1.4229
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 3446,
+      "bytes_per_token": 1.6826
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 1606,
+      "bytes_per_token": 0.7842
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 18443,
+      "bytes_per_token": 9.0054
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 2644,
+      "bytes_per_token": 1.291
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 3110,
+      "bytes_per_token": 1.5186
+    },
+    {
+      "corpus": "low-entropy-50-unique",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 1595,
+      "bytes_per_token": 0.7788
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 264,
+      "bytes_per_token": 16.5
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 114,
+      "bytes_per_token": 7.125
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 118,
+      "bytes_per_token": 7.375
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 16,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 96,
+      "bytes_per_token": 6.0
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 174,
+      "bytes_per_token": 10.875
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 103,
+      "bytes_per_token": 6.4375
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 100,
+      "bytes_per_token": 6.25
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 16,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 100,
+      "bytes_per_token": 6.25
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 488,
+      "bytes_per_token": 15.25
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 138,
+      "bytes_per_token": 4.3125
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 148,
+      "bytes_per_token": 4.625
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 32,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 144,
+      "bytes_per_token": 4.5
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 326,
+      "bytes_per_token": 10.1875
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 127,
+      "bytes_per_token": 3.9688
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 130,
+      "bytes_per_token": 4.0625
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 32,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 138,
+      "bytes_per_token": 4.3125
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 966,
+      "bytes_per_token": 15.0938
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 217,
+      "bytes_per_token": 3.3906
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 230,
+      "bytes_per_token": 3.5938
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 64,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 266,
+      "bytes_per_token": 4.1562
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 649,
+      "bytes_per_token": 10.1406
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 214,
+      "bytes_per_token": 3.3438
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 216,
+      "bytes_per_token": 3.375
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 64,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 250,
+      "bytes_per_token": 3.9062
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 1882,
+      "bytes_per_token": 14.7031
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 342,
+      "bytes_per_token": 2.6719
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 359,
+      "bytes_per_token": 2.8047
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 128,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 467,
+      "bytes_per_token": 3.6484
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 1279,
+      "bytes_per_token": 9.9922
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 358,
+      "bytes_per_token": 2.7969
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 355,
+      "bytes_per_token": 2.7734
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 128,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 444,
+      "bytes_per_token": 3.4688
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 3736,
+      "bytes_per_token": 14.5938
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 615,
+      "bytes_per_token": 2.4023
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 633,
+      "bytes_per_token": 2.4727
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 256,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 868,
+      "bytes_per_token": 3.3906
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 2543,
+      "bytes_per_token": 9.9336
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 638,
+      "bytes_per_token": 2.4922
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 636,
+      "bytes_per_token": 2.4844
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 256,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 823,
+      "bytes_per_token": 3.2148
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 7508,
+      "bytes_per_token": 14.6641
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 1192,
+      "bytes_per_token": 2.3281
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 1232,
+      "bytes_per_token": 2.4062
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 512,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 1750,
+      "bytes_per_token": 3.418
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 5098,
+      "bytes_per_token": 9.957
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 1201,
+      "bytes_per_token": 2.3457
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 1243,
+      "bytes_per_token": 2.4277
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 512,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 1660,
+      "bytes_per_token": 3.2422
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 14920,
+      "bytes_per_token": 14.5703
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 2279,
+      "bytes_per_token": 2.2256
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 2377,
+      "bytes_per_token": 2.3213
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 1024,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 3074,
+      "bytes_per_token": 3.002
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 10179,
+      "bytes_per_token": 9.9404
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 2262,
+      "bytes_per_token": 2.209
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 2400,
+      "bytes_per_token": 2.3438
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 1024,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 3108,
+      "bytes_per_token": 3.0352
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "identity",
+      "wire_bytes": 29790,
+      "bytes_per_token": 14.5459
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "gzip",
+      "wire_bytes": 4482,
+      "bytes_per_token": 2.1885
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "br",
+      "wire_bytes": 4632,
+      "bytes_per_token": 2.2617
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 2048,
+      "format": "msgpack",
+      "encoding": "zstd",
+      "wire_bytes": 5221,
+      "bytes_per_token": 2.5493
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "identity",
+      "wire_bytes": 20342,
+      "bytes_per_token": 9.9326
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "gzip",
+      "wire_bytes": 4354,
+      "bytes_per_token": 2.126
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "br",
+      "wire_bytes": 4700,
+      "bytes_per_token": 2.2949
+    },
+    {
+      "corpus": "comma-dominated-50pct",
+      "n_tokens": 2048,
+      "format": "protobuf",
+      "encoding": "zstd",
+      "wire_bytes": 5290,
+      "bytes_per_token": 2.583
+    }
+  ]
+}
