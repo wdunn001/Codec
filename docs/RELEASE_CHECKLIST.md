@@ -338,6 +338,48 @@ content-dependent companion. See `packages/bench/methodology/SCHEMA.md`
 - [ ] vs.-previous-release delta produced (text or table) for the
       release notes.
 
+### 3.5 · Bench surface coverage (added v0.5)
+
+The cross-stack matrix (§3 above) is one of **five** bench
+surfaces. The release-gate requires every surface either be
+re-run for this release OR have an explicit per-surface
+invariant-based skip rationale recorded below.
+
+Hand-wave skips (e.g. "not wire-format-sensitive") are NOT a
+valid rationale — a release that bumps client packages can
+regress every surface. See [[no-shortcuts-full-bench]] §"Pattern:
+skipping bench surfaces" for the failure mode this gate codifies.
+
+- [ ] **§1 synthetic wire** — `synthetic_wire_bench.py <RUN>`.
+      Always re-run. Pure-library protocol numbers; produces
+      `results/<RUN>/synthetic/wire.json`.
+- [ ] **§3 cross-stack matrix** — `run-all-langs.sh <RUN> <engine>`
+      for sglang + vllm + llama.cpp. Always re-run. Produces
+      `results/<RUN>/{engine}/{lang}.json` × 18 files.
+- [ ] **Per-language token-bench** —
+      `run-all-token-benches.sh <RUN> <map> <corpus>`. Re-run
+      when ANY client package bumped (the common case at every
+      release); produces `results/<RUN>/token/{lang}.json`.
+      Catches CPU regressions in tokenize/detokenize hot paths.
+- [ ] **Cross-vocab translator** — `translator_bench.py <RUN>`.
+      Re-run when Translator code touched. Defensible to skip
+      with an explicit "Translator unchanged this release" note.
+- [ ] **Agent-loop end-to-end** — mock + searxng + metamcp +
+      MCP-leaf paths under `agent-loop/` in the results dir.
+      Re-run when ANY of: codec_dispatcher / ToolWatcher /
+      mcp-leaf SDK / metamcp container touched. **At v0.5+ this
+      is the bench that exercises the bolt-on tool dispatcher
+      path** — skipping it on a release that touches dispatcher
+      code is a §3 gate failure.
+- [ ] **MCP leaf microbench** — `extract-mcp-corpus.py` + leaf
+      comparison. Re-run when mcp-leaf SDK code touched OR
+      metamcp container rebuilt.
+
+For each skip, document the invariant in the commit message AND
+in the release-notes draft. "Wire-additive" alone is NOT enough
+— the bench surfaces measure layers that wire-additivity does
+not protect (client CPU, end-to-end dispatch correctness, etc.).
+
 ### 4 · Spec + per-version protocol documentation
 
 - [ ] `spec/PROTOCOL.md` (the navigation index) accurate — every
