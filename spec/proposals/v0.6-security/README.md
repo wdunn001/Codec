@@ -30,6 +30,7 @@ Most of the attacks documented here are NOT Codec-specific — they apply to any
 | 5 | [05-multi-turn-behavioral.md](05-multi-turn-behavioral.md) | Many-shot, crescendo, role confusion, prefill | Medium — model-layer, not protocol-layer |
 | 6 | [06-tool-agent-attacks.md](06-tool-agent-attacks.md) | MCP server poisoning, tool description injection | High — growing surface |
 | 7 | [07-codec-client-checklist.md](07-codec-client-checklist.md) | Prioritized defensive checklist for v0.6 client work | Reference — the action items |
+| R | [references/](references/) | Per-vulnerability CVEs, papers, GitHub PoCs, vendor advisories | Citation evidence for each threat-model section |
 
 ## Recommended reading order
 
