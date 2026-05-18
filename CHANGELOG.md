@@ -9,7 +9,165 @@ Docker Hub artifacts sees change between versions.
 
 ---
 
-## Unreleased — libcodec size-strip option + `@codecai/tool-kit` setup (2026-05-17)
+## v0.5.0 — 2026-05-18
+
+**Theme: efficiency + observability + cohort honesty.** Wire-additive
+over v0.4 (v0.4 → v0.5 happy-path bytes are identical). New surfaces are
+opt-in via `stream_format` / `Accept-Encoding` axes or new env vars;
+nothing changes for a v0.4 client connecting to a v0.5 server unless the
+client opts in.
+
+### Wire-protocol additions (all opt-in)
+
+- **Delta-varint stream encoding** (`stream_format: "msgpack-delta"` /
+  `"protobuf-delta"`): frames carry `base_id` + zigzag-encoded deltas
+  against the prior frame's last identifier. Stateless framing
+  preserved. ~10–15% wire reduction pre-zstd, ~3–5% post-zstd. Python
+  reference impl; engine-side emit pending in v0.5.x.
+- **Discoverable Zstandard dictionaries** at
+  `<origin>/.well-known/codec/dicts/<sha256>.zstd`. Hash-pinned; client
+  MUST verify the bytes hash to the URL component. Closes the v0.4.1
+  silent-COPY-dicts-drop regression class by making dictionary drift a
+  hard-fail (404 or hash mismatch) instead of a silent fallback to
+  identity bytes. Codified at release-checklist §1.7 with a 4-sub-gate
+  audit; the v0.5 cut caught + fixed a llamacpp regression where
+  `master` was vanilla upstream without the codec patches.
+- **GPU-side latent quantize fast path** for the diffusion forks:
+  `LatentStreamEncoderOptions.gpu_quantize=True` accepts a CUDA
+  `torch.Tensor`, quantizes on-device, transfers the int4/int8 result
+  instead of the fp16 latent. ~75% PCIe reduction on int4 at SDXL.
+- **Bolt-on tool dispatcher contract** on the engine side, paired with
+  `@codecai/tool-kit` on the client side. Manifest schema +
+  `_codec_meta` envelope let a tool author publish pre-tokenized IDs so
+  the engine can dispatch directly without ever detokenizing the
+  model's `<tool_call>` region. End-to-end loop measured at
+  `agent-loop/{mock,searxng,metamcp}.txt` in the cross-stack matrix.
+
+### Client packages — v0.5.0 cohort
+
+All 11 published artifacts bumped 0.4.1 → 0.5.0:
+
+- **npm**: `@codecai/web` · `@codecai/web-safety` · `@codecai/web-llm`
+  · `@codecai/maps-cli` · `@codecai/mcp-leaf` · `@codecai/tool-kit` ·
+  `@codecai/wire-compress` (newly promoted to the `@codecai/` org)
+- **PyPI**: `codecai`
+- **NuGet**: `Codec.Net`
+- **crates.io**: `codec-rs`
+- **Maven Central**: `ai.codec:codec`
+
+New surfaces shipped across the cohort:
+
+- **Content-aware + per-stack-aware compression picker** rewrite with
+  typed `PickReasonCode` enum (9 reasons; 7 surfaced by the picker
+  bench grid, 2 unit-tested). `@codecai/wire-compress` is the canonical
+  TypeScript impl; the same selection logic ships in Python / .NET /
+  Rust / Java / C. Flipped `zstdEnabled` default ON.
+- **`policies-enumerate` subcommand** on `@codecai/maps-cli` —
+  resolves v0.4-OQ4 ("how does an operator audit the catalog of
+  published safety policies on a deployment").
+- **`@codecai/tool-kit` v0.5.0** — promoted from scaffold to first-
+  class family member with a runnable reference tool at
+  `examples/time-tool/` (`@codecai/codec-time-tool` on npm).
+
+### Engine forks
+
+- **sglang** — patches on `wdunn001/sglang/main`; v0.5 work includes
+  `codec_dispatcher` (bolt-on tool dispatch, with cached `ToolRegistry`
+  + async `dispatch_call_async`), OpenAI-bypass for direct numpy ID
+  emission (~25-40% codec-encode CPU saved per token), and the picker
+  rewrite integration. **Upstream PR filed**: sgl-project/sglang#25544,
+  DCO-signed and through 5 gemini-code-assist bot review-fix
+  iterations.
+- **vLLM** — patches on `wdunn001/vllm/main` with identical surface.
+  **Upstream PR filed**: vllm-project/vllm#42896, also DCO-signed and
+  through bot review (5 issues: struct.unpack bytes path, hardened
+  `_decode_varint` shift-cap, async dispatch, cached registry,
+  manifest dict-shape guard).
+- **llama.cpp** — codec patches now actually on `master` (merge commit
+  `5b8f73b86`); the v0.5 cut caught the prior state where master was
+  vanilla upstream and the engine was silently serving identity-encoded
+  msgpack. Caught by §1.7 sub-gate 3 wire probe.
+
+### Docker Hub
+
+`wdunn001/codec-{sglang,vllm,llamacpp,comfyui,diffusers}:v0.5.0` and
+`:latest` all live. Each image now:
+
+- Bakes `/opt/codec/dicts/qwen2.5-synth-{msgpack,protobuf}-v1.dict` at
+  build time (16 KB each, fetched from
+  `wdunn001/Codec/main/dictionaries/`).
+- Ships `/opt/codec/check-dict-availability.sh` — the §1.7 sub-gate 2
+  probe.
+- Verified for `import brotli, zstandard, msgpack` via §1.9 before push.
+
+`wdunn001/codec-tgi` is **DROPPED**. TGI treated as a dead project per
+the 2026-05-17 cohort call; cohort is now sglang / vLLM / llama.cpp /
+ComfyUI / diffusers only.
+
+### Benchmarks
+
+Full cohort at `packages/bench/results/2026-05-17T23-06-45Z/`. Headline
+numbers — **byte-identical to v0.4.1** (confirms the wire-additive
+invariant); the §1.7 + §1.9 gates added in this release exist to
+guarantee that, not change it.
+
+- **§1 protocol-only synthetic**: 4.8× (uniform-random) → 391.9×
+  (cyclic) over Codec identity; ~50× → ~4000× over JSON-SSE identity.
+- **§1b engine-output @ 2K tokens** (Codec msgpack + dict-zstd):
+  llama.cpp 3,868× · sglang 1,707× · vllm 137× (gzip-best at content-
+  bound T=0).
+- **§2 cross-language interop**: **72/72 wire-unanimous + 72/72
+  decode-unanimous** across 3 engines × 6 client languages. vllm
+  required `REPS=4` to median out its documented `~10–20%` scheduler
+  variance at T=0.
+
+### Release-process additions
+
+- **release-checklist §1.7** — zstd dictionary availability gate
+  (4 sub-gates).
+- **release-checklist §1.9** — engine image protocol-critical dep
+  audit (`import brotli, zstandard, msgpack` before push).
+- **release-checklist §3.5** — bench surface coverage gate. The rule
+  codifies per-surface re-run triggers so a future release can't skip
+  token-bench / translator / agent-loop / leaf-microbench by
+  rationalizing them as "not wire-format-sensitive."
+- **`packages/bench/scripts/release-bench.sh`** — one-shot orchestrator
+  for the full §3 + §3.5 cohort.
+
+### IETF Internet-Draft
+
+`docs/submissions/draft-dunn-codec-00.md` rewritten to RFC 2026
+compliance: required sections present, kramdown-rfc compatible
+frontmatter, threat model expanded to five inline Codec-specific
+threats, out-of-specification behaviour table, liberal/conservative
+acceptance rules, implementation-experience section. Companion
+`docs/submissions/SUBMITTING.md` walkthrough for converting + submitting
+via `kdrfc` to the datatracker. Submission is post-release operator
+action.
+
+### Migration
+
+`v0.4.1 → v0.5.0` is **non-breaking**. Bump the package version in your
+dependency file; nothing else changes for existing v0.4 consumers. The
+spec-diff audit ran at release-cut time and recorded no removed wire
+fields, no field-semantics changes, no reassigned frame-type bytes, no
+removed discovery paths, and no enum tightening that would reject any
+v0.4.1 JSON document.
+
+To exercise the new surfaces, opt in explicitly:
+
+- Delta-varint: set `stream_format: "msgpack-delta"` on the request.
+- Discoverable dicts: set `CODEC_ZSTD_DICT_MSGPACK_URL` /
+  `CODEC_ZSTD_DICT_PROTOBUF_URL` on the engine.
+- Bolt-on tool dispatch: set `CODEC_BOLT_ON_DISPATCH=1` plus
+  `CODEC_TOOL_MANIFEST_URLS=<url1,url2,...>`.
+- GPU latent quantize: pass `gpu_quantize=True` to
+  `LatentStreamEncoderOptions`.
+
+### Pre-v0.5.0 work folded into this release
+
+The following items had been on the "Unreleased" list before the v0.5
+cut and ship as part of v0.5.0:
 
 ### libcodec: optional BPE encoder for embedded / IoT builds
 
