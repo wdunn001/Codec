@@ -190,17 +190,23 @@ REPS="$VLLM_REPS" \
 run_surface "§3 llama.cpp" bash packages/bench/scripts/run-all-langs.sh "$RUN_ID" llama.cpp
 
 # ── 4. §3.5 per-language token bench ───────────────────────────────────────
-# Args: RUN_ID MAP CORPUS REPS
-# Maps + corpus live under packages/bench/golden/. We use the qwen2 map + golden corpus.
+# Args: RUN_ID MAP CORPUS REPS.
+#
+# The tokenizer-map fixture (vocab + merges, ~6 MB for qwen2) lives in the
+# sibling codec-maps repo at /mnt/h/dev/codec-maps/maps/<vendor>/<id>.json.
+# The corpus (small) lives in this repo at packages/bench/golden/.
+# Env override CODEC_MAPS_DIR for non-default sibling locations.
 
-TOKEN_MAP="packages/bench/golden/qwen/qwen2.json"
-TOKEN_CORPUS="packages/bench/golden/qwen2.json"
+CODEC_MAPS_DIR="${CODEC_MAPS_DIR:-/mnt/h/dev/codec-maps/maps}"
+TOKEN_MAP="${TOKEN_MAP:-$CODEC_MAPS_DIR/qwen/qwen2.json}"
+TOKEN_CORPUS="${TOKEN_CORPUS:-packages/bench/golden/qwen2.json}"
 
 if [ -f "$TOKEN_MAP" ] && [ -f "$TOKEN_CORPUS" ]; then
     run_surface "§3.5 token-bench" \
         bash packages/bench/scripts/run-all-token-benches.sh "$RUN_ID" "$TOKEN_MAP" "$TOKEN_CORPUS"
 else
     echo "SKIP token-bench: $TOKEN_MAP or $TOKEN_CORPUS not found"
+    echo "  override via CODEC_MAPS_DIR / TOKEN_MAP / TOKEN_CORPUS env"
     SURFACE_STATUS["§3.5 token-bench"]="SKIPPED(missing-fixtures)"
 fi
 

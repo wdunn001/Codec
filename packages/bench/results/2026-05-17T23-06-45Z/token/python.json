@@ -1,0 +1,31 @@
+{
+  "schema_version": "1",
+  "kind": "token_bench",
+  "captured_at": "2026-05-18T03:45:14Z",
+  "client": {
+    "lang": "python",
+    "lib_name": "codecai",
+    "lib_version": "0.4.1",
+    "runtime": "CPython 3.12.3"
+  },
+  "map": {
+    "id": "qwen/qwen2",
+    "vocab_size": 151665,
+    "sha256": "sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad"
+  },
+  "corpus": {
+    "path": "/mnt/h/dev/Project Codec/Codec/packages/bench/golden/qwen2.json",
+    "sha256": "sha256:80744e804d56436d398322b3ade8f5abb1dec6afc4c48b2298fc89cf664ab7f0",
+    "samples": 35,
+    "total_text_bytes": 929,
+    "total_tokens": 287
+  },
+  "reps": 200,
+  "warmup_reps": 20,
+  "encode_ms_total_median": 0.12449000496417284,
+  "encode_ms_total_p99": 0.25935901794582605,
+  "decode_ms_total_median": 0.3054355620406568,
+  "decode_ms_total_p99": 0.6000580033287406,
+  "encode_tokens_per_sec": 2305405.9647808364,
+  "decode_tokens_per_sec": 939641.7302638688
+}

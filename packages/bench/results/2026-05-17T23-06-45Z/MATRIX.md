@@ -177,6 +177,21 @@ Bodies and headers tend to arrive in the same TCP segment for non-buffered encod
 | 2048 | br | 4719 | 53.9 |
 | 2048 | zstd | 4718 | 54.6 |
 
+## §X. Per-language tokenize / detokenize micro-bench
+
+Cross-language pass over a fixed golden corpus (`packages/bench/golden/qwen2.json`, 35 samples, 929 b text, 287 tokens) against `qwen/qwen2` map, 200 measured reps + 20 warmup, median per-pass time. Each `_total` value is the time to encode/decode the WHOLE corpus once.
+
+| Lang | encode total (ms) | encode tok/sec | decode total (ms) | decode tok/sec | encode p99 | decode p99 |
+|---|---:|---:|---:|---:|---:|---:|
+| **python** | 0.12 | 2,305,406 /s | 0.31 | 939,642 /s | 0.26 | 0.60 |
+| **web** | 0.11 | 2,649,337 /s | 0.33 | 877,577 /s | 0.25 | 1.15 |
+| **dotnet** | 0.08 | 3,589,744 /s | 0.11 | 2,594,937 /s | 0.35 | 2.21 |
+| **rust** | 0.05 | 5,897,886 /s | 0.03 | 9,830,450 /s | 0.08 | 0.07 |
+| **java** | 0.18 | 1,623,042 /s | 0.12 | 2,402,166 /s | 0.85 | 0.50 |
+| **c** | — | — | 0.01 | 22,991,267 /s | — | 0.02 |
+
+- **c**: libcodec is detokenize-only; encode_* are null pending C BPE encoder.
+
 ## §5. Methodology fingerprints
 
 Every row above came from a SCHEMA-v1 result file with a methodology fingerprint computed over the methodology block excluding `client.*`, `bench_tool.*`, `captured_at`, `notes`, `git.repo_dirty_files`. Rows from different langs share the engine's fingerprint. Mismatches surface in §6 quarantine.

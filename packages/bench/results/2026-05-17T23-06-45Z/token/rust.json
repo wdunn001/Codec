@@ -1,0 +1,31 @@
+{
+  "captured_at": "2026-05-18T03:45:21Z",
+  "client": {
+    "lang": "rust",
+    "lib_name": "codec-rs",
+    "lib_version": "0.1.0",
+    "runtime": "rustc unknown"
+  },
+  "corpus": {
+    "path": "/mnt/h/dev/Project Codec/Codec/packages/bench/golden/qwen2.json",
+    "samples": 35,
+    "sha256": "hash64:ab77dc8e8aab58c2",
+    "total_text_bytes": 929,
+    "total_tokens": 287
+  },
+  "decode_ms_total_median": 0.029195,
+  "decode_ms_total_p99": 0.065563,
+  "decode_tokens_per_sec": 9830450.419592397,
+  "encode_ms_total_median": 0.0486615,
+  "encode_ms_total_p99": 0.077356,
+  "encode_tokens_per_sec": 5897886.419448639,
+  "kind": "token_bench",
+  "map": {
+    "id": "qwen/qwen2",
+    "sha256": "hash64:86858f57e01347f5",
+    "vocab_size": 151665
+  },
+  "reps": 200,
+  "schema_version": "1",
+  "warmup_reps": 20
+}
