@@ -23,7 +23,7 @@ Source-available under [BSL 1.1](LICENSE).
 
 ## What ships today
 
-> **Latest release: v0.4.1 — protocol-only headline measured end-to-end across 3 engines × 6 clients.**
+> **Latest release: v0.5.0 — wire-additive over v0.4 (delta-varint + discoverable zstd dicts + content-aware picker + bolt-on tool dispatcher). 72/72 wire + 72/72 decode unanimous across 3 engines × 6 clients.**
 >
 > Codec's wire+compression efficiency, measured on synthetic streams (no engine, no model):
 >
@@ -80,14 +80,14 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 
 | Lang | Package | Registry | Surface |
 |---|---|---|---|
-| TypeScript / JS | [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) | npm 0.4.1 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · pretok-program runtime · `LatentStreamEncoder` / `Decoder` (v0.3) · `tool_calling` block · `SafetyPolicyDescriptor` + `discoverSafetyPolicy` (v0.4) |
-| TypeScript / JS | [`@codecai/web-safety`](packages/web-safety) | npm 0.4.1 (v0.4 candidate) | Optional sibling — `scanText` prefilter (secrets/PII regex + Shannon entropy) · `SafetyGate` state machine · `SafetyClassifier` interface + registry · Prompt Guard 86M (Transformers.js) + Llama Guard 3 1B (codec-web-llm) classifiers (v0.4) |
-| TypeScript / JS | [`@codecai/web-llm`](packages/web-llm) | npm 0.4.1 (v0.4 candidate) | Optional sibling — `wrapEngine(mlcEngine, { mapId })` turns a browser-local `@mlc-ai/web-llm` (WebGPU) engine into a Codec source. Same `decodeMsgpackStream` from `@codecai/web` consumes from it byte-identically to a remote vLLM / sglang server. Enables peer-to-peer mesh LLM (e.g. Unstable Legion) over WebRTC at Codec's binary frame size (~7% of JSON-SSE on a 500-token completion). |
-| Python | [`codecai`](https://pypi.org/project/codecai/) | PyPI 0.4.1 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `discover_safety_policy` (v0.4) |
-| .NET | [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) | NuGet 0.4.1 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `SafetyPolicy.{Validate,Hash,Load,Discover}Async` (v0.4) |
-| Rust | [`codec-rs`](packages/rust) | crates.io 0.4.1 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `discover_safety_policy` (v0.4, `http` feature) |
+| TypeScript / JS | [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) | npm 0.5.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · pretok-program runtime · `LatentStreamEncoder` / `Decoder` (v0.3) · `tool_calling` block · `SafetyPolicyDescriptor` + `discoverSafetyPolicy` (v0.4) |
+| TypeScript / JS | [`@codecai/web-safety`](packages/web-safety) | npm 0.5.0 | Optional sibling — `scanText` prefilter (secrets/PII regex + Shannon entropy) · `SafetyGate` state machine · `SafetyClassifier` interface + registry · Prompt Guard 86M (Transformers.js) + Llama Guard 3 1B (codec-web-llm) classifiers (v0.4) |
+| TypeScript / JS | [`@codecai/web-llm`](packages/web-llm) | npm 0.5.0 | Optional sibling — `wrapEngine(mlcEngine, { mapId })` turns a browser-local `@mlc-ai/web-llm` (WebGPU) engine into a Codec source. Same `decodeMsgpackStream` from `@codecai/web` consumes from it byte-identically to a remote vLLM / sglang server. Enables peer-to-peer mesh LLM (e.g. Unstable Legion) over WebRTC at Codec's binary frame size (~7% of JSON-SSE on a 500-token completion). |
+| Python | [`codecai`](https://pypi.org/project/codecai/) | PyPI 0.5.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `discover_safety_policy` (v0.4) |
+| .NET | [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) | NuGet 0.5.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `SafetyPolicy.{Validate,Hash,Load,Discover}Async` (v0.4) |
+| Rust | [`codec-rs`](packages/rust) | crates.io 0.5.0 | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `discover_safety_policy` (v0.4, `http` feature) |
 | Java | [`ai.codec:codec`](packages/java) | local v0.5.0 (Maven Central publish at release-cut) | Detokenizer · BPETokenizer · ToolWatcher · Translator · stream decoders · `SafetyPolicyDescriptor` + `SafetyPolicy.{validate,hash,load,discover}` (v0.4) · `ZstdDictDiscovery.{discover,wellKnownDictUrl}` (v0.5) |
-| C99 | [`libcodec`](packages/c) | vcpkg / FetchContent 0.4.1 | Detokenizer · BPEEncoder · ToolWatcher · Translator · stream decoders · pretok-program runtime (no PCRE2, generated Unicode tables) · `codec_safety_policy_{from_json,verify_sha256,well_known_url}` (v0.4, parser + URL + hash-verify only — descriptor publishing is in the higher-level languages) |
+| C99 | [`libcodec`](packages/c) | vcpkg / FetchContent 0.5.0 | Detokenizer · BPEEncoder · ToolWatcher · Translator · stream decoders · pretok-program runtime (no PCRE2, generated Unicode tables) · `codec_safety_policy_{from_json,verify_sha256,well_known_url}` (v0.4, parser + URL + hash-verify only — descriptor publishing is in the higher-level languages) |
 
 ### Tooling and registry
 
@@ -118,9 +118,9 @@ Six reference implementations, byte-identical Codec frames per cell across all o
 
 ---
 
-## Measured impact (cross-stack, v0.4.1)
+## Measured impact (cross-stack, v0.5)
 
-All numbers are real measurements from `packages/bench/`. The headline data set is the cross-stack matrix: three real inference engines × six client languages × 36 cells × 3 payload sizes = 648 SCHEMA-v1 result rows, captured against `wdunn001/codec-{sglang,vllm,llamacpp}:v0.4.1` containers on RTX 3090 + Qwen2.5-0.5B-Instruct (vllm/sglang) / Qwen2.5-0.5B-Instruct-GGUF:fp16 (llama.cpp), temperature 0.0. Full table: [`packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md`](packages/bench/results/2026-05-15T20-00-00Z/MATRIX.md).
+All numbers are real measurements from `packages/bench/`. The headline data set is the cross-stack matrix: three real inference engines × six client languages × 36 cells × 3 payload sizes = 648 SCHEMA-v1 result rows, captured against `wdunn001/codec-{sglang,vllm,llamacpp}:v0.5.0` containers on RTX 3090 + Qwen2.5-0.5B-Instruct (vllm/sglang) / Qwen2.5-0.5B-Instruct-GGUF:fp16 (llama.cpp), temperature 0.0. **72/72 wire-unanimous + 72/72 decode-unanimous across the cohort.** Numbers byte-identical to v0.4.1 at §1 and §1b — confirms the v0.5 wire-additive invariant. Full table: [`packages/bench/results/2026-05-17T23-06-45Z/MATRIX.md`](packages/bench/results/2026-05-17T23-06-45Z/MATRIX.md).
 
 ### Headline §1 — protocol-only (synthetic streams)
 
@@ -331,7 +331,7 @@ packages/
   python/          codecai                            Python twin of @codecai/web; codecai.server submodule carries the latent forward encoder
   dotnet/          Codec.Net                          .NET (net8.0) twin
   rust/            codec-rs                           Rust twin (crates.io publish queued)
-  java/            ai.codec:codec                     Java twin (local v0.4.1; Maven Central publish deferred)
+  java/            ai.codec:codec                     Java twin (local v0.5.0; Maven Central publish at release-cut)
   c/               libcodec                           C99 detokenizer + ToolWatcher (no deps; vcpkg + FetchContent)
   maps-cli/        @codecai/maps-cli                  generate maps + cross-vocab translate / translation-table; tool_calling auto-derivation
   mcp-leaf/        @codecai/mcp-leaf                  MCP tool-author SDK — wrapToolCall (writer) + readCodecMeta (reader) for the leaf-mode bypass
