@@ -16,6 +16,18 @@ npm install @codecai/wire-compress
 
 Works with any HTTP framework — Express, Fastify, Hono, Node's `http`, Bun, Deno, Cloudflare Workers. Pure functions, no middleware.
 
+### Other languages
+
+The same Pareto picker ships natively in C# and C, kept in lock-step with this TS reference by a [12,960-vector conformance suite](./test/conformance-vectors.json). Pick whichever fits your stack:
+
+| Language | Package | Public entry |
+|---|---|---|
+| TypeScript | `@codecai/wire-compress` (this package) | `pick({ ... })` |
+| C# / .NET 8+ | [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) | `Codec.Wire.Picker.Pick(new PickInput { ... })` |
+| C99 | `libcodec` (CMake `codec::codec` target) | `codec_wire_pick(&in, &out)` from `<codec/codec_wire_picker.h>` |
+
+All three honour the same hard rule (**dictless zstd is never chosen**), the same `PickReasonCode` enum, the same stack profiles, and CI gates on cross-language parity per release.
+
 ## Quick start
 
 Server side — pick what to apply:

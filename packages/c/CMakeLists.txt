@@ -86,6 +86,7 @@ set(CODEC_SOURCES
     src/codec_safety_policy.c
     src/codec_version_signaling.c
     src/codec_compression.c
+    src/codec_wire_picker.c
 )
 if(CODEC_WITH_BPE_ENCODER)
     list(APPEND CODEC_SOURCES
@@ -104,6 +105,7 @@ set(CODEC_HEADERS
     include/codec/codec_safety_policy.h
     include/codec/codec_version_signaling.h
     include/codec/codec_compression.h
+    include/codec/codec_wire_picker.h
 )
 
 # ── Helper macro: configure a target ────────────────────────────────────────
@@ -126,6 +128,11 @@ function(_codec_configure_target tgt is_shared)
     endif()
     if(${is_shared})
         target_compile_definitions(${tgt} PRIVATE CODEC_BUILD_SHARED=1)
+    endif()
+    # libm — needed by src/codec_wire_picker.c (Shannon entropy uses
+    # log()). On MSVC libm is part of CRT so no explicit link is needed.
+    if(NOT MSVC)
+        target_link_libraries(${tgt} PRIVATE m)
     endif()
 endfunction()
 

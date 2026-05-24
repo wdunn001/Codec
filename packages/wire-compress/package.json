@@ -19,7 +19,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts",
+    "gen-vectors": "tsx test/generate-conformance-vectors.mjs"
   },
   "keywords": [
     "compression",
