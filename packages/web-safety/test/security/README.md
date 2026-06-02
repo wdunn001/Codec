@@ -13,14 +13,16 @@ it** (the sanitizer/filter blocks the attack while preserving legitimate
 content). Together they form an executable specification of v0.6's security
 posture.
 
-## What's covered in this initial commit
+## What's covered
 
 | Category | Coverage |
 |---|---|
-| 01 — Unicode smuggling | **Full** — 7 attacks, 13 tests |
+| 01 — Unicode smuggling | **Full** — 7 attacks, 15 tests |
+| 02 — Wire protocol | **Core** — decompression bombs, length confusion, downgrade negotiation, dict-zstd preference, identity-fallthrough rejection. 11 tests. Live transport bindings (HTTP/2, SSE) tested separately in the bench harness. |
 | 03 — Indirect injection | **Partial** — JSON role injection, chat-template tokens, system-reminder mimicry. Binary fixtures (PDF/image/audio) deferred to follow-up. |
 | 04 — Output exfiltration | **Partial** — markdown image/link allowlist, data:/javascript: URI rejection. HTML/SVG render and tool-call exfil deferred to follow-up. |
-| 02, 05, 06 | **Documented only** — see fixture READMEs. Validation needs runtime support (decompression bombs, live model runs, MCP harness) not yet present in the test rig. |
+| 05 — Multi-turn / behavioral | **Core** — many-shot pattern detection, role-claim scanning (8 patterns), prefill validation, conversation-length guard. 16 tests. Live model jailbreak evaluation gated behind `RUN_MODEL_TESTS=1`. |
+| 06 — Tool / agent / MCP | **Core** — tool-description sanitization, untrusted-content wrapping, attribute-injection escaping, tool-name collision detection. 12 tests. Live MCP harness deferred. |
 
 ## Running
 
