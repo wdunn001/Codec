@@ -22,6 +22,7 @@ The 2026 wave makes the case for v0.6 client-side defenses stronger than the 202
 | 4 | [04-output-exfiltration-refs.md](04-output-exfiltration-refs.md) | Markdown / link / tool-call exfil | CVE-2025-32711 (EchoLeak) |
 | 5 | [05-multi-turn-behavioral-refs.md](05-multi-turn-behavioral-refs.md) | Many-shot / crescendo / prefill | Anil et al. 2024, Russinovich et al. 2024 |
 | 6 | [06-tool-agent-refs.md](06-tool-agent-refs.md) | MCP poisoning / tool result trust | CVE-2025-54136 (MCP Tool Poisoning) |
+| 7 | [07-codec-client-checklist-refs.md](07-codec-client-checklist-refs.md) | Operational frameworks + defensive tooling that the checklist derives from | OWASP LLM Top 10, NIST AI RMF, MITRE ATLAS |
 
 ## Conventions used in each file
 
