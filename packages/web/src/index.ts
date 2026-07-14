@@ -195,3 +195,16 @@ export {
   type LatentFrame,
   type LatentStreamEncoderOptions,
 } from './latent-frame.js';
+
+// Activation profile (v0.6+) — additive to the latent modality above.
+// Per-token transformer activations for legion's pipeline-split stage
+// protocol (token-major [tokenCount x nEmbd], tokenCount varies per
+// frame). Pin: spec/PIPELINES.md § Activation profile.
+export {
+  ActivationStreamEncoder,
+  ActivationStreamDecoder,
+  type LatentProfile,
+  type ActivationStreamEncoderOptions,
+  type ActivationFrameOptions,
+  type ActivationFrameData,
+} from './latent-frame.js';

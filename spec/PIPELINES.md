@@ -185,6 +185,150 @@ step and is unaffected.
 
 ---
 
+## Activation profile (v0.6+)
+
+Status: stable, additive to v0.3/v0.5. Freezes the wire contract for
+legion's pipeline-split activation frames — transformer hidden states
+handed off between browser peers as one compute stage finishes a chunk of
+tokens and the next stage picks it up.
+
+The activation profile reuses the **same** `LatentStreamHeader` /
+`LatentFrame` envelope as the video/image latent modality above — it does
+not introduce new top-level message types. It is selected by a discriminator
+field and distinguished structurally by *what varies per frame*:
+
+|                        | Video/image latent modality        | Activation profile                     |
+|------------------------|--------------------------------------|-----------------------------------------|
+| Per-stream shape       | fixed `shape = [C, ...spatial]`      | none — no VAE, no spatial axes          |
+| Per-frame token count  | n/a (spatial size is constant)       | **varies**: prefill chunks up to ~256 tokens, decode = 1 token |
+| Header discriminator   | `profile` absent (or `'latent'`)     | `profile: 'activation'`                 |
+| Header carries         | `shape`, `dtype`, `pipeline`, …      | `nEmbd`, `dtype`, `pipeline`, `profile` |
+| Frame carries          | `data`, `seq`, `keyframe`, `done`, … | + `tokenCount`, `posStart`, `tokens`, `stageIndex` (all optional, activation-only) |
+
+### Header fields
+
+| Field        | Type      | Required                     | Meaning |
+|--------------|-----------|-------------------------------|---------|
+| `profile`    | `'activation'` | yes (this is the discriminator) | Selects the activation profile. Absent or `'latent'` means the original v0.3 video/image semantics — existing streams are byte-for-byte unaffected. |
+| `nEmbd`      | uint      | yes                            | Fixed per-token embedding width. Every frame's payload is `tokenCount * nEmbd` elements of `dtype`. |
+| `dtype`      | string    | yes                            | `fp32` or `fp16` for the `raw` pipeline today (see below). |
+| `pipeline`   | string    | yes                            | One of the seven registered pipeline names (§ Pipeline registry). Only `raw` is implemented for activations today. |
+| `latent_space_id` | string | yes                        | Convention: `legion/pipeline-split/<model-id>` identifies the model whose activations these are. Not a latent-space-map lookup key — there is no VAE, no `latent-space-map.schema.json` entry for activation streams (see § Relationship to latent-space maps below). |
+| `shape`      | uint[]    | **omitted**                    | Not used by this profile — there is no fixed per-stream spatial shape to encode (token count varies per frame). Implementations MUST NOT require `shape` on an activation header. |
+
+### Per-frame fields
+
+| Field        | Type      | Required                     | Meaning |
+|--------------|-----------|-------------------------------|---------|
+| `tokenCount` | uint      | yes (activation frames)        | Number of tokens carried by this frame. **Explicit, not inferred** — a receiver MUST read `tokenCount` off the frame rather than derive it from `data.length` (dtype byte-width makes that derivation ambiguous, and it forecloses future non-`raw` activation pipelines whose payload isn't a fixed multiple of `tokenCount * nEmbd`). |
+| `posStart`   | uint      | optional                       | Position of this frame's first token in the overall sequence (0-indexed). A prefill chunk `[tok_5 .. tok_9]` has `posStart = 5`. |
+| `tokens`     | uint[]    | optional                       | Token-id sideband for prefill chunks — the ids that produced this frame's activations. Length MUST equal `tokenCount` when present. Decode frames (single generated token) typically omit `tokens`; the id isn't known until sampling completes downstream. |
+| `stageIndex` | uint      | optional                       | Index of the pipeline-split stage that produced this frame, for stage-protocol routing/logging on a multi-stage split. |
+
+All four are optional on the shared `LatentFrame` type specifically so
+non-activation (video/image) latent streams are unaffected — they simply
+never set them, and the fields don't appear on the wire (same
+omit-if-undefined convention as `finish_reason`).
+
+### Forward transform: `raw`
+
+```
+require dtype in {fp32, fp16}
+data = ascontiguous(activations.astype(dtype, little_endian)).tobytes()
+# activations is token-major, row-major: shape (tokenCount, nEmbd)
+```
+
+Identical byte layout to the video/image modality's `raw` pipeline (§
+`raw` above) — same `f32ToF16`/`f16ToF32` conversion, same little-endian
+packing — just applied to a `(tokenCount, nEmbd)` tensor instead of a
+`(C, ...spatial)` one. `bf16`/`int8`/`int4` dtypes are not precluded by the
+wire format (the byte-length table below covers them), but are untested
+for this profile until a caller needs them.
+
+### Inverse transform
+
+```
+expected_bytes = tokenCount * nEmbd * dtype_size(dtype)   # dtype_size(int4) rounds up: ceil(n/2)
+require frame.data.length == expected_bytes               # reject otherwise
+activations = frombuffer(frame.data, dtype).reshape(tokenCount, nEmbd)
+```
+
+A decoder MUST validate `frame.data.length` against
+`tokenCount * nEmbd * dtype_size(dtype)` and reject a mismatched frame
+rather than silently truncating or over-reading — this is the activation
+profile's analogue of the video modality's bit-identity conformance
+requirement, just checked per-frame instead of against a fixed stream
+shape.
+
+### Pipelines beyond `raw` (not yet shipped)
+
+`int8` / `int4` / adaptive / delta variants are **not required** by this
+point release, but the design does not preclude them: `pipeline` on an
+activation header remains the same closed seven-name enum as the video/
+image modality (§ Pipeline registry), and an activation-profile encoder/
+decoder dispatches on `pipeline` exactly like the video/image one does.
+Implementations that receive a non-`raw` `pipeline` on an activation
+stream today MUST reject it with a clear "not yet implemented" error
+rather than silently falling back to `raw`. A future point release that
+ships `int8` (say, per-token-major-row scales instead of per-channel) adds
+a forward/inverse subsection here following the same three-place checklist
+as § Adding a pipeline.
+
+### Relationship to latent-space maps
+
+`spec/latent-space-map.schema.json` is unchanged by this profile. Its
+`pipelines[].name` enum already covers every pipeline name (`raw` included)
+that an activation stream could ever emit, and activation streams don't
+carry a VAE, `vae_scale_factor`, or `decoder` block, so there is nothing in
+the schema for this profile to negotiate against. Activation streams are
+negotiated out-of-band by legion's pipeline-split stage protocol (which
+peer is which stage, what `nEmbd` the shared model uses), not by loading a
+latent-space map.
+
+### Example
+
+```jsonc
+// Header (msgpack; shown as JSON for readability)
+{
+  "type": "header",
+  "latent_space_id": "legion/pipeline-split/llama-3-70b",
+  "dtype": "fp16",
+  "pipeline": "raw",
+  "profile": "activation",
+  "nEmbd": 8192
+}
+
+// Frame 1 — prefill chunk, 256 tokens, stage 0 → stage 1 hop
+{
+  "data": /* 256 * 8192 * 2 bytes, fp16 LE, token-major */,
+  "seq": 0, "keyframe": true, "done": false,
+  "tokenCount": 256, "posStart": 0,
+  "tokens": [/* 256 token ids */], "stageIndex": 0
+}
+
+// Frame 42 — single decode token, same stage hop
+{
+  "data": /* 1 * 8192 * 2 bytes */,
+  "seq": 42, "keyframe": false, "done": false,
+  "tokenCount": 1, "posStart": 297, "stageIndex": 0
+}
+```
+
+TypeScript reference: `ActivationStreamEncoder` / `ActivationStreamDecoder`
+in `packages/web/src/latent-frame.ts`. Golden fixtures:
+`packages/bench/golden/pipelines/activation/*.json` (header + frame bytes,
+base64-encoded, alongside the plaintext token-major activation values that
+produced them — the frozen reference every future change to this profile
+must keep reproducing byte-for-byte).
+
+Python twin (`packages/python/src/codecai/server/latent_frame.py`) does not
+yet implement this profile — tracked as a follow-up; port the same
+`profile`/`nEmbd`/`tokenCount`/`posStart`/`tokens`/`stageIndex` fields
+against `encode_latent_header_msgpack` / `encode_latent_frame_msgpack` plus
+new `ActivationStreamEncoder`/decode-side functions mirroring this section.
+
+---
+
 ## Compression interaction
 
 Latent zstd dictionaries are keyed by `(latent_space_id, format, pipeline)` — see `latent-space-map.schema.json#/properties/zstd_dictionaries`. A dict trained on `raw` bytes is meaningless against `int8` bytes (different distributions). A server MUST NOT respond with `Content-Encoding: zstd` unless it has loaded a dict whose `(format, pipeline)` triple matches the response.

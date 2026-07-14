@@ -1,0 +1,26 @@
+{
+  "description": "Single decode token, 4-wide fp32 activations, no tokens[] sideband (decode has no chunk ids).",
+  "profile": "activation",
+  "pipeline": "raw",
+  "dtype": "fp32",
+  "latent_space_id": "legion/pipeline-split/test-model",
+  "nEmbd": 4,
+  "frame_meta": {
+    "seq": 3,
+    "keyframe": false,
+    "done": false,
+    "tokenCount": 1,
+    "posStart": 3,
+    "stageIndex": 1
+  },
+  "activations": [
+    [
+      -0.25,
+      -0.125,
+      0,
+      0.125
+    ]
+  ],
+  "header_msgpack_b64": "hqR0eXBlpmhlYWRlcq9sYXRlbnRfc3BhY2VfaWTZIGxlZ2lvbi9waXBlbGluZS1zcGxpdC90ZXN0LW1vZGVspWR0eXBlpGZwMzKocGlwZWxpbmWjcmF3p3Byb2ZpbGWqYWN0aXZhdGlvbqVuRW1iZAQ=",
+  "frame_msgpack_b64": "h6RkYXRhxBAAAIC+AAAAvgAAAAAAAAA+o3NlcQOoa2V5ZnJhbWXCpGRvbmXCqnRva2VuQ291bnQBqHBvc1N0YXJ0A6pzdGFnZUluZGV4AQ=="
+}

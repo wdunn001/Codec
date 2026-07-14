@@ -16,11 +16,16 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 import {
   PIPELINE_NAMES,
   LatentStreamEncoder,
   LatentStreamDecoder,
+  ActivationStreamEncoder,
+  ActivationStreamDecoder,
   encodeLatentHeaderMsgpack,
   encodeLatentFrameMsgpack,
   decodeLatentHeaderMsgpack,
@@ -281,4 +286,278 @@ describe('msgpack header + frame shape', () => {
     const bytes = encode({ type: 'header', latent_space_id: 'x', shape: SHAPE, pipeline: 'raw' });
     assert.throws(() => decodeLatentHeaderMsgpack(bytes), /missing required field: dtype/);
   });
+});
+
+// ── Activation profile (v0.6+) ──────────────────────────────────────────────
+//
+// Per-token transformer activations for legion's pipeline-split stage
+// protocol. Unlike the video/image latent modality above, tokenCount
+// varies per frame (prefill chunks vs single decode tokens), so these
+// streams use `ActivationStreamEncoder` / `ActivationStreamDecoder` rather
+// than `LatentStreamEncoder` / `LatentStreamDecoder`. See spec/PIPELINES.md
+// § Activation profile. Golden fixtures live at
+// packages/bench/golden/pipelines/activation/ and freeze the exact bytes
+// these classes must keep reproducing.
+
+function makeTokenMajor(tokenCount: number, nEmbd: number, offset = 0): Float32Array {
+  // Deterministic, fp16-exact values (small quarter/eighth steps) so fp32
+  // and fp16 payloads agree bit-for-bit modulo dtype width.
+  const out = new Float32Array(tokenCount * nEmbd);
+  for (let t = 0; t < tokenCount; t++) {
+    for (let e = 0; e < nEmbd; e++) {
+      out[t * nEmbd + e] = (t - tokenCount / 2) * 0.5 + e / 8 + offset;
+    }
+  }
+  return out;
+}
+
+describe('activation profile: header round-trip', () => {
+  test('header carries profile + nEmbd, omits shape', () => {
+    const enc = new ActivationStreamEncoder({
+      latentSpaceId: 'legion/pipeline-split/test-model',
+      nEmbd: 16,
+      dtype: 'fp32',
+    });
+    const header = decodeLatentHeaderMsgpack(enc.header());
+    assert.equal(header.profile, 'activation');
+    assert.equal(header.nEmbd, 16);
+    assert.equal(header.pipeline, 'raw');
+    assert.equal(header.dtype, 'fp32');
+    assert.equal(header.shape, undefined);
+  });
+
+  test('non-activation header is unaffected — shape still required, profile/nEmbd absent', () => {
+    const enc = new LatentStreamEncoder({
+      latentSpaceId: 'sd-vae-ft-mse', shape: SHAPE, dtype: 'fp16', pipeline: 'raw',
+    });
+    const header = decodeLatentHeaderMsgpack(enc.header());
+    assert.equal(header.profile, undefined);
+    assert.equal(header.nEmbd, undefined);
+    assert.deepEqual([...header.shape!], [...SHAPE]);
+  });
+
+  test('decodeLatentHeaderMsgpack rejects activation header missing nEmbd', async () => {
+    const { encode } = await import('@msgpack/msgpack');
+    const bytes = encode({
+      type: 'header', latent_space_id: 'x', dtype: 'fp32', pipeline: 'raw', profile: 'activation',
+    });
+    assert.throws(() => decodeLatentHeaderMsgpack(bytes), /missing required field: nEmbd/);
+  });
+
+  test('ActivationStreamDecoder rejects a non-activation header', () => {
+    const enc = new LatentStreamEncoder({
+      latentSpaceId: 'x', shape: SHAPE, dtype: 'fp16', pipeline: 'raw',
+    });
+    const header = decodeLatentHeaderMsgpack(enc.header());
+    assert.throws(() => new ActivationStreamDecoder(header), /requires header\.profile === 'activation'/);
+  });
+
+  test('LatentStreamDecoder rejects an activation header (no fixed shape)', () => {
+    const enc = new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd: 8, dtype: 'fp32' });
+    const header = decodeLatentHeaderMsgpack(enc.header());
+    assert.throws(() => new LatentStreamDecoder(header), /requires header\.shape/);
+  });
+});
+
+describe('activation profile: frame round-trip', () => {
+  test('raw fp32: single decode token (tokenCount=1)', () => {
+    const nEmbd = 12;
+    const enc = new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd, dtype: 'fp32' });
+    const dec = new ActivationStreamDecoder(decodeLatentHeaderMsgpack(enc.header()));
+
+    const activations = makeTokenMajor(1, nEmbd);
+    const frameBytes = enc.frame(activations, { seq: 0, keyframe: true, posStart: 7, stageIndex: 2 });
+    const frame = decodeLatentFrameMsgpack(frameBytes);
+    assert.equal(frame.tokenCount, 1);
+    assert.equal(frame.posStart, 7);
+    assert.equal(frame.stageIndex, 2);
+    assert.equal(frame.tokens, undefined);
+
+    const decoded = dec.decodeFrame(frame);
+    assert.equal(decoded.tokenCount, 1);
+    assert.equal(decoded.posStart, 7);
+    assert.equal(decoded.stageIndex, 2);
+    assert.deepEqual(Array.from(decoded.activations), Array.from(activations));
+  });
+
+  test('raw fp32: prefill chunk (tokenCount>1) with tokens[] sideband', () => {
+    const nEmbd = 6;
+    const tokenCount = 5;
+    const enc = new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd, dtype: 'fp32' });
+    const dec = new ActivationStreamDecoder(decodeLatentHeaderMsgpack(enc.header()));
+
+    const activations = makeTokenMajor(tokenCount, nEmbd);
+    const tokens = [11, 22, 33, 44, 55];
+    const frameBytes = enc.frame(activations, {
+      seq: 0, keyframe: true, done: true, posStart: 0, tokens, stageIndex: 0,
+    });
+    const decoded = dec.decodeFrame(decodeLatentFrameMsgpack(frameBytes));
+    assert.equal(decoded.tokenCount, tokenCount);
+    assert.deepEqual(decoded.tokens, tokens);
+    assert.equal(decoded.posStart, 0);
+    assert.equal(decoded.stageIndex, 0);
+    assert.deepEqual(Array.from(decoded.activations), Array.from(activations));
+  });
+
+  test('raw fp16: prefill chunk round-trips within fp16 rounding', () => {
+    const nEmbd = 8;
+    const tokenCount = 4;
+    const enc = new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd, dtype: 'fp16' });
+    const dec = new ActivationStreamDecoder(decodeLatentHeaderMsgpack(enc.header()));
+
+    const activations = makeTokenMajor(tokenCount, nEmbd);
+    const frameBytes = enc.frame(activations, { seq: 0, keyframe: true, posStart: 100, tokens: [1, 2, 3, 4] });
+    const decoded = dec.decodeFrame(decodeLatentFrameMsgpack(frameBytes));
+    assert.equal(decoded.tokenCount, tokenCount);
+    // Fixture values are fp16-exact, so this round-trips bit-for-bit.
+    assert.deepEqual(Array.from(decoded.activations), Array.from(activations));
+  });
+
+  test('varying tokenCount across frames on the same stream (prefill then decode)', () => {
+    const nEmbd = 4;
+    const enc = new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd, dtype: 'fp32' });
+    const dec = new ActivationStreamDecoder(decodeLatentHeaderMsgpack(enc.header()));
+
+    const prefill = makeTokenMajor(6, nEmbd);
+    const d0 = dec.decodeFrame(decodeLatentFrameMsgpack(
+      enc.frame(prefill, { seq: 0, keyframe: true, posStart: 0, tokens: [1, 2, 3, 4, 5, 6] }),
+    ));
+    assert.equal(d0.tokenCount, 6);
+
+    const decode1 = makeTokenMajor(1, nEmbd, 1);
+    const d1 = dec.decodeFrame(decodeLatentFrameMsgpack(
+      enc.frame(decode1, { seq: 1, keyframe: false, posStart: 6 }),
+    ));
+    assert.equal(d1.tokenCount, 1);
+    assert.deepEqual(Array.from(d1.activations), Array.from(decode1));
+  });
+});
+
+describe('activation profile: error cases', () => {
+  test('encoder rejects nEmbd that does not divide activations length', () => {
+    const enc = new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd: 5, dtype: 'fp32' });
+    assert.throws(
+      () => enc.frame(new Float32Array(7), { seq: 0, keyframe: true }),
+      /not a multiple of nEmbd/,
+    );
+  });
+
+  test('encoder rejects tokens[] length mismatch against derived tokenCount', () => {
+    const enc = new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd: 4, dtype: 'fp32' });
+    assert.throws(
+      () => enc.frame(makeTokenMajor(3, 4), { seq: 0, keyframe: true, tokens: [1, 2] }),
+      /tokens length 2 does not match derived tokenCount 3/,
+    );
+  });
+
+  test('decoder rejects frame missing tokenCount', () => {
+    const enc = new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd: 4, dtype: 'fp32' });
+    const dec = new ActivationStreamDecoder(decodeLatentHeaderMsgpack(enc.header()));
+    const bareFrame = decodeLatentFrameMsgpack(encodeLatentFrameMsgpack({
+      data: new Uint8Array(16), seq: 0, keyframe: true, done: false,
+    }));
+    assert.throws(() => dec.decodeFrame(bareFrame), /missing required field: tokenCount/);
+  });
+
+  test('decoder rejects payload length mismatch vs tokenCount * nEmbd * dtypeSize', () => {
+    const enc = new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd: 4, dtype: 'fp32' });
+    const dec = new ActivationStreamDecoder(decodeLatentHeaderMsgpack(enc.header()));
+    // tokenCount=2, nEmbd=4, fp32 → expects 32 bytes; hand-craft 16.
+    const badFrame = decodeLatentFrameMsgpack(encodeLatentFrameMsgpack({
+      data: new Uint8Array(16), seq: 0, keyframe: true, done: false, tokenCount: 2,
+    }));
+    assert.throws(
+      () => dec.decodeFrame(badFrame),
+      /payload length 16 does not match tokenCount\(2\) \* nEmbd\(4\) \* dtypeSize = 32/,
+    );
+  });
+
+  test('decoder rejects tokens[] length mismatch against frame tokenCount', () => {
+    const enc = new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd: 4, dtype: 'fp32' });
+    const dec = new ActivationStreamDecoder(decodeLatentHeaderMsgpack(enc.header()));
+    const frame = decodeLatentFrameMsgpack(encodeLatentFrameMsgpack({
+      data: new Uint8Array(32), seq: 0, keyframe: true, done: false, tokenCount: 2, tokens: [1, 2, 3],
+    }));
+    assert.throws(() => dec.decodeFrame(frame), /tokens length 3 does not match tokenCount 2/);
+  });
+
+  test('encoder constructor rejects non-integer / non-positive nEmbd', () => {
+    assert.throws(() => new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd: 0, dtype: 'fp32' }),
+      /nEmbd must be a positive integer/);
+    assert.throws(() => new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd: 2.5, dtype: 'fp32' }),
+      /nEmbd must be a positive integer/);
+  });
+
+  test('encoder + decoder throw a clear error for unimplemented pipelines (int8 not shipped yet)', () => {
+    const enc = new ActivationStreamEncoder({ latentSpaceId: 'x', nEmbd: 4, dtype: 'fp32', pipeline: 'int8' });
+    assert.throws(
+      () => enc.frame(makeTokenMajor(2, 4), { seq: 0, keyframe: true }),
+      /pipeline "int8" is not yet implemented/,
+    );
+  });
+});
+
+describe('activation profile: golden fixtures (packages/bench/golden/pipelines/activation/)', () => {
+  const FIXTURE_DIR = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..', '..', 'bench', 'golden', 'pipelines', 'activation',
+  );
+
+  function loadFixture(name: string): any {
+    return JSON.parse(readFileSync(path.join(FIXTURE_DIR, `${name}.json`), 'utf8'));
+  }
+
+  function fromB64(b64: string): Uint8Array {
+    return new Uint8Array(Buffer.from(b64, 'base64'));
+  }
+
+  const FIXTURE_NAMES = ['raw-fp32-prefill', 'raw-fp32-decode', 'raw-fp16-prefill'];
+
+  for (const name of FIXTURE_NAMES) {
+    test(`${name}: frozen header/frame bytes decode to the fixture's metadata`, () => {
+      const fx = loadFixture(name);
+      const headerBytes = fromB64(fx.header_msgpack_b64);
+      const frameBytes = fromB64(fx.frame_msgpack_b64);
+
+      const header = decodeLatentHeaderMsgpack(headerBytes);
+      assert.equal(header.profile, 'activation');
+      assert.equal(header.nEmbd, fx.nEmbd);
+      assert.equal(header.dtype, fx.dtype);
+      assert.equal(header.pipeline, fx.pipeline);
+      assert.equal(header.latent_space_id, fx.latent_space_id);
+
+      const frame = decodeLatentFrameMsgpack(frameBytes);
+      assert.equal(frame.tokenCount, fx.frame_meta.tokenCount);
+      assert.equal(frame.posStart, fx.frame_meta.posStart);
+      assert.equal(frame.stageIndex, fx.frame_meta.stageIndex);
+      assert.deepEqual(frame.tokens, fx.frame_meta.tokens);
+
+      const dec = new ActivationStreamDecoder(header);
+      const decoded = dec.decodeFrame(frame);
+      const flatExpected = (fx.activations as number[][]).flat();
+      assert.deepEqual(Array.from(decoded.activations), flatExpected);
+    });
+
+    test(`${name}: re-encoding the fixture's inputs reproduces the frozen bytes exactly`, () => {
+      const fx = loadFixture(name);
+      const enc = new ActivationStreamEncoder({
+        latentSpaceId: fx.latent_space_id,
+        nEmbd: fx.nEmbd,
+        dtype: fx.dtype,
+      });
+      const headerBytes = enc.header();
+      const activations = Float32Array.from((fx.activations as number[][]).flat());
+      const frameBytes = enc.frame(activations, {
+        seq: fx.frame_meta.seq,
+        keyframe: fx.frame_meta.keyframe,
+        done: fx.frame_meta.done,
+        posStart: fx.frame_meta.posStart,
+        tokens: fx.frame_meta.tokens,
+        stageIndex: fx.frame_meta.stageIndex,
+      });
+
+      assert.deepEqual(Array.from(headerBytes), Array.from(fromB64(fx.header_msgpack_b64)));
+      assert.deepEqual(Array.from(frameBytes), Array.from(fromB64(fx.frame_msgpack_b64)));
+    });
+  }
 });

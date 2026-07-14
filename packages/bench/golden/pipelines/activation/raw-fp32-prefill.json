@@ -1,0 +1,43 @@
+{
+  "description": "Prefill chunk: 3 tokens x 4-wide fp32 activations, with tokens[]/posStart/stageIndex sideband.",
+  "profile": "activation",
+  "pipeline": "raw",
+  "dtype": "fp32",
+  "latent_space_id": "legion/pipeline-split/test-model",
+  "nEmbd": 4,
+  "frame_meta": {
+    "seq": 0,
+    "keyframe": true,
+    "done": false,
+    "tokenCount": 3,
+    "posStart": 0,
+    "tokens": [
+      15,
+      22,
+      9
+    ],
+    "stageIndex": 1
+  },
+  "activations": [
+    [
+      -0.75,
+      -0.625,
+      -0.5,
+      -0.375
+    ],
+    [
+      -0.25,
+      -0.125,
+      0,
+      0.125
+    ],
+    [
+      0.25,
+      0.375,
+      0.5,
+      0.625
+    ]
+  ],
+  "header_msgpack_b64": "hqR0eXBlpmhlYWRlcq9sYXRlbnRfc3BhY2VfaWTZIGxlZ2lvbi9waXBlbGluZS1zcGxpdC90ZXN0LW1vZGVspWR0eXBlpGZwMzKocGlwZWxpbmWjcmF3p3Byb2ZpbGWqYWN0aXZhdGlvbqVuRW1iZAQ=",
+  "frame_msgpack_b64": "iKRkYXRhxDAAAEC/AAAgvwAAAL8AAMC+AACAvgAAAL4AAAAAAAAAPgAAgD4AAMA+AAAAPwAAID+jc2VxAKhrZXlmcmFtZcOkZG9uZcKqdG9rZW5Db3VudAOocG9zU3RhcnQApnRva2Vuc5MPFgmqc3RhZ2VJbmRleAE="
+}

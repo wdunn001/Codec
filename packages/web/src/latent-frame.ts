@@ -10,19 +10,30 @@
  * Wire format (msgpack):
  *   Header — first frame in the response body:
  *     { type: 'header',
- *       latent_space_id: string, shape: number[], dtype: string,
+ *       latent_space_id: string, shape?: number[], dtype: string,
  *       pipeline: string,
  *       scales?: Uint8Array, fps?: number,
- *       total_frames?: number, vae_scale_factor?: number }
+ *       total_frames?: number, vae_scale_factor?: number,
+ *       profile?: 'latent' | 'activation', nEmbd?: number }
  *   Frame  — every subsequent frame:
  *     { data: Uint8Array, seq: number, keyframe: boolean,
- *       done: boolean, finish_reason?: string }
+ *       done: boolean, finish_reason?: string,
+ *       tokenCount?: number, posStart?: number, tokens?: number[],
+ *       stageIndex?: number }
  *
  * Pipeline math is pinned in spec/PIPELINES.md. This module implements
  * forward (server-side) AND inverse (client-side) for all seven
  * pipelines. The protobuf encoder is intentionally NOT ported in this
  * pass — msgpack is the primary v0.3 wire format and the protobuf side
  * is a straight follow-up against the same Python reference.
+ *
+ * v0.6+ additive: the "activation" profile (`LatentStreamHeader.profile ===
+ * 'activation'`) is a distinct wire contract for per-token transformer
+ * activations flowing through legion's pipeline-split stage protocol —
+ * see `ActivationStreamEncoder` / `ActivationStreamDecoder` below and
+ * spec/PIPELINES.md § Activation profile. It reuses the same header/frame
+ * envelope (additive optional fields only) so existing video/image latent
+ * streams are byte-for-byte unaffected.
  */
 
 import { encode as msgpackEncode, decode as msgpackDecode } from '@msgpack/msgpack';
@@ -52,12 +63,27 @@ const INT4_PIPELINES = new Set<PipelineName>([
 
 export type LatentDtype = 'fp32' | 'fp16' | 'bf16' | 'int8' | 'int4';
 
+/**
+ * Wire profile discriminator (v0.6+). Absent (or `'latent'`) is the
+ * original v0.3 video/image latent modality — fixed `shape` per stream,
+ * channel-first. `'activation'` is the additive per-token transformer
+ * activation profile (see spec/PIPELINES.md § Activation profile); its
+ * frames carry a varying `tokenCount` instead of a fixed spatial shape.
+ */
+export type LatentProfile = 'latent' | 'activation';
+
 // ── Public types ────────────────────────────────────────────────────────────
 
 /** Every latent stream begins with exactly one header. */
 export interface LatentStreamHeader {
   readonly latent_space_id: string;
-  readonly shape: readonly number[];
+  /**
+   * Required unless `profile === 'activation'`. Channel-first
+   * `[C, ...spatial]` for the video/image latent modality; not used by the
+   * activation profile, which carries `nEmbd` instead (token count varies
+   * per frame so there is no fixed per-stream shape to encode here).
+   */
+  readonly shape?: readonly number[];
   readonly dtype: LatentDtype;
   readonly pipeline: PipelineName;
   /** Static-scale pipelines only: fp16 LE bytes of length 2*C. */
@@ -65,6 +91,10 @@ export interface LatentStreamHeader {
   readonly fps?: number;
   readonly total_frames?: number;
   readonly vae_scale_factor?: number;
+  /** v0.6+ activation profile discriminator. Omitted/`'latent'` = v0.3 behavior. */
+  readonly profile?: LatentProfile;
+  /** Required when `profile === 'activation'`. Per-token embedding width. */
+  readonly nEmbd?: number;
 }
 
 /** Every frame after the header. */
@@ -74,6 +104,20 @@ export interface LatentFrame {
   readonly keyframe: boolean;
   readonly done: boolean;
   readonly finish_reason?: string;
+  /**
+   * Activation profile only (v0.6+). Optional so non-activation latent/
+   * video streams are unaffected on the wire. `tokenCount` is the number
+   * of tokens carried by this frame (prefill chunks of up to ~256; decode
+   * = 1) and MUST be derivable without inferring it from `data.length` —
+   * see spec/PIPELINES.md § Activation profile.
+   */
+  readonly tokenCount?: number;
+  /** Position of this frame's first token in the overall sequence. */
+  readonly posStart?: number;
+  /** Token ids sideband for prefill chunks (length === tokenCount when set). */
+  readonly tokens?: readonly number[];
+  /** Index of the pipeline-split stage that produced this frame. */
+  readonly stageIndex?: number;
 }
 
 // ── fp16 helpers (no native JS support — pack via DataView) ─────────────────
@@ -488,6 +532,12 @@ export class LatentStreamDecoder {
     if (!PIPELINE_NAMES.includes(header.pipeline)) {
       throw new Error(`unknown pipeline ${header.pipeline} on header`);
     }
+    if (!header.shape) {
+      throw new Error(
+        'LatentStreamDecoder requires header.shape (an activation-profile ' +
+          'header has no fixed shape — use ActivationStreamDecoder instead)',
+      );
+    }
     this.header = header;
     this.C = header.shape[0]!;
     this.spatial = header.shape.slice(1).reduce((a, b) => a * b, 1);
@@ -585,6 +635,229 @@ function dequantize(
   return out;
 }
 
+// ── Activation profile (v0.6+) ──────────────────────────────────────────────
+//
+// Per-token transformer activations for legion's pipeline-split stage
+// protocol: transformer hidden states flowing between browser peers as one
+// compute stage hands off to the next. Unlike video/image latents (fixed
+// `shape` per stream), the token count VARIES per frame — prefill chunks
+// carry up to ~256 tokens, decode carries exactly 1 — so there is no fixed
+// per-stream shape to negotiate. The header instead carries `nEmbd` (the
+// fixed per-token embedding width); each frame carries its own explicit
+// `tokenCount` rather than making the receiver infer it from byte length.
+//
+// Normative: spec/PIPELINES.md § Activation profile. Only the `raw`
+// pipeline is implemented today (fp32 / fp16 payloads); `int8` / `delta+*`
+// are intentionally not precluded — `encodePipeline`/`decodeFrame` below
+// dispatch on `pipeline` and throw a clear "not yet implemented" error for
+// anything other than `raw` so a future point release can fill them in
+// without a wire- or type-level change.
+
+/** Bytes-on-the-wire for `tokenCount * nEmbd` elements of a raw-pipeline dtype. */
+function activationRawByteLength(dtype: LatentDtype, elementCount: number): number {
+  switch (dtype) {
+    case 'fp32':
+      return elementCount * 4;
+    case 'fp16':
+    case 'bf16':
+      return elementCount * 2;
+    case 'int8':
+      return elementCount;
+    case 'int4':
+      // Two-per-byte, low-nibble-first (see packInt4LowFirst) — odd element
+      // counts zero-pad the trailing high nibble.
+      return Math.ceil(elementCount / 2);
+    default:
+      throw new Error(`unsupported activation dtype: ${dtype}`);
+  }
+}
+
+export interface ActivationStreamEncoderOptions {
+  latentSpaceId: string;
+  /** Fixed per-token embedding width. Every frame's payload is tokenCount * nEmbd elements. */
+  nEmbd: number;
+  dtype: LatentDtype;
+  /** Defaults to `'raw'`. Only `'raw'` is implemented today — see spec/PIPELINES.md § Activation profile. */
+  pipeline?: PipelineName;
+}
+
+export interface ActivationFrameOptions {
+  seq: number;
+  keyframe: boolean;
+  done?: boolean;
+  finishReason?: string;
+  /** Position of this frame's first token in the overall sequence. */
+  posStart?: number;
+  /** Token ids sideband for prefill chunks. Length must equal the derived tokenCount when set. */
+  tokens?: readonly number[];
+  /** Index of the pipeline-split stage that produced this frame. */
+  stageIndex?: number;
+}
+
+/** Decoded activation frame — `decodeFrame`'s return shape. */
+export interface ActivationFrameData {
+  /** Token-major, row-major: length === tokenCount * nEmbd, row i = token i's nEmbd-wide vector. */
+  readonly activations: Float32Array;
+  readonly tokenCount: number;
+  readonly posStart?: number;
+  readonly tokens?: readonly number[];
+  readonly stageIndex?: number;
+}
+
+/**
+ * Server/peer-side streaming encoder for the activation profile. One per
+ * outbound activation stream (one pipeline-split stage → next-stage hop).
+ * Construct with `(latentSpaceId, nEmbd, dtype)`, call `header()` once,
+ * then `frame(activations, …)` per produced chunk — a prefill chunk of up
+ * to ~256 tokens, or a single decode token.
+ */
+export class ActivationStreamEncoder {
+  readonly latentSpaceId: string;
+  readonly nEmbd: number;
+  readonly dtype: LatentDtype;
+  readonly pipeline: PipelineName;
+
+  private lastSeq = -1;
+
+  constructor(opts: ActivationStreamEncoderOptions) {
+    const pipeline = opts.pipeline ?? 'raw';
+    if (!PIPELINE_NAMES.includes(pipeline)) {
+      throw new Error(
+        `unknown pipeline ${JSON.stringify(pipeline)}; must be one of ${PIPELINE_NAMES.join(', ')}`,
+      );
+    }
+    if (!Number.isInteger(opts.nEmbd) || opts.nEmbd <= 0) {
+      throw new Error(`nEmbd must be a positive integer; got ${opts.nEmbd}`);
+    }
+    this.latentSpaceId = opts.latentSpaceId;
+    this.nEmbd = opts.nEmbd;
+    this.dtype = opts.dtype;
+    this.pipeline = pipeline;
+  }
+
+  /** Encode the per-stream header. Call once, before any frame(). */
+  header(): Uint8Array {
+    return encodeLatentHeaderMsgpack({
+      latent_space_id: this.latentSpaceId,
+      dtype: this.dtype,
+      pipeline: this.pipeline,
+      profile: 'activation',
+      nEmbd: this.nEmbd,
+    });
+  }
+
+  /**
+   * Encode one frame. `activations` is a token-major, row-major
+   * Float32Array of length `tokenCount * nEmbd` (row i = token i's
+   * nEmbd-wide activation vector); `tokenCount` is derived from
+   * `activations.length / nEmbd` and always carried explicitly on the wire
+   * frame — the receiver never infers it from `data.length`.
+   */
+  frame(activations: Float32Array, opts: ActivationFrameOptions): Uint8Array {
+    if (opts.seq <= this.lastSeq) {
+      throw new Error(
+        `seq must be monotonically increasing; got ${opts.seq} after ${this.lastSeq}`,
+      );
+    }
+    if (activations.length % this.nEmbd !== 0) {
+      throw new Error(
+        `activations length ${activations.length} is not a multiple of nEmbd ${this.nEmbd}`,
+      );
+    }
+    const tokenCount = activations.length / this.nEmbd;
+    if (opts.tokens !== undefined && opts.tokens.length !== tokenCount) {
+      throw new Error(
+        `tokens length ${opts.tokens.length} does not match derived tokenCount ${tokenCount}`,
+      );
+    }
+    const data = this.encodePipeline(activations);
+    this.lastSeq = opts.seq;
+    return encodeLatentFrameMsgpack({
+      data,
+      seq: opts.seq,
+      keyframe: opts.keyframe,
+      done: opts.done ?? false,
+      finish_reason: opts.finishReason,
+      tokenCount,
+      posStart: opts.posStart,
+      tokens: opts.tokens,
+      stageIndex: opts.stageIndex,
+    });
+  }
+
+  private encodePipeline(activations: Float32Array): Uint8Array {
+    if (this.pipeline === 'raw') {
+      return float32ArrayToTypedBytes(activations, this.dtype);
+    }
+    throw new Error(
+      `activation profile: pipeline ${JSON.stringify(this.pipeline)} is not yet ` +
+        `implemented (only 'raw' ships today — see spec/PIPELINES.md § Activation profile)`,
+    );
+  }
+}
+
+/**
+ * Stateless-per-frame decoder for the activation profile. Construct with
+ * the parsed `LatentStreamHeader` (must have `profile === 'activation'`),
+ * then call `decodeFrame(frame)` per incoming `LatentFrame`.
+ */
+export class ActivationStreamDecoder {
+  readonly header: LatentStreamHeader;
+  private readonly nEmbd: number;
+
+  constructor(header: LatentStreamHeader) {
+    if (header.profile !== 'activation') {
+      throw new Error(
+        `ActivationStreamDecoder requires header.profile === 'activation'; got ${JSON.stringify(header.profile)}`,
+      );
+    }
+    if (!PIPELINE_NAMES.includes(header.pipeline)) {
+      throw new Error(`unknown pipeline ${header.pipeline} on header`);
+    }
+    if (typeof header.nEmbd !== 'number' || !Number.isInteger(header.nEmbd) || header.nEmbd <= 0) {
+      throw new Error(`activation header requires a positive integer nEmbd; got ${header.nEmbd}`);
+    }
+    this.header = header;
+    this.nEmbd = header.nEmbd;
+  }
+
+  decodeFrame(frame: LatentFrame): ActivationFrameData {
+    if (typeof frame.tokenCount !== 'number') {
+      throw new Error('activation frame is missing required field: tokenCount');
+    }
+    const tokenCount = frame.tokenCount;
+    if (frame.tokens !== undefined && frame.tokens.length !== tokenCount) {
+      throw new Error(
+        `activation frame tokens length ${frame.tokens.length} does not match tokenCount ${tokenCount}`,
+      );
+    }
+    const elementCount = tokenCount * this.nEmbd;
+
+    if (this.header.pipeline === 'raw') {
+      const expectedBytes = activationRawByteLength(this.header.dtype, elementCount);
+      if (frame.data.length !== expectedBytes) {
+        throw new Error(
+          `activation frame payload length ${frame.data.length} does not match ` +
+            `tokenCount(${tokenCount}) * nEmbd(${this.nEmbd}) * dtypeSize = ${expectedBytes}`,
+        );
+      }
+      const activations = typedBytesToFloat32Array(frame.data, this.header.dtype, elementCount);
+      return {
+        activations,
+        tokenCount,
+        posStart: frame.posStart,
+        tokens: frame.tokens,
+        stageIndex: frame.stageIndex,
+      };
+    }
+
+    throw new Error(
+      `activation profile: pipeline ${JSON.stringify(this.header.pipeline)} is not yet ` +
+        `implemented (only 'raw' ships today — see spec/PIPELINES.md § Activation profile)`,
+    );
+  }
+}
+
 // ── msgpack encoder / decoder ───────────────────────────────────────────────
 
 /**
@@ -598,14 +871,16 @@ export function encodeLatentHeaderMsgpack(
   const msg: Record<string, unknown> = {
     type: 'header',
     latent_space_id: h.latent_space_id,
-    shape: [...h.shape],
     dtype: h.dtype,
     pipeline: h.pipeline,
   };
+  if (h.shape !== undefined) msg.shape = [...h.shape];
   if (h.scales !== undefined) msg.scales = h.scales;
   if (h.fps !== undefined) msg.fps = h.fps;
   if (h.total_frames !== undefined) msg.total_frames = h.total_frames;
   if (h.vae_scale_factor !== undefined) msg.vae_scale_factor = h.vae_scale_factor;
+  if (h.profile !== undefined) msg.profile = h.profile;
+  if (h.nEmbd !== undefined) msg.nEmbd = h.nEmbd;
   return msgpackEncode(msg);
 }
 
@@ -617,6 +892,10 @@ export function encodeLatentFrameMsgpack(f: LatentFrame): Uint8Array {
     done: f.done,
   };
   if (f.finish_reason !== undefined) msg.finish_reason = f.finish_reason;
+  if (f.tokenCount !== undefined) msg.tokenCount = f.tokenCount;
+  if (f.posStart !== undefined) msg.posStart = f.posStart;
+  if (f.tokens !== undefined) msg.tokens = [...f.tokens];
+  if (f.stageIndex !== undefined) msg.stageIndex = f.stageIndex;
   return msgpackEncode(msg);
 }
 
@@ -633,19 +912,27 @@ export function decodeLatentHeaderMsgpack(bytes: Uint8Array): LatentStreamHeader
   if ('type' in obj && obj.type !== 'header') {
     throw new Error(`expected type:'header', got ${JSON.stringify(obj.type)}`);
   }
-  const required = ['latent_space_id', 'shape', 'dtype', 'pipeline'];
+  const profile = obj.profile as LatentProfile | undefined;
+  // Activation-profile headers carry `nEmbd` instead of a fixed `shape`;
+  // every other profile keeps the original v0.3 required-field contract.
+  const required =
+    profile === 'activation'
+      ? ['latent_space_id', 'nEmbd', 'dtype', 'pipeline']
+      : ['latent_space_id', 'shape', 'dtype', 'pipeline'];
   for (const k of required) {
     if (!(k in obj)) throw new Error(`header missing required field: ${k}`);
   }
   return {
     latent_space_id: String(obj.latent_space_id),
-    shape: obj.shape as number[],
+    shape: obj.shape as number[] | undefined,
     dtype: obj.dtype as LatentDtype,
     pipeline: obj.pipeline as PipelineName,
     scales: obj.scales as Uint8Array | undefined,
     fps: obj.fps as number | undefined,
     total_frames: obj.total_frames as number | undefined,
     vae_scale_factor: obj.vae_scale_factor as number | undefined,
+    profile,
+    nEmbd: obj.nEmbd as number | undefined,
   };
 }
 
@@ -663,6 +950,10 @@ export function decodeLatentFrameMsgpack(bytes: Uint8Array): LatentFrame {
     keyframe: Boolean(obj.keyframe),
     done: Boolean(obj.done),
     finish_reason: typeof obj.finish_reason === 'string' ? obj.finish_reason : undefined,
+    tokenCount: typeof obj.tokenCount === 'number' ? obj.tokenCount : undefined,
+    posStart: typeof obj.posStart === 'number' ? obj.posStart : undefined,
+    tokens: Array.isArray(obj.tokens) ? (obj.tokens as number[]) : undefined,
+    stageIndex: typeof obj.stageIndex === 'number' ? obj.stageIndex : undefined,
   };
 }
 
