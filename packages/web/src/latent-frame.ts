@@ -1021,7 +1021,14 @@ function typedBytesToFloat32Array(
   bytes: Uint8Array, dtype: LatentDtype, expectedLen: number,
 ): Float32Array {
   if (dtype === 'fp32') {
-    return new Float32Array(bytes.buffer, bytes.byteOffset, expectedLen);
+    // msgpack bin payloads land at arbitrary byte offsets inside the decode
+    // buffer; a Float32Array view requires 4-byte alignment. View when
+    // aligned (cheap), copy when not.
+    if (bytes.byteOffset % 4 === 0) {
+      return new Float32Array(bytes.buffer, bytes.byteOffset, expectedLen);
+    }
+    const aligned = bytes.slice(0, expectedLen * 4);
+    return new Float32Array(aligned.buffer, 0, expectedLen);
   }
   if (dtype === 'fp16' || dtype === 'bf16') {
     const out = new Float32Array(expectedLen);

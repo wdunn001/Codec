@@ -561,3 +561,31 @@ describe('activation profile: golden fixtures (packages/bench/golden/pipelines/a
     });
   }
 });
+
+describe('fp32 payload alignment (regression)', () => {
+  test('decodeFrame handles msgpack payloads at non-4-aligned byte offsets', () => {
+    // posStart/tokens sideband shifts the bin payload to an arbitrary offset
+    // inside the msgpack buffer; the fp32 path must not assume 4-alignment.
+    const enc = new ActivationStreamEncoder({
+      latentSpaceId: 'activation:alignment-regression',
+      nEmbd: 8,
+      dtype: 'fp32',
+    });
+    const header = decodeLatentHeaderMsgpack(enc.header());
+    const dec = new ActivationStreamDecoder(header);
+    const activations = new Float32Array([1.5, -2.25, 3, 4, 5, 6, 7, 8.125]);
+    // Sweep sideband variants so at least one lands the bin payload on a
+    // misaligned offset regardless of msgpack key layout.
+    for (const opts of [
+      { seq: 1, keyframe: true, done: false, posStart: 42 },
+      { seq: 2, keyframe: true, done: false, posStart: 42, stageIndex: 0 },
+      { seq: 3, keyframe: true, done: false, posStart: 1, tokens: [9], stageIndex: 3 },
+      { seq: 4, keyframe: true, done: false },
+    ]) {
+      const bytes = enc.frame(activations, opts);
+      const frame = decodeLatentFrameMsgpack(bytes);
+      const out = dec.decodeFrame(frame);
+      assert.deepEqual(Array.from(out.activations), Array.from(activations));
+    }
+  });
+});
