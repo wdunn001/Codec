@@ -164,7 +164,11 @@ export async function loadMap(opts: LoadOptions): Promise<TokenizerMap> {
     );
   }
 
-  const resp = await fetchImpl(opts.url, withCodecClientVersion({ signal: opts.signal }));
+  // Static-artifact fetch: NO custom headers. `codec-client-version` forces a
+  // CORS preflight, and third-party CDN hosts (jsDelivr etc.) don't allowlist
+  // it — the whole fetch fails. Version signaling is a client<->server
+  // handshake; static maps get integrity from the hash check below instead.
+  const resp = await fetchImpl(opts.url, { signal: opts.signal });
   if (!resp.ok) {
     throw new Error(`Failed to fetch tokenizer map from ${opts.url}: HTTP ${resp.status}`);
   }

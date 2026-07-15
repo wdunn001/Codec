@@ -106,3 +106,21 @@ test('loadMap: HTTP error surfaces as a useful message', async () => {
     /HTTP 404/
   );
 });
+
+test('loadMap sends no custom request headers (stays a CORS simple request)', async () => {
+  // Regression: codec-client-version on static-artifact fetches forced a CORS
+  // preflight that third-party CDN hosts (jsDelivr) reject. Map/discovery
+  // fetches must remain header-free; integrity comes from the hash check.
+  let seenInit: RequestInit | undefined;
+  const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
+    seenInit = init;
+    return new Response(new Uint8Array([0x7b, 0x7d]), { status: 200 });
+  }) as typeof fetch;
+  try {
+    await loadMap({ url: 'https://cdn.example/maps/x.json', fetchImpl });
+  } catch {
+    // parse failure of the dummy body is fine — we only care about the request
+  }
+  const headers = new Headers(seenInit?.headers ?? undefined);
+  assert.equal([...headers.keys()].length, 0);
+});

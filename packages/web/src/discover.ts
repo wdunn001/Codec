@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Map discovery via the `.well-known/codec/` convention.
  *
  * Given an origin and a map ID, fetch the per-map document at
@@ -13,7 +13,9 @@
  *
  * See `spec/WELL_KNOWN_DISCOVERY.md` for the full convention.
  */
-import { withCodecClientVersion } from './version-signaling.js';
+// NOTE: discovery/pointer/map fetches are static-artifact requests and MUST
+// carry no custom headers (codec-client-version forces a CORS preflight that
+// third-party CDN hosts reject). Integrity comes from pointer hash checks.
 import type { MapCache, TokenizerMap } from './types.js';
 import { loadMap, validateMap } from './map.js';
 
@@ -78,7 +80,7 @@ async function sha256HexBytes(bytes: Uint8Array): Promise<string> {
 
 /**
  * IDs are lowercase ASCII matching `[a-z0-9._/-]+`. Slashes are preserved as
- * URL path separators. Anything outside that set is rejected — discovery is
+ * URL path separators. Anything outside that set is rejected â€” discovery is
  * a public, cacheable surface and we don't want exotic encodings creating
  * cache-poisoning ambiguity.
  */
@@ -96,7 +98,7 @@ function encodeMapId(id: string): string {
   return id;
 }
 
-// ── Pointer + index document shapes ───────────────────────────────────────────
+// â”€â”€ Pointer + index document shapes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Pointer document: small file at `.well-known/codec/maps/<id>.json` (Form A). */
 export interface MapPointer {
@@ -112,7 +114,7 @@ export interface MapIndex {
   readonly maps: ReadonlyArray<MapPointer>;
 }
 
-// ── Errors ────────────────────────────────────────────────────────────────────
+// â”€â”€ Errors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export class MapDiscoveryError extends Error {
   constructor(message: string) {
@@ -134,8 +136,8 @@ export class MapDiscoveryNotFoundError extends MapDiscoveryError {
  * Covers: 404 from the origin, hash mismatch between fetched bytes and the
  * URL's path component, or malformed hash input.
  *
- * The dict-discovery surface is hard-fail by design — see
- * `spec/WELL_KNOWN_DISCOVERY.md § Resolution failures`. Silent fallback to
+ * The dict-discovery surface is hard-fail by design â€” see
+ * `spec/WELL_KNOWN_DISCOVERY.md Â§ Resolution failures`. Silent fallback to
  * identity bytes is what motivated v0.5 in the first place (the v0.4.1
  * sglang COPY-dicts regression).
  */
@@ -162,7 +164,7 @@ export class ZstdDictHashMismatchError extends ZstdDictDiscoveryError {
   }
 }
 
-// ── Detection: pointer vs. inline map ─────────────────────────────────────────
+// â”€â”€ Detection: pointer vs. inline map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function isPointerShape(obj: unknown): obj is MapPointer {
   if (typeof obj !== 'object' || obj === null) return false;
@@ -201,7 +203,7 @@ function validatePointer(obj: MapPointer, expectedId: string): void {
   }
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
+// â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface DiscoverMapOptions {
   /** HTTPS origin of the maintainer publishing the map (e.g. `https://qwen.io`). */
@@ -245,7 +247,7 @@ export async function discoverMap(opts: DiscoverMapOptions): Promise<TokenizerMa
   }
 
   const url = wellKnownMapUrl(opts.origin, opts.id);
-  const resp = await fetchImpl(url, withCodecClientVersion({ signal: opts.signal }));
+  const resp = await fetchImpl(url, { signal: opts.signal });
   if (resp.status === 404) {
     throw new MapDiscoveryNotFoundError(url, resp.status);
   }
@@ -294,19 +296,19 @@ export interface DiscoverZstdDictOptions {
  *
  * Fetches `<origin>/.well-known/codec/dicts/<sha256-hex>.zstd`, verifies the
  * fetched bytes hash to `<hex>`, returns the raw dict bytes. The URL is
- * derived deterministically from the hash — there is no mutable per-id form
+ * derived deterministically from the hash â€” there is no mutable per-id form
  * for dictionaries.
  *
  *   const dictBytes = await discoverZstdDict({
  *     origin: 'https://codec.example',
- *     hash:   'sha256:abc123…',  // typically from the tokenizer map's
+ *     hash:   'sha256:abc123â€¦',  // typically from the tokenizer map's
  *                                // zstd_dictionaries[] entry, or a
  *                                // cohort registry
  *   });
  *
  * Throws `ZstdDictDiscoveryError` for 404 / malformed hash, and
  * `ZstdDictHashMismatchError` for byte-tampering (origin served wrong
- * bytes — never trust them).
+ * bytes â€” never trust them).
  */
 export async function discoverZstdDict(opts: DiscoverZstdDictOptions): Promise<Uint8Array> {
   const fetchImpl = opts.fetchImpl ?? globalThis.fetch;
@@ -320,7 +322,7 @@ export async function discoverZstdDict(opts: DiscoverZstdDictOptions): Promise<U
   const expectedHex = parseDictHash(opts.hash);
   const url = wellKnownDictUrl(opts.origin, opts.hash);
 
-  const resp = await fetchImpl(url, withCodecClientVersion({ signal: opts.signal }));
+  const resp = await fetchImpl(url, { signal: opts.signal });
   if (resp.status === 404) {
     throw new ZstdDictDiscoveryError(`No zstd dict at ${url} (HTTP 404)`, url);
   }
@@ -355,7 +357,7 @@ export async function discoverIndex(opts: DiscoverIndexOptions): Promise<MapInde
   }
 
   const url = wellKnownIndexUrl(opts.origin);
-  const resp = await fetchImpl(url, withCodecClientVersion({ signal: opts.signal }));
+  const resp = await fetchImpl(url, { signal: opts.signal });
   if (resp.status === 404) {
     throw new MapDiscoveryNotFoundError(url, resp.status);
   }
