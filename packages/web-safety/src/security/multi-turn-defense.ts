@@ -41,9 +41,9 @@ export function detectManyShotPattern(
   let pairs = 0;
   let i = 0;
   // Skip leading system messages.
-  while (i < messages.length && messages[i].role === 'system') i++;
+  while (i < messages.length && messages[i]?.role === 'system') i++;
   while (i + 1 < messages.length) {
-    if (messages[i].role === 'user' && messages[i + 1].role === 'assistant') {
+    if (messages[i]?.role === 'user' && messages[i + 1]?.role === 'assistant') {
       pairs++;
       i += 2;
     } else {
