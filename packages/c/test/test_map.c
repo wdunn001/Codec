@@ -124,6 +124,41 @@ static void test_real_qwen2_round_trip(void) {
     codec_map_free(m);
 }
 
+/* ── Structurally incomplete JSON ───────────────────────────────────────── */
+/*
+ * jsmn accepts a key with no value: `{"a"}` yields an OBJECT of size 1 and
+ * a single STRING, with no JSMN_ERROR_PART. Every walker here assumed an
+ * object of size N is backed by 2N tokens, so it read one past the end of
+ * a token array allocated to exactly the parsed count. In install_entry and
+ * the special_tokens loop the garbage token's start/end then became an
+ * offset and length into the JSON buffer.
+ */
+
+static void test_rejects_bare_key_at_root(void) {
+    const char *json = "{\"a\"}";
+    codec_tokenizer_map_t *m = NULL;
+    CT_EQ_INT(codec_map_from_json(json, strlen(json), &m), CODEC_ERR_PARSE);
+    CT_TRUE(m == NULL);
+}
+
+static void test_rejects_odd_vocab_child_count(void) {
+    const char *json =
+        "{\"id\":\"a\",\"version\":\"1\",\"vocab_size\":1,"
+        "\"vocab\":{\"a\":1,\"b\"}}";
+    codec_tokenizer_map_t *m = NULL;
+    CT_EQ_INT(codec_map_from_json(json, strlen(json), &m), CODEC_ERR_PARSE);
+    CT_TRUE(m == NULL);
+}
+
+static void test_rejects_bare_key_in_special_tokens(void) {
+    const char *json =
+        "{\"id\":\"a\",\"version\":\"1\",\"vocab_size\":1,"
+        "\"vocab\":{\"a\":1},\"special_tokens\":{\"x\":1,\"y\"}}";
+    codec_tokenizer_map_t *m = NULL;
+    CT_EQ_INT(codec_map_from_json(json, strlen(json), &m), CODEC_ERR_PARSE);
+    CT_TRUE(m == NULL);
+}
+
 int main(void) {
     CT_RUN(test_v2_basic_parse);
     CT_RUN(test_v2_roundtrip_render);
@@ -132,5 +167,8 @@ int main(void) {
     CT_RUN(test_sha256_verify_mismatch);
     CT_RUN(test_sha256_invalid_length);
     CT_RUN(test_real_qwen2_round_trip);
+    CT_RUN(test_rejects_bare_key_at_root);
+    CT_RUN(test_rejects_odd_vocab_child_count);
+    CT_RUN(test_rejects_bare_key_in_special_tokens);
     CT_DONE();
 }

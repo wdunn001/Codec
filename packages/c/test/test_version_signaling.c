@@ -185,6 +185,33 @@ static void test_matrix_cells(void) {
     }
 }
 
+/* ── Structurally incomplete JSON ───────────────────────────────────────── */
+/*
+ * find_field_ returns `i + 1` after matching a key at index i, and i was
+ * only checked against toks_count. On `{"minimum_version"}` jsmn emits two
+ * tokens, so the returned index equals toks_count and the required-field
+ * paths read one token past a heap array sized to exactly that count. The
+ * garbage token's start/end then reached strndup_tok_, which memcpy'd from
+ * an attacker-unbounded offset into a string the caller reads back.
+ */
+
+static void test_wellknown_rejects_bare_key(void) {
+    const char *json = "{\"minimum_version\"}";
+    codec_version_policy_doc_t doc;
+    memset(&doc, 0, sizeof doc);
+    CT_TRUE(codec_version_policy_parse(json, strlen(json), &doc) != CODEC_OK);
+    CT_TRUE(doc.minimum_version == NULL);
+    codec_version_policy_free(&doc);
+}
+
+static void test_required_rejects_bare_key(void) {
+    const char *json = "{\"error\"}";
+    codec_version_required_body_t body;
+    memset(&body, 0, sizeof body);
+    CT_TRUE(codec_version_required_parse(json, strlen(json), &body) != CODEC_OK);
+    codec_version_required_free(&body);
+}
+
 int main(void) {
     CT_RUN(test_parse_valid_body);
     CT_RUN(test_parse_empty_features);
@@ -197,6 +224,8 @@ int main(void) {
     CT_RUN(test_wellknown_url_builds);
     CT_RUN(test_wellknown_url_trims_trailing_slash);
     CT_RUN(test_wellknown_url_buffer_too_small);
+    CT_RUN(test_wellknown_rejects_bare_key);
+    CT_RUN(test_required_rejects_bare_key);
     CT_RUN(test_matrix_cells);
     CT_DONE();
 }

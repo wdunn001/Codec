@@ -2,6 +2,7 @@
 #include "codec/codec.h"
 #include "codec_internal.h"
 #include "jsmn.h"
+#include "codec_jsmn_guard.h"
 #include "sha256.h"
 
 #include <stdlib.h>
@@ -718,6 +719,7 @@ codec_status_t codec_map_from_json(const char *json, size_t len,
     jsmn_init(&p);
     n = jsmn_parse(&p, json, len, toks, (unsigned int)n);
     if (n < 0) { free(toks); return CODEC_ERR_PARSE; }
+    if (!codec_jsmn_tree_complete(toks, (size_t)n)) { free(toks); return CODEC_ERR_PARSE; }
     if (n == 0 || toks[0].type != JSMN_OBJECT) { free(toks); return CODEC_ERR_VALIDATION; }
 
     codec_tokenizer_map_t *m = (codec_tokenizer_map_t *)calloc(1, sizeof(*m));

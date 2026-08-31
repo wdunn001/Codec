@@ -3,6 +3,7 @@
 #include "codec/codec_safety_policy.h"
 #include "codec_test.h"
 
+#include <stdio.h>
 #include <string.h>
 
 static const char VALID_DESCRIPTOR[] =
@@ -191,6 +192,38 @@ static void test_verify_sha256_rejects_malformed(void) {
               CODEC_ERR_INVALID_ARG);
 }
 
+/* ── Structurally incomplete JSON ───────────────────────────────────────── */
+/*
+ * The root walk read `toks[i + 1]` with no comparison against the parsed
+ * token count. jsmn accepts a key with no value, so a descriptor ending in
+ * a bare recognised key leaves the value index one past the end. The token
+ * array here starts at 256 entries and doubles, so the overread only leaves
+ * the allocation when the parse lands on an exact power-of-two boundary.
+ * The generated case below does exactly that: 1 root token plus 127 pairs
+ * plus a trailing bare "id" is 256 tokens, and toks[256] is off the end.
+ */
+
+static void test_rejects_bare_key(void) {
+    const char *json = "{\"id\"}";
+    codec_safety_policy_t *p = NULL;
+    CT_TRUE(codec_safety_policy_from_json(json, strlen(json), &p) != CODEC_OK);
+    CT_TRUE(p == NULL);
+}
+
+static void test_rejects_bare_key_at_token_array_boundary(void) {
+    char json[4096];
+    size_t o = 0;
+    o += (size_t)snprintf(json + o, sizeof json - o, "{");
+    for (int k = 0; k < 127; k++) {
+        o += (size_t)snprintf(json + o, sizeof json - o, "\"a%d\":1,", k);
+    }
+    o += (size_t)snprintf(json + o, sizeof json - o, "\"id\"}");
+
+    codec_safety_policy_t *p = NULL;
+    CT_TRUE(codec_safety_policy_from_json(json, o, &p) != CODEC_OK);
+    CT_TRUE(p == NULL);
+}
+
 int main(void) {
     test_parse_valid_descriptor();
     test_parse_rejects_empty_object();
@@ -210,6 +243,9 @@ int main(void) {
     test_verify_sha256_bare_hex_accepted();
     test_verify_sha256_uppercase_hex_accepted();
     test_verify_sha256_rejects_malformed();
+
+    test_rejects_bare_key();
+    test_rejects_bare_key_at_token_array_boundary();
 
     if (_codec_test_failures > 0) {
         fprintf(stderr, "test_safety_policy: %d failure(s)\n", _codec_test_failures);
