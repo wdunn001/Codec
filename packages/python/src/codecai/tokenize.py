@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re as _stdlib_re
 from abc import ABC, abstractmethod
+from typing import Any
 
 # Use the third-party `regex` module for the byte_level pre-tokenizer pattern,
 # which uses Unicode property classes (\p{L}, \p{N}) that stdlib `re` doesn't
@@ -21,6 +22,7 @@ from abc import ABC, abstractmethod
 import regex
 
 from .encoder import METASPACE, encode_byte_level_chars
+from .pretok_program import run_pretok_program
 from .types import TokenizerMap
 
 _DELIMITER_BODY = _stdlib_re.compile(r"^[A-Za-z0-9_-]+$")
@@ -72,6 +74,7 @@ class BPETokenizer(Tokenizer):
 
     __slots__ = (
         "_id", "_encoder", "_vocab", "_merge_ranks", "_pre_tok_re",
+        "_pre_tok_program",
         "_byte_fallback_start", "_cache",
         "_special_ids", "_special_re",
     )
@@ -103,14 +106,27 @@ class BPETokenizer(Tokenizer):
         self._byte_fallback_start = m.byte_fallback_start if m.byte_fallback_start is not None else -1
         self._cache: dict[str, list[int]] = {}
 
+        # Pre-tokenizer: prefer the compiled program when present, otherwise
+        # fall back to the legacy regex. Programs are required for clients
+        # without a Unicode regex engine (libcodec/C); Python already has
+        # one via the `regex` package, so the program here is mostly a
+        # startup-time speedup plus keeping every client on the same
+        # code path, which is what makes the equivalence claim auditable.
         if self._encoder == "byte_level":
-            if not m.pre_tokenizer_pattern:
+            if m.pre_tokenizer_program and m.pre_tokenizer_program.get("ops"):
+                self._pre_tok_program: dict[str, Any] | None = m.pre_tokenizer_program
+                self._pre_tok_re = None
+            elif m.pre_tokenizer_pattern:
+                self._pre_tok_re = regex.compile(m.pre_tokenizer_pattern)
+                self._pre_tok_program = None
+            else:
                 raise ValueError(
-                    f"BPETokenizer: byte_level map {m.id!r} missing pre_tokenizer_pattern."
+                    f"BPETokenizer: byte_level map {m.id!r} missing both "
+                    "pre_tokenizer_program and pre_tokenizer_pattern."
                 )
-            self._pre_tok_re: regex.Pattern[str] | None = regex.compile(m.pre_tokenizer_pattern)
         else:
             self._pre_tok_re = None
+            self._pre_tok_program = None
 
         # Build the special-token scanner. Accept entries from
         # ``special_tokens`` AND any vocab key in ``<|body|>`` shape where
@@ -179,6 +195,8 @@ class BPETokenizer(Tokenizer):
 
     def _pre_tokenize(self, text: str) -> list[str]:
         if self._encoder == "byte_level":
+            if self._pre_tok_program is not None:
+                return run_pretok_program(self._pre_tok_program, text)
             assert self._pre_tok_re is not None
             return [m for m in self._pre_tok_re.findall(text) if m]
 
