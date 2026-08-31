@@ -26,7 +26,7 @@ The methodology spec: including the v0.3 negotiation-headers requirements (Codec
 | [`2026-05-09T12-17-48Z/mcp/`](results/2026-05-09T12-17-48Z/mcp/) | MCP, leaf-mode bypass | `[Codec][leaf]` log fires end-to-end on real lab traffic |
 | [`2026-05-09T13-01-55Z/latent/`](results/2026-05-09T13-01-55Z/latent/) | Latent, first run | Pipeline math validates byte-for-byte; int4 = **3.9×** vs raw on 512×512 |
 
-Plus full agent-loop benches (prompt → tool call → dispatch → final answer) live under `packages/demo-python`: see [`RESULTS.md`](RESULTS.md) §4:§6 for numbers.
+Plus full agent-loop benches (prompt → tool call → dispatch → final answer) live under `packages/demo-python`: see [`RESULTS.md`](RESULTS.md) §4 to §6 for numbers.
 
 ## Run
 

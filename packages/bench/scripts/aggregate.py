@@ -65,7 +65,7 @@ def load_results(run_id: str) -> dict[str, dict[str, dict]]:
     """{engine: {lang: result_doc}}.
 
     The `token/` subdirectory (per-language tokenize/detokenize micro-bench)
-    is loaded by `load_token_results` instead — it's not engine-keyed.
+    is loaded by `load_token_results` instead: it's not engine-keyed.
     """
     out: dict[str, dict[str, dict]] = {}
     base = RESULTS_DIR / run_id
@@ -75,7 +75,7 @@ def load_results(run_id: str) -> dict[str, dict[str, dict]]:
     # alongside the engine result dirs but are loaded by separate loaders
     # (token_bench has its own loader; synthetic + translator + agent-loop
     # are written but not currently aggregated into MATRIX.md). The list is
-    # belt + the kind-check below is suspenders — either alone catches the
+    # belt + the kind-check below is suspenders: either alone catches the
     # "translator/python.json got iterated as an engine" regression caught
     # post-v0.5 cut.
     NON_ENGINE_DIRS = {"token", "synthetic", "translator", "agent-loop"}
@@ -98,7 +98,7 @@ def load_results(run_id: str) -> dict[str, dict[str, dict]]:
             # both `methodology` and `rows`. Other bench surfaces that
             # happen to drop JSON alongside (translator, future kinds)
             # lack one or both. This is paired with the NON_ENGINE_DIRS
-            # list above — the directory exclusion catches the common
+            # list above: the directory exclusion catches the common
             # case, this check catches the edge case where someone
             # drops a non-matrix JSON into an engine dir.
             if "methodology" not in doc or "rows" not in doc:
@@ -144,13 +144,13 @@ def fmt_bytes(n: int | None) -> str:
     """Render a byte count for the matrix tables.
 
     Adds an explicit `b` (byte) suffix to bare numeric values so reviewers
-    don't have to guess the unit — reviewer feedback after the
+    don't have to guess the unit: reviewer feedback after the
     2026-05-09T17-09-35Z run flagged the unsuffixed integers as confusing.
     Sizes ≥ 1 KB keep the existing `KB`/`MB` rendering (and inherit the
     same byte semantics from the K/M prefix).
     """
     if n is None:
-        return "—"
+        return "n/a"
     if n < 1024:
         return f"{n} b"
     if n < 10_000:
@@ -162,7 +162,7 @@ def fmt_bytes(n: int | None) -> str:
 
 def fmt_ms(n: float | None) -> str:
     if n is None:
-        return "—"
+        return "n/a"
     if n < 100:
         return f"{n:.1f}"
     return f"{n:.0f}"
@@ -170,7 +170,7 @@ def fmt_ms(n: float | None) -> str:
 
 def fmt_ratio(num: int | None, denom: int | None) -> str:
     if num is None or denom is None or num == 0:
-        return "—"
+        return "n/a"
     return f"{denom / num:.1f}×"
 
 
@@ -180,12 +180,12 @@ def quarantine_check(
     """Compare each (engine, lang) row's methodology fingerprint to the
     engine's canonical methodology JSON. Return human-readable list of
     rows whose fingerprint diverges (excluding client.* and bench_tool.*
-    fields, which are expected to differ — see SCHEMA.md)."""
+    fields; those are expected to differ: see SCHEMA.md)."""
     quarantine: list[str] = []
     for engine, by_lang in results.items():
         canonical_path = METHODOLOGY_DIR / next(iter(by_lang.keys()), "_") / f"{engine}.json"
         # Find the canonical methodology by run_id (parent dir of any result)
-        # — easier to read it from the results themselves.
+        #: easier to read it from the results themselves.
         if not by_lang:
             continue
         canonical = next(iter(by_lang.values()))["methodology"].get("fingerprint")
@@ -224,13 +224,13 @@ def load_synthetic_results(run_id: str) -> dict | None:
 
 
 def synthetic_headline_section(synthetic: dict) -> list[str]:
-    """§1 — protocol-only wire bytes across 4 synthetic corpora.
+    """§1: protocol-only wire bytes across 4 synthetic corpora.
 
     This is the headline because it measures protocol efficiency in isolation,
     independent of any model's particular token-generation behaviour. Real
     model output cells move to §1b for context.
     """
-    out: list[str] = ["## §1. Headline wire reduction — synthetic streams (protocol only)", ""]
+    out: list[str] = ["## §1. Headline wire reduction: synthetic streams (protocol only)", ""]
     out.append("Pure-library measurement: known token-ID sequences fed through the Codec")
     out.append("encoder + compression pipeline locally, no inference engine, no model. Same")
     out.append("library code every engine uses. Measures protocol efficiency in isolation,")
@@ -262,19 +262,19 @@ def synthetic_headline_section(synthetic: dict) -> list[str]:
         )
     out.append("")
     out.append("The honest framing: Codec wire+compression delivers **~4-17× over identity**")
-    out.append("on arbitrary-to-typical streams, and **100-400× on structurally-repetitive**")
-    out.append("ones. The lower bound (uniform-random) is the floor — there's no content")
-    out.append("redundancy to exploit, so the wins are from msgpack/protobuf framing alone.")
+    out.append("on arbitrary-to-typical streams. It reaches **100-400× on structurally-repetitive**")
+    out.append("ones. The lower bound (uniform-random) is the floor: there's no content")
+    out.append("redundancy to exploit. The wins come from msgpack/protobuf framing alone.")
     out.append("The upper bound (cyclic) is what dict-zstd can do when the content cooperates.")
     out.append("")
     out.append("Live model output sits somewhere in this range, depending on what the model")
-    out.append("happens to generate — see §1b for engine-specific numbers from this run.")
+    out.append("happens to generate: see §1b for engine-specific numbers from this run.")
     out.append("")
     return out
 
 
 def headline_section(results: dict[str, dict[str, dict]]) -> list[str]:
-    """§1b — Engine-output numbers: wire reduction when fed real model output.
+    """§1b: Engine-output numbers: wire reduction when fed real model output.
 
     These ratios depend on both protocol efficiency AND what each engine's
     model produces at temperature=0 (which diverges across engines despite
@@ -288,7 +288,7 @@ def headline_section(results: dict[str, dict[str, dict]]) -> list[str]:
     out.append("sampler/attention path produces slightly different token sequences at T=0, and")
     out.append("those sequences compress differently. For protocol-only efficiency see §1.")
     out.append("")
-    out.append("Python row chosen as the canonical client (others agree byte-identically — see §3).")
+    out.append("Python row chosen as the canonical client (others agree byte-identically: see §3).")
     out.append("")
     out.append("| Engine | JSON-SSE identity | Codec msgpack + gzip | Codec msgpack + dict-zstd | Codec protobuf + gzip | Codec protobuf + dict-zstd |")
     out.append("|---|---:|---:|---:|---:|---:|")
@@ -322,10 +322,10 @@ def cross_lang_equality_section(results: dict[str, dict[str, dict]]) -> list[str
     out: list[str] = ["## §2. Cross-language Codec wire-byte equality + decode unanimity", ""]
     out.append("For every Codec cell (size × {msgpack,protobuf} × encoding), the aggregator reports two unanimity scores:")
     out.append("")
-    out.append("- **wire-unanimous** — clients agree byte-for-byte on what came over the wire (bytes received)")
-    out.append("- **decode-unanimous** — clients agree on the decoded token count (bytes received actually parsed back into the same number of token IDs)")
+    out.append("- **wire-unanimous**: clients agree byte-for-byte on what came over the wire (bytes received)")
+    out.append("- **decode-unanimous**: clients agree on the decoded token count (bytes received actually parsed back into the same number of token IDs)")
     out.append("")
-    out.append("**6/6 wire AND 6/6 decode is the gold standard.** A cell that is wire-unanimous but decode-mismatched means the bytes are the same but some clients can't actually parse them — usually a missing dict (dict-zstd interop) or a parser bug. Wire-unanimity alone is misleading; cells where 3/6 clients hit `Dictionary mismatch` errors used to count as \"unanimous\" until v0.4.1 — that gap is the reason this section now has two scores.")
+    out.append("**6/6 wire AND 6/6 decode is the gold standard.** A cell that is wire-unanimous but decode-mismatched means the bytes are the same but some clients can't actually parse them: usually a missing dict (dict-zstd interop) or a parser bug. Wire-unanimity alone is misleading; cells where 3/6 clients hit `Dictionary mismatch` errors used to count as \"unanimous\" until v0.4.1: that gap is the reason this section now has two scores.")
     out.append("")
     for engine in sorted(results.keys()):
         by_lang = results[engine]
@@ -359,7 +359,7 @@ def cross_lang_equality_section(results: dict[str, dict[str, dict]]) -> list[str
                     f"  - size={k[0]} {k[1]}+{k[2]}: " + ", ".join(f"{l}={w}" for l, (w, _, _) in lang_to_cell.items())
                 )
             # Decode-unanimous: all clients that didn't error agree on token count,
-            # AND no client errored — a single decode failure breaks unanimity.
+            # AND no client errored: a single decode failure breaks unanimity.
             errored = [(l, e) for l, (_, _, e) in lang_to_cell.items() if e]
             if len(tokens) == 1 and not errored:
                 cells_decode_unanimous += 1
@@ -368,7 +368,7 @@ def cross_lang_equality_section(results: dict[str, dict[str, dict]]) -> list[str
                 if len(errored) > 3:
                     err_summary += f" (+{len(errored)-3} more)"
                 cells_decode_failed.append(
-                    f"  - size={k[0]} {k[1]}+{k[2]}: {len(errored)}/{len(lang_to_cell)} clients errored — {err_summary}"
+                    f"  - size={k[0]} {k[1]}+{k[2]}: {len(errored)}/{len(lang_to_cell)} clients errored: {err_summary}"
                 )
         n_langs = len(by_lang)
         out.append(
@@ -393,7 +393,7 @@ def cross_lang_equality_section(results: dict[str, dict[str, dict]]) -> list[str
 def per_engine_lang_grid_section(results: dict[str, dict[str, dict]]) -> list[str]:
     """Full wire-byte grid per engine, Python row only (others byte-identical)."""
     out: list[str] = ["## §3. Wire-byte grid per engine (Python row)", ""]
-    out.append("Median bytes across reps. Other 5 client languages agree byte-identically on every Codec cell — see §2.")
+    out.append("Median bytes across reps. Other 5 client languages agree byte-identically on every Codec cell: see §2.")
     out.append("")
     for engine in sorted(results.keys()):
         by_lang = results[engine]
@@ -437,14 +437,14 @@ def ttfb_section(results: dict[str, dict[str, dict]]) -> list[str]:
     )
     out.append("")
     out.append(
-        "Bodies and headers tend to arrive in the same TCP segment for non-buffered encodings (identity/gzip/br) — both cohorts agree. They diverge sharply on dict-zstd, where the server's chunker buffers small responses to end-of-stream."
+        "Bodies and headers tend to arrive in the same TCP segment for non-buffered encodings (identity/gzip/br): both cohorts agree. They diverge sharply on dict-zstd, where the server's chunker buffers small responses to end-of-stream."
     )
     out.append("")
     for engine in sorted(results.keys()):
         by_lang = results[engine]
         if not by_lang:
             continue
-        out.append(f"### {engine} — msgpack TTFB (median ms across reps)")
+        out.append(f"### {engine}: msgpack TTFB (median ms across reps)")
         out.append("")
         sizes = sorted(
             {r["size"] for doc in by_lang.values() for r in doc["rows"]}
@@ -484,10 +484,10 @@ def methodology_section(results: dict[str, dict[str, dict]]) -> list[str]:
             continue
         m = next(iter(by_lang.values()))["methodology"]
         fp = (m.get("fingerprint") or "?")[:16] + "…"
-        img = m.get("engine", {}).get("container_image", "—")
+        img = m.get("engine", {}).get("container_image", "n/a")
         if img and len(img) > 80:
             img = img[:77] + "…"
-        model = m.get("model", {}).get("id", "—")
+        model = m.get("model", {}).get("id", "n/a")
         supported = ", ".join(m.get("engine", {}).get("compression_supported", []))
         out.append(f"| {engine} | `{fp}` | `{img}` | `{model}` | {supported} |")
     out.append("")
@@ -498,9 +498,9 @@ def quarantine_section(results: dict[str, dict[str, dict]]) -> list[str]:
     quarantine = quarantine_check(results)
     out: list[str] = ["## §6. Quarantine", ""]
     if not quarantine:
-        out.append("None — every row's methodology fingerprint matched its engine's canonical block.")
+        out.append("None: every row's methodology fingerprint matched its engine's canonical block.")
     else:
-        out.append("Rows whose methodology fingerprint diverged from the engine's canonical block (excluded from §1–§4 aggregations):")
+        out.append("Rows whose methodology fingerprint diverged from the engine's canonical block (excluded from §1 to §4 aggregations):")
         out.append("")
         for q in quarantine:
             out.append(f"- {q}")
@@ -511,7 +511,7 @@ def quarantine_section(results: dict[str, dict[str, dict]]) -> list[str]:
 def token_bench_section(token_results: dict[str, dict]) -> list[str]:
     """Render per-language tokenize/detokenize micro-bench numbers.
 
-    Cross-language companion to the wire benchmarks — same `results/<run-id>/`
+    Cross-language companion to the wire benchmarks: same `results/<run-id>/`
     directory, different subfolder (`token/`), different question:
     how fast does each language's BPE/Detokenizer chew through a fixed
     corpus? Reviewer feedback requested this be recorded alongside wire
@@ -520,7 +520,7 @@ def token_bench_section(token_results: dict[str, dict]) -> list[str]:
     if not token_results:
         return []
 
-    # Pull metadata from any one doc — corpus + map should match across langs.
+    # Pull metadata from any one doc: corpus + map should match across langs.
     sample_doc = next(iter(token_results.values()))
     corpus = sample_doc.get("corpus", {})
     map_meta = sample_doc.get("map", {})
@@ -548,10 +548,10 @@ def token_bench_section(token_results: dict[str, dict]) -> list[str]:
     lang_order += [l for l in sorted(token_results) if l not in lang_order]
 
     def fmt_ms(v: float | None) -> str:
-        return "—" if v is None else f"{v:.2f}"
+        return "n/a" if v is None else f"{v:.2f}"
 
     def fmt_tps(v: float | None) -> str:
-        return "—" if v is None else f"{int(round(v)):,} /s"
+        return "n/a" if v is None else f"{int(round(v)):,} /s"
 
     for lang in lang_order:
         if lang not in token_results:
@@ -569,7 +569,7 @@ def token_bench_section(token_results: dict[str, dict]) -> list[str]:
             f"{fmt_ms(enc_p99)} | {fmt_ms(dec_p99)} |"
         )
 
-    # Footnote — note when any lib is detokenize-only.
+    # Footnote: note when any lib is detokenize-only.
     footnotes = []
     for lang in lang_order:
         if lang not in token_results:
@@ -588,7 +588,7 @@ def token_bench_section(token_results: dict[str, dict]) -> list[str]:
 def scan_for_errored_cells(results: dict[str, dict[str, dict]]) -> list[str]:
     """Return human-readable lines for every row with a non-empty ``error`` field.
 
-    Mandated by docs/RELEASE_CHECKLIST.md §3: the bench is a gate, not a
+    Mandated by docs/RELEASE_CHECKLIST.md §3: the bench is purely a gate, never a
     passive recorder. A cell with ``{wire: 291, tokens: 0, error: "Dictionary
     mismatch"}`` is a real interop failure; the aggregator MUST exit non-zero
     so CI / operators see it without having to read MATRIX.md by hand.
@@ -614,7 +614,7 @@ def main() -> None:
         "--allow-cell-errors",
         action="store_true",
         help="Write MATRIX.md and exit 0 even if cells have non-empty error fields. "
-             "Default is to exit non-zero — the bench is a release gate, not a recorder.",
+             "Default is to exit non-zero: the bench is purely a release gate, never a recorder.",
     )
     args = ap.parse_args()
 
@@ -628,7 +628,7 @@ def main() -> None:
         sys.exit(f"no result JSONs found for run {run_id}")
 
     out_lines: list[str] = [
-        f"# Cross-stack benchmark matrix — {run_id}",
+        f"# Cross-stack benchmark matrix: {run_id}",
         "",
         f"Auto-generated from `packages/bench/results/{run_id}/{{engine}}/{{lang}}.json` by `packages/bench/scripts/aggregate.py`. SCHEMA.md is the source of truth on what each cell measures.",
         "",
@@ -652,13 +652,13 @@ def main() -> None:
     # Gate: any cell with a populated error field fails the run unless
     # --allow-cell-errors was passed. The v0.4.1 post-mortem caught a class
     # of regression where dict-zstd silently fell through to identity bytes
-    # and 3/6 clients errored with "Dictionary mismatch" — the aggregator
+    # and 3/6 clients errored with "Dictionary mismatch": the aggregator
     # happily reported "24/24 unanimous" because it only checked wire-bytes.
     # The bench MUST be a gate. See docs/RELEASE_CHECKLIST.md §3.
     errored = scan_for_errored_cells(results)
     if errored and not args.allow_cell_errors:
         print(
-            f"\nFAIL: {len(errored)} cell(s) recorded an error — bench is a release gate, not a recorder.",
+            f"\nFAIL: {len(errored)} cell(s) recorded an error: bench is purely a release gate, never a recorder.",
             file=sys.stderr,
         )
         for line in errored[:30]:

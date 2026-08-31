@@ -4,7 +4,7 @@
 
 ## How to use this document
 
-This is the operational counterpart to the threat-model docs ([01](01-unicode-smuggling.md):[06](06-tool-agent-attacks.md)). Each item:
+This is the operational counterpart to the threat-model docs ([01](01-unicode-smuggling.md) to [06](06-tool-agent-attacks.md)). Each item:
 - Has a priority (P0 = ship-blocking for v0.6, P1 = strongly recommended for v0.6, P2 = nice-to-have / v0.7 candidate).
 - Has a rationale (which threat-model doc motivates it).
 - Has an implementation sketch (where in the codebase, what shape).
@@ -47,7 +47,7 @@ def strip_chat_template_tokens(s: str) -> tuple[str, int]:
 
 ### 2. Invisible-Unicode filter
 
-**Why:** [01-unicode-smuggling.md](01-unicode-smuggling.md) §1:§4. Tag block, zero-width, variation selector runs, BiDi controls. Strip at the boundary.
+**Why:** [01-unicode-smuggling.md](01-unicode-smuggling.md) §1 to §4. Tag block, zero-width, variation selector runs, BiDi controls. Strip at the boundary.
 
 **Where:** Same module as #1.
 
@@ -57,7 +57,7 @@ def strip_chat_template_tokens(s: str) -> tuple[str, int]:
 
 ### 3. NFKC normalize before policy checks; ship NFC to model
 
-**Why:** [01-unicode-smuggling.md](01-unicode-smuggling.md) §5:§6. Defeats confusables for keyword matching without lossy normalization in the wire payload.
+**Why:** [01-unicode-smuggling.md](01-unicode-smuggling.md) §5 to §6. Defeats confusables for keyword matching without lossy normalization in the wire payload.
 
 **Where:** `packages/codec-core/src/policy.{ts,py,rs}`: new helper invoked by policy code.
 

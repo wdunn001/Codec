@@ -27,7 +27,7 @@ What this file collects instead: the **operational frameworks**, **industry chec
 
 **NIST AI Risk Management Framework (AI RMF 1.0)**: federal/regulated-industry baseline.
 - https://www.nist.gov/itl/ai-risk-management-framework
-- Functions: GOVERN, MAP, MEASURE, MANAGE. The Codec checklist's "telemetry on every defense layer" + "loud failures over silent" requirements (crosscutting §1:§2) align with the MEASURE function.
+- Functions: GOVERN, MAP, MEASURE, MANAGE. The Codec checklist's "telemetry on every defense layer" + "loud failures over silent" requirements (crosscutting §1 to §2) align with the MEASURE function.
 
 **NIST AI 600-1: Generative AI Profile**: companion to AI RMF specifically for genAI risks.
 - https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf
@@ -106,7 +106,7 @@ Codec's checklist structure (P0/P1/P2 priority bands with explicit MUST/SHOULD n
 - **Apple App Transport Security (ATS)**: production-tier-strict, development-tier-relaxed pattern (checklist crosscutting #3).
 - **Browser CSP (Content Security Policy)**: allowlist-default-deny pattern (checklist P1 #7 output filtering).
 
-The checklist's "telemetry on every defense layer, loud failures over silent" requirement (crosscutting §1:§2) draws from:
+The checklist's "telemetry on every defense layer, loud failures over silent" requirement (crosscutting §1 to §2) draws from:
 
 - **Google Beyond-Corp** "log everything, alert on anomaly" pattern.
 - **Netflix Chaos Engineering** principle that silent failures are the worst failures.

@@ -136,4 +136,4 @@ Companion to [`../01-unicode-smuggling.md`](../01-unicode-smuggling.md).
 - **AI Agents Attack Matrix: ASCII Smuggling technique entry:** https://ttps.ai/technique/ascii_smuggling.html: formal taxonomy entry.
 - **Repello AI on emoji-based prompt injection** (2026): https://repello.ai/blog/prompt-injection-using-emojis: covers VS-attached-to-emoji case in production-facing terms.
 
-**Codec-relevance note:** the AWS guidance specifically recommends filtering Tag Block code points "in both prompts and responses at the API layer": exactly the bidirectional strip pattern that [`../07-codec-client-checklist.md`](../07-codec-client-checklist.md) §1:§2 codify. Use the AWS post as the public-vendor citation when justifying the v0.6 normative MUST.
+**Codec-relevance note:** the AWS guidance specifically recommends filtering Tag Block code points "in both prompts and responses at the API layer": exactly the bidirectional strip pattern that [`../07-codec-client-checklist.md`](../07-codec-client-checklist.md) §1 to §2 codify. Use the AWS post as the public-vendor citation when justifying the v0.6 normative MUST.
