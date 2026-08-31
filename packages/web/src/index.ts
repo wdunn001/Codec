@@ -1,10 +1,10 @@
 /**
- * @codecai/web — isomorphic tokenizer + detokenizer for the Codec binary
+ * @codecai/web: isomorphic tokenizer + detokenizer for the Codec binary
  * transport protocol.
  *
  * Loads per-model tokenizer dialect maps, tokenizes text at the edge before
  * transport, and detokenizes IDs to text only when a human is going to read
- * them. Agent-to-agent calls skip detokenization entirely — text never
+ * them. Agent-to-agent calls skip detokenization entirely: text never
  * enters the transport at all.
  *
  * Works in browsers, Node 18+, Cloudflare Workers, Deno, Bun. No Node-only
@@ -28,7 +28,7 @@
  *   import { BPETokenizer } from '@codecai/web';
  *   const tok = new BPETokenizer(map);
  *   const ids = tok.encode('Explain entropy.');
- *   // send `ids` over the wire as msgpack/protobuf — never text.
+ *   // send `ids` over the wire as msgpack/protobuf: never text.
  */
 export type {
   TokenizerMap,
@@ -148,7 +148,7 @@ export {
   type ResponseHeadersLike,
 } from './compression.js';
 
-// v0.4 version negotiation — opt-on, graceful-downgrade wire contract.
+// v0.4 version negotiation: opt-on, graceful-downgrade wire contract.
 // See spec/versions/v0.4.md § Version Compatibility Signaling.
 export {
   CODEC_CLIENT_VERSION,
@@ -170,7 +170,7 @@ export {
   type PreTokProgram,
 } from './pretok-program.js';
 
-// Latent modality (v0.3) — TypeScript twin of
+// Latent modality (v0.3): TypeScript twin of
 // packages/python/src/codecai/server/latent_frame.py. Forward encoder +
 // inverse decoder + msgpack codec for all 7 pipelines (raw / int8 / int4 /
 // int8-adaptive / int4-adaptive / delta+int8 / delta+int4). Pin: spec/
@@ -196,7 +196,7 @@ export {
   type LatentStreamEncoderOptions,
 } from './latent-frame.js';
 
-// Activation profile (v0.6+) — additive to the latent modality above.
+// Activation profile (v0.6+): additive to the latent modality above.
 // Per-token transformer activations for legion's pipeline-split stage
 // protocol (token-major [tokenCount x nEmbd], tokenCount varies per
 // frame). Pin: spec/PIPELINES.md § Activation profile.

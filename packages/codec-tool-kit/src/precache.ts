@@ -9,14 +9,14 @@
  * writes a compact JSON cache file per model.
  *
  * At runtime, the tool's hot path is a hashtable lookup, not a BPE
- * tokenisation. That's the whole point — the gateway pays nothing,
+ * tokenisation. That's the whole point: the gateway pays nothing,
  * the tool pays nothing, and the result tokens are just memcpy'd into
  * the generation context.
  *
  * This file deliberately doesn't bundle a tokenizer. We expose a
  * minimal `Tokenizer` interface and let the tool author pass in their
  * preferred implementation (huggingface tokenizers, tiktoken,
- * sentencepiece, the codecai BPE) — whatever's convenient at build
+ * sentencepiece, the codecai BPE): whatever's convenient at build
  * time. Keeps this package zero-dep.
  */
 

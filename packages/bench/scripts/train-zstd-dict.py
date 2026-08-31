@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-train-zstd-dict.py — train pre-shared zstd dictionaries from a captured (or
+train-zstd-dict.py: train pre-shared zstd dictionaries from a captured (or
 synthetic) corpus of CodecFrame streams.
 
 Reads `corpora/<model>/<format>/*.bin`, runs `zstandard.train_dictionary()`
@@ -41,7 +41,7 @@ except ImportError:
 
 
 DEFAULT_DICT_SIZES = [4 * 1024, 16 * 1024, 64 * 1024]
-COMPRESSION_LEVEL_FOR_EVAL = 3   # zstd's default level — what middleware will use
+COMPRESSION_LEVEL_FOR_EVAL = 3   # zstd's default level: what middleware will use
 HOLDOUT_FRACTION = 0.20
 HOLDOUT_SEED = 0xC0DEC
 

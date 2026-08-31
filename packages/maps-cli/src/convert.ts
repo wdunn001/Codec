@@ -1,5 +1,5 @@
 /**
- * convert.ts — HuggingFace tokenizer.json → CodecTokenizerMap.
+ * convert.ts: HuggingFace tokenizer.json → CodecTokenizerMap.
  *
  * The library half of `@codecai/maps-cli`. Use it programmatically:
  *
@@ -8,7 +8,7 @@
  *
  * Or via the CLI: `codecai-maps build <model-id>` (see ./cli.ts).
  *
- * Output schema is the v2 `TokenizerMap` from `@codecai/web` — same JSON
+ * Output schema is the v2 `TokenizerMap` from `@codecai/web`: same JSON
  * shape used by `loadMap()` in browsers. Maps generated here can be hosted
  * anywhere (jsDelivr from a public repo, your own CDN, Hugging Face,
  * S3, …) and pinned by sha256 hash.
@@ -57,7 +57,7 @@ export interface ConvertOptions {
    * Optional `tokenizer_config.json` content. When supplied, the
    * converter inspects `chat_template` and emits a `tool_calling`
    * block on the resulting map per the registry of known calling
-   * conventions. Pass undefined to skip — the resulting map simply
+   * conventions. Pass undefined to skip: the resulting map simply
    * omits the block, which readers treat per the spec's prose table.
    */
   tokenizerConfig?: HFTokenizerConfig;
@@ -67,7 +67,7 @@ export interface ConvertOptions {
    * template, or to opt into a convention the detector doesn't
    * recognize yet. `"custom"` is reserved for callers that pin the
    * layout in implementer-supplied prose; using it currently produces
-   * no `tool_calling` block — wire your own block in via post-
+   * no `tool_calling` block: wire your own block in via post-
    * processing after `convertHFTokenizer` returns.
    */
   convention?: ToolCallingBlock['convention'];
@@ -126,7 +126,7 @@ const BYTE_FALLBACK_RE = /^<0x([0-9A-Fa-f]{2})>$/;
 // The detector is intentionally substring-based and conservative: it
 // looks for the unique start marker of each known convention and returns
 // the FIRST match. If multiple markers somehow appear in a template
-// (shouldn't happen in practice — a template encodes one convention)
+// (shouldn't happen in practice: a template encodes one convention)
 // the first entry in CONVENTIONS wins.
 //
 // Both marker names MUST resolve to entries in the map's `special_tokens`
@@ -137,7 +137,7 @@ const BYTE_FALLBACK_RE = /^<0x([0-9A-Fa-f]{2})>$/;
 
 interface ChatTemplateBearing {
   /** Top-level chat_template string. Some configs use a list of
-   *  {name, template} objects instead — we accept both shapes. */
+   *  {name, template} objects instead: we accept both shapes. */
   readonly chat_template?:
     | string
     | ReadonlyArray<{ readonly name: string; readonly template: string }>;
@@ -145,7 +145,7 @@ interface ChatTemplateBearing {
 
 /**
  * The shape of `tokenizer_config.json` we care about. Other fields
- * (model_max_length, bos_token, etc.) are ignored — only chat_template
+ * (model_max_length, bos_token, etc.) are ignored: only chat_template
  * carries the calling-convention signature.
  */
 export type HFTokenizerConfig = ChatTemplateBearing;
@@ -161,7 +161,7 @@ interface ConventionEntry {
   readonly result_format: ToolCallingBlock['result_format'];
 }
 
-// Auto-detection registry — only conventions whose markers come as a
+// Auto-detection registry: only conventions whose markers come as a
 // paired (start, end) special-token pair AND whose chat templates carry
 // a unique unambiguous signature. Auto-detection is conservative on
 // purpose; if a convention's template doesn't fit the paired-marker
@@ -178,7 +178,7 @@ interface ConventionEntry {
 //     doesn't carry an explicit tool-call marker pair; phi-4-with-
 //     tools deployments use a longer template variant.
 const CONVENTIONS: readonly ConventionEntry[] = [
-  // Llama 3.1+ — `<|python_tag|>get_weather(location="NYC")<|eom_id|>`.
+  // Llama 3.1+: `<|python_tag|>get_weather(location="NYC")<|eom_id|>`.
   // args_format is python_args because the convention emits a
   // Python-style call expression after the tag rather than a JSON object.
   {
@@ -188,7 +188,7 @@ const CONVENTIONS: readonly ConventionEntry[] = [
     args_format: 'python_args',
     result_format: 'json',
   },
-  // Qwen 2.5+ — `<tool_call>{"name":"x","arguments":{}}</tool_call>`.
+  // Qwen 2.5+: `<tool_call>{"name":"x","arguments":{}}</tool_call>`.
   {
     convention: 'qwen25',
     templateSignature: '<tool_call>',
@@ -196,7 +196,7 @@ const CONVENTIONS: readonly ConventionEntry[] = [
     args_format: 'json',
     result_format: 'json',
   },
-  // DeepSeek-V3 — full-width unicode markers from the V3 chat template.
+  // DeepSeek-V3: full-width unicode markers from the V3 chat template.
   {
     convention: 'deepseek_v3',
     templateSignature: '<｜tool▁calls▁begin｜>',
@@ -227,13 +227,13 @@ function extractChatTemplate(cfg: HFTokenizerConfig | undefined): string | undef
  * markers resolve to IDs (in special_tokens or in the broader vocab),
  * return the matching ToolCallingBlock and also PROMOTE the markers
  * into the supplied `specialTokens` object (in-place) so the spec
- * contract holds — the spec requires markers to appear as keys in
+ * contract holds: the spec requires markers to appear as keys in
  * special_tokens because that's what ToolWatcher reads.
  *
  * The promotion is necessary because some model families (e.g.
  * Qwen2.5) ship their tool-call markers as `added_tokens` with
  * `special: false`. They're real tokens with stable IDs, just not
- * flagged as "skip during rendering" — but they ARE control tokens
+ * flagged as "skip during rendering": but they ARE control tokens
  * for the tool-calling protocol. The chat template is the
  * authoritative signal that they're being used as such; once we've
  * matched a known convention by template signature, we know the
@@ -259,7 +259,7 @@ export function deriveToolCalling(
     const startId = resolveMarker(entry.markers.start);
     const endId = resolveMarker(entry.markers.end);
     if (startId === undefined || endId === undefined) return undefined;
-    // Promote into special_tokens if absent — keeps the spec contract
+    // Promote into special_tokens if absent: keeps the spec contract
     // ("markers MUST appear as keys in special_tokens") satisfied.
     if (!(entry.markers.start in specialTokens)) {
       specialTokens[entry.markers.start] = startId;
@@ -299,7 +299,7 @@ export function deriveToolCalling(
 
 /**
  * Convert a HuggingFace `tokenizer.json` (parsed JSON object) into a Codec
- * `TokenizerMap`. Pure function — no I/O.
+ * `TokenizerMap`. Pure function: no I/O.
  *
  * Throws `Error` if the input doesn't look like a HuggingFace tokenizer.json.
  */
@@ -378,7 +378,7 @@ export function convertHFTokenizer(
 
   // Optional tool-calling convention block. The deriver looks up
   // markers in vocab + special_tokens, and promotes vocab-only markers
-  // into special_tokens (in-place) when a convention matches — the
+  // into special_tokens (in-place) when a convention matches: the
   // spec contract "markers MUST be keys in special_tokens" stays
   // satisfied. A partial match still returns undefined and the block
   // is omitted; the spec lets readers handle absence per the prose
@@ -434,14 +434,14 @@ export async function fetchAndConvert(
   if (!resp.ok) {
     throw new Error(
       `fetchAndConvert: HTTP ${resp.status} for ${tokenizerUrl}` +
-        (resp.status === 401 ? ' (gated model — pass hfToken)' : ''),
+        (resp.status === 401 ? ' (gated model: pass hfToken)' : ''),
     );
   }
   const hf = (await resp.json()) as HFTokenizerJson;
 
   // Best-effort fetch of tokenizer_config.json. The chat_template lives
   // there (not in tokenizer.json), and we need it to derive the
-  // tool_calling block. A 404 here means "no chat template published" —
+  // tool_calling block. A 404 here means "no chat template published":
   // we proceed without and the map simply omits the block. Network
   // errors propagate normally.
   let tokenizerConfig: HFTokenizerConfig | undefined;
@@ -453,7 +453,7 @@ export async function fetchAndConvert(
         tokenizerConfig = (await cfgResp.json()) as HFTokenizerConfig;
       }
     } catch {
-      // Network error — leave undefined and continue. The CLI surfaces
+      // Network error: leave undefined and continue. The CLI surfaces
       // this gap via "tool_calling: omitted" in its output banner so
       // operators know to investigate if they expected a block.
     }

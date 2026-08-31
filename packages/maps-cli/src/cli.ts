@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * codecai-maps — CLI for generating Codec tokenizer dialect maps.
+ * codecai-maps: CLI for generating Codec tokenizer dialect maps.
  *
  * Usage:
  *
@@ -167,7 +167,7 @@ async function cmdBuild(args: string[], flags: Flags): Promise<void> {
   stdout.write(`  encoder      ${map.encoder ?? 'identity'}\n`);
   stdout.write(`  merges       ${map.merges?.length ?? 0}\n`);
   if (map.byte_fallback_start !== undefined) {
-    stdout.write(`  byte_fallback ${map.byte_fallback_start}–${map.byte_fallback_end}\n`);
+    stdout.write(`  byte_fallback ${map.byte_fallback_start}:${map.byte_fallback_end}\n`);
   }
   stdout.write(
     `  tool_calling ${map.tool_calling ? map.tool_calling.convention : 'omitted (no chat_template signature matched)'}\n`,
@@ -184,7 +184,7 @@ async function cmdConvert(args: string[], flags: Flags): Promise<void> {
 
   const hf = JSON.parse(await readFile(inPath!, 'utf-8')) as HFTokenizerJson;
 
-  // Optional tokenizer_config.json — explicit path wins, else look
+  // Optional tokenizer_config.json: explicit path wins, else look
   // for a sibling `tokenizer_config.json` next to the input file
   // (HuggingFace ships them together; this is the natural local layout).
   let tokenizerConfig: HFTokenizerConfig | undefined;
@@ -197,7 +197,7 @@ async function cmdConvert(args: string[], flags: Flags): Promise<void> {
       try {
         tokenizerConfig = JSON.parse(await readFile(sibling, 'utf-8')) as HFTokenizerConfig;
       } catch {
-        // No sibling — the map will simply omit tool_calling.
+        // No sibling: the map will simply omit tool_calling.
       }
     }
   }
@@ -361,10 +361,10 @@ async function cmdWellKnown(_args: string[], flags: Flags): Promise<void> {
   let docBytes: string;
   let pointer: MapPointer | null = null;
   if (inline) {
-    // Form B — write the full map at the well-known location verbatim.
+    // Form B: write the full map at the well-known location verbatim.
     docBytes = JSON.stringify(map, null, 2) + '\n';
   } else {
-    // Form A — write a small pointer document.
+    // Form A: write a small pointer document.
     pointer = {
       id: map.id,
       url: flags.url!,
@@ -376,7 +376,7 @@ async function cmdWellKnown(_args: string[], flags: Flags): Promise<void> {
   await writeFile(targetPath, docBytes, 'utf-8');
 
   // Maintain index.json. Replace the entry for this id if it exists; otherwise
-  // append. Inline-only publishes skip the index by default — the index is a
+  // append. Inline-only publishes skip the index by default: the index is a
   // pointer directory.
   const indexPath = path.join(outDir, WELL_KNOWN_BASE, 'index.json');
   if (pointer) {
@@ -439,7 +439,7 @@ interface InternalPolicyConfig {
     family: string;
     host?: string;
     requires_engine_features?: string[];
-    // INTERNAL — sanitized away.
+    // INTERNAL: sanitized away.
     thresholds?: Record<string, number>;
     weights_url?: string;
   };
@@ -449,7 +449,7 @@ interface InternalPolicyConfig {
   };
   published_at?: string;
   publisher?: { name?: string; url?: string; contact?: string };
-  // INTERNAL-ONLY — sanitized away after counting.
+  // INTERNAL-ONLY: sanitized away after counting.
   banned_token_ids?: number[];
   regex_patterns?: string[];
   grammar_constraints?: unknown[];
@@ -518,7 +518,7 @@ async function cmdPoliciesValidate(args: string[]): Promise<void> {
   if (!path) fail('policies-validate requires a path to a safety-policy descriptor JSON file');
   const descriptor: unknown = JSON.parse(await readFile(path!, 'utf-8'));
   validateSafetyPolicy(descriptor);
-  // Reject internal-only fields outright — descriptors are publishable, never
+  // Reject internal-only fields outright: descriptors are publishable, never
   // operator-internal. If the file contains banned_token_ids etc., it has not
   // been sanitized and MUST NOT be published.
   for (const k of INTERNAL_ONLY_FIELDS) {
@@ -590,7 +590,7 @@ async function cmdPoliciesEnumerate(_args: string[], flags: Flags): Promise<void
   const tokenizer = pickTokenizer(tokMap as Parameters<typeof pickTokenizer>[0]);
   // The output is keyed by the canonical hash, NOT the mutable id, so the
   // operator can pin which exact map bytes the enumeration was produced
-  // against — same trust posture as safety-policy hash pinning.
+  // against: same trust posture as safety-policy hash pinning.
   const mapHash = 'sha256:' + (await sha256HexOfText(rawMap));
 
   const literalsRaw = JSON.parse(await readFile(flags.literals!, 'utf-8'));
@@ -610,7 +610,7 @@ async function cmdPoliciesEnumerate(_args: string[], flags: Flags): Promise<void
     patterns: literals.map((literal) => {
       const variants = enumerateVariants(literal);
       // Each variant becomes one allowed tokenization for the pattern.
-      // Dedupe by the joined-IDs string — different surface variants often
+      // Dedupe by the joined-IDs string: different surface variants often
       // collapse to the same token sequence, and we want one entry per
       // unique sequence.
       const seen = new Set<string>();
@@ -649,7 +649,7 @@ async function cmdPoliciesEnumerate(_args: string[], flags: Flags): Promise<void
 }
 
 /**
- * Variant set v1 — the patterns we cover. KEPT INTENTIONALLY SMALL so the
+ * Variant set v1: the patterns we cover. KEPT INTENTIONALLY SMALL so the
  * output file stays reviewable by hand. Operators who need more aggressive
  * coverage (homoglyph attacks, leetspeak, multilingual variants) should
  * extend the literals file directly with the variant strings they care
@@ -750,7 +750,7 @@ async function cmdPoliciesWellKnown(_args: string[], flags: Flags): Promise<void
   }
   await writeFile(idTargetPath, idDocBytes, 'utf-8');
 
-  // The content-addressed path always carries the inline descriptor —
+  // The content-addressed path always carries the inline descriptor:
   // a hash-pinned location does not need a pointer indirection.
   await writeFile(hashTargetPath, inlineBytes, 'utf-8');
 
@@ -765,7 +765,7 @@ async function cmdPoliciesWellKnown(_args: string[], flags: Flags): Promise<void
 }
 
 function help(): void {
-  stdout.write(`codecai-maps — generate Codec tokenizer dialect maps
+  stdout.write(`codecai-maps: generate Codec tokenizer dialect maps
 
 Commands:
   build <hf-model> [--id=<id>] [--out=<path>] [--token=<hf-token>]
@@ -813,7 +813,7 @@ Commands:
     Validate a sanitized safety-policy descriptor against the schema.
     Rejects descriptors that still contain operator-internal fields
     (banned_token_ids, regex_patterns, grammar_constraints,
-    multi_token_patterns, classifier_internal) — those must be removed
+    multi_token_patterns, classifier_internal): those must be removed
     by 'policies-sanitize' before publishing.
 
   policies-hash <descriptor.json>
@@ -825,7 +825,7 @@ Commands:
     Transform an operator's full-detail internal policy config into the
     publishable sanitized descriptor. Strips banned_token_ids,
     regex_patterns, grammar_constraints, multi_token_patterns, and
-    classifier_internal — counts them first into rules_summary so the
+    classifier_internal: counts them first into rules_summary so the
     descriptor exposes the SHAPE of enforcement without revealing its
     contents. The output is what gets published at .well-known.
 

@@ -11,7 +11,7 @@ const ROOT = dirname(__dirname);
 describe('codec-time-tool', () => {
   test('cache exists for the default model', () => {
     const cacheFile = join(ROOT, 'cache', 'qwen25-0.5b-instruct.json');
-    assert.ok(existsSync(cacheFile), 'cache should be built before tests — run `npm run build:cache`');
+    assert.ok(existsSync(cacheFile), 'cache should be built before tests: run `npm run build:cache`');
   });
 
   test('CLI returns response IDs for iso format', () => {

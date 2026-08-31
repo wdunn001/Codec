@@ -8,13 +8,13 @@
  * Codec-aware gateway (metamcp) detects pre-tokenized output and bypasses
  * its back-compat shim.
  *
- * Block-level shape — see metamcp `codec-content.ts` `hasExistingCodecMeta`:
+ * Block-level shape: see metamcp `codec-content.ts` `hasExistingCodecMeta`:
  *
  *   { type: '_codec_meta', map_id: '<sha256:hex>', ids: number[] }
  *
  * Inserted next to (not in place of) the original `text` block, so
  * non-Codec-aware clients in the same namespace see the result they always
- * have. The contract is additive — leaf-mode is invisible to legacy clients.
+ * have. The contract is additive: leaf-mode is invisible to legacy clients.
  */
 
 import {
@@ -29,7 +29,7 @@ import {
 
 /**
  * MCP CallToolResult shape (subset). The full type lives in
- * `@modelcontextprotocol/sdk` but we don't depend on that — we only need to
+ * `@modelcontextprotocol/sdk` but we don't depend on that: we only need to
  * read the content array.
  */
 export interface CallToolResult {
@@ -50,7 +50,7 @@ export type ContentBlock =
  * blocks at the SERVER (not just the gateway), so the sibling-block
  * design crashed time-server itself with -32602. Kept exported only
  * so the reader-side helper's type guards stay backwards compatible
- * with results emitted by older Codec-aware tools — new tools should
+ * with results emitted by older Codec-aware tools: new tools should
  * use `CODEC_META_KEY` / `CodecMetaPayload`.
  */
 export interface CodecMetaBlock {
@@ -70,7 +70,7 @@ export interface MetaTokenizer {
   /** sha256 hash of the tokenizer map this instance is bound to. */
   readonly mapHash: string;
 
-  /** Internal tokenizer reference — exposed for callers that want to skip
+  /** Internal tokenizer reference: exposed for callers that want to skip
    *  the wrapToolCall convenience and emit blocks themselves. */
   readonly tokenizer: Tokenizer;
 
@@ -106,7 +106,7 @@ export interface MakeMetaTokenizerOptions
 export async function makeMetaTokenizer(
   opts: MakeMetaTokenizerOptions,
 ): Promise<MetaTokenizer> {
-  // Validate the hash shape BEFORE the network fetch — a malformed hash
+  // Validate the hash shape BEFORE the network fetch: a malformed hash
   // should fail fast with the validation error, not eventually surface as
   // "fetch failed" (which is what happens when loadMap's hash-mismatch
   // check fires AFTER the fetch). The test
@@ -152,7 +152,7 @@ function normaliseHash(input: string): string {
  * block in the content array. The MCP SDK's `ContentBlockSchema` is a
  * discriminated union over `text|image|audio|resource|resource_link`,
  * and the SDK validates outbound results in the SERVER (not just the
- * gateway) — so a custom-typed block crashes the time-server itself
+ * gateway): so a custom-typed block crashes the time-server itself
  * with -32602 before it ever leaves the process. The per-block `_meta`
  * field is a first-class MCP spec slot that the SDK passes through
  * without complaint, lets the codec metadata travel cleanly, and
@@ -198,7 +198,7 @@ export interface WrapToolCallOptions {
  * ```
  *
  * Idempotent: if the text block already has a matching tokenization
- * under the same `map_id`, nothing is added — running this twice
+ * under the same `map_id`, nothing is added: running this twice
  * produces the same tree as once.
  */
 export function wrapToolCall(

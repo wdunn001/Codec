@@ -5,7 +5,7 @@ package ai.codec;
  * Raised when {@code .well-known/codec/dicts/<hex>.zstd} discovery fails (v0.5+).
  *
  * <p>Covers: 404 from origin, malformed hash input, and HTTP transport
- * failures. The dict-discovery surface is hard-fail by design — see
+ * failures. The dict-discovery surface is hard-fail by design: see
  * {@code spec/WELL_KNOWN_DISCOVERY.md § Resolution failures}. Silent
  * fallback to identity bytes was the v0.4.1 sglang COPY-dicts regression
  * class this surface eliminates.

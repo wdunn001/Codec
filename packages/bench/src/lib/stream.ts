@@ -1,6 +1,6 @@
 /**
  * Synthetic token-stream generator. Real LLM streams emit chunks of varying
- * size (vLLM defaults to 1 token per chunk; some servers batch 2–8). We sweep
+ * size (vLLM defaults to 1 token per chunk; some servers batch 2 to 8). We sweep
  * over realistic chunk sizes so the bench reflects observed behavior.
  */
 
@@ -17,7 +17,7 @@ export interface SyntheticChunk {
 
 /**
  * Deterministic generator (seeded LCG) so successive runs produce identical
- * byte counts — essential for repeatable comparisons.
+ * byte counts: essential for repeatable comparisons.
  */
 export function* synth(shape: StreamShape, seed = 0xdeadbeef): Generator<SyntheticChunk> {
   let s = seed >>> 0;

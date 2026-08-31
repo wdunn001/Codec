@@ -3,13 +3,13 @@
 //!
 //! Rust twin of `@codecai/web`'s `safety_policy.ts` (slice 1) and
 //! `codecai.safety_policy` (slice 11). Same shapes, same errors, same
-//! canonical JSON form for hashing — a descriptor that hashes to
+//! canonical JSON form for hashing: a descriptor that hashes to
 //! `sha256:abc…` in any client hashes to the identical digest here.
 //!
 //! Used by clients that received `safety_policy_id` + `safety_policy_hash`
 //! in `READY` and want to fetch and surface what the server is
-//! enforcing. The descriptor is the *sanitized*, publishable shape —
-//! categories, actions, classifier family, summary stats — never the
+//! enforcing. The descriptor is the *sanitized*, publishable shape:
+//! categories, actions, classifier family, summary stats: never the
 //! operator's internal banned token IDs / classifier thresholds /
 //! regex patterns.
 //!
@@ -19,7 +19,7 @@
 //!   - `<origin>/.well-known/codec/policies/sha256/<hex>.json` (immutable)
 //!
 //! A client that received a hash in `READY` SHOULD prefer the
-//! content-addressed sibling — it's provably immutable and skips the
+//! content-addressed sibling: it's provably immutable and skips the
 //! mutable indirection.
 
 use serde::{Deserialize, Serialize};

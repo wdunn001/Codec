@@ -2,7 +2,7 @@
 export const CODEC_VERSION = '0.1';
 
 /**
- * The Codec binary wire frame — the protocol contract.
+ * The Codec binary wire frame: the protocol contract.
  *
  * Global Rules: CLAUDE.md, AGENTS.md
  *
@@ -23,7 +23,7 @@ export const CODEC_VERSION = '0.1';
 export interface CodecFrame {
   /** Token IDs emitted by the model in this chunk. */
   ids: number[];
-  /** True on the final frame — no more frames will follow. */
+  /** True on the final frame: no more frames will follow. */
   done: boolean;
   /** Set on the final frame. Values: "length" | "eos_token" | "stop_sequence" */
   finish_reason?: string;

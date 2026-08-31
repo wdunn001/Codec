@@ -2,16 +2,16 @@
 Tool-call bench: hit a Codec-enabled sglang with a Qwen2.5-Instruct
 prompt that requires a tool call, then compare three paths:
 
-  A) JSON-SSE (today's baseline) — orchestrator must detokenize every
+  A) JSON-SSE (today's baseline): orchestrator must detokenize every
      frame and substring-match for `<tool_call>...</tool_call>` text.
      We measure the wire bytes and ALSO the cost of the substring
      scan client-side.
 
-  B) Codec msgpack, NO tool_watcher — wire is binary, but the client
+  B) Codec msgpack, NO tool_watcher: wire is binary, but the client
      still has to detokenize each frame's IDs to text and scan for
      markers. Same logic as JSON-SSE, just over a smaller wire.
 
-  C) Codec msgpack + tool_watcher — server detects the region and
+  C) Codec msgpack + tool_watcher: server detects the region and
      surfaces parsed tool_calls on the wire frame. Client just reads
      `frame.tool_calls`. Zero detokenize.
 

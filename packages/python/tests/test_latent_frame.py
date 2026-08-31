@@ -1,4 +1,4 @@
-"""LatentStreamEncoder tests — exercises the seven-pipeline forward path.
+"""LatentStreamEncoder tests: exercises the seven-pipeline forward path.
 
 Adds the v0.5 ``gpu_quantize`` opt-in contract on top of the existing
 pipeline math: with numpy input the flag MUST be a no-op (bytes identical
@@ -7,7 +7,7 @@ unconditionally even when torch isn't installed.
 
 Bit-identity against the true torch-CUDA path is verified separately by
 the cross-stack bench cohort (which runs on a GPU box). This suite stays
-hermetic — no torch dependency required.
+hermetic: no torch dependency required.
 """
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def test_pipeline_produces_bytes(pipeline: str, needs_static_scales: bool) -> No
 
 def test_pipeline_registry_complete() -> None:
     """If a new pipeline name lands in PIPELINE_NAMES, the test above must
-    grow a row for it — this guards against silently un-tested pipelines."""
+    grow a row for it: this guards against silently un-tested pipelines."""
     parametrised = {
         "raw", "int8", "int4", "int8-adaptive", "int4-adaptive",
         "delta+int8", "delta+int4",
@@ -145,7 +145,7 @@ def test_gpu_quantize_true_is_noop_for_numpy_input(
 
 
 def test_gpu_quantize_delta_chain_bit_identical_for_numpy() -> None:
-    """Delta pipelines are stateful — verify the full keyframe + delta
+    """Delta pipelines are stateful: verify the full keyframe + delta
     sequence matches between gpu_quantize=False and True with numpy input.
     """
     rng = np.random.default_rng(7)

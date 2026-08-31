@@ -1,5 +1,5 @@
 """
-codecai — Python client for the Codec binary transport protocol.
+codecai: Python client for the Codec binary transport protocol.
 
 The Python twin of `@codecai/web` (browser/Node) and `Codec.Net` (.NET).
 Same tokenizer dialect maps work everywhere.

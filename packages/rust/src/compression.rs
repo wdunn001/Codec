@@ -7,7 +7,7 @@
 //! decompressing. See `spec/PROTOCOL.md` "Codec-Zstd-Dict response
 //! header" (stable since v0.2) for the full contract.
 //!
-//! The actual zstd decompression is intentionally out of scope here —
+//! The actual zstd decompression is intentionally out of scope here:
 //! callers usually already have an HTTP stack and pick their own
 //! zstd binding (`zstd` crate, `zstd-safe`, an FFI wrapper, etc.).
 //! This module just gives you the small piece that's specific to
@@ -16,7 +16,7 @@
 //! semantics the spec mandates.
 //!
 //! Wrong-dict decompression produces garbage bytes that downstream
-//! msgpack / protobuf parsers will silently misinterpret — fail fast
+//! msgpack / protobuf parsers will silently misinterpret: fail fast
 //! at the dict-select boundary instead.
 
 use std::collections::HashMap;
@@ -26,7 +26,7 @@ use sha2::{Digest, Sha256};
 
 /// Compute the canonical `Codec-Zstd-Dict` hash for `dict_bytes`.
 ///
-/// Returns `sha256:<lowercase hex>` — same shape as the server-side
+/// Returns `sha256:<lowercase hex>`: same shape as the server-side
 /// header value and the `hash` field in tokenizer-map
 /// `zstd_dictionaries[]` entries.
 pub fn hash_zstd_dict(dict_bytes: &[u8]) -> String {
@@ -40,7 +40,7 @@ pub fn hash_zstd_dict(dict_bytes: &[u8]) -> String {
 /// dict the client has loaded, or is missing on a zstd response.
 ///
 /// A wrong-dict decompression would produce garbage bytes that
-/// downstream parsers would misinterpret — fail fast instead.
+/// downstream parsers would misinterpret: fail fast instead.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CodecZstdDictError {
     /// Response was `Content-Encoding: zstd` but the server omitted
@@ -101,7 +101,7 @@ impl std::error::Error for CodecZstdDictError {}
 ///
 /// - `Ok(Some(&dict_bytes))` when the response is
 ///   `Content-Encoding: zstd` and the server's `Codec-Zstd-Dict`
-///   header points at a loaded dict — pass these bytes to your zstd
+///   header points at a loaded dict: pass these bytes to your zstd
 ///   decoder (e.g. `zstd::stream::Decoder::with_dictionary`).
 /// - `Ok(None)` when the response isn't zstd. The caller should pass
 ///   the body through identity / let its HTTP stack auto-decompress
@@ -111,7 +111,7 @@ impl std::error::Error for CodecZstdDictError {}
 ///
 /// Returns `CodecZstdDictError` when the response is zstd but the
 /// header is missing, malformed, or names a dict the client hasn't
-/// loaded. Wrong-dict decompression is never attempted — see the
+/// loaded. Wrong-dict decompression is never attempted: see the
 /// spec rationale at `spec/PROTOCOL.md`.
 pub fn select_zstd_dict_for_response<'a>(
     response_headers: &HashMap<String, String>,
@@ -173,7 +173,7 @@ fn is_canonical_sha256(value: &str) -> bool {
 /// Errors raised by the v0.5 zstd-dictionary discovery surface.
 ///
 /// The discovery path is hard-fail by design (no silent fallback to identity
-/// bytes) — see `spec/WELL_KNOWN_DISCOVERY.md § Resolution failures`. Silent
+/// bytes): see `spec/WELL_KNOWN_DISCOVERY.md § Resolution failures`. Silent
 /// dict-load failure was the v0.4.1 sglang COPY-dicts regression class this
 /// surface eliminates.
 #[derive(Debug, thiserror::Error)]
@@ -223,7 +223,7 @@ fn parse_dict_hash(hash: &str) -> Result<String, ZstdDictDiscoveryError> {
 /// Per-dict document URL for an origin + sha256 hash (v0.5+).
 ///
 /// Returns `<origin>/.well-known/codec/dicts/<sha256-hex>.zstd`. The URL is
-/// fully derived from the hash — there is no mutable per-id form for dicts.
+/// fully derived from the hash: there is no mutable per-id form for dicts.
 ///
 /// # Errors
 ///
@@ -376,7 +376,7 @@ mod tests {
 
     #[test]
     fn hash_zstd_dict_matches_python_reference() {
-        // "hello world" sha256 — same digest both languages produce.
+        // "hello world" sha256: same digest both languages produce.
         let got = hash_zstd_dict(b"hello world");
         assert_eq!(
             got,

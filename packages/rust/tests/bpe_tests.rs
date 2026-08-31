@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! BPE tokenizer tests — mirrors `BPETests.cs`.
+//! BPE tokenizer tests: mirrors `BPETests.cs`.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -156,7 +156,7 @@ fn merges_greedily_by_priority_not_left_to_right() {
 fn chat_template_and_fim_specials_emit_atomic_ids() {
     // Regression guard for the special-token pre-scan + pre_tokenizer_program
     // path. Reference IDs come from HuggingFace `tokenizers` 0.23.1 reading
-    // Qwen-2.5-0.5B-Instruct's tokenizer.json — the encoder must emit each
+    // Qwen-2.5-0.5B-Instruct's tokenizer.json: the encoder must emit each
     // `<|...|>` delimiter as a single atomic vocab ID and produce the
     // byte-identical id sequence HF does for the surrounding BPE.
     //
@@ -166,7 +166,7 @@ fn chat_template_and_fim_specials_emit_atomic_ids() {
     // doesn't support `(?i:...)` or `(?!\S)`, both of which appear in
     // the raw pattern).
     let Some(path) = find_qwen_map() else {
-        eprintln!("skipping — codec-maps/qwen/qwen2.json not present locally");
+        eprintln!("skipping: codec-maps/qwen/qwen2.json not present locally");
         return;
     };
     let bytes = std::fs::read(&path).expect("read map");
@@ -209,7 +209,7 @@ fn p50k_base_round_trips_via_lead_space_program_ops() {
     // emits a program for these maps and the Rust BPE bypasses the regex
     // path entirely. Reference IDs from HuggingFace `tokenizers` 0.23.1.
     let Some(path) = find_p50k_map() else {
-        eprintln!("skipping — codec-maps/openai/p50k_base.json not present locally");
+        eprintln!("skipping: codec-maps/openai/p50k_base.json not present locally");
         return;
     };
     let bytes = std::fs::read(&path).expect("read map");
@@ -240,7 +240,7 @@ fn o200k_base_case_aware_splits_via_letters_cased() {
     // contractions suffix and a punct_run trailing on `[\r\n/]`. Reference
     // IDs from HuggingFace `tokenizers` 0.23.1 against Xenova/gpt-4o.
     let Some(path) = find_codec_map("openai/o200k_base.json") else {
-        eprintln!("skipping — codec-maps/openai/o200k_base.json not present locally");
+        eprintln!("skipping: codec-maps/openai/o200k_base.json not present locally");
         return;
     };
     let bytes = std::fs::read(&path).expect("read map");
@@ -271,7 +271,7 @@ fn mistral_nemo_case_aware_splits_via_letters_cased() {
     // numbers. Reference IDs from HuggingFace `tokenizers` 0.23.1
     // against mistralai/Mistral-Nemo-Instruct-2407.
     let Some(path) = find_codec_map("mistralai/mistral-nemo.json") else {
-        eprintln!("skipping — codec-maps/mistralai/mistral-nemo.json not present locally");
+        eprintln!("skipping: codec-maps/mistralai/mistral-nemo.json not present locally");
         return;
     };
     let bytes = std::fs::read(&path).expect("read map");

@@ -1,5 +1,5 @@
 /**
- * codec-tool-kit — build Codec-native tools as bolt-ons.
+ * codec-tool-kit: build Codec-native tools as bolt-ons.
  *
  * The architectural premise: tools should be independently versioned,
  * deployed, and authored, but speak token IDs natively when the model
@@ -13,7 +13,7 @@
  *   - precache, renderTemplate, verifyCache (the build-time helper)
  *
  * Tools that ship pre-cached responses for common models pay zero
- * tokenization cost on the hot path — the runtime is a hashtable
+ * tokenization cost on the hot path: the runtime is a hashtable
  * lookup. Tools without a binding for the active model fall back to
  * text-mode and the gateway tokenizes the result.
  */

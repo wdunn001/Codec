@@ -1,5 +1,5 @@
 /*
- * bench_watcher.c — microbench for codec_tool_watcher.
+ * bench_watcher.c: microbench for codec_tool_watcher.
  *
  * Measures the watcher's hot-loop cost (uint32 compare + region buffering)
  * against the cost of detokenizing the same stream. This is the headline
@@ -12,7 +12,7 @@
  * region_density is the fraction of stream that lies inside <tool_call>
  * regions. 0.0 = no tool calls, 1.0 = entirely tool calls. Default 5%.
  *
- * Self-contained — uses an inline synthetic tokenizer map so the bench
+ * Self-contained: uses an inline synthetic tokenizer map so the bench
  * runs without any external map file.
  */
 #if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
@@ -45,7 +45,7 @@ static double now_ns(void) {
 #endif
 }
 
-/* Minimal byte-level vocab covering 0..255 — enough for the detokenizer
+/* Minimal byte-level vocab covering 0..255: enough for the detokenizer
  * to do real work on every token in the stream. Specials at 256/257. */
 static char *build_synth_map(size_t *out_len) {
     /* Pre-size: header + 256 entries (~"\"a\":N," each ~10 bytes) + tail */

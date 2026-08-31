@@ -1,5 +1,5 @@
 /**
- * Tool / agent / MCP defenses — companion to
+ * Tool / agent / MCP defenses: companion to
  * spec/proposals/v0.6-security/06-tool-agent-attacks.md.
  *
  * Implements untrusted-content wrapping for tool descriptions and tool
@@ -9,7 +9,7 @@
  *
  * The Anthropic MCP "by design" STDIO command-injection wave of April 2026
  * (Ox Security, 7,000+ servers, 150M+ downloads) puts the burden on host
- * implementations rather than the protocol — see
+ * implementations rather than the protocol: see
  * spec/proposals/v0.6-security/references/06-tool-agent-refs.md for context.
  * This module is exactly the kind of layer Anthropic deferred to host
  * developers.
@@ -75,10 +75,10 @@ export type TrustTier = 'system' | 'user' | 'external' | 'tool_result';
  * data, not instructions.
  *
  * Origin labels:
- *   - `mcp.<server>.tool-description` — tool description from MCP server
- *   - `mcp.<server>.<tool>.result` — tool result from MCP server
- *   - `user-upload.<mime>` — user-uploaded document content
- *   - `web-fetch.<host>` — agent web-fetch result
+ *   - `mcp.<server>.tool-description`: tool description from MCP server
+ *   - `mcp.<server>.<tool>.result`: tool result from MCP server
+ *   - `user-upload.<mime>`: user-uploaded document content
+ *   - `web-fetch.<host>`: agent web-fetch result
  */
 export function wrapUntrustedContent(
   content: string,

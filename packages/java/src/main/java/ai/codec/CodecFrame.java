@@ -10,9 +10,9 @@ import java.util.Arrays;
  *
  * <p>Fields:
  * <ul>
- *   <li>{@code ids} — token IDs emitted by the model in this chunk.</li>
- *   <li>{@code done} — {@code true} on the final frame; no further frames follow.</li>
- *   <li>{@code finishReason} — Set on the final frame, e.g. {@code "length"},
+ *   <li>{@code ids}: token IDs emitted by the model in this chunk.</li>
+ *   <li>{@code done}: {@code true} on the final frame; no further frames follow.</li>
+ *   <li>{@code finishReason}: Set on the final frame, e.g. {@code "length"},
  *       {@code "stop"}, {@code "eos_token"}, {@code "error"}.</li>
  * </ul>
  */

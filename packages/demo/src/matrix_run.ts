@@ -1,15 +1,15 @@
 /**
- * matrix_run — runs the standard 3 paths × 4 encodings × N sizes grid
+ * matrix_run: runs the standard 3 paths × 4 encodings × N sizes grid
  * against an engine and emits a SCHEMA-v1 result JSON.
  *
  * TS twin of packages/demo-python/src/codec_demo/matrix_run.py. MUST consume a
- * methodology JSON written by packages/bench/scripts/capture_methodology.py — it
+ * methodology JSON written by packages/bench/scripts/capture_methodology.py: it
  * never invents methodology fields. The runner only fills in the `client` and
  * `bench_tool` blocks before emitting.
  *
  * Wire-byte measurement: uses Node's raw `http`/`https` module (NOT global
  * `fetch`, which auto-decompresses gzip/br). We measure exactly the bytes
- * that arrive on the socket before any Content-Encoding decompression — the
+ * that arrive on the socket before any Content-Encoding decompression: the
  * value SCHEMA.md mandates.
  *
  * Usage:
@@ -52,7 +52,7 @@ function loadZstdDictFiles(...paths: string[]): void {
     if (!p || !fs.existsSync(p) || !fs.statSync(p).isFile()) continue;
     try {
       const buf = fs.readFileSync(p);
-      // node:crypto is fine here — the demo is Node-only. The production
+      // node:crypto is fine here: the demo is Node-only. The production
       // helper in @codecai/web uses Web Crypto (SubtleCrypto.digest) so it
       // works in browsers too.
       const hex = crypto.createHash('sha256').update(buf).digest('hex');
@@ -212,7 +212,7 @@ function postWithTiming(
         headers[k.toLowerCase()] = Array.isArray(v) ? v.join(', ') : String(v);
       }
 
-      // res emits raw bytes — the http module does NOT auto-decompress.
+      // res emits raw bytes: the http module does NOT auto-decompress.
       res.on('data', (chunk: Buffer) => {
         if (firstByteAt === null) firstByteAt = performance.now();
         wireBytes += chunk.length;
@@ -254,7 +254,7 @@ const HAS_NODE_ZSTD =
 function zstdDecompressWithDict(body: Buffer, dict: Uint8Array | null): Buffer {
   if (!HAS_NODE_ZSTD) {
     throw new Error(
-      `Node ${process.version} lacks zlib.zstdDecompressSync — upgrade to ` +
+      `Node ${process.version} lacks zlib.zstdDecompressSync: upgrade to ` +
         'Node 22.15+ / 23.8+ for native dict-zstd, or wire a userspace ' +
         'decoder (@mongodb-js/zstd does not support dicts; zstd-codec or ' +
         'fzstd do).',
@@ -283,7 +283,7 @@ function decompressBody(
       // Server-side dict-zstd: the response advertises which dict it used
       // via Codec-Zstd-Dict. selectZstdDictForResponse validates the header
       // shape, matches it against ZSTD_DICTS, and throws CodecZstdDictError
-      // on missing / unknown / malformed — wrong-dict decompression would
+      // on missing / unknown / malformed: wrong-dict decompression would
       // produce garbage bytes that msgpack parsers misinterpret, so fail
       // fast is the spec-mandated behaviour
       // (spec/versions/v0.4.md §Codec-Zstd-Dict response header).
@@ -315,7 +315,7 @@ function countTokensMsgpack(buf: Buffer): number {
   // SGLang/vLLM/llama.cpp all emit concatenated msgpack maps of shape
   // `{ids: [uint32, ...], done: bool, [finish_reason]: string}`. Decode
   // each frame and sum the `ids` array lengths to get the total token
-  // count — matches matrix_run.py's count_msgpack(decoded).
+  // count: matches matrix_run.py's count_msgpack(decoded).
   let n = 0;
   try {
     for (const frame of decodeMulti(buf)) {
@@ -346,7 +346,7 @@ function countTokensProtobuf(buf: Buffer): number {
         const fieldNum = tag >>> 3;
         const wireType = tag & 0x07;
         if (fieldNum === 1 && wireType === 2) {
-          // packed uint32 ids — read varint length, then varints
+          // packed uint32 ids: read varint length, then varints
           let len = 0, shift = 0;
           while (p < end) {
             const b = buf[p++];
@@ -432,7 +432,7 @@ async function runOne(inp: RunInput): Promise<CellResult> {
       };
     }
     // Decode using the SERVER'S Content-Encoding (not the requested
-    // Accept-Encoding). Server is free to ignore our preference — e.g. it
+    // Accept-Encoding). Server is free to ignore our preference: e.g. it
     // may fall back to gzip when no dict matches the negotiated
     // (tokenizer_id, format) pair. Headers also carry Codec-Zstd-Dict for
     // the zstd dict-lookup path in decompressBody.
@@ -459,7 +459,7 @@ async function runOne(inp: RunInput): Promise<CellResult> {
     }
     // Token-decode fallback for compressed cells we can't decompress
     // (zstd in Node ≤21, brotli failures, etc.). The bench's primary
-    // signal is wire_bytes / ttft_ms / total_ms — those are measured
+    // signal is wire_bytes / ttft_ms / total_ms: those are measured
     // pre-decompression on the raw socket and stay accurate. Tokens
     // are deterministic at temperature=0; vLLM emits exactly `size`
     // tokens in the normal completion path, so we report `size` rather

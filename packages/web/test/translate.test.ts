@@ -1,12 +1,12 @@
 /**
- * Translator tests — cross-vocab translation correctness.
+ * Translator tests: cross-vocab translation correctness.
  *
  * Three layers of verification:
  *   1. Synthetic byte_level fixture round-trips with itself (identity translation).
  *   2. Real Qwen-2 → Qwen-2 (identity over a 152K-vocab production tokenizer)
- *      — proves the streaming buffering doesn't drop or duplicate text.
+ *: proves the streaming buffering doesn't drop or duplicate text.
  *   3. Cross-vocab: real Qwen-2 → Llama-3 (when both maps are present locally)
- *      — sanity-checks that translated output detokenizes back to the
+ *: sanity-checks that translated output detokenizes back to the
  *      original text under the target tokenizer.
  */
 import test from 'node:test';

@@ -1,5 +1,5 @@
 /**
- * 01 — Unicode smuggling attack/defense tests.
+ * 01: Unicode smuggling attack/defense tests.
  *
  * Each test loads a fixture from `packages/bench/fixtures/security/01-unicode-smuggling/`,
  * verifies the fixture actually carries the documented attack class, then runs
@@ -32,7 +32,7 @@ function load(name: string): string {
 
 const VISIBLE_BIO = 'Software engineer in Knoxville TN. Founder of MassZero FPV.';
 
-// ── Tag block (U+E0000–U+E007F) ──────────────────────────────────────────────
+// ── Tag block (U+E0000:U+E007F) ──────────────────────────────────────────────
 
 test('attack: tag-block payload carries invisible content', () => {
   const payload = load('tag-block-payload.txt');
@@ -192,7 +192,7 @@ test('defense: normalizeForPolicy unifies math alphanumerics to ASCII', () => {
 
 test('reference: glitch-token fixture documents the class', () => {
   const payload = load('glitch-token-payload.txt');
-  // This fixture is documentation-only — per-model glitch tokens belong in
+  // This fixture is documentation-only: per-model glitch tokens belong in
   // tokenizer-map metadata and are not enumerated in the fixture.
   assert.ok(payload.includes('glitch-token'));
 });

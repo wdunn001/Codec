@@ -1,6 +1,6 @@
 """Python parity tests for slice 11.
 
-Mirrors `packages/web/test/safety-policy.test.ts` — same shape, same
+Mirrors `packages/web/test/safety-policy.test.ts`: same shape, same
 assertions, so a regression on either side surfaces.
 """
 from __future__ import annotations
@@ -150,11 +150,11 @@ def test_canonical_bytes_match_2_space_indent_with_trailing_newline():
 
 def test_canonical_bytes_match_supervisor_format():
     """The Python client and the supervisor (pydantic + json.dumps)
-    MUST emit identical canonical bytes — that's the contract that
+    MUST emit identical canonical bytes: that's the contract that
     makes safety_policy_hash interoperable across stacks."""
     descriptor = _build_descriptor()
     raw = descriptor_canonical_bytes(descriptor)
-    # Same JSON, hashed independently — should match.
+    # Same JSON, hashed independently: should match.
     direct_hash = hashlib.sha256(raw).hexdigest()
     via_function = hash_safety_policy(descriptor).split(":", 1)[1]
     assert direct_hash == via_function
@@ -294,7 +294,7 @@ async def test_discover_safety_policy_with_hash_hits_content_addressed_sibling()
 @pytest.mark.asyncio
 async def test_discover_safety_policy_with_hash_rejects_byte_mismatch():
     """The hash-keyed endpoint serves bytes that don't match the
-    requested hex — the loader MUST reject."""
+    requested hex: the loader MUST reject."""
     body = b"different content than expected"
     wrong_hex = "c" * 64
     hash_url = well_known_policy_hash_url(ORIGIN, wrong_hex)

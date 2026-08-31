@@ -68,7 +68,7 @@ def sha256_file(path: Path) -> str:
 def hardware_block(ssh_host: str | None) -> dict[str, Any]:
     """Capture hardware. If --ssh-host is provided, probe the remote box
     over SSH (where the engine actually runs). Otherwise probe locally.
-    The bench client and the engine often run on different machines —
+    The bench client and the engine often run on different machines:
     we want the engine's hardware in the methodology block."""
     if ssh_host:
         runner = lambda cmd: sh(["ssh", ssh_host, cmd], allow_fail=True)

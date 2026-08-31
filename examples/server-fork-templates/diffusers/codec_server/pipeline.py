@@ -1,5 +1,5 @@
 """
-Diffusers pipeline runner — loads a checkpoint, runs sampling up to (but
+Diffusers pipeline runner: loads a checkpoint, runs sampling up to (but
 not including) VAE decode, returns the latent tensor that
 LatentStreamEncoder serializes.
 
@@ -16,13 +16,13 @@ which is the official supported way to skip VAE decode:
     latent = result.images[0]   # tensor shape [C, H, W]
 
 The latent is in the model's native scale (i.e. NOT divided by
-vae_scale_factor — that happens inside vae.decode). The bench/golden
+vae_scale_factor: that happens inside vae.decode). The bench/golden
 reference image performs `vae.decode(latent / scale_factor)` on these
 exact bytes, so the perceptual contract is "the latent server emits
 matches the latent the golden image decodes."
 
 For text-to-video / image-to-video (StableVideoDiffusion, AnimateDiff,
-CogVideoX), the same pattern holds — the pipeline returns latents of
+CogVideoX), the same pattern holds: the pipeline returns latents of
 shape [N, C, H, W] for N frames and we yield them one LatentFrame at
 a time.
 """
@@ -55,7 +55,7 @@ class LatentResult:
 
 class LatentPipelineRunner:
     """Loads a diffusers checkpoint once, serves repeated generation
-    requests against it. Thread-unsafe by design — the FastAPI app
+    requests against it. Thread-unsafe by design: the FastAPI app
     serializes calls behind a per-pipeline asyncio.Lock.
     """
 
@@ -196,6 +196,6 @@ class LatentPipelineRunner:
                 "video latent generation: replace _load_video_pipe and this call "
                 "site with the pipeline class that matches the configured "
                 f"latent_space ({self.latent_space_id}). The capture pattern is "
-                "the same as image — call the pipeline with output_type='latent', "
+                "the same as image: call the pipeline with output_type='latent', "
                 "iterate the result tensor frame-by-frame."
             )

@@ -130,7 +130,7 @@ static long mp_end_offset(const uint8_t *p, size_t len, size_t pos) {
         for (size_t i = 0; i < hl; i++) n = (n << 8) | p[pos + 1 + i];
         return mp_skip_n(p, len, pos + 1 + hl, (uint32_t)n * 2);
     }
-    /* ext family (0xC7..0xC9) — skip for now */
+    /* ext family (0xC7..0xC9): skip for now */
     if (b == 0xC7 || b == 0xC8 || b == 0xC9) {
         size_t hl = (b == 0xC7) ? 1 : (b == 0xC8) ? 2 : 4;
         if (pos + 1 + hl + 1 > len) return 0;

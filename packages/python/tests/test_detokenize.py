@@ -1,4 +1,4 @@
-"""Detokenizer tests — mirror packages/web/test/detokenize.test.ts."""
+"""Detokenizer tests: mirror packages/web/test/detokenize.test.ts."""
 from __future__ import annotations
 
 from codecai import Detokenizer, detokenize
@@ -38,7 +38,7 @@ def test_byte_fallback_4_byte_emoji():
 
 def test_partial_multibyte_buffered_across_frames():
     d = Detokenizer(TINY_MAP)
-    # Frame 1: first 2 bytes of € — incomplete, must not emit.
+    # Frame 1: first 2 bytes of €: incomplete, must not emit.
     out1 = d.render([byte_id(0xE2), byte_id(0x82)], partial=True)
     assert out1 == ""
     # Frame 2: final byte. Now flushes.

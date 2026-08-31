@@ -1,5 +1,5 @@
 /*
- * codec.h — public C99 API for the Codec binary transport protocol.
+ * codec.h: public C99 API for the Codec binary transport protocol.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -101,14 +101,14 @@ codec_status_t codec_map_verify_sha256(const char *json, size_t len,
 /*
  * Resolve a special-token name to its uint32 ID.
  *
- * Names are the keys from the map's `special_tokens` object — typical
+ * Names are the keys from the map's `special_tokens` object: typical
  * examples: `"<|endoftext|>"`, `"<tool_call>"`, `"</tool_call>"`,
  * `"<|python_tag|>"`, `"<|im_start|>"`.
  *
  * Returns CODEC_OK + writes *out_id on hit, CODEC_ERR_NOT_FOUND on miss.
  *
  * This is the preferred way to bind structural markers (tool calls, role
- * boundaries, EOS tokens) before scanning a stream — resolve names to IDs
+ * boundaries, EOS tokens) before scanning a stream: resolve names to IDs
  * once at startup, then compare uint32s in the hot loop.
  */
 codec_status_t codec_map_special_id(const codec_tokenizer_map_t *map,
@@ -123,7 +123,7 @@ codec_status_t codec_map_special_id(const codec_tokenizer_map_t *map,
  * spec/PROTOCOL.md § "Tool-call calling conventions in the map".
  *
  * Each `convention` value pins a specific argument layout, marker placement,
- * and result framing — the registry of valid values is closed (additive
+ * and result framing: the registry of valid values is closed (additive
  * point releases of the schema).
  */
 typedef enum codec_tool_calling_convention {
@@ -149,7 +149,7 @@ typedef enum codec_tool_calling_result_format {
 /*
  * Tool-calling block. Strings are owned by the map; lifetime is tied to
  * the map. `marker_start_name` and `marker_end_name` MUST appear as keys
- * in the map's `special_tokens` table — codec_map_from_json() returns
+ * in the map's `special_tokens` table: codec_map_from_json() returns
  * CODEC_ERR_VALIDATION on a tool_calling block whose markers don't
  * resolve.
  */
@@ -181,16 +181,16 @@ const codec_tool_calling_t *codec_map_tool_calling(
  * use; libcodec keeps `arguments` as the raw JSON string so the caller can
  * parse it with whatever JSON library suits its host environment.
  *
- * Lifetime: the strings are BORROWED — callers (e.g. an inference server
+ * Lifetime: the strings are BORROWED: callers (e.g. an inference server
  * encoding tool calls into outbound frames) own the buffers. The encoder
  * reads the pointers; codec_frame_destroy does NOT free them. This matches
  * the borrow idiom that llama.cpp/sglang already use for finish_reason
  * via the null-before-destroy dance.
  */
 typedef struct codec_tool_call {
-    const char *name;            /* optional — NULL if absent */
-    const char *arguments_json;  /* required — raw JSON body between markers */
-    const char *id;              /* optional — server-generated, e.g. "tc_<hex>" */
+    const char *name;            /* optional: NULL if absent */
+    const char *arguments_json;  /* required: raw JSON body between markers */
+    const char *id;              /* optional: server-generated, e.g. "tc_<hex>" */
 } codec_tool_call_t;
 
 typedef struct codec_frame {
@@ -202,7 +202,7 @@ typedef struct codec_frame {
      * llama.cpp #22757-tools). When the model emits a complete <start>..<end>
      * region in this chunk, the parsed result rides along on the same frame
      * whose `ids` come from immediately after the region. Multiple tool calls
-     * in one frame are emitted as an array. Borrowed pointer — caller owns
+     * in one frame are emitted as an array. Borrowed pointer: caller owns
      * both the array and its strings. */
     const codec_tool_call_t *tool_calls;
     size_t                   tool_calls_len;
@@ -275,14 +275,14 @@ codec_status_t codec_detokenizer_render(codec_detokenizer_t *detok,
 /*
  * codec_tool_watcher scans a token-ID stream for a delimited region (start
  * marker → end marker) without ever decoding the bytes to text. Most modern
- * chat-tuned models emit tool calls between special tokens — Qwen 2.5+ uses
+ * chat-tuned models emit tool calls between special tokens: Qwen 2.5+ uses
  * <tool_call>/</tool_call>, Llama 3.1+ uses <|python_tag|>/<|eom_id|>,
- * Phi-4 uses <|tool|>/<|/tool|>, etc. — so an orchestrator can detect a
+ * Phi-4 uses <|tool|>/<|/tool|>, etc.: so an orchestrator can detect a
  * tool call by integer compare in the hot loop and only invoke the
  * detokenizer on the buffered span when it actually needs the JSON
  * arguments.
  *
- * The watcher is stateful across feed() calls — partial regions split
+ * The watcher is stateful across feed() calls: partial regions split
  * across frame boundaries are accumulated until the end marker arrives.
  *
  *   codec_tool_watcher_new(map, "<tool_call>", "</tool_call>", &w);
@@ -290,7 +290,7 @@ codec_status_t codec_detokenizer_render(codec_detokenizer_t *detok,
  *   codec_tool_watcher_feed(w, frame.ids, frame.ids_len, &evs, &n);
  *   for (size_t i = 0; i < n; i++) {
  *       if (evs[i].kind == CODEC_WATCH_PASSTHROUGH) {
- *           // Forward evs[i].ids straight to the next agent — no decode.
+ *           // Forward evs[i].ids straight to the next agent: no decode.
  *       } else {
  *           // Tool call captured. Decode evs[i].ids only if you need the
  *           // arguments JSON; otherwise just route by tool-call presence.
@@ -319,7 +319,7 @@ typedef struct codec_tool_watcher codec_tool_watcher_t;
 /*
  * Create a watcher bound to a (start_name, end_name) pair of special-token
  * names that exist in the map's `special_tokens` table. Returns
- * CODEC_ERR_NOT_FOUND if either name isn't a registered special token —
+ * CODEC_ERR_NOT_FOUND if either name isn't a registered special token:
  * the model may use plain text markers (older Mistral, GPT-2 era), in
  * which case scanning has to happen post-detokenize.
  */
@@ -348,7 +348,7 @@ void codec_tool_watcher_reset(codec_tool_watcher_t *w);
 /*
  * Feed N token IDs. *out_events is set to a watcher-owned events array of
  * length *out_len. Pass NULL/0 to flush state inspection without new bytes.
- * The caller does NOT free *out_events — the watcher owns it.
+ * The caller does NOT free *out_events: the watcher owns it.
  */
 codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
                                        const uint32_t *ids, size_t n,
@@ -377,9 +377,9 @@ bool codec_tool_watcher_inside(const codec_tool_watcher_t *w);
  *   3. codec_*_stream_free(dec);
  *
  * codec_*_stream_next returns:
- *   CODEC_OK            — *out filled with a complete frame
- *   CODEC_ERR_INCOMPLETE — no complete frame in the buffer yet
- *   negative            — protocol error
+ *   CODEC_OK: *out filled with a complete frame
+ *   CODEC_ERR_INCOMPLETE: no complete frame in the buffer yet
+ *   negative: protocol error
  */
 
 typedef struct codec_msgpack_stream codec_msgpack_stream_t;
@@ -404,7 +404,7 @@ codec_status_t codec_protobuf_stream_next(codec_protobuf_stream_t *dec,
  * The pre-tokenizer program (v2.1 map field, see
  * spec/PRETOKENIZER_PROGRAM.md) is an ordered list of named ops that
  * splits input text into pieces before BPE merging. It exists so libcodec
- * can do BPE encoding without a Unicode regex engine — eight ops cover
+ * can do BPE encoding without a Unicode regex engine: eight ops cover
  * every GPT-2-family and SentencePiece-metaspace tokenizer in current
  * use.
  *
@@ -450,7 +450,7 @@ typedef struct codec_pretok_piece {
 
 /* Run the program over UTF-8 input. Pieces alias the input buffer.
  * Free with codec_pretok_free_pieces(). For metaspace single-op
- * programs, returns CODEC_ERR_INVALID_ARG — use codec_pretok_run_metaspace
+ * programs, returns CODEC_ERR_INVALID_ARG: use codec_pretok_run_metaspace
  * instead, which produces freshly-allocated prefixed pieces. */
 codec_status_t codec_pretok_run_program(
     const codec_pretok_program_t *prog,
@@ -487,7 +487,7 @@ void codec_pretok_free_metaspace_pieces(char **pieces, size_t count);
  * Construction fails (CODEC_ERR_VALIDATION) if the map lacks a
  * pre_tokenizer_program or doesn't carry a byte_level / metaspace
  * encoder. v1 maps and canonical-IR vocab-only maps aren't supported
- * by BPE — the LongestMatchTokenizer path is for those, and is not yet
+ * by BPE: the LongestMatchTokenizer path is for those, and is not yet
  * exposed in the C client.
  */
 typedef struct codec_bpe_encoder codec_bpe_encoder_t;
@@ -512,7 +512,7 @@ codec_status_t codec_bpe_encode(codec_bpe_encoder_t *enc,
  *
  * The text intermediate is purely local; agent-to-agent traffic still
  * carries only token IDs on the wire. Mirrors the @codecai/web Translator,
- * codecai's Translator, and Codec.Net's Translator — same word-boundary
+ * codecai's Translator, and Codec.Net's Translator: same word-boundary
  * buffering rules.
  *
  * Streaming caveat: BPE merges depend on context, so re-tokenizing
@@ -539,8 +539,8 @@ codec_status_t codec_translator_new(const codec_tokenizer_map_t *from_map,
 void           codec_translator_free(codec_translator_t *tr);
 
 /* Translate a chunk of source-vocab IDs to target-vocab IDs.
- *   partial=1: streaming — a trailing partial word stays buffered
- *   partial=0: final chunk — buffer drains
+ *   partial=1: streaming: a trailing partial word stays buffered
+ *   partial=0: final chunk: buffer drains
  * Output array is caller-owned; free with free(). out_ids may be NULL
  * (with out_count=0) if the streaming buffer hasn't reached a safe
  * boundary yet. */

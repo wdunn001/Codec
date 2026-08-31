@@ -1,5 +1,5 @@
 """
-codec_endpoints.py — Codec v0.3 latent-modality REST endpoints for ComfyUI.
+codec_endpoints.py: Codec v0.3 latent-modality REST endpoints for ComfyUI.
 
 Drops into the wdunn001/ComfyUI fork's `feat/codec-latent-transport`
 branch at:
@@ -7,7 +7,7 @@ branch at:
     <ComfyUI>/app/codec_endpoints.py
 
 …and is imported once from the fork's `main.py` (or any startup hook
-ComfyUI loads at boot — `extra_model_paths.yaml` won't suffice). The
+ComfyUI loads at boot: `extra_model_paths.yaml` won't suffice). The
 import has a side-effect: it registers POST routes on the running
 aiohttp server via `server.PromptServer.instance.routes`. After import,
 ComfyUI exposes:
@@ -18,8 +18,8 @@ ComfyUI exposes:
     GET  /codec/schema
     GET  /codec/health      (alongside ComfyUI's own /system_stats)
 
-This template uses diffusers directly inside ComfyUI's process —
-bypassing ComfyUI's workflow graph and KSampler — for the first cut.
+This template uses diffusers directly inside ComfyUI's process:
+bypassing ComfyUI's workflow graph and KSampler: for the first cut.
 That keeps the integration small and lets us share latent-capture math
 with the diffusers fork. A fuller integration that hooks into ComfyUI's
 native sampler (so a user-supplied workflow's KSampler output can stream
@@ -36,7 +36,7 @@ must vendor a copy of:
 
     <ComfyUI>/app/latent_frame.py
 
-…before the import will resolve. Do NOT modify the vendored file —
+…before the import will resolve. Do NOT modify the vendored file:
 it's the canonical seven-pipeline forward encoder pinned by
 spec/PIPELINES.md.
 """
@@ -55,7 +55,7 @@ import numpy as np
 import torch
 from aiohttp import web
 
-# ComfyUI's server singleton — registered route table lives at
+# ComfyUI's server singleton: registered route table lives at
 # server.PromptServer.instance.routes.
 import server  # type: ignore
 
@@ -437,7 +437,7 @@ async def _handler_codec_health(_: web.Request) -> web.Response:
 #
 # ComfyUI exposes its aiohttp router via server.PromptServer.instance.routes.
 # Routes added here become live as soon as this module is imported by the
-# fork's main.py at startup. Order doesn't matter — duplicates would be
+# fork's main.py at startup. Order doesn't matter: duplicates would be
 # caught by aiohttp at startup; we only define each path once.
 
 routes = server.PromptServer.instance.routes

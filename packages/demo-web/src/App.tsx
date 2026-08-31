@@ -16,14 +16,14 @@ const DEFAULTS: Endpoint = {
 };
 
 function fmtBytes(n?: number): string {
-  if (n === undefined) return '—';
+  if (n === undefined) return 'n/a';
   if (n < 1024) return `${n} B`;
   if (n < 1_048_576) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / 1_048_576).toFixed(2)} MB`;
 }
 
 function fmtMs(n?: number): string {
-  if (n === undefined) return '—';
+  if (n === undefined) return 'n/a';
   return `${n.toFixed(0)} ms`;
 }
 
@@ -36,7 +36,7 @@ function CellView({
   baseline?: number;
   isBest: boolean;
 }) {
-  if (cell.status === 'pending') return <span className="cell-pending">—</span>;
+  if (cell.status === 'pending') return <span className="cell-pending">:</span>;
   if (cell.status === 'running') return <span className="cell-running">running…</span>;
   if (cell.status === 'error')   return <span className="cell-error">{cell.error}</span>;
   const ratio =

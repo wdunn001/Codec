@@ -17,7 +17,7 @@ import java.util.Map;
  * {@code spec/PROTOCOL.md} "Codec-Zstd-Dict response header" for the
  * full contract.
  *
- * <p>The actual zstd decompression is intentionally out of scope here —
+ * <p>The actual zstd decompression is intentionally out of scope here:
  * the JDK's {@code java.net.http.HttpClient} doesn't auto-decompress
  * anything, and zstd needs the optional {@code com.github.luben:zstd-jni}
  * dependency, and either way the caller usually already has its own
@@ -27,7 +27,7 @@ import java.util.Map;
  *
  * <p>Java twin of {@code codecai.compression} (Python),
  * {@code @codecai/web}'s {@code compression.ts}, and
- * {@code Codec.Compression} (.NET) — same API shape, same error class.
+ * {@code Codec.Compression} (.NET): same API shape, same error class.
  */
 public final class Compression {
     private Compression() {}
@@ -36,7 +36,7 @@ public final class Compression {
      * Compute the canonical {@code Codec-Zstd-Dict} hash for
      * {@code dictBytes}.
      *
-     * <p>Returns {@code sha256:<lowercase hex>} — same shape as the
+     * <p>Returns {@code sha256:<lowercase hex>}: same shape as the
      * server-side header value and the {@code hash} field in
      * tokenizer-map {@code zstd_dictionaries[]} entries.
      */
@@ -54,12 +54,12 @@ public final class Compression {
      * Pick the zstd dict to decompress this response with.
      *
      * <p>Headers are looked up case-insensitively (HTTP headers are not
-     * case-sensitive — {@code HttpHeaders} is, plain {@code Map<String,
+     * case-sensitive: {@code HttpHeaders} is, plain {@code Map<String,
      * String>} isn't, so we normalise here).
      *
      * @param responseHeaders header map from the HTTP response. May use
      *     any casing for keys.
-     * @param loadedDicts {@code {sha256_hash: dict_bytes}} — the dicts
+     * @param loadedDicts {@code {sha256_hash: dict_bytes}}: the dicts
      *     the client has loaded locally. Hashes follow the same
      *     {@code sha256:<hex>} format the server emits.
      * @return the matching dict's bytes when the response is
@@ -71,7 +71,7 @@ public final class Compression {
      *     <ul>
      *       <li>the {@code Codec-Zstd-Dict} header is missing (per spec,
      *           the server MUST emit it on every zstd response)</li>
-     *       <li>the header names a hash we haven't loaded — caller
+     *       <li>the header names a hash we haven't loaded: caller
      *           should fetch the dict from the tokenizer map's
      *           {@code zstd_dictionaries[]} entry whose {@code hash}
      *           matches, or retry the request with
@@ -117,7 +117,7 @@ public final class Compression {
     /**
      * Case-insensitive header lookup. {@code java.net.http.HttpHeaders}
      * is already case-insensitive, but plain {@code Map<String, String>}
-     * isn't — this normalises for callers that pass a plain map.
+     * isn't: this normalises for callers that pass a plain map.
      */
     private static String header(Map<String, String> headers, String name) {
         if (headers == null) return null;

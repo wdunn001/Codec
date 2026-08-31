@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "codecai"
 version = "0.5.0"
-description = "Tokenizer + detokenizer for the Codec binary transport protocol — decode streaming token IDs from vLLM/SGLang, encode text into IDs for the bidirectional path. The Python twin of @codecai/web and Codec.Net."
+description = "Tokenizer + detokenizer for the Codec binary transport protocol: decode streaming token IDs from vLLM/SGLang, encode text into IDs for the bidirectional path. The Python twin of @codecai/web and Codec.Net."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"

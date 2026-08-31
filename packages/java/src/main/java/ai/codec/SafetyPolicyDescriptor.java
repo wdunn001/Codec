@@ -12,7 +12,7 @@ import java.util.List;
  *
  * <p>Java twin of {@code @codecai/web}'s {@code SafetyPolicyDescriptor}
  * (slice 1) and {@code codecai.SafetyPolicyDescriptor} (Python). Same
- * shapes, same canonical JSON form for hashing — descriptors that hash
+ * shapes, same canonical JSON form for hashing: descriptors that hash
  * to {@code sha256:abc…} in any client hash to the identical digest
  * here.
  *

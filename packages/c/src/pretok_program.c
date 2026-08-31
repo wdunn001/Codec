@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: MIT
  *
- * Pre-tokenizer program runtime — C99 port.
+ * Pre-tokenizer program runtime: C99 port.
  *
  * Mirrors @codecai/web/src/pretok-program.ts and codecai's
  * pretok_program.py. Executes a `pre_tokenizer_program` (see
  * spec/PRETOKENIZER_PROGRAM.md) against UTF-8 input, producing the
  * same sequence of pieces a Unicode-regex engine would produce for the
  * equivalent `pre_tokenizer_pattern`. The Unicode class queries go
- * through the generated tables in codec_unicode_tables.c — no regex,
+ * through the generated tables in codec_unicode_tables.c: no regex,
  * no PCRE2.
  *
  * The program comes from the JSON map's `pre_tokenizer_program` field,
@@ -156,7 +156,7 @@ static size_t match_numbers(const codec_pretok_op_t *op,
 
 static size_t match_punct_run(const codec_pretok_op_t *op,
                               const uint8_t *s, size_t n, size_t i) {
-    /* ` ?[^\s\p{L}\p{N}]+[\r\n]*` — lead_space and trailing_newlines toggleable. */
+    /* ` ?[^\s\p{L}\p{N}]+[\r\n]*`: lead_space and trailing_newlines toggleable. */
     size_t p = i;
     if (op->u.punct_run.lead_space && p < n && s[p] == ' ') {
         p++;
@@ -180,7 +180,7 @@ static size_t match_punct_run(const codec_pretok_op_t *op,
 static size_t match_newline_block(const codec_pretok_op_t *op,
                                   const uint8_t *s, size_t n, size_t i) {
     (void)op;
-    /* `\s*[\r\n]+` — whitespace run that must contain at least one
+    /* `\s*[\r\n]+`: whitespace run that must contain at least one
      * newline; the match ends on the last newline of the run. */
     size_t p = i;
     while (p < n) {
@@ -222,7 +222,7 @@ static size_t match_trailing_ws(const codec_pretok_op_t *op,
     }
     if (p == i) return 0;
     if (p == n) return p - i;
-    /* Followed by non-whitespace — truncate before the final ws cp. */
+    /* Followed by non-whitespace: truncate before the final ws cp. */
     return last_cp_start - i;
 }
 
@@ -243,10 +243,10 @@ static size_t match_ws_run(const codec_pretok_op_t *op,
 
 /* Metaspace splits whitespace runs and prefixes ▁ (U+2581 = 0xE2 0x96 0x81)
  * to each non-empty piece. Unlike the GPT-2-family case, pieces here are
- * not slices of the input — they're prefixed strings. We allocate them
+ * not slices of the input: they're prefixed strings. We allocate them
  * separately and store their pointers in a side buffer. The piece
  * struct's `off` field then becomes an index into that side buffer
- * (with a sentinel `len == 0` and a flag elsewhere — but for simplicity
+ * (with a sentinel `len == 0` and a flag elsewhere: but for simplicity
  * we keep the pieces as offsets into a single concatenated buffer that
  * the caller frees with codec_pretok_free_metaspace_pieces).
  *

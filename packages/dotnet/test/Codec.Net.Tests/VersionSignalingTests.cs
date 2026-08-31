@@ -214,10 +214,10 @@ public class VersionSignalingTests
     {
         var clients = new[] { "0.2", "0.3", "0.4", "0.5" };
 
-        // default-off — no refusal for any client
+        // default-off: no refusal for any client
         foreach (var cv in clients) yield return new object[] { "default-off", cv, false, Array.Empty<string>() };
 
-        // safety-enforced — v0.2 + v0.3 refused with safety-policy-enforcement
+        // safety-enforced: v0.2 + v0.3 refused with safety-policy-enforcement
         foreach (var cv in clients)
         {
             bool refused = cv == "0.2" || cv == "0.3";
@@ -226,7 +226,7 @@ public class VersionSignalingTests
                 new[] { "safety-policy-enforcement" } };
         }
 
-        // version-policy-strict — v0.2 + v0.3 refused with no specific feature
+        // version-policy-strict: v0.2 + v0.3 refused with no specific feature
         foreach (var cv in clients)
         {
             bool refused = cv == "0.2" || cv == "0.3";

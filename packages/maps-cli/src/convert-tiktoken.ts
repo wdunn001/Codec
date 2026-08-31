@@ -1,9 +1,9 @@
 /**
- * convert-tiktoken.ts — OpenAI tiktoken `.tiktoken` files → Codec v2 TokenizerMap.
+ * convert-tiktoken.ts: OpenAI tiktoken `.tiktoken` files → Codec v2 TokenizerMap.
  *
  * The OpenAI tokenizers used by the GPT-3.5 / GPT-4 / GPT-4o / o-series
  * model families ship as `.tiktoken` files on the OpenAI public CDN.
- * The vocab + BPE merges are open and MIT-licensed via tiktoken — only
+ * The vocab + BPE merges are open and MIT-licensed via tiktoken: only
  * the model weights themselves are closed. So Codec can produce a
  * tokenizer-map for these vocabularies without depending on an HF
  * tokenizer.json mirror.
@@ -13,14 +13,14 @@
  *     <base64-encoded-BPE-merge-bytes> <rank>
  *
  * where rank is the integer token ID. Single-byte entries occupy
- * scattered ranks (NOT 0-255 — tiktoken trains BPE on raw bytes, not on
+ * scattered ranks (NOT 0-255: tiktoken trains BPE on raw bytes, not on
  * a fixed base alphabet, so single bytes get whatever rank the trainer
  * assigned). Special tokens are NOT in the .tiktoken file; they're
  * baked into the encoding's Python definition. We hardcode them here
  * per the four production encodings.
  *
  * Output is the same v2 TokenizerMap shape used by `convertHFTokenizer`
- * — same vocab/encoder/merges/pre_tokenizer_pattern/special_tokens
+ *: same vocab/encoder/merges/pre_tokenizer_pattern/special_tokens
  * fields, same byte_level encoder behaviour, same downstream contract.
  *
  * Programmatic API:
@@ -58,7 +58,7 @@ export interface TiktokenEncodingSpec {
  * cl100k_base / o200k_base use a `(?i:…)` group that's a JavaScript
  * inline-flag regex group landed in V8 13+ (Node 24+). Earlier Node
  * versions need an alternative pattern compiled via the
- * pre_tokenizer_program (v2.1) op list — same approach as the Codec
+ * pre_tokenizer_program (v2.1) op list: same approach as the Codec
  * maps for byte-level Llama / Qwen.
  */
 const PAT_CL100K =
@@ -95,7 +95,7 @@ const SPECIAL_O200K: Record<string, number> = {
   '<|endofprompt|>': 200018,
 };
 
-/** p50k_base + p50k_edit — Codex family + edit variant. */
+/** p50k_base + p50k_edit: Codex family + edit variant. */
 const SPECIAL_P50K_BASE: Record<string, number> = { '<|endoftext|>': 50256 };
 const SPECIAL_P50K_EDIT: Record<string, number> = {
   '<|endoftext|>':  50256,
@@ -104,7 +104,7 @@ const SPECIAL_P50K_EDIT: Record<string, number> = {
   '<|fim_suffix|>': 50283,
 };
 
-/** r50k_base — gpt-2-era encodings (text-davinci-002 etc.). */
+/** r50k_base: gpt-2-era encodings (text-davinci-002 etc.). */
 const SPECIAL_R50K: Record<string, number> = { '<|endoftext|>': 50256 };
 
 const TIKTOKEN_CDN = 'https://openaipublic.blob.core.windows.net/encodings';
@@ -168,7 +168,7 @@ export const ENCODINGS: Readonly<Record<string, TiktokenEncodingSpec>> = {
  *
  * Each non-empty line is `<base64-bytes> <rank>`. Returns a map keyed by
  * the GPT-2-byte-encoded unicode form (Ġ-prefixed, etc.) with rank as
- * the value — the same shape the Codec v2 vocab field expects.
+ * the value: the same shape the Codec v2 vocab field expects.
  */
 export function parseTiktokenFile(rawBytes: Uint8Array | Buffer): Map<string, number> {
   const text = new TextDecoder('utf-8').decode(rawBytes);
@@ -204,14 +204,14 @@ function base64Decode(b64: string): Uint8Array {
 
 /**
  * Reconstruct BPE merges from a rank-ordered vocab. tiktoken doesn't
- * ship merges separately — it ships the final `mergeable_ranks` map and
+ * ship merges separately: it ships the final `mergeable_ranks` map and
  * lets the encoder re-derive merges at training/inference time. We need
  * the merge list explicitly for Codec's BPETokenizer.
  *
  * Algorithm: for each multi-character token in rank order, find the
  * unique split (left, right) where both halves exist in the vocab with
  * lower rank. When multiple splits qualify, pick the one whose
- * higher-ranked half is lowest — the BPE step that actually produced
+ * higher-ranked half is lowest: the BPE step that actually produced
  * this token would have been the lowest-rank pair available at that
  * step.
  *
@@ -262,7 +262,7 @@ export interface ConvertTiktokenOptions {
  * Convert a raw `.tiktoken` file body to a Codec v2 TokenizerMap.
  *
  * The result is byte-for-byte the same shape `convertHFTokenizer`
- * produces for an HF tokenizer.json — same fields, same encoder family,
+ * produces for an HF tokenizer.json: same fields, same encoder family,
  * same merge list semantics. Downstream consumers (`@codecai/web`,
  * `codec-supervisor`, the bench harness) can't distinguish a
  * tiktoken-derived map from an HF-derived one.
@@ -293,7 +293,7 @@ export function convertTiktoken(
   }
 
   // 3. Derive merges from rank order. The BPE merges aren't stored
-  //    separately by tiktoken — only the final ranks are.
+  //    separately by tiktoken: only the final ranks are.
   const merges = deriveMergesFromRanks(vocab);
 
   const map: TokenizerMap = {

@@ -1,5 +1,5 @@
 /**
- * @codecai/web-llm — Codec-aware browser LLM runtime.
+ * @codecai/web-llm: Codec-aware browser LLM runtime.
  *
  * Wraps the patched `wdunn001/web-llm` fork
  * (`github:wdunn001/web-llm#feat/codec-binary-transport`) and exposes
@@ -10,7 +10,7 @@
  *   - The MLC engine's generate loop samples token IDs from logits.
  *   - The patched fork yields those IDs in `CodecFrame` objects
  *     instead of running them through the model's detokenizer first.
- *   - This wrapper passes the frames through verbatim — the consumer
+ *   - This wrapper passes the frames through verbatim: the consumer
  *     ships them via WebRTC / HTTP / BroadcastChannel / whatever.
  *
  * Consumers that need UTF-8 (for display) detokenize at their own
@@ -39,7 +39,7 @@
  * ## Why peer-dep on a specific fork
  *
  * Upstream `@mlc-ai/web-llm` 0.2.x's `chat.completions.create` only
- * exposes detokenized text deltas — the generate loop calls
+ * exposes detokenized text deltas: the generate loop calls
  * `engine.tokenizer.decode(token_id)` per step and the IDs are lost.
  * The patched fork adds `stream_format: "raw" | "msgpack"` which
  * bypasses that decode, yielding the IDs directly. Until upstream
@@ -59,9 +59,9 @@ import type {
   MLCEngineInterface,
 } from '@mlc-ai/web-llm';
 
-// Re-exports — consumers go through @codecai/web-llm for the engine,
+// Re-exports: consumers go through @codecai/web-llm for the engine,
 // the app config, the types. They never have to type the bare
-// `@mlc-ai/web-llm` import — that's a fork-vs-upstream detail this
+// `@mlc-ai/web-llm` import: that's a fork-vs-upstream detail this
 // package abstracts over. NPM resolves `@mlc-ai/web-llm` to the
 // patched `wdunn001/web-llm` fork pinned in our package.json, so
 // `CreateMLCEngine` here ships the `stream_format: "raw"` patch.
@@ -75,7 +75,7 @@ export type {
   MLCEngineInterface,
 };
 
-// v0.4 version-negotiation primitives re-exported for convenience —
+// v0.4 version-negotiation primitives re-exported for convenience:
 // a browser app that wraps a local MLC engine often also talks to a
 // remote Codec server (mesh / hybrid); having both surfaces from one
 // import keeps the call sites tidy. Canonical impl in @codecai/web.
@@ -118,7 +118,7 @@ export interface CodecCapableEngine {
 export interface WrapEngineOptions {
   /**
    * Tokenizer-map id this engine's model uses (e.g. `"qwen/qwen2"`).
-   * Metadata only — the wrapper does NOT use it to tokenize anything.
+   * Metadata only: the wrapper does NOT use it to tokenize anything.
    * Consumers downstream (other peers, this peer's own UI) load the
    * matching map for edge detokenization.
    */
@@ -141,11 +141,11 @@ export interface CompletionsRequest {
 }
 
 export interface CodecEngine {
-  /** The mapId passed at wrap time — informational, surfaced for receivers. */
+  /** The mapId passed at wrap time: informational, surfaced for receivers. */
   readonly mapId: string;
   /**
    * Stream raw `CodecFrame` objects from the engine. The callback fires
-   * once per frame as the engine emits them — exactly what
+   * once per frame as the engine emits them: exactly what
    * `stream_format: "raw"` produces. Terminal frame has `done: true`.
    */
   streamFrames(
@@ -158,7 +158,7 @@ export interface CodecEngine {
    */
   frames(req: CompletionsRequest): AsyncGenerator<CodecFrame, void, void>;
   /**
-   * `ReadableStream<Uint8Array>` of msgpack-encoded frames — drop-in for
+   * `ReadableStream<Uint8Array>` of msgpack-encoded frames: drop-in for
    * `@codecai/web`'s `decodeMsgpackStream`. Same bytes an HTTP-served
    * Codec server emits, so a consumer reading from this stream is
    * byte-identical to one reading from a remote engine.

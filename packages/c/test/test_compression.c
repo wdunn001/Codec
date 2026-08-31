@@ -4,7 +4,7 @@
  * packages/bench/fixtures/dict-zstd-interop/. Every Codec client (TS,
  * Python, Rust, Java, .NET, C) hashes dict.bin into the canonical
  * "sha256:29a810f3..." form and matches the recorded Codec-Zstd-Dict
- * header — this test asserts the C client lands on the same hash and
+ * header: this test asserts the C client lands on the same hash and
  * the same select-dict decision tree.
  *
  * The actual libzstd decompression step is exercised by the demo bench
@@ -129,7 +129,7 @@ static void test_select_ok_when_zstd_and_hash_matches(void) {
 
 static void test_select_case_insensitive_header_names(void) {
     setup_dummy_registry();
-    /* Same headers, lowercased — case folding is required per RFC 7230. */
+    /* Same headers, lowercased: case folding is required per RFC 7230. */
     codec_header_kv_t headers[] = {
         { "content-encoding", "zstd" },
         { "codec-zstd-dict",  DUMMY_DICT_HASH },
@@ -180,7 +180,7 @@ static void test_select_not_zstd_on_gzip(void) {
     codec_header_kv_t headers[] = {
         { "Content-Encoding", "gzip" },
         /* Server should not emit Codec-Zstd-Dict on non-zstd, but even
-         * if it does we still return NOT_ZSTD — the dict-zstd codepath
+         * if it does we still return NOT_ZSTD: the dict-zstd codepath
          * doesn't apply. */
         { "Codec-Zstd-Dict",  DUMMY_DICT_HASH },
     };
@@ -193,7 +193,7 @@ static void test_select_missing_header(void) {
     setup_dummy_registry();
     codec_header_kv_t headers[] = {
         { "Content-Encoding", "zstd" },
-        /* No Codec-Zstd-Dict — server protocol error. */
+        /* No Codec-Zstd-Dict: server protocol error. */
     };
     CT_EQ_INT(codec_select_zstd_dict_for_response(
                   headers, 1, DUMMY_REGISTRY, 1, NULL, NULL),
@@ -399,7 +399,7 @@ static void test_well_known_dict_url_rejects_null_args(void) {
 }
 
 static void test_verify_zstd_dict_bytes_matches_correct_hash(void) {
-    /* sha256("hello world") = b94d27b9... — same fixture used elsewhere. */
+    /* sha256("hello world") = b94d27b9...: same fixture used elsewhere. */
     static const char EXPECTED[] =
         "sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
     CT_EQ_INT(codec_verify_zstd_dict_bytes(

@@ -32,7 +32,7 @@ struct codec_tool_watcher {
     uint32_t end_id;
     bool     inside;
 
-    /* Captured region buffer — accumulates IDs while inside, cleared on
+    /* Captured region buffer: accumulates IDs while inside, cleared on
      * each REGION_END event so the storage can be reused. */
     uint32_t *region_buf;
     size_t    region_len;
@@ -70,7 +70,7 @@ static int events_reserve(codec_tool_watcher_t *w, size_t need) {
 static int emit(codec_tool_watcher_t *w,
                 codec_watcher_event_kind_t kind,
                 const uint32_t *ids, size_t len) {
-    /* Skip degenerate empty events — they add noise without information. */
+    /* Skip degenerate empty events: they add noise without information. */
     if (len == 0) return 1;
     if (!events_reserve(w, w->events_len + 1)) return 0;
     w->events[w->events_len].kind    = kind;
@@ -130,7 +130,7 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
                                        codec_watcher_event_t **out_events,
                                        size_t *out_len) {
     if (!w) return CODEC_ERR_INVALID_ARG;
-    /* Reset events from previous call — pointers issued earlier are now
+    /* Reset events from previous call: pointers issued earlier are now
      * stale (the input buffer has rolled over and the region buffer may
      * have been overwritten). */
     w->events_len = 0;
@@ -147,7 +147,7 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
             if (id == w->start_id) {
                 /* Flush any passthrough run accumulated up to (but not
                  * including) the start marker. The marker itself is
-                 * consumed — orchestrators don't want to forward the
+                 * consumed: orchestrators don't want to forward the
                  * "begin tool call" token to the next agent. */
                 if (i > pt_start) {
                     if (!emit(w, CODEC_WATCH_PASSTHROUGH,
@@ -163,7 +163,7 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
         } else {
             if (id == w->end_id) {
                 /* Region complete. Emit a REGION_END event pointing at the
-                 * watcher's buffer (NOT the input — the buffer survives a
+                 * watcher's buffer (NOT the input: the buffer survives a
                  * future feed() that might reuse `ids`). */
                 if (!emit(w, CODEC_WATCH_REGION_END,
                           w->region_buf, w->region_len)) {
@@ -172,7 +172,7 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
                 w->inside   = false;
                 pt_start    = i + 1;  /* passthrough resumes after end marker */
             } else if (id == w->start_id) {
-                /* Nested start; ignore — see file comment. */
+                /* Nested start; ignore: see file comment. */
             } else {
                 if (!region_buf_reserve(w, w->region_len + 1)) {
                     return CODEC_ERR_OUT_OF_MEMORY;
@@ -183,7 +183,7 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
     }
 
     /* Trailing passthrough run, if any. Only emitted when we end OUTSIDE
-     * a region — if we end mid-region, the data stays buffered. */
+     * a region: if we end mid-region, the data stays buffered. */
     if (!w->inside && pt_start < n) {
         if (!emit(w, CODEC_WATCH_PASSTHROUGH,
                   &ids[pt_start], n - pt_start)) {

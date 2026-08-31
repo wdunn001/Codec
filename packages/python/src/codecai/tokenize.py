@@ -2,10 +2,10 @@
 
 Two tokenizer implementations:
 
-- :class:`BPETokenizer` — pure-Python BPE, byte_level + metaspace. Use for
+- :class:`BPETokenizer`: pure-Python BPE, byte_level + metaspace. Use for
   any v2 map that has merges (every map fetched from ``codec-maps`` for a
   real model).
-- :class:`LongestMatchTokenizer` — vocab-only longest-prefix-match. Suitable
+- :class:`LongestMatchTokenizer`: vocab-only longest-prefix-match. Suitable
   for canonical-IR / synthetic test maps.
 
 :func:`pick_tokenizer` returns the right one for a given map.
@@ -65,7 +65,7 @@ class BPETokenizer(Tokenizer):
        whitespace for metaspace).
     2. Encode each piece into the vocab's character space (GPT-2 byte chars
        or ``▁``-prefixed).
-    3. Apply BPE merges greedily by priority — match HuggingFace reference.
+    3. Apply BPE merges greedily by priority: match HuggingFace reference.
     4. Look up final tokens in :attr:`vocab`. Tokens not in the vocab fall
        back to byte tokens (metaspace path).
     """
@@ -114,7 +114,7 @@ class BPETokenizer(Tokenizer):
 
         # Build the special-token scanner. Accept entries from
         # ``special_tokens`` AND any vocab key in ``<|body|>`` shape where
-        # body is non-empty and identifier-like — older maps shipped
+        # body is non-empty and identifier-like: older maps shipped
         # before a chat-template revision may carry the delimiters in
         # vocab but not in special_tokens. Length-descending order makes
         # the regex match the longest delimiter at any position. Without
@@ -220,7 +220,7 @@ class BPETokenizer(Tokenizer):
             if best_idx == -1:
                 break
 
-            # Merge ALL non-overlapping occurrences of that pair in one pass —
+            # Merge ALL non-overlapping occurrences of that pair in one pass:
             # matches HuggingFace.
             left = parts[best_idx]
             right = parts[best_idx + 1]

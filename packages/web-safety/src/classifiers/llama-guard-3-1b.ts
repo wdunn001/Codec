@@ -1,18 +1,18 @@
 /**
- * `LlamaGuard31B` — tier-2 opt-in browser safety classifier.
+ * `LlamaGuard31B`: tier-2 opt-in browser safety classifier.
  *
  * Wraps Meta's Llama Guard 3 1B via MLC web-llm. ~1 GB after WebGPU
  * q4 quantization; requires WebGPU + GB-class memory headroom, so it
  * back-stops the always-on tier-1 Prompt Guard 86M (slice 3) on
  * capable devices. Surfaces the full Llama Guard 3 14-category
- * taxonomy (S1–S14) so policy descriptors can route per-category.
+ * taxonomy (S1:S14) so policy descriptors can route per-category.
  *
- * Generator-DI design — the classifier does NOT hard-import
+ * Generator-DI design: the classifier does NOT hard-import
  * `@mlc-ai/web-llm`. The default factory dynamic-imports it and spins
  * up a fresh engine, but hosts that already operate an engine pool
  * (e.g. leet's leader-elected codec-web-llm tab) pass a generator
  * that reuses the existing engine. This keeps slice 4 a registry
- * capability — leet decides at the PERSONA tab whether to flip it on.
+ * capability: leet decides at the PERSONA tab whether to flip it on.
  *
  * Maps Llama Guard 3 categories to web-safety categories 1:1 by
  * canonical lowercase name. Hosts whose policy uses the schema's
@@ -67,7 +67,7 @@ export interface LlamaGuardGenerateOptions {
   readonly signal?: AbortSignal;
   /** Hard cap on output tokens. Default: 64 (Llama Guard reply is short). */
   readonly maxTokens?: number;
-  /** Default: 0 — Llama Guard is a classifier, deterministic decoding is right. */
+  /** Default: 0: Llama Guard is a classifier, deterministic decoding is right. */
   readonly temperature?: number;
 }
 
@@ -152,12 +152,12 @@ export class LlamaGuard31B implements SafetyClassifier {
 
   async capability(): Promise<string | null> {
     if (typeof fetch !== 'function') {
-      return 'no global fetch — upgrade to Node 18+ or a modern browser';
+      return 'no global fetch: upgrade to Node 18+ or a modern browser';
     }
     if (!this.opts.skipWebGpuCheck) {
       const nav = (globalThis as { navigator?: { gpu?: unknown } }).navigator;
       if (!nav || !nav.gpu) {
-        return 'no WebGPU — Llama Guard 3 1B q4 needs GPU acceleration';
+        return 'no WebGPU: Llama Guard 3 1B q4 needs GPU acceleration';
       }
     }
     return null;
@@ -218,7 +218,7 @@ export function buildLlamaGuardPrompt(userMessage: string): string {
  * scores at 0; `unsafe\nS5,S10` returns those categories at 1.0 and
  * everything else at 0. The model's output is binary per-category;
  * scoring is the host's threshold call (0.5 separates safe from
- * unsafe in this scheme — any positive flag is unsafe).
+ * unsafe in this scheme: any positive flag is unsafe).
  */
 export function parseLlamaGuardOutput(text: string): ClassificationResult {
   const trimmed = text.trim();
@@ -232,7 +232,7 @@ export function parseLlamaGuardOutput(text: string): ClassificationResult {
     return { scores, raw: { firstLine, body: trimmed } };
   }
 
-  // unsafe — second line is a comma-separated list of S-codes
+  // unsafe: second line is a comma-separated list of S-codes
   // (sometimes prefixed with whitespace). Be lenient about extras.
   const secondLine = trimmed.split('\n')[1]?.trim() ?? '';
   const codes = secondLine
@@ -241,7 +241,7 @@ export function parseLlamaGuardOutput(text: string): ClassificationResult {
     .filter((s) => /^S(?:1[0-4]|[1-9])$/.test(s));
 
   if (codes.length === 0) {
-    // Model said "unsafe" but didn't name a category — record under a
+    // Model said "unsafe" but didn't name a category: record under a
     // generic catch-all so policy can still act (most policies enforce
     // on `unsafe` directly when categories are unparseable).
     return {
@@ -333,7 +333,7 @@ export function registerLlamaGuard31B(opts: LlamaGuard31BOptions = {}): void {
       factory,
       tier: 2,
       description:
-        "Meta Llama Guard 3 1B via MLC web-llm — tier-2 opt-in; WebGPU, ~1 GB",
+        "Meta Llama Guard 3 1B via MLC web-llm: tier-2 opt-in; WebGPU, ~1 GB",
     });
   } catch (e) {
     if (e instanceof Error && /already registered/.test(e.message)) return;

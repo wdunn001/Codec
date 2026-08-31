@@ -11,8 +11,8 @@
 #       packages/bench/golden/qwen2.json
 #
 # Companion to run-all-langs.sh (which runs the live wire bench against
-# an engine). This script has no network deps — runs entirely against
-# local files — so it works on any dev box with the language toolchains.
+# an engine). This script has no network deps: runs entirely against
+# local files: so it works on any dev box with the language toolchains.
 set -euo pipefail
 
 if [ $# -lt 3 ]; then

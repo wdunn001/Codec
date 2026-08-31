@@ -1,4 +1,4 @@
-/* SHA-256 — public domain reference implementation by Brad Conte. */
+/* SHA-256: public domain reference implementation by Brad Conte. */
 #include "sha256.h"
 
 #define ROTLEFT(a, b)  (((a) << (b)) | ((a) >> (32 - (b))))

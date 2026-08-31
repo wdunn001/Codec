@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! ToolWatcher tests — mirrors `ToolWatcherTests.cs`.
+//! ToolWatcher tests: mirrors `ToolWatcherTests.cs`.
 
 use std::collections::HashMap;
 
@@ -124,7 +124,7 @@ fn reset_drops_in_flight_region() {
 #[test]
 fn never_decodes_operates_on_raw_ids() {
     // Map with empty vocab; large IDs that would never be valid token
-    // indices. The watcher must emit them verbatim — proving it never
+    // indices. The watcher must emit them verbatim: proving it never
     // touches the vocab.
     let mut specials: HashMap<String, u32> = HashMap::new();
     specials.insert("<tool_call>".into(), 90);

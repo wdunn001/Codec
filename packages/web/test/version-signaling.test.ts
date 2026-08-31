@@ -196,7 +196,7 @@ test('discoverVersionPolicy stamps Codec-Client-Version on the request', async (
 
 // ── Full matrix: (client_version × server_config) → wire outcome ────────────
 //
-// Mirrors the matrix in sglang test_codec_version.py — both sides of the
+// Mirrors the matrix in sglang test_codec_version.py: both sides of the
 // wire are tested against the same cartesian product so a behavior change
 // on one side is caught against the spec on the other.
 
@@ -336,7 +336,7 @@ for (const server of SERVER_CONFIGS) {
 for (const server of SERVER_CONFIGS) {
   for (const client of CLIENT_VERSIONS) {
     if (server.refused[client]) continue; // 426 path covered above
-    test(`matrix: header filter — client=${client} vs server=${server.name}`, async () => {
+    test(`matrix: header filter: client=${client} vs server=${server.name}`, async () => {
       const resp = simulateServerResponse(server, client);
       // v0.4 headers MUST NOT reach v0.3- clients.
       if (client < '0.4') {

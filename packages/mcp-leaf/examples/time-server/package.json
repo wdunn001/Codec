@@ -1,7 +1,7 @@
 {
   "name": "@codecai/codec-time-leaf",
   "version": "0.3.2",
-  "description": "Reference Codec-aware MCP server. Demonstrates leaf-mode tokenization via @codecai/mcp-leaf — a downstream Codec-aware gateway (metamcp at feat/codec-binary-transport) detects the pre-tokenized tool result and skips its back-compat shim. Exposes get_current_time + convert_time as canonical demo tools and is the workload variant 5 (msgpack-both+gzip+map) of the MCP-live bench.",
+  "description": "Reference Codec-aware MCP server. Demonstrates leaf-mode tokenization via @codecai/mcp-leaf: a downstream Codec-aware gateway (metamcp at feat/codec-binary-transport) detects the pre-tokenized tool result and skips its back-compat shim. Exposes get_current_time + convert_time as canonical demo tools and is the workload variant 5 (msgpack-both+gzip+map) of the MCP-live bench.",
   "license": "MIT",
   "type": "module",
   "bin": {

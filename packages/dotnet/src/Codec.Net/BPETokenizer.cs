@@ -14,7 +14,7 @@ namespace Codec;
 /// <list type="number">
 /// <item>Pre-tokenize: split input into pieces (regex for byte_level; whitespace for metaspace).</item>
 /// <item>Encode each piece into the vocab's character space (GPT-2 byte chars or ▁-prefixed).</item>
-/// <item>Apply BPE merges greedily by priority — match HuggingFace reference.</item>
+/// <item>Apply BPE merges greedily by priority: match HuggingFace reference.</item>
 /// <item>Look up final tokens in <c>Vocab</c>. Tokens not in vocab fall back to byte tokens (metaspace path).</item>
 /// </list>
 /// Pure managed code, no native deps.
@@ -32,7 +32,7 @@ public sealed class BPETokenizer : ITokenizer
     /// Special-token scanner. Built from <c>map.SpecialTokens</c> plus any
     /// vocab key in <c>&lt;|body|&gt;</c> shape with a non-empty
     /// identifier-like body. HF's reference tokenizer splits input on
-    /// registered specials BEFORE running BPE — emit each match as the
+    /// registered specials BEFORE running BPE: emit each match as the
     /// atomic vocab ID, BPE the surrounding text. Required for chat
     /// templates (<c>&lt;|im_start|&gt;...&lt;|im_end|&gt;</c>), tool-call
     /// delimiters, FIM markers, etc. to round-trip with HF.
@@ -90,12 +90,12 @@ public sealed class BPETokenizer : ITokenizer
                     $"BPETokenizer: byte_level map \"{map.Id}\" missing pre_tokenizer_pattern.",
                     nameof(map));
             // Unicode property classes (\p{L} etc.) require RegexOptions.None
-            // — .NET's regex engine supports them natively.
+            //: .NET's regex engine supports them natively.
             _preTokRegex = new Regex(map.PreTokenizerPattern, RegexOptions.Compiled);
         }
 
         // Build the special-token scanner. Accept entries from map.SpecialTokens
-        // AND any vocab key in `<|body|>` shape — older maps shipped before a
+        // AND any vocab key in `<|body|>` shape: older maps shipped before a
         // chat-template revision may carry the delimiters in vocab but not in
         // SpecialTokens. Length-descending order so longer delimiters match
         // before shorter prefixes. Without this pre-scan, `<|im_start|>` would
@@ -227,7 +227,7 @@ public sealed class BPETokenizer : ITokenizer
             }
             if (bestIdx == -1) break;
 
-            // Merge ALL non-overlapping occurrences in one pass — matches HF.
+            // Merge ALL non-overlapping occurrences in one pass: matches HF.
             var left = parts[bestIdx];
             var right = parts[bestIdx + 1];
             var merged = left + right;

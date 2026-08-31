@@ -8,14 +8,14 @@
  * for browser + Node + edge runtimes.
  *
  * Wire format (msgpack):
- *   Header — first frame in the response body:
+ *   Header: first frame in the response body:
  *     { type: 'header',
  *       latent_space_id: string, shape?: number[], dtype: string,
  *       pipeline: string,
  *       scales?: Uint8Array, fps?: number,
  *       total_frames?: number, vae_scale_factor?: number,
  *       profile?: 'latent' | 'activation', nEmbd?: number }
- *   Frame  — every subsequent frame:
+ *   Frame: every subsequent frame:
  *     { data: Uint8Array, seq: number, keyframe: boolean,
  *       done: boolean, finish_reason?: string,
  *       tokenCount?: number, posStart?: number, tokens?: number[],
@@ -24,12 +24,12 @@
  * Pipeline math is pinned in spec/PIPELINES.md. This module implements
  * forward (server-side) AND inverse (client-side) for all seven
  * pipelines. The protobuf encoder is intentionally NOT ported in this
- * pass — msgpack is the primary v0.3 wire format and the protobuf side
+ * pass: msgpack is the primary v0.3 wire format and the protobuf side
  * is a straight follow-up against the same Python reference.
  *
  * v0.6+ additive: the "activation" profile (`LatentStreamHeader.profile ===
  * 'activation'`) is a distinct wire contract for per-token transformer
- * activations flowing through legion's pipeline-split stage protocol —
+ * activations flowing through legion's pipeline-split stage protocol:
  * see `ActivationStreamEncoder` / `ActivationStreamDecoder` below and
  * spec/PIPELINES.md § Activation profile. It reuses the same header/frame
  * envelope (additive optional fields only) so existing video/image latent
@@ -65,7 +65,7 @@ export type LatentDtype = 'fp32' | 'fp16' | 'bf16' | 'int8' | 'int4';
 
 /**
  * Wire profile discriminator (v0.6+). Absent (or `'latent'`) is the
- * original v0.3 video/image latent modality — fixed `shape` per stream,
+ * original v0.3 video/image latent modality: fixed `shape` per stream,
  * channel-first. `'activation'` is the additive per-token transformer
  * activation profile (see spec/PIPELINES.md § Activation profile); its
  * frames carry a varying `tokenCount` instead of a fixed spatial shape.
@@ -108,7 +108,7 @@ export interface LatentFrame {
    * Activation profile only (v0.6+). Optional so non-activation latent/
    * video streams are unaffected on the wire. `tokenCount` is the number
    * of tokens carried by this frame (prefill chunks of up to ~256; decode
-   * = 1) and MUST be derivable without inferring it from `data.length` —
+   * = 1) and MUST be derivable without inferring it from `data.length`:
    * see spec/PIPELINES.md § Activation profile.
    */
   readonly tokenCount?: number;
@@ -120,7 +120,7 @@ export interface LatentFrame {
   readonly stageIndex?: number;
 }
 
-// ── fp16 helpers (no native JS support — pack via DataView) ─────────────────
+// ── fp16 helpers (no native JS support: pack via DataView) ─────────────────
 
 /**
  * Pack one fp32 number into a uint16 IEEE 754 fp16 representation. Round-half-
@@ -373,7 +373,7 @@ export class LatentStreamEncoder {
     }
     if (!STATIC_SCALE_PIPELINES.has(opts.pipeline) && opts.staticScales) {
       throw new Error(
-        `pipeline ${opts.pipeline} doesn't accept staticScales — ` +
+        `pipeline ${opts.pipeline} doesn't accept staticScales: ` +
           `scales travel per-keyframe`,
       );
     }
@@ -535,7 +535,7 @@ export class LatentStreamDecoder {
     if (!header.shape) {
       throw new Error(
         'LatentStreamDecoder requires header.shape (an activation-profile ' +
-          'header has no fixed shape — use ActivationStreamDecoder instead)',
+          'header has no fixed shape: use ActivationStreamDecoder instead)',
       );
     }
     this.header = header;
@@ -640,15 +640,15 @@ function dequantize(
 // Per-token transformer activations for legion's pipeline-split stage
 // protocol: transformer hidden states flowing between browser peers as one
 // compute stage hands off to the next. Unlike video/image latents (fixed
-// `shape` per stream), the token count VARIES per frame — prefill chunks
-// carry up to ~256 tokens, decode carries exactly 1 — so there is no fixed
+// `shape` per stream), the token count VARIES per frame: prefill chunks
+// carry up to ~256 tokens, decode carries exactly 1: so there is no fixed
 // per-stream shape to negotiate. The header instead carries `nEmbd` (the
 // fixed per-token embedding width); each frame carries its own explicit
 // `tokenCount` rather than making the receiver infer it from byte length.
 //
 // Normative: spec/PIPELINES.md § Activation profile. Only the `raw`
 // pipeline is implemented today (fp32 / fp16 payloads); `int8` / `delta+*`
-// are intentionally not precluded — `encodePipeline`/`decodeFrame` below
+// are intentionally not precluded: `encodePipeline`/`decodeFrame` below
 // dispatch on `pipeline` and throw a clear "not yet implemented" error for
 // anything other than `raw` so a future point release can fill them in
 // without a wire- or type-level change.
@@ -664,7 +664,7 @@ function activationRawByteLength(dtype: LatentDtype, elementCount: number): numb
     case 'int8':
       return elementCount;
     case 'int4':
-      // Two-per-byte, low-nibble-first (see packInt4LowFirst) — odd element
+      // Two-per-byte, low-nibble-first (see packInt4LowFirst): odd element
       // counts zero-pad the trailing high nibble.
       return Math.ceil(elementCount / 2);
     default:
@@ -677,7 +677,7 @@ export interface ActivationStreamEncoderOptions {
   /** Fixed per-token embedding width. Every frame's payload is tokenCount * nEmbd elements. */
   nEmbd: number;
   dtype: LatentDtype;
-  /** Defaults to `'raw'`. Only `'raw'` is implemented today — see spec/PIPELINES.md § Activation profile. */
+  /** Defaults to `'raw'`. Only `'raw'` is implemented today: see spec/PIPELINES.md § Activation profile. */
   pipeline?: PipelineName;
 }
 
@@ -694,7 +694,7 @@ export interface ActivationFrameOptions {
   stageIndex?: number;
 }
 
-/** Decoded activation frame — `decodeFrame`'s return shape. */
+/** Decoded activation frame: `decodeFrame`'s return shape. */
 export interface ActivationFrameData {
   /** Token-major, row-major: length === tokenCount * nEmbd, row i = token i's nEmbd-wide vector. */
   readonly activations: Float32Array;
@@ -708,7 +708,7 @@ export interface ActivationFrameData {
  * Server/peer-side streaming encoder for the activation profile. One per
  * outbound activation stream (one pipeline-split stage → next-stage hop).
  * Construct with `(latentSpaceId, nEmbd, dtype)`, call `header()` once,
- * then `frame(activations, …)` per produced chunk — a prefill chunk of up
+ * then `frame(activations, …)` per produced chunk: a prefill chunk of up
  * to ~256 tokens, or a single decode token.
  */
 export class ActivationStreamEncoder {
@@ -751,7 +751,7 @@ export class ActivationStreamEncoder {
    * Float32Array of length `tokenCount * nEmbd` (row i = token i's
    * nEmbd-wide activation vector); `tokenCount` is derived from
    * `activations.length / nEmbd` and always carried explicitly on the wire
-   * frame — the receiver never infers it from `data.length`.
+   * frame: the receiver never infers it from `data.length`.
    */
   frame(activations: Float32Array, opts: ActivationFrameOptions): Uint8Array {
     if (opts.seq <= this.lastSeq) {
@@ -791,7 +791,7 @@ export class ActivationStreamEncoder {
     }
     throw new Error(
       `activation profile: pipeline ${JSON.stringify(this.pipeline)} is not yet ` +
-        `implemented (only 'raw' ships today — see spec/PIPELINES.md § Activation profile)`,
+        `implemented (only 'raw' ships today: see spec/PIPELINES.md § Activation profile)`,
     );
   }
 }
@@ -853,7 +853,7 @@ export class ActivationStreamDecoder {
 
     throw new Error(
       `activation profile: pipeline ${JSON.stringify(this.header.pipeline)} is not yet ` +
-        `implemented (only 'raw' ships today — see spec/PIPELINES.md § Activation profile)`,
+        `implemented (only 'raw' ships today: see spec/PIPELINES.md § Activation profile)`,
     );
   }
 }
@@ -1055,5 +1055,5 @@ function typedBytesToFloat32Array(
 
 // Re-exports for ergonomic single-import access.
 export { f32ToF16, f16ToF32 };
-// `INT4_PIPELINES`, `DELTA_PIPELINES`, etc. are intentionally NOT exported —
+// `INT4_PIPELINES`, `DELTA_PIPELINES`, etc. are intentionally NOT exported:
 // callers who need to introspect should switch on `pipeline` directly.

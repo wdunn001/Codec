@@ -1,5 +1,5 @@
 /**
- * wire.ts — pure encode/decode microbench. No network, no model.
+ * wire.ts: pure encode/decode microbench. No network, no model.
  *
  * For each (encoder × stream-shape) pair, measures:
  *   - total wire bytes
@@ -47,7 +47,7 @@ function benchOne(codec: Codec, chunks: Chunk[]): Result {
       : roundTrip.ids.length === sample.ids.length &&
         roundTrip.ids.every((v, i) => v === sample.ids[i]);
 
-  // Wire bytes — encode every chunk once, sum the lengths.
+  // Wire bytes: encode every chunk once, sum the lengths.
   const encoded: Uint8Array[] = chunks.map((c) => codec.encode(c));
   const totalBytes = encoded.reduce((s, b) => s + b.byteLength, 0);
   const totalTokens = chunks.reduce((s, c) => s + c.ids.length, 0);
@@ -131,7 +131,7 @@ function main() {
   console.log(
     '\nReading the table: "vs json-sse" shows how much smaller this encoder is than the\n' +
       'JSON-SSE incumbent. raw is the theoretical floor (4 B/token, no framing). msgpack\n' +
-      'and protobuf are the actual Codec wire modes — anything close to raw is good.\n'
+      'and protobuf are the actual Codec wire modes: anything close to raw is good.\n'
   );
 }
 

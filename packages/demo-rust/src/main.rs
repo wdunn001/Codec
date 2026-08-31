@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// codec-bench (Rust) — same shape as packages/demo-web (TypeScript),
+// codec-bench (Rust): same shape as packages/demo-web (TypeScript),
 // packages/demo-python, packages/demo-dotnet, packages/demo-c. Runs the
 // same prompt across 3 wire formats × 4 compression encodings, prints
 // the wire-byte table.
@@ -312,7 +312,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         args.prompt, args.max_tokens
     );
 
-    // No automatic decompression — we count wire bytes pre-decompression.
+    // No automatic decompression: we count wire bytes pre-decompression.
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(120))
         .no_gzip()

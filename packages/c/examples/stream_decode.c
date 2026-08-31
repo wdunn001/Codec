@@ -1,5 +1,5 @@
 /*
- * stream_decode.c — minimal end-to-end example.
+ * stream_decode.c: minimal end-to-end example.
  *
  * Reads a Codec tokenizer dialect map from a JSON file, encodes a known set
  * of token IDs as a msgpack stream, then decodes it back through the

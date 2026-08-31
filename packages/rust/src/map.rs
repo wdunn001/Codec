@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! `TokenizerMap` — the per-model dialect record. Maps are
+//! `TokenizerMap`: the per-model dialect record. Maps are
 //! content-addressed (sha256) and immutable.
 
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ pub enum TokenizerMapError {
     Parse(#[from] serde_json::Error),
 }
 
-/// A per-model tokenizer dialect — the data needed to encode text into
+/// A per-model tokenizer dialect: the data needed to encode text into
 /// token IDs and decode IDs back to text.
 ///
 /// Maps are immutable once published; a new model version publishes a new
@@ -24,7 +24,7 @@ pub enum TokenizerMapError {
 /// **Schema v2:** [`TokenizerMap::vocab`] is the raw HuggingFace
 /// `tokenizer.json` form (byte-level GPT-2-encoded chars or `▁`-prefixed
 /// metaspace strings). [`TokenizerMap::tokens`] is the legacy v1 field,
-/// kept for backwards compatibility — the [`crate::Detokenizer`] reads
+/// kept for backwards compatibility: the [`crate::Detokenizer`] reads
 /// from whichever is present.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TokenizerMap {
@@ -54,7 +54,7 @@ pub struct TokenizerMap {
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "pre_tokenizer_pattern")]
     pub pre_tokenizer_pattern: Option<String>,
     /// Compiled pre-tokenizer program. Preferred over `pre_tokenizer_pattern`
-    /// when present — the runtime executes the ops directly with no regex
+    /// when present: the runtime executes the ops directly with no regex
     /// engine, which unblocks the GPT-2-family maps whose `(?i:...)` and
     /// `(?!\S)` syntax the `regex` crate doesn't support. See
     /// [`crate::pretok_program::PreTokProgram`] and
@@ -84,7 +84,7 @@ pub struct TokenizerMap {
 
 /// Per-model tool-calling convention block carried inside a [`TokenizerMap`].
 /// Each `convention` value pins a specific argument layout, marker placement,
-/// and result framing — see `spec/PROTOCOL.md` § "Tool-call calling
+/// and result framing: see `spec/PROTOCOL.md` § "Tool-call calling
 /// conventions in the map" for the normative table.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCallingBlock {

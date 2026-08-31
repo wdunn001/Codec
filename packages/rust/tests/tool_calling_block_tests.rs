@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! TokenizerMap.tool_calling block — round-trip + validation.
+//! TokenizerMap.tool_calling block: round-trip + validation.
 //!
 //! Mirrors the Python smoke tests in packages/python (and TS unit tests on
 //! the @codecai/web side that the field was originally added to). Confirms

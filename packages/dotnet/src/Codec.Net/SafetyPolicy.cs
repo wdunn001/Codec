@@ -11,14 +11,14 @@ namespace Codec;
 /// Safety-policy descriptor types + loader. .NET twin of
 /// <c>@codecai/web</c>'s <c>safety-policy.ts</c> (slice 1) and
 /// <c>codecai.safety_policy</c> (Python). Same shapes, same canonical
-/// JSON form for hashing — descriptors that hash to <c>sha256:abc…</c>
+/// JSON form for hashing: descriptors that hash to <c>sha256:abc…</c>
 /// in any client hash to the identical digest here.
 ///
 /// Used by clients that received <c>safety_policy_id</c> +
 /// <c>safety_policy_hash</c> in <c>READY</c> and want to fetch and
 /// surface what the server is enforcing. The descriptor is the
-/// <em>sanitized</em>, publishable shape — categories, actions,
-/// classifier family, summary stats — never the operator's internal
+/// <em>sanitized</em>, publishable shape: categories, actions,
+/// classifier family, summary stats: never the operator's internal
 /// banned token IDs / classifier thresholds / regex patterns.
 ///
 /// Discovery follows the existing tokenizer-map convention:

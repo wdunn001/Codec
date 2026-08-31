@@ -31,7 +31,7 @@ static void test_v2_basic_parse(void) {
 }
 
 static void test_v2_roundtrip_render(void) {
-    /* Decode 'hello' then ' world' (id 0 + id 1) — id 1's vocab key
+    /* Decode 'hello' then ' world' (id 0 + id 1): id 1's vocab key
      * "Ġworld" is GPT-2 byte-encoded " world", so the byte_level
      * decoder should emit a leading space. */
     codec_tokenizer_map_t *m = NULL;
@@ -87,12 +87,12 @@ static void test_sha256_invalid_length(void) {
 static void test_real_qwen2_round_trip(void) {
     const char *path = getenv("CODEC_MAPS_QWEN");
     if (!path || !*path) {
-        fprintf(stdout, "  (skipped — set CODEC_MAPS_QWEN to enable)\n");
+        fprintf(stdout, "  (skipped: set CODEC_MAPS_QWEN to enable)\n");
         return;
     }
     FILE *f = fopen(path, "rb");
     if (!f) {
-        fprintf(stdout, "  (skipped — could not open %s)\n", path);
+        fprintf(stdout, "  (skipped: could not open %s)\n", path);
         return;
     }
     fseek(f, 0, SEEK_END);

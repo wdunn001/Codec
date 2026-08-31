@@ -107,13 +107,13 @@ def plot_composite(out_dir: Path, mode: str) -> None:
     if mode == "interactive":
         ax.set_ylabel("efficiency = baseline byte-ms / cell byte-ms (log)")
         ax.set_title(
-            "Interactive efficiency (bytes \xd7 TTFT, lower is better) — gzip dominates\n"
+            "Interactive efficiency (bytes \xd7 TTFT, lower is better): gzip dominates\n"
             "Higher curve = more efficient than uncompressed JSON-SSE"
         )
     else:
         ax.set_ylabel("efficiency = baseline bytes / cell bytes (log)")
         ax.set_title(
-            "Batch efficiency (wire bytes only, TTFT ignored) — zstd dominates at scale\n"
+            "Batch efficiency (wire bytes only, TTFT ignored): zstd dominates at scale\n"
             "Higher curve = smaller wire than JSON-SSE"
         )
     ax.grid(True, which="both", alpha=0.3)

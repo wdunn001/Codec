@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * the token-ID sequence matches the manifest.
  *
  * <p>This is the test that catches a regression where the bench reverts
- * to bare {@code new ZstdInputStream(...)} (no dict) — wrong-dict
+ * to bare {@code new ZstdInputStream(...)} (no dict): wrong-dict
  * decompression succeeds at the zstd layer but produces garbage bytes
  * that msgpack-parsing then misinterprets.
  */
@@ -84,7 +84,7 @@ class DictZstdInteropTest {
         byte[] compressed = Files.readAllBytes(dir.resolve("compressed.bin"));
         byte[] expectedDecompressed = Files.readAllBytes(dir.resolve("decompressed.bin"));
 
-        // 1. Hash matches the manifest — same digest every Codec client computes.
+        // 1. Hash matches the manifest: same digest every Codec client computes.
         assertEquals(EXPECTED_DICT_HASH, Compression.hashZstdDict(dict));
 
         // 2. selectZstdDictForResponse picks our dict for the canned headers.
@@ -100,7 +100,7 @@ class DictZstdInteropTest {
         assertArrayEquals(dict, picked);
 
         // 3. Stream-decompress with that dict via zstd-jni's
-        //    ZstdDictDecompress + ZstdInputStream.setDict(...) — same path
+        //    ZstdDictDecompress + ZstdInputStream.setDict(...): same path
         //    MatrixRun.decodeZstd uses for real responses.
         byte[] decompressed;
         try (ZstdDictDecompress parsed = new ZstdDictDecompress(picked)) {
@@ -128,7 +128,7 @@ class DictZstdInteropTest {
 
     @Test
     void matrixRunDictRegistry_loadsReferenceDicts() {
-        // Smoke test for MatrixRun.loadZstdDictFiles — feed it the
+        // Smoke test for MatrixRun.loadZstdDictFiles: feed it the
         // interop fixture's dict.bin and assert it lands in the registry
         // under the expected hash.
         Path dictPath = fixtureDir().resolve("dict.bin");

@@ -8,7 +8,7 @@
 //
 // Reads a methodology JSON written by capture_methodology.py and emits
 // a SCHEMA-v1 result JSON. JDK HttpClient doesn't auto-decompress, so
-// wire bytes are exactly what's off the socket — no special config
+// wire bytes are exactly what's off the socket: no special config
 // needed. Decompression is best-effort for token counting and never
 // overrides wire/TTFB on failure (e.g. zstd dict mismatch when no
 // matching dict is loaded client-side).
@@ -69,7 +69,7 @@ public final class MatrixRun {
 
     /**
      * Load each dict file into {@link #ZSTD_DICTS}, keyed by its sha256.
-     * Missing files are silently skipped — the bench then decompresses
+     * Missing files are silently skipped: the bench then decompresses
      * successfully only on cells whose {@code Codec-Zstd-Dict} header
      * matches a hash we have. Called from {@link #run(MatrixArgs)} before
      * the matrix loop begins.
@@ -117,7 +117,7 @@ public final class MatrixRun {
                         catch (NumberFormatException nfe) { break; }
                     }
                 }
-                default -> { /* ignore — legacy mode owns the rest */ }
+                default -> { /* ignore: legacy mode owns the rest */ }
             }
         }
         if (a.methodology == null || a.out == null) return null;
@@ -197,7 +197,7 @@ public final class MatrixRun {
      *  <p>For zstd, looks up the server's {@code Codec-Zstd-Dict} header
      *  against {@link #ZSTD_DICTS} via
      *  {@link Compression#selectZstdDictForResponse} and decompresses
-     *  with that dict — bare {@code ZstdInputStream(...)} (no dict) only
+     *  with that dict: bare {@code ZstdInputStream(...)} (no dict) only
      *  works against no-dict servers, and the v0.4 bench fleet emits
      *  dict-zstd, so the no-dict path produced
      *  "ZstdIOException: Dictionary mismatch" before this rewire. */
@@ -214,7 +214,7 @@ public final class MatrixRun {
             };
         } catch (CodecZstdDictError dictErr) {
             // Spec-defined failure (header missing/malformed/unknown
-            // hash). Surface the message verbatim — it's already shaped
+            // hash). Surface the message verbatim: it's already shaped
             // for operators.
             errOut[0] = dictErr.getClass().getSimpleName() + ": " + dictErr.getMessage();
             return compressed;
@@ -233,7 +233,7 @@ public final class MatrixRun {
         byte[] dict = Compression.selectZstdDictForResponse(responseHeaders, ZSTD_DICTS);
         ZstdInputStream zis = new ZstdInputStream(new ByteArrayInputStream(compressed));
         if (dict != null) {
-            // ZstdDictDecompress holds a native-side parsed dict — reuse
+            // ZstdDictDecompress holds a native-side parsed dict: reuse
             // it across the stream rather than re-parsing on every chunk.
             try (ZstdDictDecompress parsed = new ZstdDictDecompress(dict)) {
                 zis.setDict(parsed);
@@ -375,7 +375,7 @@ public final class MatrixRun {
                 dictsDir.resolve("qwen2.5-synth-protobuf-v1.dict").toString());
         if (ZSTD_DICTS.isEmpty()) {
             System.err.println("WARNING: no zstd dicts loaded from " + dictsDir
-                    + " — zstd cells will fail with 'dict not loaded'");
+                    + ": zstd cells will fail with 'dict not loaded'");
         } else {
             System.err.println("loaded " + ZSTD_DICTS.size() + " zstd dict(s) from " + dictsDir);
         }

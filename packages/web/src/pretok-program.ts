@@ -7,7 +7,7 @@
  * design rationale and op set.
  *
  * The runtime uses native regex for Unicode class queries (\p{L}, \p{N})
- * — no shipped Unicode tables. C and other regex-less runtimes will
+ *: no shipped Unicode tables. C and other regex-less runtimes will
  * supply their own class-membership facility.
  *
  * METASPACE op for SentencePiece is delegated to a tiny inline splitter;
@@ -21,7 +21,7 @@ export interface OpLiteralsCi {
   readonly op: 'literals_ci';
   readonly patterns: readonly string[];
 }
-/** Case-sensitive literal alternatives — like `literals_ci` but matches
+/** Case-sensitive literal alternatives: like `literals_ci` but matches
  * case-exact. Used by older OpenAI tokenizers (p50k_base, r50k_base) whose
  * contractions group `'s|'t|'re|'ve|'m|'ll|'d` is not wrapped in `(?i:)`. */
 export interface OpLiterals {
@@ -30,10 +30,10 @@ export interface OpLiterals {
 }
 export interface OpLetters {
   readonly op: 'letters';
-  /** Match `[^\r\n\p{L}\p{N}]?\p{L}+` — at most one lead char that's none of
+  /** Match `[^\r\n\p{L}\p{N}]?\p{L}+`: at most one lead char that's none of
    * those. Mutually exclusive with `lead_space`. */
   readonly lead_other?: boolean;
-  /** Match ` ?\p{L}+` — at most one literal-space lead. Used by older OpenAI
+  /** Match ` ?\p{L}+`: at most one literal-space lead. Used by older OpenAI
    * tokenizers. Mutually exclusive with `lead_other`. */
   readonly lead_space?: boolean;
 }
@@ -41,7 +41,7 @@ export interface OpNumbers {
   readonly op: 'numbers';
   /** Max digit run length. Omit / 0 for unbounded. */
   readonly max_run?: number;
-  /** Match ` ?\p{N}+` (or ` ?\p{N}{1,K}`) — at most one literal-space lead.
+  /** Match ` ?\p{N}+` (or ` ?\p{N}{1,K}`): at most one literal-space lead.
    * Used by older OpenAI tokenizers. */
   readonly lead_space?: boolean;
 }
@@ -92,14 +92,14 @@ export interface PreTokProgram {
 
 const RE_LETTER = /\p{L}/u;
 const RE_NUMBER = /\p{N}/u;
-/* The pre-tok regex's `\s` is broader than ASCII space — matches Unicode
+/* The pre-tok regex's `\s` is broader than ASCII space: matches Unicode
  * White_Space. We use the same `\s` semantics native regex provides. */
 const RE_WS = /\s/u;
 /** "Upper cluster" of the o200k_base / mistral-nemo `letters_cased` op.
  * `\p{Lu}` (uppercase) + `\p{Lt}` (titlecase) + the shared `\p{Lm}` /
  * `\p{Lo}` / `\p{M}` set that's also valid in the lower cluster. */
 const RE_LETTER_UPPER = /[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]/u;
-/** "Lower cluster" — `\p{Ll}` + the shared modifier / other-letter / mark
+/** "Lower cluster": `\p{Ll}` + the shared modifier / other-letter / mark
  * categories. */
 const RE_LETTER_LOWER = /[\p{Ll}\p{Lm}\p{Lo}\p{M}]/u;
 const isLetter = (cp: string): boolean => RE_LETTER.test(cp);
@@ -158,13 +158,13 @@ function matchLiterals(op: OpLiterals, s: string, i: number): number {
 function matchLetters(op: OpLetters, s: string, i: number): number {
   let p = i;
   if (op.lead_other) {
-    /* `[^\r\n\p{L}\p{N}]?` — at most one char that's none of those. */
+    /* `[^\r\n\p{L}\p{N}]?`: at most one char that's none of those. */
     const { cp, next } = nextCp(s, p);
     if (next > p && cp !== '\r' && cp !== '\n' && !isLetter(cp) && !isNumber(cp)) {
       p = next;
     }
   } else if (op.lead_space) {
-    /* ` ?` — at most one literal space. */
+    /* ` ?`: at most one literal space. */
     if (s.charCodeAt(p) === 0x20) p += 1;
   }
   /* `\p{L}+` */
@@ -175,7 +175,7 @@ function matchLetters(op: OpLetters, s: string, i: number): number {
     p = next;
   }
   if (p === runStart) {
-    /* No letter run — back out the lead char. */
+    /* No letter run: back out the lead char. */
     return 0;
   }
   return p - i;
@@ -292,7 +292,7 @@ function matchLettersCased(op: OpLettersCased, s: string, i: number): number {
 }
 
 function matchNewlineBlock(_op: OpNewlineBlock, s: string, i: number): number {
-  /* `\s*[\r\n]+` — must contain at least one newline. */
+  /* `\s*[\r\n]+`: must contain at least one newline. */
   let p = i;
   let lastNonNl = p;
   /* Greedy \s* */
@@ -334,7 +334,7 @@ function matchNewlineBlock(_op: OpNewlineBlock, s: string, i: number): number {
 function matchTrailingWs(_op: OpTrailingWs, s: string, i: number): number {
   /* `\s+(?!\S)` with backtracking semantics.
    *
-   * The regex doesn't actually require the run to reach end-of-input —
+   * The regex doesn't actually require the run to reach end-of-input:
    * it requires the character AFTER the matched span to not be \S
    * (non-whitespace). Since whitespace itself satisfies `not \S`, the
    * regex engine backs off `\s+` until either the run ends at EOI
@@ -383,7 +383,7 @@ function matchWsRun(_op: OpWsRun, s: string, i: number): number {
  * Run a pre-tokenizer program over an input string.
  *
  * For metaspace-style programs (SentencePiece), recognize the single-op
- * shortcut and delegate to a dedicated splitter — the GPT-2-family loop
+ * shortcut and delegate to a dedicated splitter: the GPT-2-family loop
  * below isn't applicable.
  */
 export function runPreTokProgram(
@@ -411,7 +411,7 @@ export function runPreTokProgram(
         case 'trailing_ws':   span = matchTrailingWs(op, text, i);  break;
         case 'ws_run':        span = matchWsRun(op, text, i);       break;
         case 'metaspace_split':
-          /* Mixed programs aren't legal — metaspace is single-op. Skip. */
+          /* Mixed programs aren't legal: metaspace is single-op. Skip. */
           continue;
       }
       if (span > 0) {

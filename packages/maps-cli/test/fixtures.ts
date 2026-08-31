@@ -2,7 +2,7 @@
  * Synthetic HuggingFace tokenizer.json fixtures.
  *
  * Small, deterministic, no network. Each one exercises a different path in
- * convertHFTokenizer() — byte_level, metaspace with byte_fallback, and a
+ * convertHFTokenizer(): byte_level, metaspace with byte_fallback, and a
  * minimal "no extras" map.
  */
 import type { HFTokenizerJson } from '../src/convert.ts';

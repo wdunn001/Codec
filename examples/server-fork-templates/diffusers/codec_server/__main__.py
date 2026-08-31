@@ -1,5 +1,5 @@
 """
-codec_server entry point — `python -m codec_server`.
+codec_server entry point: `python -m codec_server`.
 
 Reads CODEC_* env vars (the contract codec-supervisor's
 Dockerfile.diffusers ships) and accepts CLI overrides for one-off runs.

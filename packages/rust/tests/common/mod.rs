@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! Shared test fixtures — mirrors `packages/dotnet/test/.../Fixtures.cs`.
+//! Shared test fixtures: mirrors `packages/dotnet/test/.../Fixtures.cs`.
 #![allow(dead_code)]
 
 use std::collections::HashMap;

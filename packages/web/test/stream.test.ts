@@ -48,7 +48,7 @@ test('decodeMsgpackStream: yields frames in order and stops at done', async () =
 
 test('decodeMsgpackStream: handles frame split across chunk boundaries', async () => {
   const buf = new Uint8Array(msgpackEncode({ ids: [42, 43, 44], done: true }));
-  // Split the single msgpack object across two stream chunks — the decoder
+  // Split the single msgpack object across two stream chunks: the decoder
   // must reassemble it.
   const split = Math.floor(buf.length / 2);
   const stream = streamOf([buf.subarray(0, split), buf.subarray(split)]);

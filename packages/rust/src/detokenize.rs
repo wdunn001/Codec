@@ -4,8 +4,8 @@
 //! Three correctness concerns it handles:
 //!
 //! 1. Per-token decoding via the map's encoder (byte_level / metaspace / identity).
-//! 2. Byte-fallback range — IDs in `[byte_fallback_start, byte_fallback_end]` are decoded as raw bytes.
-//! 3. Partial multi-byte sequences across frame boundaries — buffered between calls when `partial: true`.
+//! 2. Byte-fallback range: IDs in `[byte_fallback_start, byte_fallback_end]` are decoded as raw bytes.
+//! 3. Partial multi-byte sequences across frame boundaries: buffered between calls when `partial: true`.
 
 use std::collections::{HashMap, HashSet};
 
@@ -15,7 +15,7 @@ use crate::map::TokenizerMap;
 /// Options for [`Detokenizer::render`].
 #[derive(Debug, Clone, Copy, Default)]
 pub struct DetokenizeOptions {
-    /// If `true`, this is not the final chunk — buffer any trailing
+    /// If `true`, this is not the final chunk: buffer any trailing
     /// partial UTF-8 sequence rather than emitting replacement
     /// characters. Set to `false` on the last chunk so the buffer flushes.
     pub partial: bool,
@@ -123,7 +123,7 @@ impl Detokenizer {
         out
     }
 
-    /// Reset internal state — call between conversations / requests.
+    /// Reset internal state: call between conversations / requests.
     pub fn reset(&mut self) {
         self.byte_buffer.clear();
     }

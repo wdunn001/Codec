@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! MapLoader tests — sha256 verify-and-parse path.
+//! MapLoader tests: sha256 verify-and-parse path.
 //!
 //! Network round-trips aren't exercised here (deliberately, to keep the
 //! tests hermetic); the `verify_and_parse` helper covers the

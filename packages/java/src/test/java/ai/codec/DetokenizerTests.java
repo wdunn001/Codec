@@ -47,7 +47,7 @@ class DetokenizerTests {
     @Test
     void partialMultiByteSequenceBufferedAcrossFrames() {
         Detokenizer d = new Detokenizer(Fixtures.tinyMap());
-        // Frame 1: first 2 bytes of € — incomplete, must not emit anything.
+        // Frame 1: first 2 bytes of €: incomplete, must not emit anything.
         String out1 = d.render(
                 new int[] { Fixtures.byteId(0xE2), Fixtures.byteId(0x82) },
                 DetokenizeOptions.partial(true));
@@ -60,7 +60,7 @@ class DetokenizerTests {
 
     @Test
     void partialFourByteEmojiAcrossTwoFrames() {
-        // 🚀 = F0 9F 9A 80 — split between two frames; must round-trip identically.
+        // 🚀 = F0 9F 9A 80: split between two frames; must round-trip identically.
         Detokenizer d = new Detokenizer(Fixtures.tinyMap());
         String out1 = d.render(
                 new int[] { Fixtures.byteId(0xF0), Fixtures.byteId(0x9F) },

@@ -1,7 +1,7 @@
 {
   "name": "@codecai/web-llm",
   "version": "0.5.0",
-  "description": "Codec-aware browser LLM runtime. Wraps the patched wdunn001/web-llm fork (`stream_format: \"raw\"`) so a local WebGPU engine emits raw token-ID CodecFrames byte-identically to what vLLM / sglang / llama.cpp produce over HTTP. Host does no tokenize/detokenize — consumers detokenize at the edge via @codecai/web.",
+  "description": "Codec-aware browser LLM runtime. Wraps the patched wdunn001/web-llm fork (`stream_format: \"raw\"`) so a local WebGPU engine emits raw token-ID CodecFrames byte-identically to what vLLM / sglang / llama.cpp produce over HTTP. Host does no tokenize/detokenize; consumers detokenize at the edge via @codecai/web.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/cjs/index.cjs",

@@ -37,12 +37,12 @@ async function main() {
   const client = new CodecClient(tgiUrl);
 
   console.log('\n' + bold('━'.repeat(W)));
-  console.log(bold('  CODEC LIVE DEMO — Token-native TGI stream'));
+  console.log(bold('  CODEC LIVE DEMO: Token-native TGI stream'));
   console.log(bold('━'.repeat(W)));
   console.log(dim(`\n  Server : ${tgiUrl}`));
   console.log(dim(`  Prompt : "${prompt.slice(0, 55)}${prompt.length > 55 ? '…' : ''}"\n`));
 
-  // ── 1. Single stream — show raw token IDs ──────────────────────────────────
+  // ── 1. Single stream: show raw token IDs ──────────────────────────────────
 
   console.log(bold('  RAW TOKEN STREAM'));
   console.log(hr());

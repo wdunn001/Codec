@@ -1,4 +1,4 @@
-"""ToolWatcher tests — mirror packages/web/test/tool-watcher.test.ts."""
+"""ToolWatcher tests: mirror packages/web/test/tool-watcher.test.ts."""
 from __future__ import annotations
 
 import json
@@ -79,7 +79,7 @@ def test_multiple_regions_in_one_feed():
 def test_stray_end_passes_through():
     w = ToolWatcher(SYN_MAP, "<tool_call>", "</tool_call>")
     evs = w.feed([0, END, 1])
-    # End with no preceding start — treated as ordinary token.
+    # End with no preceding start: treated as ordinary token.
     assert len(evs) == 1
     assert evs[0].kind == "passthrough"
     assert evs[0].ids == (0, END, 1)
@@ -104,7 +104,7 @@ def test_reset_drops_in_flight_region():
 
 
 def test_never_decodes_operates_on_raw_ids():
-    """No-decode contract — mirror of test_watcher_does_not_decode_tokens
+    """No-decode contract: mirror of test_watcher_does_not_decode_tokens
     in libcodec and the TS test of the same name. Use a map with empty
     vocab and feed IDs outside any plausible vocab range. The watcher
     must emit them verbatim."""
@@ -152,7 +152,7 @@ def test_real_qwen2():
     # Some published codec-maps qwen2.json snapshots stop at
     # <|video_pad|> (151656) and omit the chat-tuned <tool_call>/
     # </tool_call> entries. If they're absent, fall back to a pair of
-    # specials that ARE in the file — we're testing the watcher, not
+    # specials that ARE in the file: we're testing the watcher, not
     # the map. The IDs themselves are arbitrary.
     if "<tool_call>" in specials and "</tool_call>" in specials:
         start_name, end_name = "<tool_call>", "</tool_call>"

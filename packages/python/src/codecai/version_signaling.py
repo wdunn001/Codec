@@ -1,4 +1,4 @@
-"""Codec version negotiation — client-side surface for the v0.4 wire contract.
+"""Codec version negotiation: client-side surface for the v0.4 wire contract.
 
 Mirror of `packages/web/src/version-signaling.ts` and the engine-side
 `sglang.srt.entrypoints.codec_version` from the patched sglang fork.
@@ -56,7 +56,7 @@ def with_codec_client_version(
 ) -> dict[str, str]:
     """Return a new headers dict with ``Codec-Client-Version`` set.
 
-    If the caller already passed the header, it's left alone — useful for
+    If the caller already passed the header, it's left alone: useful for
     test harnesses that want to simulate a v0.3 client. Otherwise the
     package constant ``CODEC_CLIENT_VERSION`` is set.
     """
@@ -78,7 +78,7 @@ class CodecVersionRequiredBody:
     """Shape of the JSON body on a v0.4 server's 426 response.
 
     Pre-v0.4 clients that parse this as a generic JSON error can still
-    render ``error`` + ``minimum_version`` as a string — the structure
+    render ``error`` + ``minimum_version`` as a string: the structure
     degrades gracefully.
     """
 
@@ -117,7 +117,7 @@ class CodecVersionRequiredError(Exception):
 
 
 class _RespLike(Protocol):
-    """Duck-typed response interface — works with httpx.Response,
+    """Duck-typed response interface: works with httpx.Response,
     requests.Response, urllib3.HTTPResponse-with-body, or any object
     exposing ``status_code`` + ``content``/``text``/``json()``."""
 
@@ -132,12 +132,12 @@ class _RespLike(Protocol):
 def parse_version_required(resp: _RespLike) -> Optional[CodecVersionRequiredError]:
     """Parse a 426 Upgrade Required response into a typed error.
 
-    Returns ``None`` if the response is not a 426 — caller continues with
+    Returns ``None`` if the response is not a 426: caller continues with
     its usual response handling. Returns a ``CodecVersionRequiredError``
     instance ready to ``raise`` when it is a 426 with a valid v0.4 body.
 
     Raises ``ValueError`` if the response is 426 but the body isn't a
-    recognized v0.4 shape — never silently swallows a 426.
+    recognized v0.4 shape: never silently swallows a 426.
     """
     if resp.status_code != 426:
         return None
@@ -233,7 +233,7 @@ async def discover_version_policy(
     Returns the parsed document when the well-known path exists, or
     ``None`` when the server returns 404 (the normal state for an
     unrestricted deployment). Raises on non-404 errors or malformed
-    body — never silently skips.
+    body: never silently skips.
 
     Defaults to httpx. Pass any object with an async ``get(url, headers)``
     that returns something with ``status_code`` + ``json()`` to use a
@@ -243,7 +243,7 @@ async def discover_version_policy(
     headers = with_codec_client_version()
 
     if client is None:
-        import httpx  # local import — keep httpx optional at import time
+        import httpx  # local import: keep httpx optional at import time
 
         async with httpx.AsyncClient() as c:
             resp = await c.get(url, headers=headers)

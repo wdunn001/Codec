@@ -1,5 +1,5 @@
 /**
- * 04 — Output-side exfiltration attack/defense tests.
+ * 04: Output-side exfiltration attack/defense tests.
  *
  * Markdown image and link allowlist enforcement. Each test demonstrates the
  * attack (model output emits an exfil URL) alongside the defense (output
@@ -33,7 +33,7 @@ test('attack: markdown image exfil fixture targets attacker.example', () => {
     /!\[\]\(https:\/\/attacker\.example/.test(md),
     'fixture should contain attacker-domain image ref',
   );
-  // Body text precedes the exfil — benign content for the defense to preserve.
+  // Body text precedes the exfil: benign content for the defense to preserve.
   assert.ok(md.includes('strong match'));
 });
 
@@ -60,7 +60,7 @@ test('defense: allowlisting a benign domain passes that domain, strips query', (
   });
   assert.equal(blocked.length, 0);
   assert.equal(allowed.length, 1);
-  // Query string stripped (defense-in-depth — exfil can ride in query strings
+  // Query string stripped (defense-in-depth: exfil can ride in query strings
   // even on allowlisted domains).
   assert.ok(text.includes('https://cdn.partner.example/logo.png'));
   assert.equal(text.includes('campaign=tracking'), false);

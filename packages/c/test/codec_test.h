@@ -1,4 +1,4 @@
-/* Tiny test harness — keeps tests dependency-free. */
+/* Tiny test harness: keeps tests dependency-free. */
 #ifndef CODEC_TEST_H
 #define CODEC_TEST_H
 

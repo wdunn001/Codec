@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-train-zstd-dict-latents.py — train pre-shared zstd dictionaries from a
+train-zstd-dict-latents.py: train pre-shared zstd dictionaries from a
 captured corpus of Codec LATENT streams (Codec v0.3+).
 
 Sibling of train-zstd-dict.py for the latent modality. Two key
@@ -9,7 +9,7 @@ differences from the text-side trainer:
 1. **Three-axis keying.** Latent dicts are keyed on
    (latent_space_id, format, pipeline) instead of (model, format).
    A dict trained for `(sd-vae-ft-mse, msgpack, int8)` is meaningless
-   against `(sd-vae-ft-mse, msgpack, raw)` — the byte distributions
+   against `(sd-vae-ft-mse, msgpack, raw)`: the byte distributions
    are different distributions. Servers MUST NOT cross-apply.
 
 2. **Pipeline-driven byte distribution.** Raw VAE latents are
@@ -41,7 +41,7 @@ Usage:
         --formats msgpack protobuf \\
         --pipelines int8 int4 delta+int8
 
-The text-side trainer's holdout-vs-baseline reporting is kept verbatim —
+The text-side trainer's holdout-vs-baseline reporting is kept verbatim:
 we want to see whether dict gain over no-dict zstd is positive at all
 on these byte streams, since "trained dict on raw latents underperforms"
 is itself a finding worth recording.
@@ -202,7 +202,7 @@ def main() -> int:
         choices=PIPELINE_NAMES,
         help=(
             "pipelines to train dicts for. Default skips `raw` because raw "
-            "fp16 latents are near-Gaussian by training — dict gain is "
+            "fp16 latents are near-Gaussian by training: dict gain is "
             "marginal. Train it explicitly with `--pipelines raw int8 ...` "
             "if you want the comparison data."
         ),

@@ -8,7 +8,7 @@
 //!
 //! 1. Pre-tokenize: split input into pieces (regex for byte_level; whitespace for metaspace).
 //! 2. Encode each piece into the vocab's character space (GPT-2 byte chars or `▁`-prefixed).
-//! 3. Apply BPE merges greedily by priority — match HuggingFace reference.
+//! 3. Apply BPE merges greedily by priority: match HuggingFace reference.
 //! 4. Look up final tokens in `vocab`. Tokens not in vocab fall back to byte tokens (metaspace path).
 
 use std::cell::RefCell;
@@ -23,7 +23,7 @@ use crate::map::TokenizerMap;
 ///
 /// Implemented by [`BPETokenizer`] and [`crate::longest_match::LongestMatchTokenizer`].
 ///
-/// The trait deliberately does not require `Sync` — `BPETokenizer` keeps
+/// The trait deliberately does not require `Sync`: `BPETokenizer` keeps
 /// a `RefCell`-backed encode cache (mirroring the .NET `Dictionary`).
 /// Wrap in `Mutex` for cross-thread sharing.
 pub trait ITokenizer: Send {
@@ -45,19 +45,19 @@ pub struct BPETokenizer {
     merge_ranks: HashMap<String, u32>,
     pre_tok_regex: Option<Regex>,
     /// Compiled pre-tokenizer program; preferred over the regex when present.
-    /// Bypasses the regex engine entirely — unblocks GPT-2-family maps whose
+    /// Bypasses the regex engine entirely: unblocks GPT-2-family maps whose
     /// `(?i:...)` and `(?!\S)` syntax the `regex` crate doesn't support.
     pre_tok_program: Option<crate::pretok_program::PreTokProgram>,
     encoder: String,
     /// `i64` so a missing fallback (-1) is comparable safely against IDs.
     byte_fallback_start: i64,
-    /// Per-piece encode cache. Mutex-free RefCell — BPETokenizer is `!Sync`
+    /// Per-piece encode cache. Mutex-free RefCell: BPETokenizer is `!Sync`
     /// but `Send`. (Translator only needs `Send` and constructs its own.)
     cache: RefCell<HashMap<String, Vec<u32>>>,
     /// Special-token scanner. Built from `map.special_tokens` plus any vocab
     /// key in `<|body|>` shape with a non-empty identifier-like body. HF's
     /// reference tokenizer splits input on registered specials BEFORE running
-    /// BPE — emit each match as the atomic vocab ID, BPE the surrounding
+    /// BPE: emit each match as the atomic vocab ID, BPE the surrounding
     /// text. Required for chat templates (`<|im_start|>...<|im_end|>`),
     /// tool-call delimiters, FIM markers, etc. to round-trip with HF.
     special_ids: HashMap<String, u32>,
@@ -98,7 +98,7 @@ impl BPETokenizer {
 
         // Pre-tokenizer: prefer the compiled program when present, otherwise
         // fall back to the legacy regex. Programs bypass the regex engine
-        // entirely — required for GPT-2-family maps because `regex` doesn't
+        // entirely: required for GPT-2-family maps because `regex` doesn't
         // support `(?i:...)` inline-flag groups or `(?!\S)` lookaround.
         let (pre_tok_regex, pre_tok_program) = if encoder == "byte_level" {
             if let Some(prog) = map.pre_tokenizer_program.as_ref() {
@@ -125,7 +125,7 @@ impl BPETokenizer {
 
         // Build the special-token scanner. Accept entries from
         // `map.special_tokens` AND any vocab key in `<|body|>` shape
-        // with a non-empty identifier-like body — older maps shipped
+        // with a non-empty identifier-like body: older maps shipped
         // before a chat-template revision may carry the delimiters in
         // `vocab` but not in `special_tokens`. Length-descending regex
         // alternation order so longer delimiters match before shorter
@@ -277,7 +277,7 @@ impl BPETokenizer {
             let mut best_idx: Option<usize> = None;
             let mut best_rank: u32 = u32::MAX;
             for i in 0..parts.len() - 1 {
-                // Build "left right" without alloc churn — small strings only here.
+                // Build "left right" without alloc churn: small strings only here.
                 let mut key = String::with_capacity(parts[i].len() + 1 + parts[i + 1].len());
                 key.push_str(&parts[i]);
                 key.push(' ');
@@ -297,7 +297,7 @@ impl BPETokenizer {
             let right = parts[best_idx.unwrap() + 1].clone();
             let merged = format!("{left}{right}");
 
-            // Merge ALL non-overlapping occurrences in one pass — matches HF.
+            // Merge ALL non-overlapping occurrences in one pass: matches HF.
             let mut next: Vec<String> = Vec::with_capacity(parts.len());
             let mut j = 0;
             while j < parts.len() {

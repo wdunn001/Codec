@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
  * <ol>
  *   <li>Pre-tokenize: split input into pieces (regex for byte_level; whitespace for metaspace).</li>
  *   <li>Encode each piece into the vocab's character space (GPT-2 byte chars or ▁-prefixed).</li>
- *   <li>Apply BPE merges greedily by priority — match HuggingFace reference.</li>
+ *   <li>Apply BPE merges greedily by priority: match HuggingFace reference.</li>
  *   <li>Look up final tokens in vocab. Tokens not in vocab fall back to byte tokens (metaspace path).</li>
  * </ol>
  */
@@ -34,7 +34,7 @@ public final class BPETokenizer implements ITokenizer {
      * Special-token scanner. Built from {@code map.specialTokens} plus any
      * vocab key in {@code <|body|>} shape with non-empty identifier-like
      * body. HF's reference tokenizer splits input on registered specials
-     * BEFORE running BPE — emit each match as the atomic vocab ID, BPE
+     * BEFORE running BPE: emit each match as the atomic vocab ID, BPE
      * the surrounding text. Required for chat templates
      * ({@code <|im_start|>...<|im_end|>}), tool-call delimiters, FIM
      * markers, etc. to round-trip with HF.
@@ -91,7 +91,7 @@ public final class BPETokenizer implements ITokenizer {
         }
 
         // Build the special-token scanner. Accept entries from
-        // map.specialTokens AND any vocab key in `<|body|>` shape — older
+        // map.specialTokens AND any vocab key in `<|body|>` shape: older
         // maps shipped before a chat-template revision may carry the
         // delimiters in vocab but not in specialTokens. Length-descending
         // alternation order so longer delimiters match before shorter
@@ -247,7 +247,7 @@ public final class BPETokenizer implements ITokenizer {
             }
             if (bestIdx == -1) break;
 
-            // Merge ALL non-overlapping occurrences in one pass — matches HF.
+            // Merge ALL non-overlapping occurrences in one pass: matches HF.
             String left = parts.get(bestIdx);
             String right = parts.get(bestIdx + 1);
             String merged = left + right;

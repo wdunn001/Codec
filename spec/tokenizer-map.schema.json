@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://codec.ai/schemas/tokenizer-map/v2",
   "title": "Codec Tokenizer Map",
-  "description": "A per-model dialect for the Codec binary transport protocol. Carries the data needed to encode text into token IDs (BPETokenizer / LongestMatchTokenizer) and decode IDs back to text (Detokenizer). Maps are content-addressed and immutable — a new model version publishes a new map at a new URL with a new sha256 hash.",
+  "description": "A per-model dialect for the Codec binary transport protocol. Carries the data needed to encode text into token IDs (BPETokenizer / LongestMatchTokenizer) and decode IDs back to text (Detokenizer). Maps are content-addressed and immutable: a new model version publishes a new map at a new URL with a new sha256 hash.",
   "type": "object",
   "required": ["id", "version", "vocab_size"],
   "additionalProperties": false,
@@ -22,18 +22,18 @@
     },
     "vocab": {
       "type": "object",
-      "description": "Vocabulary as { raw_token_text: id }. 'Raw' means the form stored in HuggingFace tokenizer.json — for byte_level encoding this contains GPT-2-encoded characters (Ġ, etc.); for metaspace it contains ▁-prefixed strings. The Detokenizer applies the appropriate decoder. Required for v2 maps.",
+      "description": "Vocabulary as { raw_token_text: id }. 'Raw' means the form stored in HuggingFace tokenizer.json: for byte_level encoding this contains GPT-2-encoded characters (Ġ, etc.); for metaspace it contains ▁-prefixed strings. The Detokenizer applies the appropriate decoder. Required for v2 maps.",
       "additionalProperties": { "type": "integer", "minimum": 0 }
     },
     "tokens": {
       "type": "object",
-      "description": "DEPRECATED — legacy v1 vocabulary as { id_string: decoded_text }. Present only on v1 maps. New maps use 'vocab' instead.",
+      "description": "DEPRECATED: legacy v1 vocabulary as { id_string: decoded_text }. Present only on v1 maps. New maps use 'vocab' instead.",
       "additionalProperties": { "type": "string" }
     },
     "encoder": {
       "type": "string",
       "enum": ["byte_level", "metaspace"],
-      "description": "How vocab tokens are encoded:\n  byte_level — GPT-2 byte→unicode mapping (Llama-3, Qwen, Phi-3, DeepSeek-V3, Mistral-Nemo, Falcon, SmolLM2, Codestral byte_level variants).\n  metaspace  — ▁ as space prefix, SentencePiece-style (Llama-2, Mistral-v3, Mixtral, Gemma).\nOmitted on identity / vocab-only maps where tokens are already decoded text."
+      "description": "How vocab tokens are encoded:\n  byte_level: GPT-2 byte→unicode mapping (Llama-3, Qwen, Phi-3, DeepSeek-V3, Mistral-Nemo, Falcon, SmolLM2, Codestral byte_level variants).\n  metaspace: ▁ as space prefix, SentencePiece-style (Llama-2, Mistral-v3, Mixtral, Gemma).\nOmitted on identity / vocab-only maps where tokens are already decoded text."
     },
     "merges": {
       "type": "array",
@@ -46,7 +46,7 @@
     },
     "pre_tokenizer_program": {
       "type": "object",
-      "description": "v2.1: compiled pre-tokenizer program — an ordered op list runtimes can execute without a Unicode regex engine. Preferred over pre_tokenizer_pattern when both are present. See spec/PRETOKENIZER_PROGRAM.md for the full op set and equivalence rules.",
+      "description": "v2.1: compiled pre-tokenizer program: an ordered op list runtimes can execute without a Unicode regex engine. Preferred over pre_tokenizer_pattern when both are present. See spec/PRETOKENIZER_PROGRAM.md for the full op set and equivalence rules.",
       "properties": {
         "version": { "type": "integer", "minimum": 1 },
         "ops": { "type": "array", "items": { "type": "object" } }
@@ -56,7 +56,7 @@
     "byte_fallback_start": {
       "type": "integer",
       "minimum": 0,
-      "description": "First token ID in the byte-fallback range (inclusive). IDs in [byte_fallback_start, byte_fallback_end] represent raw UTF-8 bytes 0x00–0xFF and are accumulated by the Detokenizer until they form a valid UTF-8 sequence. SentencePiece-derived tokenizers only."
+      "description": "First token ID in the byte-fallback range (inclusive). IDs in [byte_fallback_start, byte_fallback_end] represent raw UTF-8 bytes 0x00 to 0xFF and are accumulated by the Detokenizer until they form a valid UTF-8 sequence. SentencePiece-derived tokenizers only."
     },
     "byte_fallback_end": {
       "type": "integer",
@@ -71,11 +71,11 @@
     "published_at": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 timestamp when this map was published. Informational only — content addressing is via sha256 hash, not timestamp."
+      "description": "ISO 8601 timestamp when this map was published. Informational only: content addressing is via sha256 hash, not timestamp."
     },
     "zstd_dictionaries": {
       "type": "array",
-      "description": "Optional pre-trained ZSTD dictionaries for compressing CodecFrame streams emitted by this model. One entry per Codec wire format (msgpack, protobuf) — they train against different byte distributions and are not interchangeable. A server that loads the dict for a given format compresses every frame in the stream against it; a client that loads the same dict (matched by hash) decompresses with it. Dicts are content-addressed by sha256; a new training run publishes a new entry with a new hash. Servers and clients SHOULD fetch the dict once and cache it indefinitely.",
+      "description": "Optional pre-trained ZSTD dictionaries for compressing CodecFrame streams emitted by this model. One entry per Codec wire format (msgpack, protobuf): they train against different byte distributions and are not interchangeable. A server that loads the dict for a given format compresses every frame in the stream against it; a client that loads the same dict (matched by hash) decompresses with it. Dicts are content-addressed by sha256; a new training run publishes a new entry with a new hash. Servers and clients SHOULD fetch the dict once and cache it indefinitely.",
       "items": {
         "type": "object",
         "required": ["format", "url", "hash"],
@@ -116,7 +116,7 @@
     },
     "tool_calling": {
       "type": "object",
-      "description": "Optional. Per-model calling convention for tool calls — how the model expects tool invocations to be packaged inside the marker pair, and how it expects results to come back. Derived by @codecai/maps-cli from `tokenizer_config.json`'s `chat_template` (or supplied via --convention). Absent on maps generated before this block existed; readers MUST treat absence as 'convention not declared; behave per the spec's Tool-call detection prose table' rather than as an error. The detection markers themselves (single-token specials like `<|python_tag|>`, `<tool_call>`) live in `special_tokens` regardless; this block carries the structure that wraps them. See spec/PROTOCOL.md § Tool-call calling conventions in the map.",
+      "description": "Optional. Per-model calling convention for tool calls: how the model expects tool invocations to be packaged inside the marker pair, and how it expects results to come back. Derived by @codecai/maps-cli from `tokenizer_config.json`'s `chat_template` (or supplied via --convention). Absent on maps generated before this block existed; readers MUST treat absence as 'convention not declared; behave per the spec's Tool-call detection prose table' rather than as an error. The detection markers themselves (single-token specials like `<|python_tag|>`, `<tool_call>`) live in `special_tokens` regardless; this block carries the structure that wraps them. See spec/PROTOCOL.md § Tool-call calling conventions in the map.",
       "additionalProperties": false,
       "required": ["convention", "markers", "args_format", "result_format"],
       "properties": {
@@ -129,7 +129,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["start", "end"],
-          "description": "Start and end marker tokens that delimit a tool call (or tool result, when symmetric) in the model's output stream. Both strings MUST appear as keys in the parent `special_tokens` object — the values they resolve to are the IDs ToolWatcher compares against. Same-named-token-different-ID across map versions is allowed (vocab can shift); the binding is by name within this map.",
+          "description": "Start and end marker tokens that delimit a tool call (or tool result, when symmetric) in the model's output stream. Both strings MUST appear as keys in the parent `special_tokens` object: the values they resolve to are the IDs ToolWatcher compares against. Same-named-token-different-ID across map versions is allowed (vocab can shift); the binding is by name within this map.",
           "properties": {
             "start": {
               "type": "string",
@@ -144,12 +144,12 @@
         "args_format": {
           "type": "string",
           "enum": ["json", "python_args"],
-          "description": "How tool-call arguments are packed inside the marker pair on the engine's output side.\n  json          — a single JSON object, e.g. {\"location\":\"NYC\"}.\n  python_args   — a Python-style call expression, e.g. get_weather(location=\"NYC\"). Llama-3 uses this with `<|python_tag|>`."
+          "description": "How tool-call arguments are packed inside the marker pair on the engine's output side.\n  json: a single JSON object, e.g. {\"location\":\"NYC\"}.\n  python_args: a Python-style call expression, e.g. get_weather(location=\"NYC\"). Llama-3 uses this with `<|python_tag|>`."
         },
         "result_format": {
           "type": "string",
           "enum": ["text", "json"],
-          "description": "How tool results come back into the model's input.\n  text — opaque UTF-8 text returned verbatim.\n  json — a JSON value (object, array, or scalar) the model parses. Most modern conventions accept either and dispatch by content sniffing; this field is the primary form the convention expects."
+          "description": "How tool results come back into the model's input.\n  text: opaque UTF-8 text returned verbatim.\n  json: a JSON value (object, array, or scalar) the model parses. Most modern conventions accept either and dispatch by content sniffing; this field is the primary form the convention expects."
         }
       }
     }

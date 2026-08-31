@@ -1,5 +1,5 @@
 /**
- * compression-dict.ts — measure pre-trained zstd dictionary gain on real
+ * compression-dict.ts: measure pre-trained zstd dictionary gain on real
  * (or synthetic) Codec frame streams.
  *
  * Sibling of compression.ts, but with two differences:
@@ -12,7 +12,7 @@
  *   2. We bin samples into small / medium / large buckets and report mean
  *      bytes per bucket for each of: identity, gzip, no-dict zstd,
  *      with-dict zstd. The headline is the % reduction `with-dict zstd`
- *      gets over `no-dict zstd` — that's the value pre-training adds beyond
+ *      gets over `no-dict zstd`: that's the value pre-training adds beyond
  *      what the wire format and shipped middleware already give you.
  *
  * Usage:
@@ -157,13 +157,13 @@ function bucketFor(buf: Buffer): Bucket {
 //
 // We report two timing flavours:
 //
-//   1. Encode latency (sync) — how long zstdCompressSync takes to produce
+//   1. Encode latency (sync): how long zstdCompressSync takes to produce
 //      the entire compressed buffer for one sample. This is the synchronous-
 //      TTFB number: it's what the response's first byte is waiting on when
 //      the middleware buffers the whole stream and finalises (the pattern
 //      RESULTS.md §1d measured at 334× regression for shipped zstd).
 //
-//   2. Streaming TTFB — using createZstdCompress with chunked input + flush.
+//   2. Streaming TTFB: using createZstdCompress with chunked input + flush.
 //      Time from the first input byte to the first output byte. Models the
 //      streaming-zstd-with-periodic-flushes path that the middleware fix
 //      will eventually use. Proves dict load itself doesn't add latency.
@@ -230,7 +230,7 @@ async function timeStreamTtfb(
       stream.on('error', reject);
 
       // Push chunks. Flush after the first chunk to force at least one
-      // output frame as early as possible — this is what a streaming
+      // output frame as early as possible: this is what a streaming
       // middleware does to preserve TTFB.
       let off = 0;
       const pushNext = () => {
@@ -289,10 +289,10 @@ function measureOne(sample: Buffer, dict: Buffer): Measurement {
   const zstdBuf = zstdCompressSync!(sample);
   const dictBuf = zstdCompressSync!(sample, { dictionary: dict });
 
-  // Round-trip check — refuse to publish numbers from a broken pipeline.
+  // Round-trip check: refuse to publish numbers from a broken pipeline.
   const back = zstdDecompressSync!(dictBuf, { dictionary: dict });
   if (!back.equals(sample)) {
-    throw new Error('zstd dict round-trip mismatch — refusing to report');
+    throw new Error('zstd dict round-trip mismatch: refusing to report');
   }
 
   // Now timing (median of REPS).
@@ -337,26 +337,26 @@ function emptyAgg(b: Bucket): BucketAgg {
 }
 
 function fmtMean(sum: number, n: number): string {
-  if (n === 0) return '   —   ';
+  if (n === 0) return ': ';
   const m = sum / n;
   if (m < 1024) return `${m.toFixed(0)} B`;
   return `${(m / 1024).toFixed(1)} KB`;
 }
 
 function fmtMs(sum: number, n: number): string {
-  if (n === 0) return '  —  ';
+  if (n === 0) return ': ';
   const m = sum / n;
   if (m < 0.01) return `<0.01 ms`;
   return `${m.toFixed(2)} ms`;
 }
 
 function pct(numer: number, denom: number): string {
-  if (denom === 0) return '  —  ';
+  if (denom === 0) return ': ';
   return `${((1 - numer / denom) * 100).toFixed(1)}%`;
 }
 
 function diffMs(numerSum: number, denomSum: number, n: number): string {
-  if (n === 0) return '  —  ';
+  if (n === 0) return ': ';
   const d = (numerSum - denomSum) / n;
   const sign = d >= 0 ? '+' : '';
   return `${sign}${d.toFixed(2)} ms`;
@@ -367,13 +367,13 @@ function renderTable(label: string, aggs: BucketAgg[]): string {
   lines.push('');
   lines.push(`### ${label}`);
   lines.push('');
-  lines.push('**Bytes** — mean compressed size per bucket');
+  lines.push('**Bytes**: mean compressed size per bucket');
   lines.push('');
   lines.push('| bucket | n | raw | gzip | no-dict zstd | **with-dict zstd** | dict gain vs zstd |');
   lines.push('|---|---:|---:|---:|---:|---:|---:|');
   for (const a of aggs) {
     if (a.n === 0) {
-      lines.push(`| ${a.bucket.label} | 0 | — | — | — | — | — |`);
+      lines.push(`| ${a.bucket.label} | 0 | n/a | | n/a | | n/a |`);
       continue;
     }
     const dictGain = pct(a.sumZstdDict, a.sumZstd);
@@ -407,13 +407,13 @@ function renderTable(label: string, aggs: BucketAgg[]): string {
   }
 
   lines.push('');
-  lines.push('**Encode latency (sync TTFB)** — median wall-clock per sample, 5 reps each');
+  lines.push('**Encode latency (sync TTFB)**: median wall-clock per sample, 5 reps each');
   lines.push('');
   lines.push('| bucket | n | gzip | no-dict zstd | with-dict zstd | dict overhead vs no-dict |');
   lines.push('|---|---:|---:|---:|---:|---:|');
   for (const a of aggs) {
     if (a.n === 0) {
-      lines.push(`| ${a.bucket.label} | 0 | — | — | — | — |`);
+      lines.push(`| ${a.bucket.label} | 0 | n/a | | n/a | |`);
       continue;
     }
     lines.push(
@@ -478,7 +478,7 @@ async function measureStreamingTtfb(
 function renderStreamingTtfb(label: string, agg: StreamingTtfbAgg): string {
   const lines: string[] = [];
   lines.push('');
-  lines.push(`**Streaming TTFB** — ${label}: time from first input chunk to first compressed byte (256 B chunks, flush after first chunk; median over ${REPS} reps × ${agg.n} samples)`);
+  lines.push(`**Streaming TTFB**: ${label}: time from first input chunk to first compressed byte (256 B chunks, flush after first chunk; median over ${REPS} reps × ${agg.n} samples)`);
   lines.push('');
   lines.push('| pipeline | mean TTFB | overhead |');
   lines.push('|---|---:|---:|');
@@ -526,7 +526,7 @@ console.log(
   'binned by raw byte size, and reports mean compressed length under each\n' +
   'algorithm. The headline number is the rightmost column: how much smaller\n' +
   'a stream gets when zstd loads the pre-trained dictionary at the start of\n' +
-  'the response, vs zstd starting cold. Round-trip is verified per sample —\n' +
+  'the response, vs zstd starting cold. Round-trip is verified per sample :\n' +
   'a mismatch aborts the run.',
 );
 
@@ -547,7 +547,7 @@ async function main(): Promise<void> {
         continue;
       }
       if (!statSync(dictPath, { throwIfNoEntry: false })?.isFile()) {
-        console.error(`  (skipping ${fmt}: ${dictPath} not found — train it first)`);
+        console.error(`  (skipping ${fmt}: ${dictPath} not found: train it first)`);
         continue;
       }
       tables.push(await runOne(`${flags.tag} · ${fmt}`, corpusDir, dictPath));

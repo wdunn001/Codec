@@ -6,7 +6,7 @@
          which cannot evaluate a net10.0 TargetFrameworks entry; the test
          project under ../dotnet/test bumped to net10.0 for local dev
          parity is OK because it is never built in the bench path.
-         Pin this bin to net8.0 only — dev boxes without .NET 8 SDK can
+         Pin this bin to net8.0 only: dev boxes without .NET 8 SDK can
          install it via dotnet-install channel 8.0. -->
     <TargetFramework>net8.0</TargetFramework>
     <LangVersion>latest</LangVersion>

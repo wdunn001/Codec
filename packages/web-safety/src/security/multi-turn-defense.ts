@@ -1,9 +1,9 @@
 /**
- * Multi-turn / behavioral defenses — companion to
+ * Multi-turn / behavioral defenses: companion to
  * spec/proposals/v0.6-security/05-multi-turn-behavioral.md.
  *
  * Detects the structural shapes of many-shot jailbreaks, role-confusion
- * attempts, and prefill injection. Does NOT attempt model-layer safety —
+ * attempts, and prefill injection. Does NOT attempt model-layer safety:
  * that's the model provider's job. These are protocol-shape guards that fire
  * BEFORE the request reaches the model.
  */
@@ -28,7 +28,7 @@ export interface ManyShotDetection {
  * of a conversation, before the latest user turn.
  *
  * The detector counts the longest opening run of alternating user/assistant
- * turns. A legitimate fresh conversation has 0–2 such pairs. A many-shot
+ * turns. A legitimate fresh conversation has 0 to 2 such pairs. A many-shot
  * jailbreak typically has dozens to hundreds.
  *
  * Default threshold: 5 (well above legitimate few-shot prompting, well below
@@ -74,7 +74,7 @@ const ROLE_CLAIM_PATTERNS: readonly RegExp[] = [
  * Detect attempts in user content to claim or fabricate elevated roles
  * (system / developer / admin). These are the structural shapes of the most
  * common role-confusion injection patterns. A positive result means the user
- * content MUST NOT be forwarded as-is into a model prompt — wrap in
+ * content MUST NOT be forwarded as-is into a model prompt: wrap in
  * untrusted-content tags or sanitize before forwarding.
  */
 export function scanForRoleClaims(content: string): RoleClaimScan {
@@ -100,7 +100,7 @@ export interface PrefillValidation {
  *
  *   - If `fromUserInput` is true, reject categorically.
  *   - Otherwise, scan for role-claim patterns and reject if found
- *     (defense-in-depth — even application-controlled prefills shouldn't
+ *     (defense-in-depth: even application-controlled prefills shouldn't
  *     contain forged system framing).
  */
 export function validateAssistantPrefill(
@@ -110,7 +110,7 @@ export function validateAssistantPrefill(
   if (options.fromUserInput) {
     return {
       ok: false,
-      reason: 'user-influenced prefill content is forbidden — assistant_prefill must be application-controlled',
+      reason: 'user-influenced prefill content is forbidden: assistant_prefill must be application-controlled',
     };
   }
   const claim = scanForRoleClaims(prefill);

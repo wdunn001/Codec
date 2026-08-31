@@ -1,4 +1,4 @@
-# Codec — release-publish workflows
+# Codec: release-publish workflows
 
 Five workflows in this directory handle the §10 Package Publish phase
 of the [release checklist](../../docs/RELEASE_CHECKLIST.md). Each one
@@ -34,7 +34,7 @@ since v0.3.x).
    other registries (each accepts no input, but you can re-run on
    the same tag).
 
-## Why one workflow per registry, not one big "release.yml"?
+## Why one workflow per registry, instead of one big "release.yml"?
 
 A registry-specific failure (e.g. a transient PyPI 500 mid-upload)
 shouldn't force a retag of the entire release. Per-target workflows
@@ -56,6 +56,6 @@ For the v0.4.1 cut specifically:
   pushed by hand (codec-{sglang,vllm,llamacpp}:v0.4.1).
 - npm / PyPI / crates.io / NuGet: secrets configured; all 5 npm packages
   + codecai + codec-rs + Codec.Net publish workflows green at v0.4.1.
-  npm workflow is idempotent — re-running with `package=all` is safe
+  npm workflow is idempotent: re-running with `package=all` is safe
   (existing versions skip-if-exists). Maven Central (`ai.codec:codec`)
   deferred at v0.4.1; revisits at v0.4.2.

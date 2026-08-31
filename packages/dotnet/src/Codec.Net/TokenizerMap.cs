@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace Codec;
 
 /// <summary>
-/// A per-model tokenizer dialect — the data needed to encode text into
+/// A per-model tokenizer dialect: the data needed to encode text into
 /// token IDs and decode IDs back to text. Maps are immutable once
 /// published; a new model version publishes a new map at a new URL with
 /// a new sha256 hash.
@@ -14,7 +14,7 @@ namespace Codec;
 /// Schema v2: <see cref="Vocab"/> is the raw HuggingFace tokenizer.json
 /// form (byte-level GPT-2-encoded chars or ▁-prefixed metaspace strings).
 /// <see cref="Tokens"/> is the legacy v1 field, kept for backwards
-/// compatibility — the Detokenizer reads from whichever is present.
+/// compatibility: the Detokenizer reads from whichever is present.
 /// </remarks>
 public sealed class TokenizerMap
 {
@@ -32,7 +32,7 @@ public sealed class TokenizerMap
 
     /// <summary>
     /// Vocabulary as { raw_token_text → id }. v2 schema field. "Raw" means
-    /// the form stored in HuggingFace tokenizer.json — for byte_level this
+    /// the form stored in HuggingFace tokenizer.json: for byte_level this
     /// contains GPT-2 byte-encoded chars, for metaspace ▁-prefixed strings.
     /// </summary>
     [JsonPropertyName("vocab")]
@@ -47,7 +47,7 @@ public sealed class TokenizerMap
 
     /// <summary>
     /// Encoder family. "byte_level" (GPT-2 byte→unicode), "metaspace"
-    /// (▁-prefix), or null (identity — vocab is already decoded text).
+    /// (▁-prefix), or null (identity: vocab is already decoded text).
     /// </summary>
     [JsonPropertyName("encoder")]
     public string? Encoder { get; init; }
@@ -78,7 +78,7 @@ public sealed class TokenizerMap
     /// <summary>
     /// Per-model tool-calling convention. Optional; populated by
     /// <c>@codecai/maps-cli</c> when it detects a known chat-template
-    /// signature. Absence means "convention not declared in this map" — see
+    /// signature. Absence means "convention not declared in this map": see
     /// <c>spec/PROTOCOL.md</c> § "Tool-call calling conventions in the map".
     /// </summary>
     [JsonPropertyName("tool_calling")]
@@ -153,7 +153,7 @@ public sealed class TokenizerMapValidationException : Exception
 /// <summary>
 /// Per-model tool-calling convention block on a <see cref="TokenizerMap"/>.
 /// Each <see cref="Convention"/> value pins a specific argument layout, marker
-/// placement, and result framing — see <c>spec/PROTOCOL.md</c> §
+/// placement, and result framing: see <c>spec/PROTOCOL.md</c> §
 /// "Tool-call calling conventions in the map" for the normative table.
 /// </summary>
 public sealed class ToolCallingBlock

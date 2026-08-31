@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! StreamDecoder tests — mirrors `StreamDecoderTests.cs`.
+//! StreamDecoder tests: mirrors `StreamDecoderTests.cs`.
 
 use std::io::{Cursor, Read, Result as IoResult};
 
@@ -108,7 +108,7 @@ async fn async_msgpack_stream_roundtrip() {
     assert_eq!(collected[1].finish_reason.as_deref(), Some("eos_token"));
 }
 
-// Reader that returns at most `chunk_size` bytes per read — exercises
+// Reader that returns at most `chunk_size` bytes per read: exercises
 // the protobuf decoder's frame-reassembly logic across split reads.
 struct ChunkedReader {
     data: Vec<u8>,

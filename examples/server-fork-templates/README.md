@@ -1,16 +1,16 @@
-# Server fork templates — Codec v0.3 latent modality
+# Server fork templates: Codec v0.3 latent modality
 
-This directory holds the **canonical Python bodies** that the latent-aware engine forks vendor into their trees. Two engine forks are tracked under [`codec-supervisor`](https://github.com/wdunn001/codec-supervisor)'s latent-modality images:
+This directory holds the **canonical Python bodies** that the latent-aware engine forks vendor into their trees. The engine forks tracked under [`codec-supervisor`](https://github.com/wdunn001/codec-supervisor)'s latent-modality images are:
 
 | Fork | Branch | Vendors | Image |
 |---|---|---|---|
-| [`wdunn001/ComfyUI`](https://github.com/wdunn001/ComfyUI) | `feat/codec-latent-transport` | [`comfyui/`](./comfyui/) | [`wdunn001/codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui) — `:vX.Y.Z` + `:latest` + `:sha-<git7>` (built by [`Dockerfile.comfyui`](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.comfyui), auto-pushed by [`release.yml`](https://github.com/wdunn001/codec-supervisor/blob/main/.github/workflows/release.yml) on every `v*` git tag) |
-| [`wdunn001/diffusers`](https://github.com/wdunn001/diffusers) | `feat/codec-latent-transport` | [`diffusers/codec_server/`](./diffusers/codec_server/) | [`wdunn001/codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers) — `:vX.Y.Z` + `:latest` + `:sha-<git7>` (built by [`Dockerfile.diffusers`](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.diffusers), same release workflow) |
+| [`wdunn001/ComfyUI`](https://github.com/wdunn001/ComfyUI) | `feat/codec-latent-transport` | [`comfyui/`](./comfyui/) | [`wdunn001/codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui): `:vX.Y.Z` + `:latest` + `:sha-<git7>` (built by [`Dockerfile.comfyui`](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.comfyui), auto-pushed by [`release.yml`](https://github.com/wdunn001/codec-supervisor/blob/main/.github/workflows/release.yml) on every `v*` git tag) |
+| [`wdunn001/diffusers`](https://github.com/wdunn001/diffusers) | `feat/codec-latent-transport` | [`diffusers/codec_server/`](./diffusers/codec_server/) | [`wdunn001/codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers): `:vX.Y.Z` + `:latest` + `:sha-<git7>` (built by [`Dockerfile.diffusers`](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.diffusers), same release workflow) |
 
-Why "fork-only", not upstream PRs:
+Why "fork-only" rather than upstream PRs:
 
 - **ComfyUI**: the codec endpoints touch enough of the request loop (latent capture during sampling, msgpack/protobuf streaming response, zstd dict negotiation) that a downstream fork is cleaner than threading hooks through ComfyUI's plugin system. Also: ComfyUI moves fast and PRs land slowly.
-- **diffusers**: diffusers is a *library*, not a server. Our fork adds an `examples/codec_server/` FastAPI wrapper — the surface area HuggingFace would never accept upstream because they don't ship servers. The codec_server doubles as the **bench/golden perceptual-conformance reference**.
+- **diffusers**: diffusers is purely a *library*. Our fork adds an `examples/codec_server/` FastAPI wrapper: the surface area HuggingFace would never accept upstream because they don't ship servers. The codec_server doubles as the **bench/golden perceptual-conformance reference**.
 
 For the contrast, the text-engine forks (vLLM, sglang, llama.cpp) are upstream-PR-track. Different posture; different reasoning.
 
@@ -21,9 +21,9 @@ For each fork:
 1. **Vendor `latent_frame.py`.** Both templates import from a relative path that's expected to land at:
    ```
    <fork>/codec_server/latent_frame.py        (diffusers)
-   <fork>/codec_server/latent_frame.py        (ComfyUI — same path inside the fork)
+   <fork>/codec_server/latent_frame.py        (ComfyUI: same path inside the fork)
    ```
-   Copy from this repo at [`packages/python/src/codecai/server/latent_frame.py`](../../packages/python/src/codecai/server/latent_frame.py) — DO NOT modify after vendoring. It's the canonical reference for the seven pipeline forward transforms (`raw`, `int8`, `int4`, `int8-adaptive`, `int4-adaptive`, `delta+int8`, `delta+int4`) and the msgpack + protobuf encoders for `LatentStreamHeader` / `LatentFrame`. The pipeline math is bit-pinned in [`spec/PIPELINES.md`](../../spec/PIPELINES.md); changes to the vendored copy that break the bit contract are protocol violations.
+   Copy from this repo at [`packages/python/src/codecai/server/latent_frame.py`](../../packages/python/src/codecai/server/latent_frame.py): DO NOT modify after vendoring. It's the canonical reference for the seven pipeline forward transforms (`raw`, `int8`, `int4`, `int8-adaptive`, `int4-adaptive`, `delta+int8`, `delta+int4`) and the msgpack + protobuf encoders for `LatentStreamHeader` / `LatentFrame`. The pipeline math is bit-pinned in [`spec/PIPELINES.md`](../../spec/PIPELINES.md); changes to the vendored copy that break the bit contract are protocol violations.
 
 2. **Drop in the template.** From the matching subdirectory of this folder, copy the entire tree into the fork. The ComfyUI template is one file; the diffusers template is a Python package.
 
@@ -80,4 +80,4 @@ These bodies are the **source of truth** for the engine forks. The development w
 3. When ready, vendor the new template into the fork's branch and push.
 4. The fork's PR / commit message references the template revision in this repo for traceability.
 
-Keeping the templates in the main Codec repo means anyone adding a new engine integration starts from the same source — the templates encode the protocol, the forks encode engine specifics.
+Keeping the templates in the main Codec repo means anyone adding a new engine integration starts from the same source: the templates encode the protocol, the forks encode engine specifics.

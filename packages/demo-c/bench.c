@@ -209,7 +209,7 @@ static int run_one(const args_t *a, cell_t *c) {
      * (so the libcodec stream decoder is happy), while
      * CURLINFO_SIZE_DOWNLOAD_T continues to report the on-the-wire
      * (compressed) byte count. We don't pass CURLOPT_ACCEPT_ENCODING
-     * for "identity" — that would still send "Accept-Encoding:
+     * for "identity": that would still send "Accept-Encoding:
      * identity" but disable decompression, which is what we want. */
     if (strcmp(c->encoding, "identity") != 0) {
         curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, c->encoding);

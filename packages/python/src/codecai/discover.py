@@ -115,7 +115,7 @@ class ZstdDictDiscoveryError(ValueError):
     - malformed hash input (not 64 lowercase hex chars, with or without
       the ``sha256:`` prefix)
 
-    The dictionary discovery surface is hard-fail by design — see
+    The dictionary discovery surface is hard-fail by design: see
     ``spec/WELL_KNOWN_DISCOVERY.md § Resolution failures``. Silent
     fallback to identity bytes is what motivated the v0.5 surface in the
     first place (the v0.4.1 sglang COPY-dicts regression).
@@ -277,7 +277,7 @@ async def discover_zstd_dict(
                                     # entry or a cohort registry
         )
 
-    The URL is constructed from the hash deterministically — there is no
+    The URL is constructed from the hash deterministically: there is no
     mutable per-id form for dictionaries (unlike tokenizer maps). The
     sha-keyed URL is the only surface.
 
@@ -285,7 +285,7 @@ async def discover_zstd_dict(
         ZstdDictDiscoveryError: 404 from the origin, or the hash input was
             not a valid sha256 hex form.
         ZstdDictHashMismatchError: fetched bytes did not hash to the URL's
-            path component (origin served wrong bytes — never trust them).
+            path component (origin served wrong bytes: never trust them).
     """
     url = well_known_dict_url(origin, hash)
     expected_hex = _parse_dict_hash(hash)

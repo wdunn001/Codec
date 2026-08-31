@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// Translator — cross-vocab token-stream pipe.
+// Translator: cross-vocab token-stream pipe.
 //
 // Take Agent A's token IDs in vocab V_A, produce Agent B's token IDs in
 // vocab V_B, with no text ever leaving the process. Internally:
@@ -9,7 +9,7 @@
 //
 // The text intermediate is purely local; agent-to-agent traffic still
 // carries only token IDs on the wire. Mirrors the TS Translator class
-// from @codecai/web and the Python Translator from codecai — same
+// from @codecai/web and the Python Translator from codecai: same
 // word-boundary buffering rules.
 //
 // Streaming caveat: BPE merges depend on context, so re-tokenizing
@@ -28,7 +28,7 @@ namespace Codec;
 /// <remarks>
 /// Construct with a source map and a target map. Call Translate
 /// repeatedly with chunks of source IDs; receive chunks of target IDs.
-/// Stateful across calls — partial words buffer internally.
+/// Stateful across calls: partial words buffer internally.
 /// </remarks>
 /// <example>
 /// <code>
@@ -74,7 +74,7 @@ public sealed class Translator
     {
         if (ids is null) throw new ArgumentNullException(nameof(ids));
 
-        // Render through V_A's detokenizer with the same partial flag — the
+        // Render through V_A's detokenizer with the same partial flag: the
         // detokenizer handles partial UTF-8 byte sequences for us.
         var text = _fromDetok.Render(ids, new DetokenizeOptions { Partial = partial });
         if (text.Length > 0) _textBuffer.Append(text);
@@ -86,7 +86,7 @@ public sealed class Translator
             return _toTok.Encode(allText);
         }
 
-        // Streaming chunk — find the last safe boundary and flush before it.
+        // Streaming chunk: find the last safe boundary and flush before it.
         // Pre-tokenizers split at whitespace, so re-encoding text up to the
         // last whitespace yields the same IDs as re-encoding the complete
         // word later.
@@ -110,7 +110,7 @@ public sealed class Translator
         _textBuffer.Clear();
     }
 
-    // ASCII whitespace + common Unicode whitespace block — covers the
+    // ASCII whitespace + common Unicode whitespace block: covers the
     // pre-tokenizer regexes used by Llama-3, Qwen, Phi-3, Mistral, etc.
     private static bool IsWhitespaceCp(int cp) => cp switch
     {

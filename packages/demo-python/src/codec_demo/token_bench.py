@@ -1,6 +1,6 @@
 """Per-language tokenize/detokenize micro-benchmark.
 
-Stand-alone companion to `matrix_run.py` — that driver measures wire-byte
+Stand-alone companion to `matrix_run.py`: that driver measures wire-byte
 / TTFT / total-ms across the 3×4 size × {fmt, encoding} grid; this driver
 times client-side BPE encode + detokenize on a fixed corpus so reviewers
 can compare per-language tokenizer-library throughput.
@@ -34,7 +34,7 @@ Output schema (see also `packages/bench/methodology/SCHEMA.md`):
     }
 
 Each `*_total` value is the time to encode/decode the WHOLE corpus once
-— i.e. one full pass over all samples in `corpus.json`. We run `reps`
+: i.e. one full pass over all samples in `corpus.json`. We run `reps`
 passes and report median + p99 of total-time.
 """
 from __future__ import annotations
@@ -97,7 +97,7 @@ def main() -> int:
     total_text_bytes = sum(len(t.encode("utf-8")) for t in texts)
     total_tokens = sum(len(ids) for ids in ref_ids)
 
-    # Warmup — get JIT / cache effects out of the median.
+    # Warmup: get JIT / cache effects out of the median.
     for _ in range(args.warmup):
         for t in texts:
             tok.encode(t)

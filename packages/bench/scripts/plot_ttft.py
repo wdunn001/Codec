@@ -84,7 +84,7 @@ def plot_ttft(out_dir: Path) -> None:
         arrowprops=dict(arrowstyle="->", color="#2ca02c", lw=1.5),
     )
     ax.annotate(
-        "gzip + brotli stream chunk-by-chunk →\nTTFT stays ~11–12 ms",
+        "gzip + brotli stream chunk-by-chunk →\nTTFT stays ~11 to 12 ms",
         xy=(2048, 11), xytext=(700, 25),
         fontsize=11, fontweight="bold", color="#1f77b4",
         arrowprops=dict(arrowstyle="->", color="#1f77b4", lw=1.5),
@@ -95,9 +95,9 @@ def plot_ttft(out_dir: Path) -> None:
     ax.set_xticklabels([str(s) for s in SIZES])
     ax.yaxis.set_major_formatter(mtick.FuncFormatter(lambda y, _: f"{int(y)} ms"))
     ax.set_xlabel("response size (tokens)")
-    ax.set_ylabel("TTFT — time to first byte (log)")
+    ax.set_ylabel("TTFT: time to first byte (log)")
     ax.set_title(
-        "Codec encoding latency — zstd buffers (cliff), gzip and brotli stream"
+        "Codec encoding latency: zstd buffers (cliff), gzip and brotli stream"
     )
     ax.grid(True, which="both", alpha=0.3)
     ax.legend(loc="center left", fontsize=9, ncol=1)
@@ -109,7 +109,7 @@ def plot_ttft(out_dir: Path) -> None:
 
 
 def plot_throughput(out_dir: Path) -> None:
-    """Total wall-clock comparison — how much extra wall-clock you pay
+    """Total wall-clock comparison: how much extra wall-clock you pay
     for the wire savings. (Spoiler: very little; tokens/sec is model-bound.)"""
     fig, ax = plt.subplots(figsize=(10, 5.5))
     for (path, enc), vals in TOTAL.items():
@@ -131,7 +131,7 @@ def plot_throughput(out_dir: Path) -> None:
     ax.set_xlabel("response size (tokens)")
     ax.set_ylabel("total wall-clock (log)")
     ax.set_title(
-        "Total response time is model-bound — Codec adds <1% overhead\n"
+        "Total response time is model-bound: Codec adds <1% overhead\n"
         "(0.5B model on RTX 3090, ~545 tok/s decode)"
     )
     ax.grid(True, which="both", alpha=0.3)

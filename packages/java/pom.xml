@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>Codec for Java</name>
-    <description>Isomorphic tokenizer + detokenizer for the Codec binary transport protocol — for Java 17+. Functional twin of Codec.Net, codecai (Python), and @codecai/web.</description>
+    <description>Isomorphic tokenizer + detokenizer for the Codec binary transport protocol, for Java 17+. Functional twin of Codec.Net, codecai (Python), and @codecai/web.</description>
     <url>https://github.com/wdunn001/Codec</url>
 
     <licenses>

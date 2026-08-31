@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  *
- * BPE encoder — text → token IDs.
+ * BPE encoder: text → token IDs.
  *
  * Mirrors the algorithm used by @codecai/web's BPETokenizer, codecai's
  * BPETokenizer, and Codec.Net's BPETokenizer. All four implementations
@@ -33,7 +33,7 @@
 /* Forward declarations from public header. */
 struct codec_bpe_encoder {
     const codec_tokenizer_map_t *map;
-    /* No further state — all per-encode work happens on the stack. */
+    /* No further state: all per-encode work happens on the stack. */
 };
 
 /* ── Public lifecycle ──────────────────────────────────────────────────── */
@@ -111,7 +111,7 @@ static codec_status_t init_slices_per_codepoint(
  * we overwrite it in-place to concatenate adjacent slices. Specifically,
  * a merge of slices i and i+1 keeps slices[i].off but extends slices[i].len
  * to include the next slice. We then shift all later slices down by one
- * in the array. Buffer bytes are unchanged — slices stay the same byte
+ * in the array. Buffer bytes are unchanged: slices stay the same byte
  * offsets, just longer. */
 static void apply_merges(const codec_tokenizer_map_t *map,
                          const char *buf,
@@ -186,7 +186,7 @@ static void apply_merges(const codec_tokenizer_map_t *map,
 }
 
 /* Append IDs from the slices into the output buffer. Slices not in
- * the vocab are skipped — for byte_level this should never happen
+ * the vocab are skipped: for byte_level this should never happen
  * because every byte's encoded codepoint is in the vocab. */
 static codec_status_t emit_ids(const codec_tokenizer_map_t *map,
                                const char *buf,
@@ -211,7 +211,7 @@ static codec_status_t emit_ids(const codec_tokenizer_map_t *map,
         uint32_t id;
         int hit = codec_bpe_vocab_lookup(map, tmp, &id);
         free(tmp_heap);
-        if (!hit) continue;  /* skip unknown — shouldn't happen for byte_level */
+        if (!hit) continue;  /* skip unknown: shouldn't happen for byte_level */
 
         if (*out_len == *out_cap) {
             size_t nc = *out_cap ? *out_cap * 2 : 32;
@@ -291,7 +291,7 @@ codec_status_t codec_bpe_encode(codec_bpe_encoder_t *enc,
     uint32_t *ids = NULL;
     size_t    ids_cap = 0, ids_len = 0;
 
-    /* Branch on encoder family — the pretok program tells us metaspace
+    /* Branch on encoder family: the pretok program tells us metaspace
      * vs GPT-2-family by its op shape. */
     int is_metaspace = (prog->op_count == 1
                         && prog->ops[0].kind == CODEC_PRETOK_METASPACE_SPLIT);

@@ -38,11 +38,11 @@ describe('parseAcceptEncoding', () => {
 
 // Selection rule under the new model: zstd is chosen ONLY when both
 // `zstdHasDict` and `zstdEnabled` are true. Otherwise gzip > br > identity.
-// No-dict zstd is never picked — RESULTS.md §1d showed it's catastrophically
+// No-dict zstd is never picked: RESULTS.md §1d showed it's catastrophically
 // slow on shipped middleware, and §1f showed its byte advantage over gzip is
 // noise on Codec streams.
 
-describe('pick — rule: zstd only with dict + streaming middleware', () => {
+describe('pick: rule: zstd only with dict + streaming middleware', () => {
   const ALL_CLIENT = 'zstd, gzip, br';
   const READY = { zstdHasDict: true, zstdEnabled: true } as const;
 
@@ -209,7 +209,7 @@ import {
   MAX_TTFT_RATIO,
 } from '../src/index.ts';
 
-describe('v0.5 picker — per-stack profile drops', () => {
+describe('v0.5 picker: per-stack profile drops', () => {
   const ALL = 'zstd, gzip, br';
 
   it('custom profile with zstd ttftRatio > MAX → drops zstd', () => {
@@ -248,7 +248,7 @@ describe('v0.5 picker — per-stack profile drops', () => {
   });
 });
 
-describe('v0.5 picker — content-aware tiebreaker', () => {
+describe('v0.5 picker: content-aware tiebreaker', () => {
   const ALL = 'zstd, gzip, br';
   const READY = { zstdHasDict: true } as const;
 
@@ -286,7 +286,7 @@ describe('v0.5 picker — content-aware tiebreaker', () => {
   });
 });
 
-describe('v0.5 picker — reason_code enum coverage', () => {
+describe('v0.5 picker: reason_code enum coverage', () => {
   it('every output carries a typed reason_code matching the encoding choice', () => {
     const cases: Array<{ input: Parameters<typeof pick>[0]; encoding: string }> = [
       { input: { acceptEncoding: 'gzip', estimatedSize: 1024 }, encoding: 'gzip' },

@@ -24,7 +24,7 @@ class TranslatorTests {
     void resetClearsTextBuffer() {
         TokenizerMap m = Fixtures.tinyMap();
         Translator tr = new Translator(m, m);
-        // Feed something with a partial flag, then reset, then finish — should
+        // Feed something with a partial flag, then reset, then finish: should
         // produce no output (buffer was cleared).
         tr.translate(new int[] { 3, 4 }, true);  // "hello "
         tr.reset();
@@ -36,7 +36,7 @@ class TranslatorTests {
      * word-boundary buffering stays consistent across chunked feeds:
      * the chunked path must produce the same DETOKENIZED text as the
      * one-shot path. (BPE merges depend on context, so token IDs may
-     * differ across chunked vs one-shot — but the text round-trips.)
+     * differ across chunked vs one-shot: but the text round-trips.)
      */
     @Test
     void streamingChunksProduceSameTextAsOneShot() {

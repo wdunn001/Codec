@@ -260,7 +260,7 @@ static int cmp_bpe_merge(const void *a, const void *b) {
 }
 
 /* Append a (raw_key, id) pair to bpe_vocab. Takes ownership of raw_key
- * (must be malloc'd and unique — caller stops using it). */
+ * (must be malloc'd and unique: caller stops using it). */
 static codec_status_t bpe_vocab_push(codec_tokenizer_map_t *m,
                                      char *raw_key, uint32_t id) {
     /* Geometric growth in steps of 2. Allocate count+1 capacity tracked
@@ -641,7 +641,7 @@ static codec_status_t install_entry(codec_tokenizer_map_t *m,
     size_t key_len = (size_t)(key_tok->end - key_tok->start);
     const char *key_raw = json + key_tok->start;
 
-    /* Skip SentencePiece byte-fallback tokens — they're handled by the
+    /* Skip SentencePiece byte-fallback tokens: they're handled by the
      * byte_fallback range path, never as direct table entries. */
     if (is_byte_fallback_token(key_raw, key_len)) return CODEC_OK;
 
@@ -651,7 +651,7 @@ static codec_status_t install_entry(codec_tokenizer_map_t *m,
 
     /* Capture the raw (still-encoded) form for BPE vocab lookup before
      * we decode it. BPE merge ranks operate on the raw vocab keys, so
-     * we need to keep them around — they're distinct from the decoded
+     * we need to keep them around: they're distinct from the decoded
      * `entries` bytes the detokenizer uses. We strdup so subsequent
      * encoding doesn't touch our copy. */
     char *raw_dup = (char *)malloc(key_unesc_len + 1);

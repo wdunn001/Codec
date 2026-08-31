@@ -37,7 +37,7 @@ test('detokenize: byte-fallback for a 4-byte emoji (🚀 = F0 9F 9A 80)', () => 
 
 test('Detokenizer: partial multi-byte sequence buffered across frames', () => {
   const d = new Detokenizer(TINY_MAP);
-  // Frame 1: first 2 bytes of € — incomplete, must not emit anything.
+  // Frame 1: first 2 bytes of €: incomplete, must not emit anything.
   const out1 = d.render([byteId(0xe2), byteId(0x82)], { partial: true });
   assert.equal(out1, '', 'partial sequence should not emit');
   // Frame 2: final byte. Now the character flushes.

@@ -2,14 +2,14 @@
 //
 // Tool-call / region watcher.
 //
-// Mirrors libcodec's codec_tool_watcher and @codecai/web's ToolWatcher —
+// Mirrors libcodec's codec_tool_watcher and @codecai/web's ToolWatcher:
 // same state-machine semantics. Detects delimited regions (tool calls,
 // reasoning blocks, vision spans, sandbox regions, channel headers) in
 // a token-ID stream without ever decoding. The hot loop is a uint
 // compare against two cached IDs; no vocab read, no detokenize call,
 // no string allocation.
 //
-// State survives across feed() calls — a region split between network
+// State survives across feed() calls: a region split between network
 // frames buffers internally until the end marker arrives.
 package ai.codec;
 
@@ -20,7 +20,7 @@ import java.util.Map;
 /**
  * Stateful watcher for delimited regions in a token-ID stream.
  * Construct with a map and the names of the start/end specials. The
- * watcher resolves them to IDs once and caches them — no further map
+ * watcher resolves them to IDs once and caches them: no further map
  * access happens during {@link #feed(long[])}.
  *
  * <pre>{@code
@@ -45,7 +45,7 @@ public final class ToolWatcher {
     private final String endName;
 
     private boolean inside;
-    /** Captured region body — accumulates while inside, cleared on Region emit. */
+    /** Captured region body: accumulates while inside, cleared on Region emit. */
     private final List<Long> region = new ArrayList<>();
 
     public ToolWatcher(TokenizerMap map, String startName, String endName) {
@@ -92,7 +92,7 @@ public final class ToolWatcher {
         int ptStart = 0;
 
         // Single-pass scan. Identical state machine to the C and TS
-        // implementations — keep them in sync if you change one.
+        // implementations: keep them in sync if you change one.
         for (int i = 0; i < n; i++) {
             long id = ids[i];
             if (!inside) {
@@ -113,7 +113,7 @@ public final class ToolWatcher {
                     inside = false;
                     ptStart = i + 1;
                 } else if (id == startId) {
-                    // Nested start — ignore.
+                    // Nested start: ignore.
                 } else {
                     region.add(id);
                 }

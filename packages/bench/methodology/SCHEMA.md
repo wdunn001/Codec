@@ -217,7 +217,8 @@ run":
   "rep_ttff_ms": [23, 24],
   "rep_total_ms": [380, 384],
 
-  // Decoder cost (only present when the bench runs vae_decode in this cell: // i.e. this client has a decoder loaded). Cells running the wire only
+  // Decoder cost (only present when the bench runs vae_decode in this cell:
+  // i.e. this client has a decoder loaded). Cells running the wire only
   // (parse-only, no decode) leave these null.
   "decode_cold_ms":     840,                     // first decode latency, includes weight load
   "decode_steady_ms":   38,                      // steady-state per-frame decode latency

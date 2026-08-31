@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// ToolWatcher tests — mirror packages/web/test/tool-watcher.test.ts and
+// ToolWatcher tests: mirror packages/web/test/tool-watcher.test.ts and
 // packages/python/tests/test_tool_watcher.py.
 using System;
 using System.Collections.Generic;
@@ -85,7 +85,7 @@ public class ToolWatcherTests
     {
         var w = new ToolWatcher(SynthMap(), "<tool_call>", "</tool_call>");
         var evs = w.Feed(new uint[] { 0, END, 1 });
-        // End with no preceding start — ordinary token.
+        // End with no preceding start: ordinary token.
         Assert.Single(evs);
         Assert.Equal(WatcherEventKind.Passthrough, evs[0].Kind);
         Assert.Equal(new uint[] { 0, END, 1 }, evs[0].Ids);
@@ -114,7 +114,7 @@ public class ToolWatcherTests
     }
 
     /// <summary>
-    /// No-decode contract — mirror of test_watcher_does_not_decode_tokens
+    /// No-decode contract: mirror of test_watcher_does_not_decode_tokens
     /// in libcodec / @codecai/web / codecai. Use a map with empty vocab
     /// and feed IDs outside any plausible vocab range. The watcher must
     /// emit them verbatim.

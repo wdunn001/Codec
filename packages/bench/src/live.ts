@@ -1,5 +1,5 @@
 /**
- * live.ts — measure real wire cost against a live OpenAI-compatible server.
+ * live.ts: measure real wire cost against a live OpenAI-compatible server.
  *
  * Default target: Ollama at http://192.168.1.88:11434. Override via env:
  *   BENCH_URL=http://localhost:8000 BENCH_MODEL=qwen2.5:latest npx tsx packages/bench/src/live.ts
@@ -15,13 +15,13 @@
  *   - Codec protobuf wire bytes
  *
  * Why projection: most servers (Ollama, OpenAI, Anthropic) don't expose token
- * IDs over the wire — the whole reason Codec exists is that the text-path
+ * IDs over the wire: the whole reason Codec exists is that the text-path
  * doesn't preserve them. So we measure what the incumbent costs and compute
  * what Codec would cost given the same token count. Server-side encode CPU
  * is measured separately by the wire microbench.
  *
  * If the server is unreachable, this exits cleanly with a skip notice rather
- * than failing — keeps CI happy when nobody's running a model locally.
+ * than failing: keeps CI happy when nobody's running a model locally.
  */
 import { performance } from 'node:perf_hooks';
 
@@ -136,7 +136,7 @@ async function streamCompletion(maxTokens: number = MAX_TOKENS): Promise<LiveRes
 
 function projectCodecBytes(tokenCount: number, chunkSize = 1) {
   // Build the same chunks a Codec server would emit and measure their length.
-  // IDs are placeholder — byte cost only depends on count and value range.
+  // IDs are placeholder: byte cost only depends on count and value range.
   const chunks: { ids: number[]; done: boolean; finishReason?: string }[] = [];
   let emitted = 0;
   while (emitted < tokenCount) {
@@ -244,7 +244,7 @@ async function main() {
     )
   );
   console.log();
-  console.log(hr('projected (Codec) — same token count, real frame encoding'));
+  console.log(hr('projected (Codec): same token count, real frame encoding'));
   console.log();
   console.log(
     table(
@@ -254,7 +254,7 @@ async function main() {
           'json-sse (measured)',
           fmtBytes(r.wireBytes),
           (r.wireBytes / r.outputTokens).toFixed(2),
-          '—',
+          'n/a',
         ],
         [
           'msgpack (Codec)',
@@ -274,7 +274,7 @@ async function main() {
   console.log();
   console.log(hr());
   console.log(
-    `\nNote: TTFT and tokens/sec are model-bound and unchanged by Codec — the wire is\n` +
+    `\nNote: TTFT and tokens/sec are model-bound and unchanged by Codec: the wire is\n` +
       `not the bottleneck on a single connection. The Codec advantage shows up at\n` +
       `(a) per-byte gateway/proxy cost, (b) concurrent-session memory, and (c) agent\n` +
       `handoffs where the text round-trip is pure waste. See handoff.ts for (c).\n`

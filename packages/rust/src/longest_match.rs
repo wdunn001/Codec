@@ -3,7 +3,7 @@
 //!
 //! Walks input left-to-right, emitting the ID of the longest vocab
 //! fragment that matches at each position. Suitable for canonical-IR /
-//! synthetic test maps. NOT BPE-correct for real model vocabs — use
+//! synthetic test maps. NOT BPE-correct for real model vocabs: use
 //! [`crate::BPETokenizer`] for those.
 
 use std::collections::HashMap;

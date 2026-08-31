@@ -19,9 +19,9 @@ export interface CodecStats {
 /**
  * Client for a vLLM server with the Codec binary transport protocol.
  *
- * POST /v1/completions        — JSON body, add stream_format:"msgpack"|"protobuf"
- * POST /v1/completions/codec  — binary body (msgpack or protobuf prompt IDs in)
- * GET  /codec/schema          — proto schema for CodecFrame / CodecRequest
+ * POST /v1/completions: JSON body, add stream_format:"msgpack"|"protobuf"
+ * POST /v1/completions/codec: binary body (msgpack or protobuf prompt IDs in)
+ * GET  /codec/schema: proto schema for CodecFrame / CodecRequest
  *
  * Usage:
  *   const client = new CodecClient('http://localhost:8000');
@@ -80,7 +80,7 @@ export class CodecClient {
 
   /**
    * Bidirectional codec: send prompt as token ID array, receive token IDs.
-   * No text ever crosses the boundary — zero detokenize/retokenize round-trips.
+   * No text ever crosses the boundary: zero detokenize/retokenize round-trips.
    */
   async *streamFromIds(promptIds: number[], opts: StreamOptions = {}): AsyncIterable<CodecFrame> {
     const body = this._encodeMsgpackRequest(promptIds, opts);

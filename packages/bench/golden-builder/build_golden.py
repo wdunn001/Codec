@@ -25,7 +25,7 @@ Plus a manifest.json carrying:
   - the container's PERCEPTUAL_REFERENCE_PINS attestation
   - torch / diffusers versions seen at decode time
 
-Bench cells reference these manifests by sha256 — a mismatch quarantines
+Bench cells reference these manifests by sha256: a mismatch quarantines
 the cell rather than silently using a stale golden.
 
 This is the **only** place SSIM/PSNR/LPIPS comparisons are anchored.
@@ -62,14 +62,14 @@ from PIL import Image
 LATENT_SPACE_TO_REPO: Dict[str, str] = {
     "stabilityai/sd-vae-ft-mse":  "stabilityai/sd-vae-ft-mse",
     "stabilityai/sdxl-vae":       "stabilityai/sdxl-vae",
-    # Pipeline-bundled VAEs — we load the parent pipeline below since the
+    # Pipeline-bundled VAEs: we load the parent pipeline below since the
     # VAE doesn't ship as a standalone repo.
     "stabilityai/stable-video-diffusion-img2vid-xt-vae": "stabilityai/stable-video-diffusion-img2vid-xt",
 }
 
 # Default VAE scale factor per latent-space, matching the spec example.
 # When loading from diffusers AutoencoderKL.config.scaling_factor is
-# preferred — this table is only the fallback.
+# preferred: this table is only the fallback.
 DEFAULT_SCALE_FACTOR: Dict[str, float] = {
     "stabilityai/sd-vae-ft-mse": 0.18215,
     "stabilityai/sdxl-vae":      0.13025,
@@ -85,7 +85,7 @@ class FixtureManifest:
     fixture:            Dict[str, Any]
     input_latent_sha256: str
     reference_sha256:   str        # sha256 of the decoded PNG bytes (image)
-                                   # or sha256 of the first frame (video — full
+                                   # or sha256 of the first frame (video: full
                                    # per-frame list is in `frame_sha256s`)
     frame_sha256s:      Optional[list]
     decoded_at:         str        # ISO 8601 UTC
@@ -126,7 +126,7 @@ def load_vae(latent_space_id: str, device: str) -> AutoencoderKL:
         # Standalone VAE checkpoint.
         vae = AutoencoderKL.from_pretrained(repo, torch_dtype=torch.float16)
     except Exception:
-        # Pipeline-bundled — fall back to loading the pipeline + extracting.
+        # Pipeline-bundled: fall back to loading the pipeline + extracting.
         pipe = DiffusionPipeline.from_pretrained(repo, torch_dtype=torch.float16)
         vae = pipe.vae
     vae = vae.to(device)
@@ -141,14 +141,14 @@ def latent_from_pipeline(
 ) -> torch.Tensor:
     """Run a diffusers pipeline at the fixture's seed + steps and return the
     latent tensor BEFORE vae.decode. Used when --generate is passed (the
-    default — captures the latent to disk so the bench can reproduce
+    default: captures the latent to disk so the bench can reproduce
     against the same bytes downstream)."""
-    # Wire this when the engine forks land — the canonical generator is
+    # Wire this when the engine forks land: the canonical generator is
     # whichever pipeline produces the latent_space's native unit. For
     # sd-vae-ft-mse + StableDiffusion-2.1, that's StableDiffusionPipeline
     # with output_type="latent". For SVD it's StableVideoDiffusionPipeline.
     raise NotImplementedError(
-        "Latent generation from a prompt isn't wired yet — pass "
+        "Latent generation from a prompt isn't wired yet: pass "
         "--latent-bytes-dir <dir> with pre-captured latent fixtures (the "
         "same ones the corpora/ capture step produces). The generation "
         "path lands once the engine forks expose the latent capture hook.",
@@ -357,7 +357,7 @@ def main() -> int:
             if candidate.exists():
                 bytes_path = candidate
             elif fix.get("kind") == "video":
-                print(f"  ✗ {key}: video fixture requires {candidate} — skipping", file=sys.stderr)
+                print(f"  ✗ {key}: video fixture requires {candidate}: skipping", file=sys.stderr)
                 continue
         try:
             man = build_one_fixture(

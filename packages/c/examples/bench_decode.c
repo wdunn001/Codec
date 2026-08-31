@@ -1,5 +1,5 @@
 /*
- * bench_decode.c — minimal microbench for the decode path.
+ * bench_decode.c: minimal microbench for the decode path.
  *
  * Builds a synthetic msgpack stream of N frames (1 token per frame, matching
  * the worst-case streaming scenario) then measures how fast we can pull
@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
     free(json);
 
     /* Build a deterministic stream. Use a simple LCG to pick token IDs in
-     * the first 32K — typical hot range for an LLM. */
+     * the first 32K: typical hot range for an LLM. */
     uint8_t *stream = NULL;
     size_t   stream_len = 0;
     {

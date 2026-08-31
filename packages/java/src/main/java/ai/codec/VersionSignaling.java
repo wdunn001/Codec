@@ -1,4 +1,4 @@
-// Codec v0.4 version negotiation — client-side primitives.
+// Codec v0.4 version negotiation: client-side primitives.
 //
 // Java mirror of @codecai/web's version-signaling.ts and codecai's
 // version_signaling.py. See spec/versions/v0.4.md:
@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Codec v0.4 version negotiation primitives. Static helpers — no instance state.
+ * Codec v0.4 version negotiation primitives. Static helpers: no instance state.
  */
 public final class VersionSignaling {
 
@@ -107,7 +107,7 @@ public final class VersionSignaling {
      *
      * @return empty if not a 426; the exception ready to throw otherwise.
      * @throws IllegalArgumentException if the response is 426 but the body
-     *     is not JSON or is not a recognized v0.4 shape — never silently
+     *     is not JSON or is not a recognized v0.4 shape: never silently
      *     swallows a 426.
      */
     public static Optional<CodecVersionRequiredException> parseVersionRequired(

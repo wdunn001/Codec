@@ -1,5 +1,5 @@
 /**
- * Bench engine — issues one streaming completion per (path, encoding) and
+ * Bench engine: issues one streaming completion per (path, encoding) and
  * measures wire bytes, decoded tokens, TTFB, total time.
  *
  * Wire-byte measurement: browsers transparently decompress gzip/br/zstd before
@@ -35,7 +35,7 @@ export interface Cell {
   contentEncoding?: string;
   contentType?: string;
   error?: string;
-  /** Decoded text (where reconstructible) — primarily for the JSON case. */
+  /** Decoded text (where reconstructible): primarily for the JSON case. */
   text?: string;
 }
 

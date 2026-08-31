@@ -1,8 +1,8 @@
-/* Detokenizer tests — tiny v1 fixture, mirror @codecai/web's tests. */
+/* Detokenizer tests: tiny v1 fixture, mirror @codecai/web's tests. */
 #include "codec/codec.h"
 #include "codec_test.h"
 
-/* Tiny v1 map: 270 IDs total, byte fallback at 10–265, two specials at 266/267. */
+/* Tiny v1 map: 270 IDs total, byte fallback at 10 to 265, two specials at 266/267. */
 static const char TINY_MAP_JSON[] =
 "{"
 "  \"id\": \"test-tiny-v1\","
@@ -89,7 +89,7 @@ static void test_partial_buffered_across_calls(void) {
     codec_detokenizer_t *d = NULL;
     CT_EQ_INT(codec_detokenizer_new(m, &d), CODEC_OK);
 
-    /* First two bytes of € — incomplete, must not emit. */
+    /* First two bytes of €: incomplete, must not emit. */
     uint32_t step1[] = { BYTE_ID(0xE2), BYTE_ID(0x82) };
     char *s1 = NULL; size_t s1_len = 0;
     codec_detokenize_opts_t partial = { true, false };

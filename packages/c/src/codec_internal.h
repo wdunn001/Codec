@@ -24,7 +24,7 @@ typedef struct codec_id_entry {
     size_t   len;
 } codec_id_entry_t;
 
-/* Raw vocab entry — stores the *encoded* form (Ġworld, ▁world) for
+/* Raw vocab entry: stores the *encoded* form (Ġworld, ▁world) for
  * BPE lookup. Distinct from the decoded `entries` table the detokenizer
  * uses. Sorted lexically by raw_key so BPE can bsearch piece -> id. */
 typedef struct codec_bpe_vocab_entry {
@@ -32,7 +32,7 @@ typedef struct codec_bpe_vocab_entry {
     uint32_t id;
 } codec_bpe_vocab_entry_t;
 
-/* Merge entry — "left right" plus its priority rank (rank 0 = highest
+/* Merge entry: "left right" plus its priority rank (rank 0 = highest
  * priority). Sorted lexically by `pair` so BPE's inner loop can bsearch
  * "is this pair mergeable?" in O(log N). */
 typedef struct codec_bpe_merge_entry {
@@ -72,7 +72,7 @@ struct codec_tokenizer_map {
     /* Pre-tokenizer program (v2.1, optional). Owned by the map; the
      * BPE encoder runs it via codec_pretok_run_program. NULL when the
      * map only carries pre_tokenizer_pattern (legacy regex form),
-     * which libcodec doesn't support — BPE construction fails on
+     * which libcodec doesn't support: BPE construction fails on
      * such maps. */
     codec_pretok_program_t  *pretok_program;
 
@@ -101,7 +101,7 @@ int                     codec_map_is_special(const codec_tokenizer_map_t *m, uin
 int32_t                 codec_map_byte_fallback_start(const codec_tokenizer_map_t *m);
 int32_t                 codec_map_byte_fallback_end(const codec_tokenizer_map_t *m);
 
-/* Unicode property tables (generated — see scripts/gen-unicode-tables.py).
+/* Unicode property tables (generated: see scripts/gen-unicode-tables.py).
  * Used by the pre-tokenizer program runtime to query character classes
  * without a regex engine. */
 bool codec_unicode_is_letter(uint32_t cp);

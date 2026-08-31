@@ -5,7 +5,7 @@
  * Two execution modes:
  *
  * 1. **Token-native** (the fast path): the tool receives argument
- *    *token IDs* directly from the gateway — no detokenize at the
+ *    *token IDs* directly from the gateway: no detokenize at the
  *    gateway, no re-tokenize at the tool. The tool decodes args once
  *    at the boundary, computes its result, and returns response tokens
  *    pre-cached for this model. Round trip: token IDs → tool internal
@@ -17,7 +17,7 @@
  *    tokeniser to inject the result. Slower, but works for any model.
  *
  * Tools are independently versioned and deployed. The gateway only
- * trusts the manifest — there's no SDK lock-in beyond this interface.
+ * trusts the manifest: there's no SDK lock-in beyond this interface.
  */
 
 import type { ToolManifest } from './manifest.js';
@@ -25,7 +25,7 @@ import type { ToolManifest } from './manifest.js';
 /**
  * A tool-call as it crosses the wire from gateway to tool.
  *
- * The argument bytes are *whatever the tool author wants* — usually
+ * The argument bytes are *whatever the tool author wants*: usually
  * msgpack or protobuf encoding of the argument object. The gateway
  * doesn't interpret them; it just routes the call to the tool and
  * trusts the tool to decode.
@@ -36,7 +36,7 @@ export interface CodecToolCall {
   /** A monotonic call id assigned by the gateway. Echoed in the result. */
   callId: string | number;
   /**
-   * Argument token IDs — what the model emitted between
+   * Argument token IDs: what the model emitted between
    * `<tool_call>` and `</tool_call>` markers. These are the *raw* IDs
    * from the model's vocabulary; the tool decodes them however it
    * needs to.

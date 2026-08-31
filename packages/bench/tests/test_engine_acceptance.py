@@ -1,4 +1,4 @@
-"""Engine-image acceptance probes — the gate that runs BEFORE the cross-stack bench.
+"""Engine-image acceptance probes: the gate that runs BEFORE the cross-stack bench.
 
 Encoded from the manual probe sequence the v0.4.1 post-mortem developed
 after a stale-Dockerfile codec-sglang image silently shipped with brotli +
@@ -41,11 +41,11 @@ ENGINE_CONTAINER = os.environ.get("CODEC_ENGINE_CONTAINER", "")  # e.g. codec-de
 ENGINE_FORK_SRC = os.environ.get("CODEC_ENGINE_FORK_SRC", "")    # e.g. /opt/codec/sglang
 
 
-# Required codec endpoints — fork-engine-side. Codec patches add a small surface
+# Required codec endpoints: fork-engine-side. Codec patches add a small surface
 # above the engine's own routes. The supervisor's /openapi.json typically only
 # enumerates admin endpoints (the codec routes are mounted on the engine side
 # and proxied), so we probe each path with a real GET rather than reading
-# openapi.json — that's the contract that matters operationally anyway.
+# openapi.json: that's the contract that matters operationally anyway.
 REQUIRED_CODEC_ENDPOINTS = [
     ("GET", "/codec/schema", {200}),
 ]
@@ -56,7 +56,7 @@ def http() -> httpx.Client:
     """HTTP client used for endpoint-existence probes only (GET /openapi.json etc).
 
     For probes that need to inspect the raw Content-Encoding negotiation,
-    use `raw_post` instead — httpx auto-decompresses zstd via the
+    use `raw_post` instead: httpx auto-decompresses zstd via the
     `zstandard` package (without knowing about our dict) and dies with
     "Dictionary mismatch" before we can inspect the response. We need the
     bytes raw to test negotiation behavior.
@@ -134,7 +134,7 @@ def test_codec_endpoint_present(http: httpx.Client, method: str, path: str, allo
     """Required codec routes respond with an expected status.
 
     A 404 on /codec/schema means the codec patches aren't loaded into the
-    image — the build was from a tree without our entrypoints integration.
+    image: the build was from a tree without our entrypoints integration.
     """
     url = f"{ENGINE_URL}{path}"
     if method == "GET":
@@ -175,7 +175,7 @@ def test_compression_negotiation_per_spec_preference_order(
     fall through to identity instead of being honored), (b) preference-order
     bugs in the negotiator (server picks gzip when zstd+dict available).
 
-    Uses raw_post() to avoid httpx's auto-decompression — we need to see the
+    Uses raw_post() to avoid httpx's auto-decompression: we need to see the
     raw Content-Encoding header and dict-zstd would fail mid-decompress otherwise.
     """
     body = {
@@ -204,7 +204,7 @@ def test_compression_negotiation_per_spec_preference_order(
 def test_zstd_response_includes_codec_zstd_dict_header():
     """Per v0.4 §Codec-Zstd-Dict, every zstd response MUST emit the dict hash.
 
-    Catches: server has zstd module but no dict loaded — wire is technically
+    Catches: server has zstd module but no dict loaded: wire is technically
     valid plain-zstd but operationally misleading vs the spec MUST.
     """
     body = {
@@ -252,7 +252,7 @@ def test_msgpack_response_has_no_text_field():
         assert "ids" in frame, f"frame missing 'ids' key: {frame!r}"
         forbidden = set(frame.keys()) & {"text", "content", "delta"}
         assert not forbidden, (
-            f"msgpack frame leaked text fields {forbidden} — engine did NOT bypass "
+            f"msgpack frame leaked text fields {forbidden}: engine did NOT bypass "
             f"the JSON-SSE detokenizer for stream_format=msgpack. Spec violation. "
             f"Full frame: {frame!r}"
         )

@@ -1,10 +1,10 @@
 /**
- * Wire-protocol defenses — companion to spec/proposals/v0.6-security/02-wire-protocol-attacks.md.
+ * Wire-protocol defenses: companion to spec/proposals/v0.6-security/02-wire-protocol-attacks.md.
  *
  * Implements the testable, transport-independent parts of the wire-protocol
  * security checklist: decompression budgeting, length-frame validation, and
  * compression-negotiation downgrade rejection. The actual transport bindings
- * (HTTP/2, SSE, raw TCP) live elsewhere — this module is the policy core.
+ * (HTTP/2, SSE, raw TCP) live elsewhere: this module is the policy core.
  */
 
 export class CodecDecompressionBudgetExceeded extends Error {
@@ -19,7 +19,7 @@ export class CodecDecompressionBudgetExceeded extends Error {
 export class CodecLengthMismatch extends Error {
   constructor(public readonly declared: number, public readonly actual: number) {
     super(
-      `frame length mismatch: declared=${declared}, actual=${actual} — refusing to truncate-and-continue`,
+      `frame length mismatch: declared=${declared}, actual=${actual}: refusing to truncate-and-continue`,
     );
     this.name = 'CodecLengthMismatch';
   }
@@ -36,7 +36,7 @@ export class CodecNegotiationFailure extends Error {
  * Apply a hard size budget to a streaming decode. Pass an async iterable of
  * chunk buffers (from `zlib.createBrotliDecompress()`, `ZstdDecompressor`,
  * etc.) and a budget in bytes. Throws CodecDecompressionBudgetExceeded if the
- * cumulative output exceeds the budget — rejects the whole operation rather
+ * cumulative output exceeds the budget: rejects the whole operation rather
  * than truncating, which is the correct posture for security-sensitive
  * decompression.
  *
@@ -84,7 +84,7 @@ export type DeploymentTier = 'production' | 'staging' | 'development';
  * Compression-negotiation policy. The "silent identity-fallthrough on missing
  * compression dep" pattern (memory: feedback_engine_image_dep_verify) is the
  * worst Codec failure mode. This function refuses identity in the production
- * tier — a peer advertising no compression support is a downgrade signal in
+ * tier: a peer advertising no compression support is a downgrade signal in
  * production; development tier may allow with a warning surface for the host
  * application to log.
  *
@@ -107,7 +107,7 @@ export function negotiateCompression(
   }
   if (chosen === 'identity' && tier === 'production') {
     throw new CodecNegotiationFailure(
-      'identity-fallthrough rejected in production tier — set tier="development" to override',
+      'identity-fallthrough rejected in production tier: set tier="development" to override',
       'identity',
     );
   }
@@ -115,7 +115,7 @@ export function negotiateCompression(
     return {
       chosen,
       warning:
-        'identity fallthrough — production should never see this; check engine image dep verify',
+        'identity fallthrough: production should never see this; check engine image dep verify',
     };
   }
   return { chosen };

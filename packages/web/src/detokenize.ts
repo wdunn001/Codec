@@ -1,20 +1,20 @@
 /**
- * Detokenizer — IDs → text. Invoked only when a human is going to read the
+ * Detokenizer: IDs → text. Invoked only when a human is going to read the
  * output. Agent-to-agent calls skip this layer entirely.
  *
  * Three correctness concerns it has to get right:
  *
  *   1. Per-token decoding. The way to recover text from a token's vocab key
  *      depends on the map's `encoder` field:
- *        byte_level — each vocab key is a string of GPT-2-encoded bytes
+ *        byte_level: each vocab key is a string of GPT-2-encoded bytes
  *                     (Llama-3, Qwen, Phi-3 …); reverse the byte table.
- *        metaspace  — each vocab key is a ▁-prefixed string (Llama-2,
+ *        metaspace: each vocab key is a ▁-prefixed string (Llama-2,
  *                     Mistral-v3, Mixtral, Gemma); replace ▁ with space.
- *        identity   — vocab keys are already decoded text (test fixtures,
+ *        identity: vocab keys are already decoded text (test fixtures,
  *                     v1 schema maps).
  *
  *   2. Byte-fallback range. SentencePiece-style maps reserve IDs for raw
- *      bytes 0x00–0xFF. These tokens are decoded as single bytes and
+ *      bytes 0x00 to 0xFF. These tokens are decoded as single bytes and
  *      accumulated until they form a valid UTF-8 sequence.
  *
  *   3. Partial multi-byte sequences across frame boundaries. A frame
@@ -27,7 +27,7 @@ import type { TokenizerMap } from './types.js';
 
 export interface DetokenizeOptions {
   /**
-   * If true, this is not the final chunk — buffer any trailing partial
+   * If true, this is not the final chunk: buffer any trailing partial
    * UTF-8 sequence rather than emitting replacement characters. Set to
    * `false` (or omit) on the last chunk so the buffer flushes.
    */
@@ -69,7 +69,7 @@ export class Detokenizer {
   }
 
   /**
-   * Render a chunk of IDs to text. Stateful across calls — partial
+   * Render a chunk of IDs to text. Stateful across calls: partial
    * multi-byte sequences carry over until completed by a later chunk.
    *
    *   const detok = new Detokenizer(map);
@@ -84,7 +84,7 @@ export class Detokenizer {
 
     for (const id of ids) {
       // Byte-fallback range: SentencePiece maps reserve a contiguous block
-      // of IDs for raw bytes 0x00–0xFF.
+      // of IDs for raw bytes 0x00 to 0xFF.
       if (id >= this.fallbackStart && id <= this.fallbackEnd) {
         this.byteBuffer.push(id - this.fallbackStart);
         const flushed = this.tryFlushBytes();
@@ -92,7 +92,7 @@ export class Detokenizer {
         continue;
       }
 
-      // byte_level path — every vocab token is itself a byte sequence,
+      // byte_level path: every vocab token is itself a byte sequence,
       // so we route all token bytes through the same UTF-8 buffer logic.
       if (this.idToBytes) {
         if (this.specialIds.has(id) && !renderSpecial) {
@@ -113,7 +113,7 @@ export class Detokenizer {
         continue;
       }
 
-      // metaspace / identity path — token text is rendered directly.
+      // metaspace / identity path: token text is rendered directly.
       // Flush any pending byte-fallback bytes first.
       if (this.byteBuffer.length > 0) out += this.flushBytesForce();
 
@@ -133,7 +133,7 @@ export class Detokenizer {
     return out;
   }
 
-  /** Reset internal state — call between conversations / requests. */
+  /** Reset internal state: call between conversations / requests. */
   reset(): void {
     this.byteBuffer = [];
   }
@@ -159,7 +159,7 @@ export class Detokenizer {
     return out;
   }
 
-  /** Single-sequence flush — used by the byte-fallback range path. */
+  /** Single-sequence flush: used by the byte-fallback range path. */
   private tryFlushBytes(): string | null {
     if (this.byteBuffer.length === 0) return null;
     const needed = utf8SequenceLength(this.byteBuffer[0]!);
@@ -220,7 +220,7 @@ function buildTextTable(map: TokenizerMap): Map<number, string> {
   if (map.vocab) {
     for (const [token, id] of Object.entries(map.vocab)) {
       // SentencePiece byte-fallback tokens (<0x00>…<0xFF>) live in vocab
-      // but are handled by the byte_fallback range path — skip here.
+      // but are handled by the byte_fallback range path: skip here.
       if (/^<0x[0-9A-Fa-f]{2}>$/.test(token)) continue;
       const text = isMetaspace ? token.replace(/▁/g, ' ') : token;
       out.set(id, text);

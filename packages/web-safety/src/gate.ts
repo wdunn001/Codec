@@ -1,5 +1,5 @@
 /**
- * `SafetyGate` — pure-logic prefilter gate. Framework-free; the host
+ * `SafetyGate`: pure-logic prefilter gate. Framework-free; the host
  * (leet, codec-website, future clients) implements the dialog UI in its
  * own component system using the gate's view-model.
  *
@@ -59,7 +59,7 @@ export interface SafetyGateOptions {
   readonly redact?: typeof defaultRedactMatches;
   /**
    * Audit hook called whenever the gate produces a decision. The host
-   * uses this for telemetry — never put PII in your telemetry; the hook
+   * uses this for telemetry: never put PII in your telemetry; the hook
    * receives only counts and category names, not the matched values.
    */
   readonly audit?: (event: SafetyGateAuditEvent) => void;

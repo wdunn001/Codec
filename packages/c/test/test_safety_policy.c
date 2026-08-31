@@ -1,4 +1,4 @@
-/* C parity tests for slice 11 — mirrors the TS / Python / Rust /
+/* C parity tests for slice 11: mirrors the TS / Python / Rust /
  * .NET / Java suites at the parser-and-URL-builder layer. */
 #include "codec/codec_safety_policy.h"
 #include "codec_test.h"

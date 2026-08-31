@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
  * {@code codec_rs::discover_zstd_dict} (Rust), and
  * {@code Codec.ZstdDictDiscovery.DiscoverAsync} (.NET).
  *
- * <p>The discovery surface is hard-fail by design — silent fallback to
+ * <p>The discovery surface is hard-fail by design: silent fallback to
  * identity bytes was the v0.4.1 sglang COPY-dicts regression class this
  * surface eliminates.
  */

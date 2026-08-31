@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-synth-codec-samples.py — deterministic offline corpus generator for zstd
+synth-codec-samples.py: deterministic offline corpus generator for zstd
 dictionary training. Produces .bin files in the same shape as
 capture-codec-samples.py but without needing a live server.
 
@@ -15,7 +15,7 @@ The synthetic corpus is built by:
      concatenating the frames the way the wire shows them.
 
 The dictionary trained from this corpus will be weaker than one trained from
-live captures (it doesn't see the model's true output distribution — only
+live captures (it doesn't see the model's true output distribution: only
 a permutation over a tokenizer test corpus). But it's reproducible, has no
 GPU/server dependency, and proves the pipeline end-to-end.
 
@@ -125,7 +125,7 @@ def _pick_shape(rng: random.Random) -> StreamShape:
 def load_token_pool(golden_path: Path) -> list[int]:
     """Read the golden tokenizer file and return a flat list of all observed
     token IDs (with repetition). This pool is sampled to build streams. Real
-    distribution > random uint32s — the dict learns the model's actual
+    distribution > random uint32s: the dict learns the model's actual
     high-frequency tokens."""
     data = json.loads(golden_path.read_text(encoding="utf-8"))
     pool: list[int] = []

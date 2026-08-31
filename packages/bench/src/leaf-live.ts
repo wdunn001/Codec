@@ -1,36 +1,36 @@
 /**
- * leaf-live.ts — measure the wire + consumer-CPU effect of MCP leaf-mode.
+ * leaf-live.ts: measure the wire + consumer-CPU effect of MCP leaf-mode.
  *
  * Tool-result-side axis (complementary to the model-emission-side rows
  * mock/searxng/metamcp in agent-loop/). Same tool, same prompt, two
  * server-side modes of @codecai/codec-time-leaf:
  *
- *   A. plain MCP        — env unset → tool returns text only; the consumer
+ *   A. plain MCP: env unset → tool returns text only; the consumer
  *                         must call pickTokenizer(map).encode(text) to
  *                         obtain IDs for KV-cache push / Codec forwarding.
- *   B. mcp-leaf         — CODEC_MAP_URL+CODEC_MAP_HASH set → tool wraps
+ *   B. mcp-leaf: CODEC_MAP_URL+CODEC_MAP_HASH set → tool wraps
  *                         the result with a per-block
  *                         _meta['ai.codec/leaf-tokenization'] payload;
  *                         the consumer calls readCodecMeta(result) and
  *                         takes the IDs without retokenizing.
  *
  * Measurements per path (N warm calls, median reported):
- *   wire        — JSON-RPC response body bytes for tools/call
- *   tokenize    — consumer-side ms from "have response" to "have IDs"
- *                 (BPE encode on plain; meta-read on leaf — leaf is ~0)
- *   ttfb        — request-sent → first-response-byte ms
- *   total       — request-sent → IDs-in-hand ms (= ttfb + tokenize + parse)
+ *   wire: JSON-RPC response body bytes for tools/call
+ *   tokenize: consumer-side ms from "have response" to "have IDs"
+ *                 (BPE encode on plain; meta-read on leaf: leaf is ~0)
+ *   ttfb: request-sent → first-response-byte ms
+ *   total: request-sent → IDs-in-hand ms (= ttfb + tokenize + parse)
  *
  * Both paths produce the same final state (IDs aligned to the tool's text);
  * we assert that asserting equality across paths catches any regression
  * in the leaf wrapper's idempotence.
  *
- * Caveat: leaf-mode's wire overhead is FIXED per text block (~80–150 B for
+ * Caveat: leaf-mode's wire overhead is FIXED per text block (~80 to 150 B for
  * the _meta envelope) but its savings scale with text-block length (BPE
  * cost ≈ O(chars)). For get_current_time (≈30 char timestamp / ~15
- * tokens), leaf adds wire bytes but eliminates a ~0.1–0.3 ms tokenize.
+ * tokens), leaf adds wire bytes but eliminates a ~0.1 to 0.3 ms tokenize.
  * The scaling note is in the README; this bench captures one
- * representative point — a longer-text tool would shift the wire balance
+ * representative point: a longer-text tool would shift the wire balance
  * in leaf's favour while keeping the tokenize differential roughly linear.
  */
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
@@ -196,7 +196,7 @@ async function initialize(client: StdioMcpClient): Promise<void> {
     capabilities: {},
     clientInfo: { name: 'leaf-live-bench', version: '0.4.1' },
   });
-  // SDK accepts the notification but doesn't reply — no-op for our id flow.
+  // SDK accepts the notification but doesn't reply: no-op for our id flow.
 }
 
 // ── Bench paths ──────────────────────────────────────────────────────────────
@@ -279,7 +279,7 @@ async function main() {
   // would mean the leaf wrapper is producing IDs that diverge from the
   // tokenizer the consumer pinned. (Cross-path equality between plain and
   // leaf is NOT meaningful for time-varying tools like get_current_time
-  // — each subprocess sees a slightly different wall-clock.)
+  //: each subprocess sees a slightly different wall-clock.)
   let leafIntegrityFails = 0;
   const leaf = await benchPath(
     'mcp-leaf (consumer reads ids from _meta)',
@@ -294,7 +294,7 @@ async function main() {
       }
       const prepMs = performance.now() - t0;
       // Integrity: every leaf sample's ids MUST equal a fresh re-tokenize of
-      // the same text. Counted, not aborted — we still want the numbers.
+      // the same text. Counted, not aborted: we still want the numbers.
       const expected: number[] = [];
       for (const p of pairings) expected.push(...tokenizer.encode(p.text));
       if (expected.join(',') !== ids.join(',')) {
@@ -354,7 +354,7 @@ async function main() {
     `leaf integrity (ids ≡ encode(text)):  ✓ ${leaf.samples.length}/${leaf.samples.length} samples\n` +
     `\n` +
     `Notes:\n` +
-    `  * Leaf-mode wire overhead is fixed per text block (~80–150 B for the\n` +
+    `  * Leaf-mode wire overhead is fixed per text block (~80 to 150 B for the\n` +
     `    _meta envelope) and savings scale with text length. For tiny\n` +
     `    timestamp results, leaf adds wire bytes; consumer CPU still wins\n` +
     `    because tokenize is O(chars). The crossover where leaf wire ≤ plain\n` +

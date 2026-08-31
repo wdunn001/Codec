@@ -1,4 +1,4 @@
-/* CodecFrame encode/decode — msgpack and protobuf, hand-rolled.
+/* CodecFrame encode/decode: msgpack and protobuf, hand-rolled.
  *
  * The frame shape is fixed:
  *   { ids: [uint32], done: bool, finish_reason?: string }
@@ -105,7 +105,7 @@ static int mp_pack_bool(bytebuf_t *b, bool v) { return bb_putc(b, v ? 0xC3 : 0xC
 /* Pack one tool call as a msgpack map. Mirrors sglang's
  * _encode_tool_call_msg + the python wire shape:
  *   {arguments_json: str, name?: str, id?: str}
- * Only present fields are packed — keeps small frames small. */
+ * Only present fields are packed: keeps small frames small. */
 static int mp_pack_tool_call(bytebuf_t *b, const codec_tool_call_t *tc) {
     uint32_t fields = 1; /* arguments_json is required */
     if (tc->name) fields++;
@@ -113,7 +113,7 @@ static int mp_pack_tool_call(bytebuf_t *b, const codec_tool_call_t *tc) {
 
     if (!mp_pack_map_header(b, fields)) return 0;
 
-    /* arguments_json — always emitted; empty string if the model produced
+    /* arguments_json: always emitted; empty string if the model produced
      * an empty body. Downstream parsers distinguish missing vs empty by
      * key presence. */
     {
@@ -206,11 +206,11 @@ static int mp_read_uint(mp_reader_t *r, uint32_t *out) {
         case 0xCD: if (!mp_read_be(r, 2, &v)) return 0; *out = (uint32_t)v; return 1;
         case 0xCE: if (!mp_read_be(r, 4, &v)) return 0; *out = (uint32_t)v; return 1;
         case 0xCF:
-            /* uint64 — we only support uint32 token IDs; reject overflow. */
+            /* uint64: we only support uint32 token IDs; reject overflow. */
             if (!mp_read_be(r, 8, &v)) return 0;
             if (v > 0xFFFFFFFFu) return 0;
             *out = (uint32_t)v; return 1;
-        case 0xD0: case 0xD1: case 0xD2: case 0xD3: /* signed — should not appear */
+        case 0xD0: case 0xD1: case 0xD2: case 0xD3: /* signed: should not appear */
             return 0;
         default: return 0;
     }

@@ -1,9 +1,9 @@
 /**
- * 02 — Wire/protocol attack/defense tests.
+ * 02: Wire/protocol attack/defense tests.
  *
  * Each test demonstrates one attack class from
  * spec/proposals/v0.6-security/02-wire-protocol-attacks.md plus the defense
- * function that neutralizes it. Tests are transport-independent — they
+ * function that neutralizes it. Tests are transport-independent: they
  * exercise the policy core without requiring a running Codec server.
  */
 import { test } from 'node:test';
@@ -42,14 +42,14 @@ test('attack: decompression bomb exceeds budget', async () => {
 });
 
 test('defense: budgeted decode accepts within budget', async () => {
-  // 8 MiB decoded under a 16 MiB budget — should pass.
+  // 8 MiB decoded under a 16 MiB budget: should pass.
   const chunkSize = 1024 * 1024;
   const chunks = Array.from({ length: 8 }, () => chunkSize);
   const out = await decodeWithBudget(yieldChunks(chunks), 16 * 1024 * 1024);
   assert.equal(out.byteLength, 8 * 1024 * 1024);
 });
 
-test('defense: budget exceeded mid-stream — rejects (does not truncate-and-continue)', async () => {
+test('defense: budget exceeded mid-stream: rejects (does not truncate-and-continue)', async () => {
   // Verify the exception happens AT the budget breach, not after consuming
   // the full bomb. This is the "reject not truncate" posture.
   const yielded: number[] = [];
@@ -87,7 +87,7 @@ test('defense: matched length passes validation', () => {
   assert.doesNotThrow(() => validateFramedLength(128, body));
 });
 
-test('attack: declared length larger than actual body — also rejected', () => {
+test('attack: declared length larger than actual body: also rejected', () => {
   const body = new Uint8Array(50);
   // The other direction of length confusion: declared > actual means the
   // parser would over-read into the next frame's header.
@@ -96,7 +96,7 @@ test('attack: declared length larger than actual body — also rejected', () => 
 
 // ── Compression negotiation downgrade ────────────────────────────────────────
 
-test('attack: server advertises only identity — production tier rejects', () => {
+test('attack: server advertises only identity: production tier rejects', () => {
   // Malicious server claims no compression support, forcing identity fallback.
   // Per spec/proposals/v0.6-security/02-wire-protocol-attacks.md §1 +
   // memory feedback_engine_image_dep_verify, this is the worst Codec
@@ -115,7 +115,7 @@ test('attack: server advertises only identity — production tier rejects', () =
   );
 });
 
-test('defense: same scenario in development tier — returns identity with warning', () => {
+test('defense: same scenario in development tier: returns identity with warning', () => {
   const result = negotiateCompression(
     ['dict-zstd', 'zstd', 'br', 'gzip', 'identity'],
     ['identity'],
@@ -136,7 +136,7 @@ test('defense: legitimate negotiation prefers strongest mutual compression', () 
   assert.equal(warning, undefined);
 });
 
-test('defense: no overlap at all — throws negotiation failure', () => {
+test('defense: no overlap at all: throws negotiation failure', () => {
   assert.throws(
     () => negotiateCompression(['gzip'], ['br'], 'production'),
     CodecNegotiationFailure,

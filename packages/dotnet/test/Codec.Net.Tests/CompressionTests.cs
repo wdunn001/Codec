@@ -12,7 +12,7 @@ public class CompressionTests
     /// Canonical hash from
     /// <c>packages/bench/fixtures/dict-zstd-interop/manifest.json</c>.
     /// Every Codec client (TS, Python, Rust, Java, .NET, C) MUST produce
-    /// this exact string for the shipped dict bytes — drift means the
+    /// this exact string for the shipped dict bytes: drift means the
     /// header value won't match the server's emission and clients will
     /// refuse to decompress.
     /// </summary>
@@ -125,7 +125,7 @@ public class CompressionTests
             var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["Content-Encoding"] = enc,
-                // Header is harmlessly present — but the response is not
+                // Header is harmlessly present: but the response is not
                 // zstd, so we MUST NOT throw and MUST return null.
                 ["Codec-Zstd-Dict"] = ExpectedFixtureDictHash,
             };

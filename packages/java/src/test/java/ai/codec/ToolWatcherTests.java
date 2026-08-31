@@ -88,7 +88,7 @@ class ToolWatcherTests {
     void strayEndPassesThrough() {
         ToolWatcher w = new ToolWatcher(synthMap(), "<tool_call>", "</tool_call>");
         List<WatcherEvent> evs = w.feed(new long[] { 0, END, 1 });
-        // End with no preceding start — ordinary token.
+        // End with no preceding start: ordinary token.
         assertEquals(1, evs.size());
         assertEquals(WatcherEventKind.PASSTHROUGH, evs.get(0).getKind());
         assertArrayEquals(new long[] { 0, END, 1 }, evs.get(0).getIds());
@@ -115,7 +115,7 @@ class ToolWatcherTests {
     }
 
     /**
-     * No-decode contract — must operate on raw IDs only, never reading map.vocab.
+     * No-decode contract: must operate on raw IDs only, never reading map.vocab.
      * Use a map with empty vocab and feed IDs outside any plausible vocab range.
      * The watcher must emit them verbatim.
      */

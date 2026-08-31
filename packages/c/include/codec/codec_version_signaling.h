@@ -1,5 +1,5 @@
 /*
- * codec_version_signaling.h — Codec v0.4 version negotiation, C client side.
+ * codec_version_signaling.h: Codec v0.4 version negotiation, C client side.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -9,7 +9,7 @@
  *   § Capabilities are opt-on at the server
  *   § Graceful downgrade
  *
- * libcodec stays HTTP-transport-agnostic — callers feed body bytes
+ * libcodec stays HTTP-transport-agnostic: callers feed body bytes
  * (from libcurl, raw sockets, FFI, whatever) into the parsers here
  * and get structured data back. No HTTP client embedded.
  *

@@ -1,11 +1,11 @@
-"""Translator tests — mirror packages/web/test/translate.test.ts.
+"""Translator tests: mirror packages/web/test/translate.test.ts.
 
 Three layers of verification:
   1. Synthetic byte_level fixture round-trips with itself (identity).
   2. Real Qwen-2 -> Qwen-2 (identity over a 152K-vocab production
-     tokenizer) — proves the streaming buffering doesn't drop or
+     tokenizer): proves the streaming buffering doesn't drop or
      duplicate text. Skipped when codec-maps isn't mounted.
-  3. Cross-vocab: real Qwen-2 -> Llama-3 — sanity-checks that
+  3. Cross-vocab: real Qwen-2 -> Llama-3: sanity-checks that
      translated output detokenizes back to the original under the
      target tokenizer. Skipped when either map is missing.
 """
@@ -72,7 +72,7 @@ def test_translator_identity_qwen2():
     tr = Translator(m, m)
     out = tr.translate(src_ids, partial=False)
 
-    # Identity translator — IDs in V_A == IDs in V_A — output must
+    # Identity translator: IDs in V_A == IDs in V_A: output must
     # detokenize back to the same text under the target map.
     detok_text = Detokenizer(m).render(out)
     assert detok_text == text
@@ -141,7 +141,7 @@ def test_static_translation_table_identity_includes_self():
     m = _load_map(p)
 
     table = static_translation_table(m, m)
-    # We don't assert table[id] == [id] — context-free re-encoding may
+    # We don't assert table[id] == [id]: context-free re-encoding may
     # split a multi-byte token differently. We assert round-trip text.
     detok = Detokenizer(m)
 

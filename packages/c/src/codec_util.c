@@ -190,7 +190,7 @@ static size_t utf8_encode_codepoint(uint32_t cp, uint8_t out[4]) {
 /* ── decode a byte-level BPE token to raw bytes ─────────────────────────── */
 /*
  * Each codepoint of `raw` is mapped back to a byte via the GPT-2 reverse
- * table. Codepoints not in the table emit their UTF-8 bytes (defensive —
+ * table. Codepoints not in the table emit their UTF-8 bytes (defensive:
  * shouldn't happen for valid vocab keys).
  *
  * Returns a newly-malloced buffer; caller frees with free().
@@ -209,7 +209,7 @@ char *codec_decode_byte_level_token(const char *raw, size_t raw_len, size_t *out
     while (i < raw_len) {
         uint32_t cp;
         int n = utf8_read_codepoint(raw + i, raw_len - i, &cp);
-        if (n == 0) { /* invalid input — bail */ free(buf); *out_len = 0; return NULL; }
+        if (n == 0) { /* invalid input: bail */ free(buf); *out_len = 0; return NULL; }
         i += (size_t)n;
 
         int b = codepoint_to_byte(cp);
@@ -286,7 +286,7 @@ void codec_frame_init(codec_frame_t *frame) {
     frame->ids_len = 0;
     frame->done = false;
     frame->finish_reason = NULL;
-    /* tool_calls is a borrowed pointer — see codec.h. Init nulls it out;
+    /* tool_calls is a borrowed pointer: see codec.h. Init nulls it out;
      * destroy does NOT free it (caller owns the array and the strings). */
     frame->tool_calls = NULL;
     frame->tool_calls_len = 0;
@@ -296,6 +296,6 @@ void codec_frame_destroy(codec_frame_t *frame) {
     if (!frame) return;
     free(frame->ids);
     free(frame->finish_reason);
-    /* tool_calls intentionally NOT freed — borrowed pointer. */
+    /* tool_calls intentionally NOT freed: borrowed pointer. */
     codec_frame_init(frame);
 }

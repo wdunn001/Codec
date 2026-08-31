@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cross-vocab handoff benchmark — Llama-3 → Qwen-2.
+"""Cross-vocab handoff benchmark: Llama-3 → Qwen-2.
 
 Measures the agent-to-agent handoff cell of the Codec story: agent A
 emits a token stream in vocab V_A, agent B consumes a stream in vocab
@@ -88,7 +88,7 @@ SAMPLE_TEXT = (
     "different fields, share the same mathematical form: a sum over "
     "states of probability times the logarithm of probability, "
     "negated so the result is non-negative. This is not a "
-    "coincidence — both quantify the same underlying notion of "
+    "coincidence: both quantify the same underlying notion of "
     "uncertainty.\n\n"
     "Codec is a token-native binary transport for AI APIs. It "
     "replaces JSON wrapping with a compact frame carrying raw "
@@ -101,7 +101,7 @@ SAMPLE_TEXT = (
     "speaks vocabulary V_A; agent B speaks V_B. With JSON the "
     "bridge has to detokenize A's output to text, then re-tokenize "
     "into V_B for B. With Codec the bridge can do the same work "
-    "in-process — A's IDs come over the wire as packed integers, "
+    "in-process: A's IDs come over the wire as packed integers, "
     "the Translator pipes them through a tokenizer-of-V_B, and B "
     "receives V_B IDs without text ever crossing the wire."
 )
@@ -121,7 +121,7 @@ def _build_target_ids(detok: Detokenizer, llama_tok: BPETokenizer, target: int) 
 def _encode_codec_msgpack_frame(ids: list[int]) -> bytes:
     """Build one Codec msgpack frame matching the wire format used by sglang/vllm/llamacpp.
 
-    Single-frame here (no chunking) — we're measuring bridge-side CPU,
+    Single-frame here (no chunking): we're measuring bridge-side CPU,
     not stream chunking; chunk overhead is subsumed in the cross-stack
     matrix already.
     """
@@ -155,7 +155,7 @@ def _encode_json_sse(text: str, chunk_chars: int = 4) -> bytes:
 
 
 def _parse_json_sse_to_text(wire: bytes) -> str:
-    """Reassemble the JSON-SSE chunks back into text — what the bridge does."""
+    """Reassemble the JSON-SSE chunks back into text: what the bridge does."""
     out: list[str] = []
     for line in wire.splitlines():
         if not line.startswith(b"data: "):
@@ -290,7 +290,7 @@ async def main() -> None:
             )
 
         # === Correctness: both paths must produce the SAME Qwen IDs.
-        # Strict equality is the only acceptable outcome — a single
+        # Strict equality is the only acceptable outcome: a single
         # divergent token here would invalidate the marketing claim.
         if qwen_ids_codec != qwen_ids_json:
             # Find first divergence for the postmortem

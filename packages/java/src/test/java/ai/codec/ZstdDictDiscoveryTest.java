@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * URL-builder + hash-validation tests for the v0.5 discoverable zstd
  * dictionary surface. Mirrors the Python, TypeScript, Rust, and .NET
- * test suites — same input vectors so cross-client parity is auditable.
+ * test suites: same input vectors so cross-client parity is auditable.
  *
  * <p>Per the existing convention (see {@link MapLoaderTests}), network
  * round-trips are not exercised here; the cross-stack bench cohort is

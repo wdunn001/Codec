@@ -2,13 +2,13 @@
 //! Tool-call / region watcher.
 //!
 //! Mirrors `libcodec`'s `codec_tool_watcher`, the .NET `ToolWatcher`,
-//! and `@codecai/web`'s `ToolWatcher` — same state-machine semantics.
+//! and `@codecai/web`'s `ToolWatcher`: same state-machine semantics.
 //! Detects delimited regions (tool calls, reasoning blocks, vision
 //! spans, sandbox regions, channel headers) in a token-ID stream
 //! without ever decoding. The hot loop is a `u32` compare against two
 //! cached IDs; no vocab read, no detokenize call, no string allocation.
 //!
-//! State survives across [`ToolWatcher::feed`] calls — a region split
+//! State survives across [`ToolWatcher::feed`] calls: a region split
 //! between network frames buffers internally until the end marker
 //! arrives.
 
@@ -40,7 +40,7 @@ pub enum ToolWatcherError {
 /// Stateful watcher for delimited regions in a token-ID stream.
 ///
 /// Construct with a map and the names of the start/end specials. The
-/// watcher resolves them to IDs once and caches them — no further map
+/// watcher resolves them to IDs once and caches them: no further map
 /// access happens during [`ToolWatcher::feed`].
 pub struct ToolWatcher {
     pub start_id: u32,
@@ -98,7 +98,7 @@ impl ToolWatcher {
         let mut pt_start = 0usize;
 
         // Single-pass scan. Identical state machine to the C / .NET / TS
-        // implementations — keep them in sync if you change one.
+        // implementations: keep them in sync if you change one.
         for i in 0..n {
             let id = ids[i];
             if !self.inside {
@@ -122,7 +122,7 @@ impl ToolWatcher {
                 self.inside = false;
                 pt_start = i + 1;
             } else if id == self.start_id {
-                // Nested start — ignore. Most models don't nest these markers.
+                // Nested start: ignore. Most models don't nest these markers.
             } else {
                 self.region.push(id);
             }

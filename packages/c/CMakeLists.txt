@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 #
-# libcodec — C implementation of the Codec binary transport protocol.
+# libcodec: C implementation of the Codec binary transport protocol.
 #
 # Pure C99, zero external runtime deps. Vendored sha256 (public domain) and
 # jsmn (MIT) live in src/. Builds a shared and/or static library, installs
@@ -44,7 +44,7 @@ option(CODEC_COVERAGE      "Enable gcov/lcov coverage instrumentation" OFF)
 # -DCODEC_WITH_BPE_ENCODER=OFF. Public-API symbols still link
 # (returning CODEC_ERR_NOT_BUILT) so consumer code doesn't need ifdefs.
 # Tools built on the @codecai/tool-kit pre-cached pattern never call
-# runtime BPE — they ship cached IDs at build time. Default ON to
+# runtime BPE: they ship cached IDs at build time. Default ON to
 # preserve current behaviour.
 option(CODEC_WITH_BPE_ENCODER "Include BPE encoder + Translator + pretok runtime + Unicode tables (~25 KB)" ON)
 
@@ -52,7 +52,7 @@ if(NOT CODEC_BUILD_SHARED AND NOT CODEC_BUILD_STATIC)
     message(FATAL_ERROR "At least one of CODEC_BUILD_SHARED / CODEC_BUILD_STATIC must be ON")
 endif()
 
-# Coverage flags — opt-in via `cmake -DCODEC_COVERAGE=ON`. Added 2026-05-11
+# Coverage flags: opt-in via `cmake -DCODEC_COVERAGE=ON`. Added 2026-05-11
 # for the v0.4 release cut.
 if(CODEC_COVERAGE)
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -131,7 +131,7 @@ endfunction()
 
 # ── Targets ──────────────────────────────────────────────────────────────────
 
-# Static library always — shared depends on it for symbol re-export on some
+# Static library always: shared depends on it for symbol re-export on some
 # platforms but we keep them as separate compilation units to be safe.
 if(CODEC_BUILD_STATIC)
     add_library(codec_static STATIC ${CODEC_SOURCES} ${CODEC_HEADERS})

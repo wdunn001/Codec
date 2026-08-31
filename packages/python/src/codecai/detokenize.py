@@ -1,11 +1,11 @@
-"""Detokenizer — token IDs → text.
+"""Detokenizer: token IDs → text.
 
 Three correctness concerns it handles:
 
 1. Per-token decoding via the map's encoder (byte_level / metaspace / identity).
-2. Byte-fallback range — IDs in ``[byte_fallback_start, byte_fallback_end]``
+2. Byte-fallback range: IDs in ``[byte_fallback_start, byte_fallback_end]``
    are decoded as raw bytes and accumulated until a valid UTF-8 sequence forms.
-3. Partial multi-byte sequences across frame boundaries — buffered between
+3. Partial multi-byte sequences across frame boundaries: buffered between
    calls when ``partial=True``.
 """
 from __future__ import annotations
@@ -120,7 +120,7 @@ class Detokenizer:
         return "".join(out)
 
     def reset(self) -> None:
-        """Reset internal state — call between conversations / requests."""
+        """Reset internal state: call between conversations / requests."""
         self._byte_buffer.clear()
 
     def _flush_complete(self, out: list[str]) -> None:

@@ -51,14 +51,14 @@ test('ToolWatcher: passthrough → region → passthrough', () => {
 test('ToolWatcher: region split across feeds', () => {
   const w = new ToolWatcher(SYN_MAP, '<tool_call>', '</tool_call>');
 
-  /* Feed 1: "hello <tool_call> foo" — region opens but doesn't close. */
+  /* Feed 1: "hello <tool_call> foo": region opens but doesn't close. */
   let evs = w.feed([0, START, 3]);
   assert.equal(evs.length, 1);
   assert.equal(evs[0]!.kind, 'passthrough');
   assert.deepEqual(evs[0]!.ids, [0]);
   assert.equal(w.inside, true);
 
-  /* Feed 2: "bar </tool_call> world" — closes region, then more text. */
+  /* Feed 2: "bar </tool_call> world": closes region, then more text. */
   evs = w.feed([4, END, 1]);
   assert.equal(evs.length, 2);
   assert.equal(evs[0]!.kind, 'region');
@@ -85,7 +85,7 @@ test('ToolWatcher: multiple regions in one feed', () => {
 test('ToolWatcher: stray end marker passes through', () => {
   const w = new ToolWatcher(SYN_MAP, '<tool_call>', '</tool_call>');
   const evs = w.feed([0, END, 1]);
-  /* End marker without preceding start — treated as ordinary token. */
+  /* End marker without preceding start: treated as ordinary token. */
   assert.equal(evs.length, 1);
   assert.equal(evs[0]!.kind, 'passthrough');
   assert.deepEqual(evs[0]!.ids, [0, END, 1]);
@@ -111,14 +111,14 @@ test('ToolWatcher: reset() drops in-flight region', () => {
 });
 
 /*
- * No-decode contract — mirrors test_watcher_does_not_decode_tokens in
+ * No-decode contract: mirrors test_watcher_does_not_decode_tokens in
  * the C suite. Use a map with empty vocab and feed token IDs that are
  * outside any reasonable vocab range (and above vocab_size). The
  * watcher must emit them verbatim. Any decode path would either fail
- * the vocab lookup or produce empty strings — either way, bit-for-bit
+ * the vocab lookup or produce empty strings: either way, bit-for-bit
  * equality on emitted IDs would not hold.
  */
-test('ToolWatcher: never decodes — operates on raw IDs', () => {
+test('ToolWatcher: never decodes: operates on raw IDs', () => {
   const noVocabRaw = {
     id: 'test/no-vocab',
     version: '2' as const,
@@ -130,7 +130,7 @@ test('ToolWatcher: never decodes — operates on raw IDs', () => {
   validateMap(noVocabRaw);
   const noVocab: TokenizerMap = noVocabRaw;
   const w = new ToolWatcher(noVocab, '<tool_call>', '</tool_call>');
-  /* Big values — well above any plausible vocab. */
+  /* Big values: well above any plausible vocab. */
   const BIG_A = 0xFFFFFF00, BIG_B = 0xDEADBEEF, BIG_C = 0xCAFEBABE;
   const evs = w.feed([12345, BIG_A, START, BIG_B, BIG_C, END, 99999]);
   assert.equal(evs.length, 3);

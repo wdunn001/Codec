@@ -1,4 +1,4 @@
-"""Translator — cross-vocab token-stream pipe.
+"""Translator: cross-vocab token-stream pipe.
 
 Take Agent A's token IDs in vocab V_A, produce Agent B's token IDs in
 vocab V_B, with no text ever leaving the process. Internally::
@@ -7,7 +7,7 @@ vocab V_B, with no text ever leaving the process. Internally::
 
 The text intermediate is purely local; agent-to-agent traffic still
 carries only token IDs on the wire. Mirrors the TS ``Translator`` class
-from ``@codecai/web`` — same word-boundary buffering rules.
+from ``@codecai/web``: same word-boundary buffering rules.
 
 Streaming caveat: BPE merges depend on context, so re-tokenizing partial
 words mid-stream produces different IDs than re-tokenizing the complete
@@ -25,7 +25,7 @@ from .tokenize import Tokenizer, pick_tokenizer
 from .types import TokenizerMap
 
 
-# ASCII whitespace + common Unicode whitespace block — covers the
+# ASCII whitespace + common Unicode whitespace block: covers the
 # pre-tokenizer regexes used by Llama-3, Qwen, Phi-3, Mistral, etc.
 _WHITESPACE_CODEPOINTS = frozenset({
     0x20, 0x09, 0x0A, 0x0D, 0x0B, 0x0C,
@@ -38,7 +38,7 @@ class Translator:
 
     Construct with a source map and a target map. Call :meth:`translate`
     repeatedly with chunks of source IDs; receive chunks of target IDs.
-    Stateful across calls — partial words buffer internally.
+    Stateful across calls: partial words buffer internally.
     """
 
     __slots__ = (
@@ -65,7 +65,7 @@ class Translator:
             partial word stays buffered). ``False`` (or call
             :meth:`finish`) on the final chunk so the buffer drains.
         """
-        # Render through V_A's detokenizer with the same partial flag —
+        # Render through V_A's detokenizer with the same partial flag:
         # the detokenizer handles partial UTF-8 byte sequences for us.
         text = self._from_detok.render(ids, partial=partial)
         if text:
@@ -76,7 +76,7 @@ class Translator:
             self._text_buffer = ""
             return out
 
-        # Streaming chunk — find the last safe boundary and flush
+        # Streaming chunk: find the last safe boundary and flush
         # before it. Pre-tokenizers split at whitespace, so re-encoding
         # text up to the last whitespace yields the same IDs as
         # re-encoding the complete word later.
@@ -129,7 +129,7 @@ def static_translation_table(
     for analysis (vocab overlap, cost estimation) and for fast lookups
     when context-free translation is acceptable.
 
-    Limitations: this is context-free — token boundaries don't align
+    Limitations: this is context-free: token boundaries don't align
     across vocabs, and BPE merges depend on context. The single-shot
     result ``static_translation_table(A, B)[id_A]`` may differ from
     what :func:`translate` produces when the same ``id_A`` appears

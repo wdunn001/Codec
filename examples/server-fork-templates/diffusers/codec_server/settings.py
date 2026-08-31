@@ -12,7 +12,7 @@ from typing import List, Optional
 
 @dataclass
 class CodecServerSettings:
-    # Engine identity — the diffusers checkpoint loaded behind the latent_space.
+    # Engine identity: the diffusers checkpoint loaded behind the latent_space.
     model: str = "stabilityai/stable-diffusion-2-1-base"
     latent_space: str = "stabilityai/sd-vae-ft-mse"
 
@@ -20,7 +20,7 @@ class CodecServerSettings:
     host: str = "127.0.0.1"
     port: int = 8200
 
-    # Pipeline support — the seven names from spec/PIPELINES.md, gated to the
+    # Pipeline support: the seven names from spec/PIPELINES.md, gated to the
     # subset this engine can actually produce. raw is mandatory.
     image_pipelines: List[str] = field(
         default_factory=lambda: ["raw", "int8", "int4"]
@@ -29,13 +29,13 @@ class CodecServerSettings:
         default_factory=lambda: ["raw", "int8-adaptive", "int4-adaptive", "delta+int8", "delta+int4"]
     )
 
-    # Latent dict pool — directory the supervisor populates from the
+    # Latent dict pool: directory the supervisor populates from the
     # latent-space-map's zstd_dictionaries[] entries. Each file is named
     # `<latent_space_slug>-<format>-<pipeline_slug>-v1.dict`. Empty path
     # disables zstd negotiation; the server falls through to gzip / identity.
     latent_dicts_dir: str = "/opt/codec/dicts/latents"
 
-    # Latent-space-map document URL — what /codec/info advertises. Bench
+    # Latent-space-map document URL: what /codec/info advertises. Bench
     # cells reference this URL plus the document's sha256 for fingerprinting.
     latent_map_url: Optional[str] = None
     latent_map_sha256: Optional[str] = None

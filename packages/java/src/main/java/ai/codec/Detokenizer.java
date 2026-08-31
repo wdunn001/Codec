@@ -18,9 +18,9 @@ import java.util.Set;
  * handles:
  * <ol>
  *   <li>Per-token decoding via the map's encoder (byte_level / metaspace / identity).</li>
- *   <li>Byte-fallback range — IDs in {@code [byte_fallback_start, byte_fallback_end]}
+ *   <li>Byte-fallback range: IDs in {@code [byte_fallback_start, byte_fallback_end]}
  *       are decoded as raw bytes and accumulated until a valid UTF-8 sequence forms.</li>
- *   <li>Partial multi-byte sequences across frame boundaries — buffered between
+ *   <li>Partial multi-byte sequences across frame boundaries: buffered between
  *       calls when {@code partial: true}.</li>
  * </ol>
  */
@@ -105,7 +105,7 @@ public final class Detokenizer {
         return render(arr, options);
     }
 
-    /** Reset internal state — call between conversations / requests. */
+    /** Reset internal state: call between conversations / requests. */
     public void reset() {
         byteBuffer.clear();
     }

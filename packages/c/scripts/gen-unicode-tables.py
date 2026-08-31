@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 """
-gen-unicode-tables.py — emit a C99 file with Unicode property tables.
+gen-unicode-tables.py: emit a C99 file with Unicode property tables.
 
 The Codec pre-tokenizer program references three Unicode classes:
-  - Letter   (\\p{L})     — General_Category in {Lu, Ll, Lt, Lm, Lo}
-  - Number   (\\p{N})     — General_Category in {Nd, Nl, No}
-  - White_Space (\\s)     — code points with Unicode property White_Space
+  - Letter   (\\p{L}): General_Category in {Lu, Ll, Lt, Lm, Lo}
+  - Number   (\\p{N}): General_Category in {Nd, Nl, No}
+  - White_Space (\\s): code points with Unicode property White_Space
 
 Most regex engines bring these tables internally. libcodec ships them as
 generated C arrays so the runtime has zero regex dependency. The output
@@ -109,7 +109,7 @@ def emit_codepoint_array(name: str, codepoints: List[int]) -> str:
 HEADER = """\
 /* SPDX-License-Identifier: MIT
  *
- * codec_unicode_tables.c — generated. Do not edit by hand.
+ * codec_unicode_tables.c: generated. Do not edit by hand.
  *
  * Source generator: packages/c/scripts/gen-unicode-tables.py
  * Unicode revision: {unicode_version}

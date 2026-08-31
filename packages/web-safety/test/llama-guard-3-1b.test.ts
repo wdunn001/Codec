@@ -77,7 +77,7 @@ test('parseLlamaGuardOutput: unparseable category list falls back to generic uns
 
 test('parseLlamaGuardOutput: ignores out-of-range S-codes', () => {
   const r = parseLlamaGuardOutput('unsafe\nS99');
-  // S99 isn't a valid Llama Guard category — should be ignored, falls
+  // S99 isn't a valid Llama Guard category: should be ignored, falls
   // through to the catch-all unsafe=1 branch.
   assert.equal((r.scores as Record<string, number>).unsafe, 1);
 });
@@ -205,7 +205,7 @@ test('resolveClassifier: returns a working LlamaGuard31B via the registry', asyn
 test('resolveClassifier: when WebGPU absent and only Llama Guard registered, falls back fails (no capable alt)', async () => {
   _unregisterForTest();
   registerLlamaGuard31B({
-    // skipWebGpuCheck NOT set — capability() will report WebGPU missing.
+    // skipWebGpuCheck NOT set: capability() will report WebGPU missing.
     generatorFactory: makeStubFactory('safe'),
   });
   await assert.rejects(

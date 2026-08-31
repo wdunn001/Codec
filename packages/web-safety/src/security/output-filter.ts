@@ -1,5 +1,5 @@
 /**
- * Output-side filter — markdown link/image URL allowlisting to prevent
+ * Output-side filter: markdown link/image URL allowlisting to prevent
  * model-output-mediated exfiltration.
  *
  * The dominant real-world LLM exploitation pattern is:
@@ -16,7 +16,7 @@
  *
  * Default allowlist is empty (security-first). The host application
  * (`leet`, `codec-website`, recruiter UI, etc.) configures its allowlist
- * explicitly. Strip query strings even from allowlisted domains — exfil
+ * explicitly. Strip query strings even from allowlisted domains: exfil
  * rides in the query string.
  *
  * Maps to spec/proposals/v0.6-security/04-output-exfiltration.md.

@@ -1,5 +1,5 @@
 /**
- * wire-compress — pick the right Content-Encoding for streaming responses.
+ * wire-compress: pick the right Content-Encoding for streaming responses.
  *
  * Framework-agnostic, zero dependencies. Designed for streaming workloads
  * with bursty small frames (SSE, Codec, gRPC-Web text, etc.) where the
@@ -10,7 +10,7 @@
  *   2. Look at the (best-guess) payload size: what we'll be sending.
  *   3. Pick the encoding the data says is smallest at that size, restricted
  *      to what the client actually supports.
- *   4. Fall back gracefully — gzip is the universal floor; identity is the
+ *   4. Fall back gracefully: gzip is the universal floor; identity is the
  *      always-works escape hatch.
  *
  * The default thresholds come from a real measurement against a streaming
@@ -49,7 +49,7 @@ export interface PickInput {
    * handoff, batch eval)?
    *
    * Default `true` (interactive). When `true`, the picker avoids
-   * encodings that buffer the whole response — measured TTFT goes from
+   * encodings that buffer the whole response: measured TTFT goes from
    * ~11 ms (gzip) to ~3,800 ms (zstd) at 2K tokens because zstd
    * compressors typically wait for the whole stream to finalize their
    * dictionary. So for human-facing streams, gzip wins regardless of
@@ -64,7 +64,7 @@ export interface PickInput {
    * The zstd middleware shipped on every gateway we've benchmarked
    * (sglang's `codec_compression.py`, the equivalent paths in
    * vLLM/llama.cpp PRs) buffers the whole response before sending the
-   * first byte — TTFT regresses 334× at 2K tokens (11 ms → 3,684 ms).
+   * first byte: TTFT regresses 334× at 2K tokens (11 ms → 3,684 ms).
    * For interactive *and* agent-to-agent traffic, that latency is
    * worse than the ~30% extra wire savings zstd offers over gzip is
    * worth.
@@ -76,7 +76,7 @@ export interface PickInput {
    *      with no inter-token deadline (large-batch eval, archival).
    *
    * If unset (or `false`), the picker treats zstd as if the client
-   * didn't advertise it — gzip is preferred at every size.
+   * didn't advertise it: gzip is preferred at every size.
    */
   zstdEnabled?: boolean;
   /**
@@ -86,12 +86,12 @@ export interface PickInput {
    *
    * Without a dict, no-dict zstd's wire-byte advantage over gzip is small
    * (RESULTS.md §1f puts gzip and no-dict zstd within noise of each other
-   * on Codec streams — 3.4 B/token vs 3.4 B/token), but its TTFB cost on
+   * on Codec streams: 3.4 B/token vs 3.4 B/token), but its TTFB cost on
    * shipped buffered middleware is catastrophic (RESULTS.md §1d, 334× at
    * 2K tokens). So no-dict zstd is the *worst of both worlds*: same bytes
    * as gzip, much worse TTFB.
    *
-   * The dict is therefore not an optimization on top of zstd — it's the
+   * The dict is therefore not an optimization on top of zstd: it's the
    * **precondition** for zstd being a viable choice at all. If the
    * server doesn't have a dict for this request's tokenizer/format, the
    * picker MUST fall through to gzip (or br as fallback).
@@ -111,7 +111,7 @@ export interface PickInput {
    *
    * Behaviour:
    *   - An encoding's `ttftRatio > MAX_TTFT_RATIO` (default 5) gets removed
-   *     from candidates — e.g. sglang's buffered-zstd ttftRatio=334 means
+   *     from candidates: e.g. sglang's buffered-zstd ttftRatio=334 means
    *     zstd is dropped on that stack even when both client + server
    *     advertise it.
    *   - Among the remaining candidates, the encoding with the lowest
@@ -129,7 +129,7 @@ export interface PickInput {
    *   - high entropy (>= 3 bits/byte): prefer dict-zstd
    *
    * Typically N=256. Set this from the first bytes the server has buffered
-   * before committing the Content-Encoding header. Optional — the picker
+   * before committing the Content-Encoding header. Optional: the picker
    * works without it.
    */
   sampleBytes?: Uint8Array;
@@ -144,7 +144,7 @@ export const LOW_ENTROPY_THRESHOLD = 3.0;
  * Enum of pick() decisions. Each value identifies one branch of the picker's
  * decision tree, so dashboards can group/count outcomes without parsing free
  * text. The closed enum is the v0.5 contract; new picker branches require a
- * new enum value (additive — never reassign / never remove existing ones,
+ * new enum value (additive: never reassign / never remove existing ones,
  * same trust posture as the wire-format versioning policy).
  */
 export type PickReasonCode =
@@ -177,7 +177,7 @@ export interface PickOutput {
   reason_code: PickReasonCode;
   /**
    * Short human-readable rationale for logs. Format may change between
-   * minor versions — use `reason_code` for programmatic dispatch.
+   * minor versions: use `reason_code` for programmatic dispatch.
    */
   reason: string;
   /** The candidate set considered, post all gates. For debugging. */
@@ -237,7 +237,7 @@ export interface StackProfile {
 /**
  * Built-in stack profiles. Add more as we measure them.
  *
- * `default` is conservative — assumes typical streaming-aware gzip,
+ * `default` is conservative: assumes typical streaming-aware gzip,
  * working zstd with a buffering quirk (the sglang pattern), and a br
  * implementation of unknown quality.
  */
@@ -271,7 +271,7 @@ export const STACK_PROFILES: Record<string, StackProfile> = {
   'llama.cpp': {
     name: 'llama.cpp',
     // Measured 2024-05 against PR #22757. The PR ships codec wire formats
-    // but does NOT add any compression middleware — every Accept-Encoding
+    // but does NOT add any compression middleware: every Accept-Encoding
     // returns the raw codec bytes (wireCoeff = 1.0, "passthrough"). TTFT
     // is consistently fast (5-7 ms) so streaming is not at risk.
     // To upgrade: hook a streaming-aware gzip layer into mongoose's HTTP
@@ -296,7 +296,7 @@ export function profileFor(stackName: string | undefined): StackProfile {
 }
 
 // In the gap between gzipPreferredUpTo and zstdPreferredFrom (e.g. 129..255)
-// the data is noisy — both gzip and zstd are within 10% of optimal. We pick
+// the data is noisy: both gzip and zstd are within 10% of optimal. We pick
 // gzip there because it's universally supported and the difference is sub-
 // kilobyte. Override `gzipPreferredUpTo` upward if you'd rather always-zstd.
 
@@ -369,7 +369,7 @@ function isKnownEncoding(s: string): s is Encoding {
  * Pick the best Content-Encoding for a streaming response.
  *
  * Algorithm:
- *   1. Parse Accept-Encoding (if absent, treat as gzip-only — RFC 7231 §5.3.4
+ *   1. Parse Accept-Encoding (if absent, treat as gzip-only: RFC 7231 §5.3.4
  *      says identity is always acceptable, and gzip is universally supported,
  *      so gzip is a safe assumption when the client said nothing).
  *   2. Intersect with serverSupports (defaults to all four).
@@ -473,7 +473,7 @@ export function pick(input: PickInput): PickOutput {
   }
 
   if (perStackOverroteBr) {
-    // br was dropped but caller also has no gzip — fall through to identity.
+    // br was dropped but caller also has no gzip: fall through to identity.
   }
 
   if (has('br')) {
@@ -529,14 +529,14 @@ export function shannonEntropyBitsPerByte(bytes: Uint8Array): number {
  * reasons: shipped middleware buffers the whole response (RESULTS.md §1d
  * TTFT cliff), and even with streaming middleware, no-dict zstd's
  * wire-byte advantage over gzip is essentially zero on Codec streams
- * (RESULTS.md §1f) — so advertising zstd to a server without a
+ * (RESULTS.md §1f): so advertising zstd to a server without a
  * pre-trained dict for this tokenizer just risks a worse outcome.
  *
  * Opt back in by passing `{ zstd: true }` only when:
  *   1. You've confirmed the server uses streaming-zstd-with-flush, AND
  *   2. The server has a `zstd_dictionaries[]` entry on the tokenizer
  *      map for the response's stream_format. (Without the dict, the
- *      server SHOULD pick gzip per the picker rule — but advertising
+ *      server SHOULD pick gzip per the picker rule: but advertising
  *      zstd unnecessarily can confuse middleware that doesn't honour
  *      that rule.)
  *
@@ -569,7 +569,7 @@ export function describeRule(_t: Thresholds = DEFAULT_THRESHOLDS): string {
     `             with both true, zstd-with-dict beats gzip on bytes (16-38%`,
     `             smaller, RESULTS.md §1g) at +0.13 ms streaming-TTFB`,
     `  gzip     → universal default; what you ship when no dict is loaded.`,
-    `             zstd-no-dict is NEVER chosen — bytes ≈ gzip but TTFB cliff`,
+    `             zstd-no-dict is NEVER chosen: bytes ≈ gzip but TTFB cliff`,
     `             on shipped middleware. Dict is the precondition, not an`,
     `             optimization on top.`,
     `  brotli   → fallback when client doesn't accept gzip (Safari/iOS edge)`,

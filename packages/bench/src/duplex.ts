@@ -1,5 +1,5 @@
 /**
- * duplex.ts — bidirectional model↔model handoff cost.
+ * duplex.ts: bidirectional model↔model handoff cost.
  *
  * v0.5 task #88. Extends the existing single-direction handoff bench to
  * the two-direction duplex case: Agent A and Agent B exchange streams
@@ -63,7 +63,7 @@ function parseArgs(argv: string[]): CliArgs {
   return args;
 }
 
-// ── Synthetic vocab — same shape as handoff.ts ─────────────────────────────
+// ── Synthetic vocab: same shape as handoff.ts ─────────────────────────────
 
 const VOCAB_SIZE = 128_000;
 const VOCAB: string[] = new Array(VOCAB_SIZE);
@@ -207,7 +207,7 @@ function main(): void {
 
   hr();
   console.log(
-    `duplex bench — ${args.tokens} tokens/direction, chunk=${args.chunkSize}, `
+    `duplex bench: ${args.tokens} tokens/direction, chunk=${args.chunkSize}, `
       + `vocab=${args.vocabSize}, ${args.reps} reps (warmup ${args.warmup})`,
   );
   hr();
