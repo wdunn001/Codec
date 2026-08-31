@@ -1,1 +1,0 @@
-/usr/bin/cc -O3 -DNDEBUG "CMakeFiles/codec-token-bench.dir/token_bench.c.o" -o codec-token-bench  libcodec/libcodec.a 
