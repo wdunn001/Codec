@@ -494,6 +494,16 @@ static int pb_read_varint(const uint8_t *data, size_t len, size_t *pos, uint64_t
     return 0;
 }
 
+/* Overflow-safe "does a field of `need` bytes fit at `pos`?".
+ *
+ * `need` is a uint64_t read straight off the wire; `pos` is a size_t that
+ * pb_read_varint guarantees is <= len. Writing `pos + need > len` lets a
+ * length varint of 0xFFFFFFFFFFFFFFFF wrap the sum and pass the check, so
+ * subtract on the trusted side instead. */
+static int pb_fits(size_t len, size_t pos, uint64_t need) {
+    return need <= (uint64_t)(len - pos);
+}
+
 codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
                                            codec_frame_t *out) {
     if (!data || !out) return CODEC_ERR_INVALID_ARG;
@@ -512,8 +522,8 @@ codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
             if (field == 1 && wt == 2) {
                 uint64_t length;
                 if (!pb_read_varint(data, len, &scan, &length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
+                if (!pb_fits(len, scan, length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
                 size_t sub_end = scan + (size_t)length;
-                if (sub_end > len) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
                 size_t sp = scan;
                 while (sp < sub_end) {
                     uint64_t v; if (!pb_read_varint(data, sub_end, &sp, &v)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
@@ -523,14 +533,14 @@ codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
             } else if (wt == 0) {
                 uint64_t v; if (!pb_read_varint(data, len, &scan, &v)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
             } else if (wt == 1) {
-                if (scan + 8 > len) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
+                if (!pb_fits(len, scan, 8)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
                 scan += 8;
             } else if (wt == 2) {
                 uint64_t length; if (!pb_read_varint(data, len, &scan, &length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
-                if (scan + length > len) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
-                scan += length;
+                if (!pb_fits(len, scan, length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
+                scan += (size_t)length;
             } else if (wt == 5) {
-                if (scan + 4 > len) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
+                if (!pb_fits(len, scan, 4)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
                 scan += 4;
             } else {
                 codec_frame_destroy(out); return CODEC_ERR_PARSE;
@@ -554,10 +564,14 @@ codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
             uint64_t v; if (!pb_read_varint(data, len, &pos, &v)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
             if (field == 2) out->done = (v != 0);
         } else if (wt == 1) {
+            if (!pb_fits(len, pos, 8)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
             pos += 8;
         } else if (wt == 2) {
             uint64_t length;
             if (!pb_read_varint(data, len, &pos, &length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
+            /* Re-check here rather than relying on the pre-scan. The two
+             * passes must not be able to disagree about what fits. */
+            if (!pb_fits(len, pos, length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
             const uint8_t *chunk = data + pos;
             size_t chunk_len = (size_t)length;
             pos += chunk_len;
@@ -567,6 +581,9 @@ codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
                 while (sp < chunk_len) {
                     uint64_t v;
                     if (!pb_read_varint(chunk, chunk_len, &sp, &v)) {
+                        codec_frame_destroy(out); return CODEC_ERR_PARSE;
+                    }
+                    if (ids_written >= ids_count) {
                         codec_frame_destroy(out); return CODEC_ERR_PARSE;
                     }
                     out->ids[ids_written++] = (uint32_t)v;
@@ -579,6 +596,7 @@ codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
                 out->finish_reason[chunk_len] = 0;
             }
         } else if (wt == 5) {
+            if (!pb_fits(len, pos, 4)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
             pos += 4;
         } else {
             codec_frame_destroy(out); return CODEC_ERR_PARSE;
