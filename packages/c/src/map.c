@@ -5,6 +5,8 @@
 #include "codec_jsmn_guard.h"
 #include "sha256.h"
 
+#include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -104,6 +106,8 @@ static int parse_int(const char *s, size_t len, long *out) {
     while (i < len) {
         char c = s[i++];
         if (c < '0' || c > '9') return 0;
+        /* Signed overflow is undefined behaviour, so reject before it. */
+        if (v > (LONG_MAX - (c - '0')) / 10) return 0;
         v = v * 10 + (c - '0');
         got = 1;
     }
@@ -146,10 +150,31 @@ static int is_byte_fallback_token(const char *s, size_t len) {
 
 /* ── Map struct lifecycle ───────────────────────────────────────────────── */
 
+/*
+ * Hard ceiling on the id table. The table is sized by the largest token id
+ * in the document, and that id comes straight off the wire. vocab_size is
+ * parsed and validated but never compared against any id, so before this
+ * cap a single entry with id 4294967295 asked for a 64 GiB table from 63
+ * bytes of JSON, and id 100000000 reached 2.1 GB resident in 1.25 seconds
+ * while returning CODEC_OK.
+ *
+ * 2^22 is roughly sixteen times the largest vocabulary shipping today
+ * (Gemma at 256k, o200k at 200k, Qwen3 at 151k), and it caps the table at
+ * 64 MB on a 64-bit target. Nothing real comes near it.
+ */
+#define CODEC_MAP_MAX_ENTRIES ((size_t)1 << 22)
+
 static codec_status_t ensure_entries_cap(codec_tokenizer_map_t *m, size_t need) {
     if (need <= m->entries_cap) return CODEC_OK;
+    if (need > CODEC_MAP_MAX_ENTRIES) return CODEC_ERR_VALIDATION;
     size_t new_cap = m->entries_cap ? m->entries_cap : 16;
-    while (new_cap < need) new_cap *= 2;
+    while (new_cap < need) {
+        if (new_cap > SIZE_MAX / 2) return CODEC_ERR_VALIDATION;
+        new_cap *= 2;
+    }
+    /* On a 32-bit target new_cap * sizeof() can wrap, which would hand back
+     * a tiny block that the caller then indexes with the full id. */
+    if (new_cap > SIZE_MAX / sizeof(codec_id_entry_t)) return CODEC_ERR_VALIDATION;
     codec_id_entry_t *p = (codec_id_entry_t *)realloc(
         m->entries, new_cap * sizeof(codec_id_entry_t));
     if (!p) return CODEC_ERR_OUT_OF_MEMORY;
