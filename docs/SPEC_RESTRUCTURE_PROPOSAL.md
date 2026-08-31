@@ -1,4 +1,4 @@
-# Spec restructure proposal — thin the per-version docs
+# Spec restructure proposal: thin the per-version docs
 
 **Status:** proposal. Not executed. Reviewed before the v0.5 cut.
 
@@ -17,12 +17,12 @@ spec/
 └── *.schema.json
 ```
 
-Total: ~4,800 lines, of which an estimated **2,500–3,000 lines are redundant text** carried forward across version files. Sections like "Wire Formats", "Tokenizer Map", "Transport Compression", and "Latent Modality" appear nearly verbatim in v0.3.md and v0.4.md.
+Total: ~4,800 lines, of which an estimated **2,500 to 3,000 lines are redundant text** carried forward across version files. Sections like "Wire Formats", "Tokenizer Map", "Transport Compression", and "Latent Modality" appear nearly verbatim in v0.3.md and v0.4.md.
 
 Effects observed today:
 - A new contributor reads v0.4.md and can't tell which sections describe v0.4 deltas vs. invariants from v0.2.
 - Updates to invariant text (e.g. "wire frames are length-prefixed msgpack") would need to land in 3 places to stay consistent.
-- The §1.5 prior-version compatibility gate just added relies on a clean "what changed where" trail, which fights the copy-down.
+- The §1.5 prior-version compatibility gate just added relies on a clean "what changed where" trail. That trail fights the copy-down.
 - v0.4.md is at 1,794 lines and growing. v0.5 with another axis will be 2,200+.
 
 ## The proposed structure
@@ -30,7 +30,7 @@ Effects observed today:
 ```
 spec/
 ├── PROTOCOL.md                       navigation index (current)
-├── CORE.md                           wire chassis — cross-version invariants
+├── CORE.md                           wire chassis: cross-version invariants
 ├── modalities/
 │   ├── text.md                       text-token frames + tokenizer maps + tool-calling
 │   └── latent.md                     LatentStreamHeader/Frame + latent-space maps
@@ -82,7 +82,7 @@ Thin per-version doc:
 
 - Added `<axis>` capability (see capabilities/<doc>.md).
 - Extended <modality> with <feature> (see modalities/<doc>.md).
-- New frame type `<name>` (assigned byte `0xNN` — see CORE.md § Frame Type Registry).
+- New frame type `<name>` (assigned byte `0xNN`: see CORE.md § Frame Type Registry).
 - New required-features registry entry: `<value>`.
 - New `.well-known/codec/<path>.json` (see WELL_KNOWN_DISCOVERY.md).
 
@@ -93,7 +93,7 @@ Thin per-version doc:
 
 ## Open questions (v0.X)
 
-<living block — resolved items get **Resolved.** marker; deferred items
+<living block: resolved items get **Resolved.** marker; deferred items
 get migrated to v0.(X+1)'s block.>
 ```
 
@@ -101,23 +101,23 @@ That's it. The wire surface for v0.X is whatever CORE.md + the referenced modali
 
 ## Migration plan (if approved)
 
-1. **Extract** — pull each section listed in the "Lives in" table out of v0.4.md into the new layered docs. Each new doc is a verbatim copy from v0.4.md for v0.4-current language; add a `**Stable since:** v0.X` line at the top.
-2. **Trim per-version docs** — rewrite v0.2.md, v0.3.md, v0.4.md to the thin shape above. Keep the open-questions block intact (it's already per-version-living).
-3. **Re-link** — every `#section-name` anchor referenced in package READMEs, codec-supervisor docs, codec-website docs, and changelog entries needs a path rewrite. Single-pass `sed` + manual review of the diff.
-4. **Validate** — `mkdocs serve` or equivalent broken-link checker.
-5. **Land** — single commit per stage (extract, trim, re-link), each pushable independently so a rollback only loses one stage.
+1. **Extract**: pull each section listed in the "Lives in" table out of v0.4.md into the new layered docs. Each new doc is a verbatim copy from v0.4.md for v0.4-current language; add a `**Stable since:** v0.X` line at the top.
+2. **Trim per-version docs**: rewrite v0.2.md, v0.3.md, v0.4.md to the thin shape above. Keep the open-questions block intact (it's already per-version-living).
+3. **Re-link**: every `#section-name` anchor referenced in package READMEs, codec-supervisor docs, codec-website docs, and changelog entries needs a path rewrite. Single-pass `sed` + manual review of the diff.
+4. **Validate**: `mkdocs serve` or equivalent broken-link checker.
+5. **Land**: single commit per stage (extract, trim, re-link), each pushable independently so a rollback only loses one stage.
 
-Estimated effort: 4–8 hours of careful work. Net result: v0.X.md docs at ~150–250 lines, CORE.md at ~1,200 lines, modality docs ~400–500 each, capability docs ~150–300 each. Total spec footprint drops from ~4,800 to ~3,000 lines with zero loss of content.
+Estimated effort: 4 to 8 hours of careful work. Net result: v0.X.md docs at ~150 to 250 lines, CORE.md at ~1,200 lines, modality docs ~400 to 500 each, capability docs ~150 to 300 each. Total spec footprint drops from ~4,800 to ~3,000 lines with zero loss of content.
 
 ## What this does NOT change
 
 - Wire format. Every byte on the wire stays the same. This is a documentation reorganization.
-- Schema files (`*.schema.json`) — they are already cleanly per-thing.
+- Schema files (`*.schema.json`): they are already cleanly per-thing.
 - Companion docs (PIPELINES.md, WELL_KNOWN_DISCOVERY.md, PRETOKENIZER_PROGRAM.md).
 - The versioning-policy rule itself (additive minor, breaking-bump major).
 - §1.5 prior-version compatibility gate (still operates against the per-version specs).
 
 ## What could go further (out of scope for this proposal)
 
-- **Schema files as the source of truth.** Today the schemas are descriptive, not generative. A future pass could lift the schemas to be the canonical wire definition and have the markdown docs render from them. Not blocking; doesn't reduce the redundancy unless tackled.
-- **Per-version-frozen wire-text blocks.** v0.4.md § Versioning Policy talks about "frozen wire-text block + living open-questions block". If we restructure, we could enforce frozen by reading the wire-text from CORE.md instead of duplicating into each version. Already implicit in the proposal above.
+- **Schema files as the source of truth.** Today the schemas are purely descriptive. A future pass could lift the schemas to be the canonical wire definition and have the markdown docs render from them. Not blocking; doesn't reduce the redundancy unless tackled.
+- **Per-version-frozen wire-text blocks.** v0.4.md § Versioning Policy talks about "frozen wire-text block + living open-questions block". If we restructure, we could enforce frozen by reading the wire-text from CORE.md in place of duplicating into each version. Already implicit in the proposal above.

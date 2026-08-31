@@ -6,7 +6,7 @@ Maven Central, Docker Hub, codecai.net) until every box on its row is checked.
 
 The principle: every artifact a user can install MUST point at numbers,
 docs, and behavior that match the website and the spec at the moment of
-publish. A premature publish creates a permanent mismatch — auditing
+publish. A premature publish creates a permanent mismatch: auditing
 "v0.4 says X, npm says Y" wastes more time than waiting one extra day to
 cut the release cleanly.
 
@@ -18,8 +18,7 @@ this gate; closing that gap is part of the v0.4 release.
 ## How to use this file
 
 1. Copy the entire **Pre-publish gates** + **Publish phase** + **Post-publish**
-   sections into the GitHub release-issue tracking the cut (one per release —
-   `release: v0.4`, `release: v0.5`, ...).
+   sections into the GitHub release-issue tracking the cut (one per release: `release: v0.4`, `release: v0.5`, ...).
 2. Tick boxes as work lands. Don't skip; if something doesn't apply,
    strike it through with a one-line reason inline.
 3. The release-issue stays open until every box is ticked or struck.
@@ -36,17 +35,17 @@ A release-issue with even one un-ticked, un-struck box in pre-publish
 
 ### 1 · Validation (cross-language test suites)
 
-- [ ] `@codecai/web` — `npm test` green in `packages/web/`
-- [ ] `@codecai/web-safety` — `npm test` green in `packages/web-safety/`
-- [ ] `@codecai/maps-cli` — `npm test` green + canonical-example round-trip
-- [ ] `codecai` (Python) — `pytest` green in `packages/python/`
-- [ ] `codec-rs` — `cargo test --all-features` green in `packages/rust/`
-- [ ] `Codec.Net` — `dotnet test` green in `packages/dotnet/`
-- [ ] `codec` (Java) — `mvn test` green in `packages/java/` (run on a JDK
+- [ ] `@codecai/web`: `npm test` green in `packages/web/`
+- [ ] `@codecai/web-safety`: `npm test` green in `packages/web-safety/`
+- [ ] `@codecai/maps-cli`: `npm test` green + canonical-example round-trip
+- [ ] `codecai` (Python): `pytest` green in `packages/python/`
+- [ ] `codec-rs`: `cargo test --all-features` green in `packages/rust/`
+- [ ] `Codec.Net`: `dotnet test` green in `packages/dotnet/`
+- [ ] `codec` (Java): `mvn test` green in `packages/java/` (run on a JDK
       box; `vinez@192.168.1.88` has Docker maven:3-eclipse-temurin-17 if
       the local box doesn't have a JDK)
-- [ ] `libcodec` — CMake/CTest green: `cmake --build build && ctest`
-- [ ] `codec-supervisor` — `pytest` green
+- [ ] `libcodec`: CMake/CTest green: `cmake --build build && ctest`
+- [ ] `codec-supervisor`: `pytest` green
 - [ ] Cross-stack hash interop spot-check: hash a canonical descriptor
       from each language; verify all six produce identical
       `sha256:<hex>` (the contract that makes `safety_policy_hash`
@@ -58,21 +57,21 @@ Complements the static §4 diff audit with a dynamic round-trip
 against every prior minor version still in scope. The versioning
 policy (`spec/versions/v0.4.md` § Versioning Policy) requires
 minor releases to be wire-compatible with all earlier minor
-versions of the same major — this gate is where we actually run
+versions of the same major: this gate is where we actually run
 that.
 
 Fixtures live at `spec/compat-corpus/v0.X/`, one subtree per
 prior minor version, with three flavors:
 
-- `maps/` — tokenizer-map JSONs as published in v0.X (one per
+- `maps/`: tokenizer-map JSONs as published in v0.X (one per
   reference vocab), pinned by `sha256` in
   `compat-corpus/v0.X/maps.manifest.json`.
-- `frames/` — canonical wire frames for every frame type the
+- `frames/`: canonical wire frames for every frame type the
   version added (text-token msgpack/protobuf for v0.2; latent
   streams + `_codec_meta` blocks for v0.3; safety-policy
   descriptors for v0.4). Stored as `.bin` files with a sibling
   `.json` describing expected decode output.
-- `descriptors/` — well-known JSON documents the version
+- `descriptors/`: well-known JSON documents the version
   introduced (latent-space-map, safety-policy, tokenizer-map
   with `tool_calling` block, etc.).
 
@@ -95,7 +94,7 @@ For each shipped prior version (today: **v0.2, v0.3**):
       enabled), produces frames that the **prior version's**
       published library decodes successfully. Run with the prior
       version's npm tarball / PyPI wheel / NuGet package / etc.
-      pulled from each registry — not a local checkout. (The
+      pulled from each registry: not a local checkout. (The
       first release that adds this gate may need to pin a Docker
       image carrying the older clients; record the digest.)
 - [ ] **Schema-forward:** every JSON document in
@@ -103,13 +102,11 @@ For each shipped prior version (today: **v0.2, v0.3**):
       `compat-corpus/v0.X/descriptors/` validates against the
       release-candidate's schemas (`spec/*.schema.json`). The
       version-tightening rule from §4 (no enum tightening, no
-      previously-optional → mandatory) makes this an invariant —
-      a fixture failure means the version is breaking and should
+      previously-optional → mandatory) makes this an invariant: a fixture failure means the version is breaking and should
       be a major bump.
 - [ ] **Discovery-forward:** every `.well-known/codec/*` path
       shipped in v0.X still resolves under the release-candidate
-      discovery code path (404 means the path was removed —
-      breaking — and the release should be a major bump).
+      discovery code path (404 means the path was removed: breaking: and the release should be a major bump).
 - [ ] **Version-incompatibility signaling:** for any new
       mandatory feature this release adds, a release-candidate
       server CONFIGURED to require that feature returns a
@@ -133,7 +130,7 @@ For each shipped prior version (today: **v0.2, v0.3**):
 - [ ] **Graceful downgrade conformance:** with the new
       capabilities ENABLED but not enforced, a v0.(X-1) client
       hitting the same server MUST still see a v0.(X-1) wire
-      surface — no version-N headers leak. Re-run the
+      surface: no version-N headers leak. Re-run the
       decode-forward step above with `Codec-Client-Version: 0.(X-1)`
       against an opted-in server; the response set MUST be
       identical to the v0.(X-1) corpus (modulo timestamps).
@@ -151,7 +148,7 @@ major bump.
 
 Added after the v0.4.1 sglang regression where an upstream merge
 silently dropped the `COPY dicts/` line in the engine Dockerfile and
-zstd compression quietly degraded to identity bytes at runtime — caught
+zstd compression quietly degraded to identity bytes at runtime: caught
 only by the cross-stack bench cohort flagging anomalous wire sizes.
 v0.5 promotes the zstd dictionary to a first-class discoverable
 artefact (`.well-known/codec/dicts/<sha>.zstd`, see
@@ -161,28 +158,28 @@ silent runtime degradation.
 
 For every engine image cut at v0.5+ (`wdunn001/codec-{sglang,vllm,llamacpp}:vX.Y`):
 
-- [ ] **Dict reachability** — image MUST satisfy at least one of:
+- [ ] **Dict reachability**: image MUST satisfy at least one of:
   - Bakes `/opt/codec/dicts/msgpack-v1.zstd` AND `/opt/codec/dicts/protobuf-v1.zstd`
     into the layer at build time (legacy path), OR
   - Has `CODEC_ZSTD_DICT_MSGPACK_URL` AND `CODEC_ZSTD_DICT_PROTOBUF_URL`
     configured in the deploy environment (URL path). The URLs MUST resolve
     to a 200, the bytes MUST hash to the `<hex>` in the URL path
     component, and the engine MUST hard-fail boot if either fails.
-- [ ] **Probe at container startup** — `docker run --rm <image>
+- [ ] **Probe at container startup**: `docker run --rm <image>
       /opt/codec/check-dict-availability.sh` exits 0. The script
       verifies the active dict registry (whether baked or fetched)
       has both `msgpack` + `protobuf` entries with non-zero byte
       length.
-- [ ] **Wire-level confirmation in the bench** — for each engine,
+- [ ] **Wire-level confirmation in the bench**: for each engine,
       §1b cell at 2K tokens with `Accept-Encoding: zstd` MUST hit a
       dict-zstd code path (`Codec-Zstd-Dict: sha256:<short>` in
       response headers). A response with `Content-Encoding: zstd`
       but no `Codec-Zstd-Dict:` header means the dict didn't load
-      and zstd silently fell back to dict-less zstd — release-blocker.
-- [ ] **Hash unanimity** — every engine in the cohort serving the
+      and zstd silently fell back to dict-less zstd: release-blocker.
+- [ ] **Hash unanimity**: every engine in the cohort serving the
       same model MUST announce the same `Codec-Zstd-Dict:` sha
       (modulo deliberately-different dicts for engines that train
-      their own — record any divergence in the release notes).
+      their own: record any divergence in the release notes).
 
 Missing the gate = release-blocker, same severity as a missing
 test suite. The whole point is that silent degradation is not
@@ -200,13 +197,12 @@ v0.5 cut:
 2. `wdunn001/codec-llamacpp:v0.5.0` first attempt was MISSING
    `brotli` + `zstandard` + `msgpack` ENTIRELY because the Dockerfile
    only installed them transitively via `codec-supervisor`, whose
-   `pyproject.toml` had never declared them as direct deps —
-   they'd been coming along by accident from upstream lmsysorg
+   `pyproject.toml` had never declared them as direct deps: they'd been coming along by accident from upstream lmsysorg
    images for two releases.
 
 Both regressions would have been caught earlier by these gates:
 
-- [ ] **Dockerfile static audit** — every engine Dockerfile (sglang,
+- [ ] **Dockerfile static audit**: every engine Dockerfile (sglang,
       vllm, llamacpp, comfyui, diffusers) MUST EXPLICITLY install
       `brotli`, `zstandard`, `msgpack` either:
   - As named args on its own `pip install` line, OR
@@ -216,7 +212,7 @@ Both regressions would have been caught earlier by these gates:
   - Run `grep -rE 'brotli|zstandard|msgpack' codec-supervisor/Dockerfile.*
     codec-docker/Dockerfile codec-supervisor/pyproject.toml` and
     verify each engine's path has the deps named explicitly.
-- [ ] **Built-image dep verification** — after each engine image
+- [ ] **Built-image dep verification**: after each engine image
       builds, BEFORE pushing or running engine-acceptance pytest:
 
       docker run --rm --entrypoint python3 wdunn001/codec-<engine>:vX.Y \
@@ -226,17 +222,17 @@ Both regressions would have been caught earlier by these gates:
       MUST exit 0 with three version strings printed. Catches both
       "Dockerfile changed under us silently" AND "install succeeded
       but module is broken in this Python env". Wire-format protocol
-      modules are NOT optional — a missing module degrades the engine
-      to identity-encoded silently, which is exactly the regression
+      modules are NOT optional: a missing module degrades the engine
+      to identity-encoded silently. That is exactly the regression
       class this gate exists to prevent.
-- [ ] **Source-of-truth pin** — codec-supervisor's `pyproject.toml`
+- [ ] **Source-of-truth pin**: codec-supervisor's `pyproject.toml`
       lists `msgpack`, `brotli`, `zstandard` under `dependencies`
       (NOT optional-dependencies, NOT extras). Confirm before tag
       cut. If a future supervisor release drops one, this gate fires
       at the next engine build.
 
 Missing the gate = release-blocker. Silent fallthrough to identity
-on a Codec response is the worst possible failure mode — clients
+on a Codec response is the worst possible failure mode: clients
 think they got Codec, byte counts match the "best Codec" numbers
 the website advertises, but the wire is identity bytes. Indistinguishable
 from a correct Codec response from the client side until someone
@@ -260,7 +256,7 @@ hit out of proportion to its content.
 - [ ] §"Agent-loop end-to-end" table refreshed if agent-loop benches
       ran this cohort.
 - [ ] `packages/bench/RESULTS.md` §10 Headlines table re-rendered
-      from the same source — drift between root and packages
+      from the same source: drift between root and packages
       means one was edited by hand.
 
 ### 2 · Coverage
@@ -281,24 +277,24 @@ per engine and catch the entire "image was built from a stale tree"
 regression class (missing transport-compression modules, missing zstd
 dicts, supervisor admin endpoints absent, codec patch files missing).
 
-- [ ] **Fork pytest inside the running container** — `docker exec
+- [ ] **Fork pytest inside the running container**: `docker exec
       <engine> python3 -m pytest /opt/codec/<engine>/python/.../test_codec_*.py`
       passes. Confirms the fork source code in the image still has
       working unit tests; if this fails the merge is damaged and the
       bench cannot help.
-- [ ] **Endpoint surface probe** — `GET /openapi.json` enumerates the
+- [ ] **Endpoint surface probe**: `GET /openapi.json` enumerates the
       expected v0.X surface (`/codec/schema`, `/.well-known/codec/version-policy.json`,
       and operator-side `/admin/codec-policy`, `/admin/policies/*` for
       v0.4-and-later). Missing endpoints mean the supervisor in the
       image is stale.
-- [ ] **Transport-compression probe** — POST a streaming completion
+- [ ] **Transport-compression probe**: POST a streaming completion
       with `Accept-Encoding: zstd, br, gzip, identity`. Verify the
       response `Content-Encoding` is the highest the server claims to
       support (per spec §Transport-Compression preference order). A
       silent fall-through to `identity` when `gzip` overlaps is a
       §Negotiation MUST violation and means the image's brotli/zstandard
       python modules are missing.
-- [ ] **Detokenize-bypass probe** — POST with `stream_format=msgpack`,
+- [ ] **Detokenize-bypass probe**: POST with `stream_format=msgpack`,
       hex-dump the response, verify no `text` field in the msgpack
       map. Confirms the binary stream path is wired correctly per
       §Bidirectional + §Mode-A.
@@ -316,13 +312,13 @@ content-dependent companion. See `packages/bench/methodology/SCHEMA.md`
       canonical corpora × 3 sizes × 2 formats × 4 encodings.
 - [ ] Synthetic numbers reviewed for sanity: uniform-random ratio is
       modest (~4-5×), low-entropy is mid (~10-20×), cyclic is high
-      (>100×) — same ranges every release; significant deviations
+      (>100×): same ranges every release; significant deviations
       indicate an encoder/compressor regression.
 - [ ] `packages/bench/` cross-stack run completed against the release
       candidate stack.
 - [ ] Fresh result file under `packages/bench/results/<UTC>/`.
 - [ ] `MATRIX.md` aggregator regenerated (must include §1 synthetic
-      + §1b engine-output sections — `aggregate.py` enforces this
+      + §1b engine-output sections: `aggregate.py` enforces this
       ordering as of v0.4.1).
 - [ ] Aggregator exited with code 0 (no errored cells per the gate
       added in v0.4.1).
@@ -346,51 +342,48 @@ re-run for this release OR have an explicit per-surface
 invariant-based skip rationale recorded below.
 
 Hand-wave skips (e.g. "not wire-format-sensitive") are NOT a
-valid rationale — a release that bumps client packages can
+valid rationale: a release that bumps client packages can
 regress every surface. See [[no-shortcuts-full-bench]] §"Pattern:
 skipping bench surfaces" for the failure mode this gate codifies.
 
-- [ ] **§1 synthetic wire** — `synthetic_wire_bench.py <RUN>`.
+- [ ] **§1 synthetic wire**: `synthetic_wire_bench.py <RUN>`.
       Always re-run. Pure-library protocol numbers; produces
       `results/<RUN>/synthetic/wire.json`.
-- [ ] **§3 cross-stack matrix** — `run-all-langs.sh <RUN> <engine>`
+- [ ] **§3 cross-stack matrix**: `run-all-langs.sh <RUN> <engine>`
       for sglang + vllm + llama.cpp. Always re-run. Produces
       `results/<RUN>/{engine}/{lang}.json` × 18 files.
-- [ ] **Per-language token-bench** —
-      `run-all-token-benches.sh <RUN> <map> <corpus>`. Re-run
+- [ ] **Per-language token-bench**: `run-all-token-benches.sh <RUN> <map> <corpus>`. Re-run
       when ANY client package bumped (the common case at every
       release); produces `results/<RUN>/token/{lang}.json`.
       Catches CPU regressions in tokenize/detokenize hot paths.
-- [ ] **Cross-vocab translator** — `translator_bench.py <RUN>`.
+- [ ] **Cross-vocab translator**: `translator_bench.py <RUN>`.
       Re-run when Translator code touched. Defensible to skip
       with an explicit "Translator unchanged this release" note.
-- [ ] **Agent-loop end-to-end** — mock + searxng + metamcp +
+- [ ] **Agent-loop end-to-end**: mock + searxng + metamcp +
       MCP-leaf paths under `agent-loop/` in the results dir.
       Re-run when ANY of: codec_dispatcher / ToolWatcher /
       mcp-leaf SDK / metamcp container touched. **At v0.5+ this
       is the bench that exercises the bolt-on tool dispatcher
-      path** — skipping it on a release that touches dispatcher
+      path**: skipping it on a release that touches dispatcher
       code is a §3 gate failure.
-- [ ] **MCP leaf microbench** — `extract-mcp-corpus.py` + leaf
+- [ ] **MCP leaf microbench**: `extract-mcp-corpus.py` + leaf
       comparison. Re-run when mcp-leaf SDK code touched OR
       metamcp container rebuilt.
 
 For each skip, document the invariant in the commit message AND
-in the release-notes draft. "Wire-additive" alone is NOT enough
-— the bench surfaces measure layers that wire-additivity does
+in the release-notes draft. "Wire-additive" alone is NOT enough: the bench surfaces measure layers that wire-additivity does
 not protect (client CPU, end-to-end dispatch correctness, etc.).
 
 ### 4 · Spec + per-version protocol documentation
 
-- [ ] `spec/PROTOCOL.md` (the navigation index) accurate — every
+- [ ] `spec/PROTOCOL.md` (the navigation index) accurate: every
       shipped version is listed, the "latest" pointer resolves
       correctly, companion-doc list reflects what's in-tree.
 - [ ] `spec/versions/v0.X.md` (this release's per-version doc) is
       written: every wire field, frame type, capability axis the
       candidate ships is documented in this file (frozen wire-text
       block + living open-questions block).
-- [ ] **Versioning policy compliance** (binding from v0.4 onward —
-      see `spec/versions/v0.4.md` § Versioning Policy). For a
+- [ ] **Versioning policy compliance** (binding from v0.4 onward: see `spec/versions/v0.4.md` § Versioning Policy). For a
       proposed minor version (`v0.X.(Y+1)` against `v0.X.Y`):
   - [ ] **Diff audit** completed against the prior minor version
         across `spec/versions/v0.X.md`, `spec/*.schema.json`,
@@ -401,7 +394,7 @@ not protect (client CPU, end-to-end dispatch correctness, etc.).
         tightening that rejects v0.X.Y JSON, no previously-optional
         field made mandatory.
   - [ ] If ANY breaking change is found, the release MUST be a
-        major version bump (e.g. v0.X → v1.0), not a minor — STOP
+        major version bump (e.g. v0.X → v1.0): STOP
         the cut, escalate, restart the cut as a major.
   - [ ] If no breaking changes, the audit conclusion is recorded in
         the release notes ("v0.X.Y → v0.X.(Y+1) is non-breaking;
@@ -422,7 +415,7 @@ not protect (client CPU, end-to-end dispatch correctness, etc.).
 
 ### 5 · READMEs
 
-- [ ] Top-level `README.md` — release banner, headline numbers from this
+- [ ] Top-level `README.md`: release banner, headline numbers from this
       release's bench, "Latest release: vX.Y" badge.
 - [ ] Per-package READMEs (`packages/*/README.md`):
   - [ ] Quick-start example uses the version being released.
@@ -430,9 +423,9 @@ not protect (client CPU, end-to-end dispatch correctness, etc.).
         (e.g. v0.3.2 per-block `_meta` vs v0.3.0 sibling `_codec_meta`).
   - [ ] Public API surface matches what's exported in the version
         being released.
-- [ ] `codec-supervisor/README.md` — backend list, image tags,
+- [ ] `codec-supervisor/README.md`: backend list, image tags,
       classifier extras + how to install them.
-- [ ] `packages/bench/README.md` — current results table; "v0.X.x lab
+- [ ] `packages/bench/README.md`: current results table; "v0.X.x lab
       results (committed)" section indexes new run IDs.
 
 ### 6 · codecai.net (website)
@@ -453,7 +446,7 @@ not protect (client CPU, end-to-end dispatch correctness, etc.).
 - [ ] sglang fork (`wdunn001/sglang`) `main` branch built + smoke-tested.
 - [ ] llama.cpp fork (`wdunn001/llama.cpp`) `master` branch built.
 - [ ] metamcp + ComfyUI + diffusers forks (still on feature branches per
-      saved memory) — release-tagged or branch-pinned for the
+      saved memory): release-tagged or branch-pinned for the
       `codec-supervisor` Dockerfiles to consume.
 
 ### 8 · Release-cut commit
@@ -553,8 +546,8 @@ the cascade rather than fanning out broken artifacts.
 
 This is a single-maintainer project today; everything in the checklist
 is run by the maintainer or a CI job they configured. The list above
-intentionally enumerates the *steps*, not the actors, so as the
-project grows the assignment column can be added without the gates
+intentionally enumerates the *steps* rather than the actors. As the
+project grows, the assignment column can be added without the gates
 themselves changing.
 
 ---
@@ -565,5 +558,5 @@ If a checklist gate is impossible to satisfy for a legitimate reason
 (e.g. a downstream service is down, a benchmark machine is
 unavailable), edit this file in the same PR that proposes the
 exception, with a "[v0.4] gate-skip: reason" line. Don't normalize
-"skip the gate" — normalize "the document changed because the gate's
+"skip the gate": normalize "the document changed because the gate's
 contract changed."
