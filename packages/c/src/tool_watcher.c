@@ -32,17 +32,30 @@ struct codec_tool_watcher {
     uint32_t end_id;
     bool     inside;
 
-    /* Captured region buffer — accumulates IDs while inside, cleared on
-     * each REGION_END event so the storage can be reused. */
+    /* Captured-region arena. Every region completed during the current
+     * feed() keeps its own span here, because the REGION_END events handed
+     * back to the caller point into it and must all stay valid until the
+     * next feed(). Resetting per region (the original design) made the
+     * second region alias and then realloc out from under the first.
+     * `region_start` is where the region currently being captured begins. */
     uint32_t *region_buf;
     size_t    region_len;
     size_t    region_cap;
+    size_t    region_start;
 
     /* Events array reused across feed() calls. */
     codec_watcher_event_t *events;
     size_t                 events_len;
     size_t                 events_cap;
+    /* Parallel to `events`. For a REGION_END event this holds the region's
+     * offset into region_buf; every other event kind holds NO_REGION. The
+     * arena can move under realloc mid-feed, so the pointers are resolved
+     * once at the end of feed() rather than at emit time. */
+    size_t                *event_region_off;
+    size_t                 event_region_off_cap;
 };
+
+#define WATCHER_NO_REGION ((size_t)-1)
 
 static int region_buf_reserve(codec_tool_watcher_t *w, size_t need) {
     if (w->region_cap >= need) return 1;
@@ -64,6 +77,12 @@ static int events_reserve(codec_tool_watcher_t *w, size_t need) {
     if (!p) return 0;
     w->events = p;
     w->events_cap = cap;
+    if (w->event_region_off_cap < cap) {
+        size_t *q = (size_t *)realloc(w->event_region_off, cap * sizeof(size_t));
+        if (!q) return 0;
+        w->event_region_off = q;
+        w->event_region_off_cap = cap;
+    }
     return 1;
 }
 
@@ -76,6 +95,20 @@ static int emit(codec_tool_watcher_t *w,
     w->events[w->events_len].kind    = kind;
     w->events[w->events_len].ids     = ids;
     w->events[w->events_len].ids_len = len;
+    w->event_region_off[w->events_len] = WATCHER_NO_REGION;
+    w->events_len++;
+    return 1;
+}
+
+/* Emit a REGION_END for the arena span [off, off + len). The `ids` pointer
+ * is filled in after the feed loop, once the arena has stopped moving. */
+static int emit_region(codec_tool_watcher_t *w, size_t off, size_t len) {
+    if (len == 0) return 1;
+    if (!events_reserve(w, w->events_len + 1)) return 0;
+    w->events[w->events_len].kind    = CODEC_WATCH_REGION_END;
+    w->events[w->events_len].ids     = NULL;
+    w->events[w->events_len].ids_len = len;
+    w->event_region_off[w->events_len] = off;
     w->events_len++;
     return 1;
 }
@@ -109,6 +142,7 @@ codec_status_t codec_tool_watcher_new_with_ids(uint32_t start_id,
 
 void codec_tool_watcher_free(codec_tool_watcher_t *w) {
     if (!w) return;
+    free(w->event_region_off);
     free(w->region_buf);
     free(w->events);
     free(w);
@@ -118,6 +152,7 @@ void codec_tool_watcher_reset(codec_tool_watcher_t *w) {
     if (!w) return;
     w->inside     = false;
     w->region_len = 0;
+    w->region_start = 0;
     w->events_len = 0;
 }
 
@@ -134,6 +169,21 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
      * stale (the input buffer has rolled over and the region buffer may
      * have been overwritten). */
     w->events_len = 0;
+
+    /* Recycle the arena. Spans captured for the previous call's events are
+     * dead now, but a region still in progress has to survive — it may span
+     * any number of feeds. Slide it down to offset 0 and drop the rest. */
+    if (w->inside) {
+        if (w->region_start > 0) {
+            memmove(w->region_buf, w->region_buf + w->region_start,
+                    (w->region_len - w->region_start) * sizeof(uint32_t));
+            w->region_len -= w->region_start;
+            w->region_start = 0;
+        }
+    } else {
+        w->region_len   = 0;
+        w->region_start = 0;
+    }
 
     /* `pt_start` is the start index of the current passthrough run within
      * `ids`. We emit a passthrough event whenever we transition into a
@@ -155,18 +205,18 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
                         return CODEC_ERR_OUT_OF_MEMORY;
                     }
                 }
-                w->inside     = true;
-                w->region_len = 0;
+                w->inside       = true;
+                w->region_start = w->region_len;
                 /* pt_start gets re-anchored when we exit the region. */
             }
             /* else: token continues the passthrough run; no action. */
         } else {
             if (id == w->end_id) {
-                /* Region complete. Emit a REGION_END event pointing at the
-                 * watcher's buffer (NOT the input — the buffer survives a
-                 * future feed() that might reuse `ids`). */
-                if (!emit(w, CODEC_WATCH_REGION_END,
-                          w->region_buf, w->region_len)) {
+                /* Region complete. Record the arena span rather than a
+                 * pointer — a later region in this same feed can realloc
+                 * the arena, which would dangle any pointer taken now. */
+                if (!emit_region(w, w->region_start,
+                                 w->region_len - w->region_start)) {
                     return CODEC_ERR_OUT_OF_MEMORY;
                 }
                 w->inside   = false;
@@ -189,6 +239,12 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
                   &ids[pt_start], n - pt_start)) {
             return CODEC_ERR_OUT_OF_MEMORY;
         }
+    }
+
+    /* The arena is final now. Turn the recorded spans into pointers. */
+    for (size_t e = 0; e < w->events_len; e++) {
+        if (w->event_region_off[e] == WATCHER_NO_REGION) continue;
+        w->events[e].ids = w->region_buf + w->event_region_off[e];
     }
 
     if (out_events) *out_events = w->events;

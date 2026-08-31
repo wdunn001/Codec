@@ -347,6 +347,86 @@ static void test_watcher_real_qwen2(void) {
     codec_map_free(m);
 }
 
+/* ── Two regions in one feed ────────────────────────────────────────────── */
+/*
+ * REGION_END events point into the watcher's own region buffer, and that
+ * buffer was reset and reused at the start of each region. Two regions in
+ * one feed therefore produced two events aliasing the same storage, and a
+ * second region large enough to grow the buffer freed the memory the first
+ * event still pointed at. The documented contract is that events stay valid
+ * until the next feed call.
+ */
+
+static void test_watcher_two_regions_one_feed_keep_distinct_ids(void) {
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new_with_ids(1000, 1001, &w), CODEC_OK);
+
+    /* Region 1 is two ids. Region 2 is large enough to drive the buffer
+     * through several reallocs, which relocates it under glibc. */
+    enum { BIG = 5000 };
+    size_t n = 0;
+    uint32_t *ids = (uint32_t *)malloc((size_t)(BIG + 8) * sizeof(uint32_t));
+    CT_TRUE(ids != NULL);
+    ids[n++] = 1000;
+    ids[n++] = 111;
+    ids[n++] = 222;
+    ids[n++] = 1001;
+    ids[n++] = 1000;
+    for (int i = 0; i < BIG; i++) ids[n++] = 900000u + (uint32_t)i;
+    ids[n++] = 1001;
+
+    codec_watcher_event_t *ev = NULL;
+    size_t ev_len = 0;
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids, n, &ev, &ev_len), CODEC_OK);
+
+    size_t seen = 0;
+    for (size_t i = 0; i < ev_len; i++) {
+        if (ev[i].kind != CODEC_WATCH_REGION_END) continue;
+        if (seen == 0) {
+            CT_EQ_SZ(ev[i].ids_len, 2);
+            CT_EQ_INT(ev[i].ids[0], 111);
+            CT_EQ_INT(ev[i].ids[1], 222);
+        } else {
+            CT_EQ_SZ(ev[i].ids_len, (size_t)BIG);
+            CT_EQ_INT(ev[i].ids[0], 900000u);
+            CT_EQ_INT(ev[i].ids[BIG - 1], 900000u + BIG - 1);
+        }
+        seen++;
+    }
+    CT_EQ_SZ(seen, 2);
+
+    free(ids);
+    codec_tool_watcher_free(w);
+}
+
+static void test_watcher_region_across_feeds_still_survives(void) {
+    /* The arena must not drop an in-progress region when the next feed
+     * starts. */
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new_with_ids(1000, 1001, &w), CODEC_OK);
+
+    uint32_t a[] = { 7, 1000, 41, 42 };
+    uint32_t b[] = { 43, 1001, 8 };
+    codec_watcher_event_t *ev = NULL;
+    size_t ev_len = 0;
+
+    CT_EQ_INT(codec_tool_watcher_feed(w, a, 4, &ev, &ev_len), CODEC_OK);
+    CT_TRUE(codec_tool_watcher_inside(w));
+
+    CT_EQ_INT(codec_tool_watcher_feed(w, b, 3, &ev, &ev_len), CODEC_OK);
+    size_t seen = 0;
+    for (size_t i = 0; i < ev_len; i++) {
+        if (ev[i].kind != CODEC_WATCH_REGION_END) continue;
+        CT_EQ_SZ(ev[i].ids_len, 3);
+        CT_EQ_INT(ev[i].ids[0], 41);
+        CT_EQ_INT(ev[i].ids[1], 42);
+        CT_EQ_INT(ev[i].ids[2], 43);
+        seen++;
+    }
+    CT_EQ_SZ(seen, 1);
+    codec_tool_watcher_free(w);
+}
+
 int main(void) {
     CT_RUN(test_map_special_id_resolves_by_name);
     CT_RUN(test_watcher_passthrough_then_region_then_passthrough);
@@ -356,5 +436,7 @@ int main(void) {
     CT_RUN(test_watcher_missing_name_is_not_found);
     CT_RUN(test_watcher_does_not_decode_tokens);
     CT_RUN(test_watcher_real_qwen2);
+    CT_RUN(test_watcher_two_regions_one_feed_keep_distinct_ids);
+    CT_RUN(test_watcher_region_across_feeds_still_survives);
     CT_DONE();
 }
