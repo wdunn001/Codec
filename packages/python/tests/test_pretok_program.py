@@ -1,23 +1,31 @@
-"""Pre-tokenizer program tests. Mirrors packages/web/test/pretok-program.test.ts.
+"""Pre-tokenizer program tests, structured like packages/web/test/pretok-program.test.ts.
 
-Three layers:
-  1. Direct interpreter unit tests on synthetic programs, asserting the op
-     set behaves as documented in spec/PRETOKENIZER_PROGRAM.md. Expected
-     outputs are the same literal values asserted by the TS reference test
-     for the same inputs and programs.
-  2. Equivalence with Python's ``regex`` engine (which supports \\p{L} /
-     \\p{N} natively) on the same stress-input corpus the TS test uses.
-     This is the automatic, always-checked half of the parity claim.
+The TypeScript reference is NOT used as the oracle here. At the time this
+file was written, TypeScript's whitespace class and its metaspace splitter
+had both been found to disagree with the C and Rust runtimes (see
+packages/python/src/codecai/pretok_program.py's module docstring and
+commit 79e93ec, which fixed the whitespace side in TypeScript). Testing
+Python against TypeScript would have pinned Python to bugs instead of to
+the spec. Every check below uses one of three oracles instead:
+
+  1. Direct interpreter unit tests against spec/PRETOKENIZER_PROGRAM.md's
+     documented op behavior, using inputs and expected outputs confirmed
+     against the C runtime (packages/c/src/pretok_program.c), not against
+     TypeScript.
+  2. Equivalence with Python's own ``regex`` engine (which supports
+     \\p{L} / \\p{N} / \\p{White_Space} natively) over a stress-input
+     corpus.
   3. Equivalence with the real Qwen-2 map's regex, when a local codec-maps
      checkout is available (skipped otherwise, same convention as
      test_bpe.py's find_qwen_map).
 
-The module was cross-checked against the TypeScript reference
-(runPreTokProgram in packages/web/src/pretok-program.ts) directly at
-landing time: 5 program variants x 26 stress inputs x 130 cases, 0
-mismatches. That one-time cross-language run is what test 2 below keeps
-enforced going forward without requiring a Node runtime in the Python test
-suite.
+The metaspace splitter's handling of a whitespace run longer than one code
+point (e.g. consecutive newlines) is a separate, still-open question: C
+and Rust agree with each other there, but neither has been confirmed
+against HuggingFace's own ``Metaspace`` reference. That case is
+deliberately left unpinned below rather than asserted either way; see the
+skipped test near the bottom of this file and the docstring on
+``_run_metaspace`` in pretok_program.py.
 """
 from __future__ import annotations
 
@@ -102,6 +110,8 @@ def test_emoji_and_cjk_are_letters_via_unicode_letter_class():
 
 
 def test_metaspace_splits_and_prefixes_marker():
+    # No newline involved, so this input is not affected by the open
+    # metaspace question below; TS, C, and Rust all agree here.
     prog = {"version": 1, "ops": [{"op": "metaspace_split", "prefix_first": False}]}
     assert run_pretok_program(prog, "Hello world") == [
         METASPACE + "Hello", METASPACE + "world",
@@ -109,10 +119,100 @@ def test_metaspace_splits_and_prefixes_marker():
 
 
 def test_metaspace_prefix_first_leaves_first_piece_bare():
+    # Same note as above: no newline, so unaffected by the open question.
     prog = {"version": 1, "ops": [{"op": "metaspace_split", "prefix_first": True}]}
     assert run_pretok_program(prog, "Hello world") == [
         "Hello", METASPACE + "world",
     ]
+
+
+# ── Whitespace class must be exactly Unicode White_Space ───────────────────
+#
+# spec/PRETOKENIZER_PROGRAM.md § Class membership pins the whitespace class
+# to `\p{White_Space}` plus the usual ASCII fallbacks. TypeScript's native
+# `\s` disagreed with that on two code points (excluded U+0085 NEXT LINE,
+# included U+FEFF ZERO WIDTH NO-BREAK SPACE) until commit 79e93ec. The
+# oracle here is the literal Unicode White_Space list, confirmed against
+# the C runtime, not a regex, so it cannot drift with whatever the
+# implementation happens to use.
+
+WHITE_SPACE_CODE_POINTS = [
+    0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x0020, 0x0085, 0x00A0,
+    0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006,
+    0x2007, 0x2008, 0x2009, 0x200A, 0x2028, 0x2029, 0x202F, 0x205F,
+    0x3000,
+]
+
+# Zero-width or invisible characters that are NOT White_Space.
+NOT_WHITE_SPACE_CODE_POINTS = [0xFEFF, 0x200B, 0x180E, 0x2060, 0x00AD]
+
+
+def _treats_as_whitespace(cp: int) -> bool:
+    """With QWEN_LIKE, ``a<cp>!`` splits three ways when cp is whitespace
+    (punct_run stops at it) and two ways when it is not (punct_run
+    absorbs it with the ``!``)."""
+    pieces = run_pretok_program(QWEN_LIKE, f"a{chr(cp)}!")
+    return len(pieces) == 3
+
+
+@pytest.mark.parametrize("cp", [cp for cp in WHITE_SPACE_CODE_POINTS if cp != 0x20])
+def test_white_space_code_points_split(cp: int):
+    # 0x20 is excluded: punct_run's lead_space consumes it either way, so
+    # it can't distinguish the two classes through this probe.
+    assert _treats_as_whitespace(cp) is True, f"U+{cp:04X} is White_Space and must split"
+
+
+@pytest.mark.parametrize("cp", NOT_WHITE_SPACE_CODE_POINTS)
+def test_non_white_space_code_points_do_not_split(cp: int):
+    assert _treats_as_whitespace(cp) is False, f"U+{cp:04X} is not White_Space and must not split"
+
+
+def test_u0085_next_line_is_whitespace():
+    # Confirmed against the C runtime, which produces ['a', '\x85', '!'].
+    assert run_pretok_program(QWEN_LIKE, "a!") == ["a", "", "!"]
+
+
+def test_ufeff_is_not_whitespace():
+    # Confirmed against the C runtime, which produces ['a', '﻿!'].
+    assert run_pretok_program(QWEN_LIKE, "a﻿!") == ["a", "﻿!"]
+
+
+def test_ws_run_groups_a_mixed_white_space_run_as_c_does():
+    # Input is a, U+0085, U+2009 THIN SPACE, U+0020, b. The C runtime
+    # emits the pieces "a" / " " / " b", so U+0085 belongs to
+    # the same ws_run as U+2009 even though they're different code points.
+    assert run_pretok_program(QWEN_LIKE, "a  b") == ["a", " ", " b"]
+
+
+def test_trailing_ws_treats_u0085_as_part_of_the_run():
+    # C emits ['a', ''] for this input.
+    assert run_pretok_program(QWEN_LIKE, "a") == ["a", ""]
+
+
+# ── Metaspace: open question, deliberately not pinned either way ───────────
+
+
+@pytest.mark.skip(
+    reason=(
+        "Open question, not resolved by this file: for a whitespace run "
+        "longer than one code point (e.g. two consecutive newlines), C "
+        "and Rust agree the whole run is a pure separator that produces "
+        "no piece of its own ('a\\n\\nb' -> ['▁a', '▁b']). "
+        "TypeScript, before it was fixed alongside this file landing, "
+        "emitted a spurious '▁\\n' piece per extra newline instead. "
+        "Neither side has been confirmed against HuggingFace's own "
+        "Metaspace pre-tokenizer, which reportedly keeps a trailing "
+        "newline attached to the adjacent word (a third possible "
+        "answer). This module's _run_metaspace follows C and Rust "
+        "because they agree with each other, not because either has "
+        "been shown to match HuggingFace. Un-skip only once that's "
+        "settled against a real HuggingFace reference, and assert "
+        "whichever answer that reference gives."
+    ),
+)
+def test_metaspace_consecutive_newlines_open_question():
+    prog = {"version": 1, "ops": [{"op": "metaspace_split", "prefix_first": False}]}
+    run_pretok_program(prog, "a\n\nb")
 
 
 # ── Equivalence: program output must equal Python's native regex output ────
@@ -182,6 +282,8 @@ STRESS_INPUTS = [
     "a" * 100,
     "---divider---",
     "unicode_ⅷ_numerals",
+    "ab",
+    "a﻿b",
 ]
 
 

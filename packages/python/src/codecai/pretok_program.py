@@ -14,11 +14,18 @@ without a Unicode regex engine (``libcodec``), but porting it here keeps
 every client on the same code path, which is what makes cross-language
 equivalence auditable in the first place.
 
-Verified byte-for-byte against the TypeScript reference
-(``packages/web/src/pretok-program.ts``) across 5 program variants and 26
-stress inputs (130 cases total, 0 mismatches) as part of landing this
-module. See ``packages/python/tests/test_pretok_program.py`` for the
-in-repo equivalence tests that keep that claim enforced.
+Verified against the C runtime (``packages/c/src/pretok_program.c`` and its
+``codec_unicode_is_ws`` table), not against TypeScript. At recovery time the
+TypeScript interpreter's whitespace class disagreed with C and Rust on two
+code points (native JS ``\\s`` versus ``\\p{White_Space}``; fixed in commit
+``79e93ec``), and TypeScript's metaspace splitter still diverges from C and
+Rust on how a run of non-space-or-tab whitespace (e.g. consecutive
+newlines) is pieced. Pinning this file's tests to the old TypeScript
+behavior would have encoded those bugs as the spec instead of catching
+them. See ``packages/python/tests/test_pretok_program.py`` for the in-repo
+equivalence tests, which check against C's confirmed values and Python's
+own ``regex`` engine instead of the TS reference, and :func:`_run_metaspace`
+below for the open question on the metaspace side.
 """
 from __future__ import annotations
 
@@ -26,21 +33,33 @@ from typing import Any, List, Mapping, Sequence
 
 from .encoder import METASPACE
 
-# ASCII whitespace plus the Unicode WS code points typical pre-tokenizers
-# regard as ``\\s``. Matches what Python's ``regex`` package treats as
-# ``\\s`` under the default flags. A frozen set plus ``str.isspace()``
-# fallback is used rather than calling ``regex`` on each character; the hot
-# loop runs millions of times and method-call overhead dominates there.
-_WS_CHARS = frozenset({
-    " ", "\t", "\n", "\r", "\x0b", "\x0c",
-    " ", " ", " ", "　",
-})
+# Unicode White_Space=Yes, transcribed from the UCD PropList. This is the
+# same 25 code points as packages/c/src/codec_unicode_tables.c's
+# WS_CODE_POINTS table, and what Rust's `regex` crate resolves `\s` to.
+# spec/PRETOKENIZER_PROGRAM.md § Class membership pins the program's `\s`
+# to exactly this set.
+#
+# This is deliberately NOT `str.isspace()`. CPython's `isspace()` is a
+# superset of White_Space -- it also returns True for U+001C-U+001F, the
+# information-separator control characters, which carry bidirectional
+# class B/S but are not White_Space. Using `isspace()` as a fallback here
+# would silently reintroduce the same class of bug that made TypeScript's
+# native `\s` disagree with C on 1074 of 10316 differential-tested inputs
+# (U+0085 NEXT LINE and U+FEFF ZERO WIDTH NO-BREAK SPACE were the two
+# culprits there; see commit 79e93ec). A plain frozenset lookup over the
+# exact 25-code-point table is both correct and fast, so no fallback is
+# needed at all.
+_WHITE_SPACE_CODE_POINTS = (
+    0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x0020, 0x0085, 0x00A0,
+    0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006,
+    0x2007, 0x2008, 0x2009, 0x200A, 0x2028, 0x2029, 0x202F, 0x205F,
+    0x3000,
+)
+_WS_CHARS = frozenset(chr(cp) for cp in _WHITE_SPACE_CODE_POINTS)
 
 
 def _is_ws(cp: str) -> bool:
-    # Fast path for the common cases, fallback to str.isspace for the
-    # long tail of Unicode whitespace.
-    return cp in _WS_CHARS or cp.isspace()
+    return cp in _WS_CHARS
 
 
 def _is_letter(cp: str) -> bool:
@@ -176,23 +195,65 @@ def _match_ws_run(_op: Mapping[str, Any], s: str, i: int) -> int:
 
 
 def _run_metaspace(op: Mapping[str, Any], text: str) -> List[str]:
-    out: List[str] = []
-    # Collapse runs of ASCII space/tab to a single space, then split on
-    # whitespace. Mirrors the TS implementation's runMetaspace exactly.
-    import re
+    """Split ``text`` on whitespace runs, prefixing each non-empty piece
+    with ``METASPACE`` (except the first, when ``prefix_first`` is set).
 
-    trimmed = re.sub(r"[ \t]+", " ", text)
-    parts = [p for p in re.split(r"(\s)", trimmed) if p]
-    is_first = True
+    This mirrors ``codec_pretok_run_metaspace`` in
+    ``packages/c/src/pretok_program.c`` byte-for-byte, including its
+    ``is_first`` bookkeeping: ``is_first`` goes false as soon as ANY
+    leading whitespace run (of any White_Space code point, not just a
+    literal space) is consumed, even before the first word is captured.
+    Rust's ``run_metaspace`` only clears its ``is_first`` on a literal
+    ASCII space during that leading run, which is an observable
+    disagreement between C and Rust when ``prefix_first`` is set and the
+    input starts with a non-space whitespace character (e.g. a leading
+    newline). That narrow case is left un-pinned here in favor of C's
+    simpler, uniform rule; it hasn't been resolved against any upstream
+    reference.
+
+    Open question, NOT resolved by this file: for a run of more than one
+    non-space-or-tab whitespace code point in the middle of the input
+    (e.g. two consecutive newlines), C and Rust agree the whole run is a
+    pure separator that produces no piece of its own (``"a\\n\\nb"`` ->
+    ``["▁a", "▁b"]``). TypeScript, prior to this file being
+    ported, emitted a spurious ``▁\\n`` piece per extra newline
+    (``["▁a", "▁\\n", "▁\\n", "▁b"]``). Whichever of
+    those is correct against HuggingFace's own ``Metaspace``
+    pre-tokenizer (which reportedly keeps a trailing newline attached to
+    the adjacent word, a third possible answer) was not established
+    before this file landed. This implementation follows C and Rust
+    because they agree with each other; it does not claim they match
+    HuggingFace.
+    """
     prefix_first = bool(op.get("prefix_first"))
-    for p in parts:
-        if p == " ":
+    out: List[str] = []
+    n = len(text)
+    i = 0
+    is_first = True
+    while i < n:
+        # Advance past any leading whitespace run. Any White_Space code
+        # point clears is_first, even if no word has been captured yet.
+        ws_end = i
+        while ws_end < n and _is_ws(text[ws_end]):
+            ws_end += 1
+        if ws_end > i:
             is_first = False
-            continue
+        i = ws_end
+        if i >= n:
+            break
+
+        # Capture the next non-whitespace run.
+        word_start = i
+        while i < n and not _is_ws(text[i]):
+            i += 1
+        if i == word_start:
+            break
+
+        word = text[word_start:i]
         if prefix_first and is_first:
-            out.append(p)
+            out.append(word)
         else:
-            out.append(METASPACE + p)
+            out.append(METASPACE + word)
         is_first = False
     return out
 
