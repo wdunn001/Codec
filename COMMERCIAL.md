@@ -64,8 +64,8 @@ We typically respond within a few business days.
   license (MIT) for anyone who already has them. The relicense applies to
   all future commits and releases.
 - The `maps/` directory in the related `codec-maps` repository contains
-  tokenizer data derived from upstream model vendors and is governed by each
-  upstream vendor's license, not by the BSL. See that repository's LICENSE
+  tokenizer data derived from upstream model vendors and is governed solely by each
+  upstream vendor's license. See that repository's LICENSE
   and the per-file headers under `maps/` for details.
 - "Business Source License" is a trademark of MariaDB Corporation Ab. The
   BSL 1.1 license text is used here under the terms granted by MariaDB.
