@@ -249,6 +249,58 @@ static void test_protobuf_rejects_truncated_fixed_width_fields(void) {
     codec_frame_destroy(&out);
 }
 
+/* ── Unbounded msgpack container nesting ────────────────────────────────── */
+/*
+ * Both msgpack skippers recursed once per container with no depth cap.
+ * Every 0x91 byte (fixarray of one element) costs one stack frame, so a run
+ * of them exhausts an 8 MiB thread stack well before a megabyte of input.
+ * codec_msgpack_stream_next is the worse of the two: mp_end_offset walks
+ * the raw accumulated buffer before any frame is decoded, so a plain run of
+ * 0x91 with no valid frame in it is enough.
+ */
+
+static void test_msgpack_rejects_deep_nesting(void) {
+    /* 81 A1 78 <N x 0x91> C0 — fixmap(1), key "x", deeply nested value. */
+    const size_t N = 200000;
+    size_t n = 3 + N + 1;
+    uint8_t *b = (uint8_t *)malloc(n);
+    CT_TRUE(b != NULL);
+    b[0] = 0x81; b[1] = 0xA1; b[2] = 'x';
+    memset(b + 3, 0x91, N);
+    b[3 + N] = 0xC0;
+
+    codec_frame_t out;
+    size_t consumed = 0;
+    CT_EQ_INT(codec_decode_msgpack(b, n, &out, &consumed), CODEC_ERR_PARSE);
+    codec_frame_destroy(&out);
+    free(b);
+}
+
+static void test_msgpack_accepts_normal_nesting(void) {
+    /* The cap must not reject a real frame. Round-trip one with tool calls,
+     * which is the deepest shape the wire format produces. */
+    codec_frame_t in;
+    codec_frame_init(&in);
+    uint32_t ids[] = { 7 };
+    codec_tool_call_t call = { (char *)"c1", (char *)"get_time", (char *)"{}" };
+    in.ids = ids; in.ids_len = 1; in.done = true;
+    in.finish_reason = (char *)"stop";
+    in.tool_calls = &call; in.tool_calls_len = 1;
+
+    codec_buffer_t buf = {0};
+    CT_EQ_INT(codec_encode_msgpack(&in, &buf), CODEC_OK);
+    codec_frame_t out;
+    size_t consumed = 0;
+    CT_EQ_INT(codec_decode_msgpack(buf.data, buf.len, &out, &consumed), CODEC_OK);
+    CT_EQ_SZ(out.ids_len, 1);
+
+    in.ids = NULL; in.ids_len = 0; in.finish_reason = NULL;
+    in.tool_calls = NULL; in.tool_calls_len = 0;
+    codec_frame_destroy(&in);
+    codec_frame_destroy(&out);
+    codec_buffer_free(&buf);
+}
+
 int main(void) {
     CT_RUN(test_msgpack_round_trip);
     CT_RUN(test_msgpack_no_finish_reason);
@@ -260,5 +312,7 @@ int main(void) {
     CT_RUN(test_protobuf_rejects_overflowing_packed_ids_length);
     CT_RUN(test_protobuf_rejects_truncated_length_delimited_field);
     CT_RUN(test_protobuf_rejects_truncated_fixed_width_fields);
+    CT_RUN(test_msgpack_rejects_deep_nesting);
+    CT_RUN(test_msgpack_accepts_normal_nesting);
     CT_DONE();
 }

@@ -262,13 +262,21 @@ static int mp_read_bool(mp_reader_t *r, bool *v) {
 }
 
 /* Skip a single msgpack value. Used to ignore unknown fields. Returns
- * remaining bytes consumed via the reader; 0 on malformed input. */
-static int mp_skip_value(mp_reader_t *r);
-static int mp_skip_n(mp_reader_t *r, uint32_t n) {
-    for (uint32_t i = 0; i < n; i++) if (!mp_skip_value(r)) return 0;
+ * remaining bytes consumed via the reader; 0 on malformed input.
+ *
+ * `depth` bounds the container nesting. Without it every 0x91 byte
+ * (fixarray of one element) costs a stack frame, so a run of them in an
+ * unknown field is a remote stack-exhaustion crash for one byte each. Codec
+ * frames nest three deep at most (map, tool_calls array, tool-call object),
+ * so the cap is far above anything legitimate. */
+#define CODEC_MP_MAX_DEPTH 64
+static int mp_skip_value(mp_reader_t *r, unsigned depth);
+static int mp_skip_n(mp_reader_t *r, uint32_t n, unsigned depth) {
+    for (uint32_t i = 0; i < n; i++) if (!mp_skip_value(r, depth)) return 0;
     return 1;
 }
-static int mp_skip_value(mp_reader_t *r) {
+static int mp_skip_value(mp_reader_t *r, unsigned depth) {
+    if (depth > CODEC_MP_MAX_DEPTH) return 0;
     if (r->remaining == 0) return 0;
     uint8_t b = r->p[0];
     /* fixint / nil / bool */
@@ -282,9 +290,9 @@ static int mp_skip_value(mp_reader_t *r) {
         r->p += 1 + n; r->remaining -= 1 + n; return 1; }
     /* fixarray / fixmap */
     if ((b & 0xF0) == 0x90) { uint32_t n = b & 0x0F; r->p++; r->remaining--;
-        return mp_skip_n(r, n); }
+        return mp_skip_n(r, n, depth + 1); }
     if ((b & 0xF0) == 0x80) { uint32_t n = b & 0x0F; r->p++; r->remaining--;
-        return mp_skip_n(r, n * 2); }
+        return mp_skip_n(r, n * 2, depth + 1); }
     /* Various wider types */
     static const uint8_t fixed_widths[256] = {
         [0xCA] = 4, [0xCB] = 8,
@@ -311,14 +319,14 @@ static int mp_skip_value(mp_reader_t *r) {
         if (r->remaining < 1 + hl) return 0;
         size_t n = 0; for (size_t i = 0; i < hl; i++) n = (n << 8) | r->p[1 + i];
         r->p += 1 + hl; r->remaining -= 1 + hl;
-        return mp_skip_n(r, (uint32_t)n);
+        return mp_skip_n(r, (uint32_t)n, depth + 1);
     }
     if (b == 0xDE || b == 0xDF) {
         size_t hl = (b == 0xDE) ? 2 : 4;
         if (r->remaining < 1 + hl) return 0;
         size_t n = 0; for (size_t i = 0; i < hl; i++) n = (n << 8) | r->p[1 + i];
         r->p += 1 + hl; r->remaining -= 1 + hl;
-        return mp_skip_n(r, (uint32_t)n * 2);
+        return mp_skip_n(r, (uint32_t)n * 2, depth + 1);
     }
     return 0;
 }
@@ -363,7 +371,7 @@ codec_status_t codec_decode_msgpack(const uint8_t *data, size_t len,
                 out->finish_reason[slen] = 0;
             }
         } else {
-            if (!mp_skip_value(&r)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
+            if (!mp_skip_value(&r, 0)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
         }
     }
 
