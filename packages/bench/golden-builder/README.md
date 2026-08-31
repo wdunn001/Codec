@@ -1,20 +1,20 @@
-# `golden-builder` — perceptual trust anchor for Codec latent bench
+# `golden-builder`: perceptual trust anchor for Codec latent bench
 
 This directory builds the Docker image that produces the **reference RGB pixels** every Codec latent bench cell resolves SSIM / PSNR / LPIPS / VMAF against.
 
 ## Why a frozen container?
 
-Codec latent streams travel as VAE latent tensors, not pixels. The contract splits in two (see [`spec/PROTOCOL.md`](../../../spec/PROTOCOL.md) §"Validation contract"):
+Codec latent streams travel as VAE latent tensors rather than pixels. The contract splits in two (see [`spec/PROTOCOL.md`](../../../spec/PROTOCOL.md) §"Validation contract"):
 
-1. **Latent-byte boundary: bit-identical.** Server-emitted bytes equal client-received bytes, byte-for-byte. Tested without a decoder loaded, so every client (including ones with no GPU) can verify it.
-2. **Pixel boundary: perceptual bound only.** VAE decoders are floating-point and non-deterministic across runtimes (torch / ONNX-Web / ggml / WGSL), so the contract collapses to "your decoded pixels match a frozen reference within published SSIM / PSNR / LPIPS thresholds."
+1. **Latent-byte boundary: bit-identical.** Server-emitted bytes equal client-received bytes, byte-for-byte. Tested without a decoder loaded. Every client, including ones with no GPU, can verify it as a result.
+2. **Pixel boundary: perceptual bound only.** VAE decoders are floating-point and non-deterministic across runtimes (torch / ONNX-Web / ggml / WGSL). The contract therefore collapses to "your decoded pixels match a frozen reference within published SSIM / PSNR / LPIPS thresholds."
 
-The reference is *this image*. Its sha256 digest IS the contract. Bench fingerprints reference the image by digest, not by tag — pinning by tag would let a registry rebuild silently re-render every reference.
+The reference is *this image*. Its sha256 digest IS the contract. Bench fingerprints reference the image by digest alone, never by tag: pinning by tag would let a registry rebuild silently re-render every reference.
 
 ## What it does
 
 Given:
-- `methodology/latent-fixtures.json` — the canonical fixture list,
+- `methodology/latent-fixtures.json`: the canonical fixture list,
 - A `latent_space_id` (e.g. `stabilityai/sd-vae-ft-mse`),
 - A directory of pre-captured latent bytes (one file per fixture key, produced by `capture-latent-samples.py`),
 

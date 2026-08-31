@@ -38,9 +38,9 @@ per cell: wire_bytes / tokens / B-per-tok / ttfb / total / ratio-vs-json
 
 ## Why this exists
 
-Same-shaped numbers across all language clients (TS, Python, .NET, C, Rust, Java) is the polyglot interop proof: the wire contract is language-agnostic, so the bytes-on-wire don't change between clients. Verified against Qwen/Qwen2.5-0.5B-Instruct on `codec-sglang` (token-native binary transport + server-side ToolWatcher) — Java emits the same `975 B` / `652 B` identity-msgpack / identity-protobuf as every other client.
+Same-shaped numbers across all language clients (TS, Python, .NET, C, Rust, Java) is the polyglot interop proof: the wire contract is language-agnostic. The bytes-on-wire don't change between clients as a result. Verified against Qwen/Qwen2.5-0.5B-Instruct on `codec-sglang` (token-native binary transport + server-side ToolWatcher): Java emits the same `975 B` / `652 B` identity-msgpack / identity-protobuf as every other client.
 
 ## Notes
 
-- Wire-byte capture: JDK's `java.net.http.HttpClient` does not auto-decompress, so the bytes off the socket are the bytes we count. Decompression is done in-process for token counting (`GZIPInputStream`, `BrotliInputStream`, `ZstdInputStream`).
+- Wire-byte capture: JDK's `java.net.http.HttpClient` does not auto-decompress. The bytes off the socket are the bytes we count as a result. Decompression is done in-process for token counting (`GZIPInputStream`, `BrotliInputStream`, `ZstdInputStream`).
 - The bench uses `ai.codec.StreamDecoder.decodeMsgpackStream` / `decodeProtobufStream` from the `codec` library to count Codec-format tokens; JSON-SSE tokens are line-counted.

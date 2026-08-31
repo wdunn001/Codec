@@ -2,7 +2,7 @@
 
 No-bullshit benchmarks for the Codec binary transport protocol.
 
-📊 **Latest aggregated results: [`RESULTS.md`](RESULTS.md)** — full A/B numbers from a live sglang server with Codec PRs #24483 + #24557, polyglot interop across 4 client implementations, end-to-end agent loops with SearXNG and MetaMCP.
+📊 **Latest aggregated results: [`RESULTS.md`](RESULTS.md)**: full A/B numbers from a live sglang server with Codec PRs #24483 + #24557, polyglot interop across 4 client implementations, end-to-end agent loops with SearXNG and MetaMCP.
 
 Three independent measurements, each runnable in isolation:
 
@@ -13,9 +13,9 @@ Three independent measurements, each runnable in isolation:
 | `compression` | Compression scaling sweep: each encoder × {identity, gzip, br, zstd} at small/medium/large | No |
 | `live` | Real wire bytes against a streaming OpenAI-compatible endpoint (set `BENCH_SWEEP=1` for sizes) | Yes |
 | `mcp:live` (v0.3) | 5-variant MCP wire matrix against a live MetaMCP gateway: `json` → `msgpack-resp` → `msgpack-both` → `+gzip` → `+gzip+map` (the leaf-mode bypass with [`codec-time-leaf`](https://hub.docker.com/r/wdunn001/codec-time-leaf) in-namespace) | Yes |
-| `latent:live` (v0.3) | Latent-modality wire matrix against [`codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui) / [`codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers): per-(format, encoding, pipeline, fixture) cells. **Live as of 2026-05-09** — first end-to-end run validates pipeline math byte-for-byte (results: [`results/2026-05-09T13-01-55Z/latent/`](results/2026-05-09T13-01-55Z/latent/)). | Yes |
+| `latent:live` (v0.3) | Latent-modality wire matrix against [`codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui) / [`codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers): per-(format, encoding, pipeline, fixture) cells. **Live as of 2026-05-09**: first end-to-end run validates pipeline math byte-for-byte (results: [`results/2026-05-09T13-01-55Z/latent/`](results/2026-05-09T13-01-55Z/latent/)). | Yes |
 
-The methodology spec — including the v0.3 negotiation-headers requirements (Codec-Tokenizer-Map / Codec-Latent-Map / Codec-Zstd-Dict) and the MCP-live + latent-modality result-row schemas — lives in [`methodology/SCHEMA.md`](methodology/SCHEMA.md).
+The methodology spec: including the v0.3 negotiation-headers requirements (Codec-Tokenizer-Map / Codec-Latent-Map / Codec-Zstd-Dict) and the MCP-live + latent-modality result-row schemas: lives in [`methodology/SCHEMA.md`](methodology/SCHEMA.md).
 
 ### v0.3.x lab results (committed)
 
@@ -26,7 +26,7 @@ The methodology spec — including the v0.3 negotiation-headers requirements (Co
 | [`2026-05-09T12-17-48Z/mcp/`](results/2026-05-09T12-17-48Z/mcp/) | MCP, leaf-mode bypass | `[Codec][leaf]` log fires end-to-end on real lab traffic |
 | [`2026-05-09T13-01-55Z/latent/`](results/2026-05-09T13-01-55Z/latent/) | Latent, first run | Pipeline math validates byte-for-byte; int4 = **3.9×** vs raw on 512×512 |
 
-Plus full agent-loop benches (prompt → tool call → dispatch → final answer) live under `packages/demo-python` — see [`RESULTS.md`](RESULTS.md) §4–§6 for numbers.
+Plus full agent-loop benches (prompt → tool call → dispatch → final answer) live under `packages/demo-python`: see [`RESULTS.md`](RESULTS.md) §4:§6 for numbers.
 
 ## Run
 
@@ -55,8 +55,8 @@ If the server is unreachable, `bench:live` exits with a skip notice rather than 
 
 ## What the numbers mean
 
-- **wire**: bytes-on-wire per token, encode/decode CPU per chunk. The headline number is `vs json-sse` — how much smaller each Codec mode is than the JSON-SSE incumbent.
-- **handoff**: shows the cost of detokenize+JSON+tokenize round trip every agent-to-agent call pays today. Tokenization is modeled as a hash lookup, which is a *lower bound* on real BPE cost — the gap is wider in production.
+- **wire**: bytes-on-wire per token, encode/decode CPU per chunk. The headline number is `vs json-sse`: how much smaller each Codec mode is than the JSON-SSE incumbent.
+- **handoff**: shows the cost of detokenize+JSON+tokenize round trip every agent-to-agent call pays today. Tokenization is modeled as a hash lookup. That is a *lower bound* on real BPE cost: the gap is wider in production.
 - **live**: measures the real JSON-SSE wire cost from a server you point it at, then projects what the same response would cost over Codec frames using the actual token count.
 
 ## What it doesn't claim

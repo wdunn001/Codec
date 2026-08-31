@@ -1,6 +1,6 @@
 # codec-rs
 
-**Isomorphic tokenizer + detokenizer for the [Codec](https://github.com/wdunn001/Codec) binary transport protocol — for Rust.**
+**Isomorphic tokenizer + detokenizer for the [Codec](https://github.com/wdunn001/Codec) binary transport protocol: for Rust.**
 
 Decodes streaming token IDs from Codec-compliant servers (vLLM, SGLang) and encodes text into IDs for the bidirectional path. Pure Rust, with optional `reqwest` for the map loader and optional `tokio` for async stream decoding.
 
@@ -24,7 +24,7 @@ cargo add codec-rs --features tokio
 
 Edition 2021. Stable Rust 1.75+. The `http` feature is on by default; disable it (`default-features = false`) if you want the core types without `reqwest`.
 
-## Quick start — decode a stream (sync)
+## Quick start: decode a stream (sync)
 
 ```rust
 use codec_rs::{decode_msgpack_stream, Detokenizer, DetokenizeOptions, MapLoader, LoadOptions};
@@ -48,7 +48,7 @@ let resp = reqwest::blocking::Client::new()
     }))
     .send()?;
 
-// 3. Detokenize lazily — only when rendering for a human.
+// 3. Detokenize lazily: only when rendering for a human.
 let mut detok = Detokenizer::new(&map);
 for frame in decode_msgpack_stream(resp) {
     let frame = frame?;
@@ -60,7 +60,7 @@ for frame in decode_msgpack_stream(resp) {
 
 ## Forwarding IDs to another model (agent-to-agent, same vocab)
 
-When the next consumer of this stream is another model on the same vocab — agent → agent, orchestrator → planner, model → tool that re-feeds the model — you do NOT need a `Detokenizer` at all. Forward `frame.ids` directly:
+When the next consumer of this stream is another model on the same vocab: agent → agent, orchestrator → planner, model → tool that re-feeds the model: you do NOT need a `Detokenizer` at all. Forward `frame.ids` directly:
 
 ```rust,ignore
 // No Detokenizer constructed: zero UTF-8 reassembly, zero BPE-merge work.
@@ -70,9 +70,9 @@ for frame in decode_msgpack_stream(resp) {
 }
 ```
 
-This is the **hot-loop fast path** for agent mesh code. Skipping `detok.render(...)` saves ~10-20% client CPU on heavy reply streams (no `String` allocation, no partial-UTF-8 buffering, no metaspace decode). For cross-vocab handoff use [`Translator`](#cross-vocab-agent-handoff) — that case still needs the byte-level path because the two vocabs disagree.
+This is the **hot-loop fast path** for agent mesh code. Skipping `detok.render(...)` saves ~10-20% client CPU on heavy reply streams (no `String` allocation, no partial-UTF-8 buffering, no metaspace decode). For cross-vocab handoff use [`Translator`](#cross-vocab-agent-handoff): that case still needs the byte-level path because the two vocabs disagree.
 
-## Quick start — decode a stream (async)
+## Quick start: decode a stream (async)
 
 Behind the `tokio` feature flag, the same logic runs over `tokio::io::AsyncRead`:
 
@@ -114,9 +114,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## Quick start — encode text (bidirectional path)
+## Quick start: encode text (bidirectional path)
 
-When you want **zero text on the wire in either direction** — agent A's output IDs feeding straight into agent B's input — encode text to IDs locally before sending:
+When you want **zero text on the wire in either direction**: agent A's output IDs feeding straight into agent B's input: encode text to IDs locally before sending:
 
 ```rust,ignore
 use codec_rs::{Tokenize, TokenizerMap};
@@ -160,7 +160,7 @@ For huge prompts (>50K tokens, e.g. RAG with long context), the dedicated `/v1/c
 
 ## Detect tool calls without decoding
 
-Most chat-tuned models delimit tool calls with single-token specials (Qwen `<tool_call>`/`</tool_call>`, Llama 3.1+ `<|python_tag|>`/`<|eom_id|>`, DeepSeek-R1 `<think>`/`</think>`, …). Detecting one is a `u32` compare in the hot loop — no detokenize, no string allocation:
+Most chat-tuned models delimit tool calls with single-token specials (Qwen `<tool_call>`/`</tool_call>`, Llama 3.1+ `<|python_tag|>`/`<|eom_id|>`, DeepSeek-R1 `<think>`/`</think>`, …). Detecting one is a `u32` compare in the hot loop: no detokenize, no string allocation:
 
 ```rust,ignore
 use codec_rs::{decode_msgpack_stream, ToolWatcher, WatcherEventKind};
@@ -177,11 +177,11 @@ for frame in decode_msgpack_stream(stream) {
 }
 ```
 
-Stateful — regions split between network frames buffer until the end marker arrives. Same primitive covers reasoning blocks, multimodal spans, code-interpreter regions — anything delimited by a `(start, end)` special pair.
+Stateful: regions split between network frames buffer until the end marker arrives. Same primitive covers reasoning blocks, multimodal spans, code-interpreter regions: anything delimited by a `(start, end)` special pair.
 
 ## Cross-vocab agent handoff
 
-When agent A's output feeds agent B as a prompt and the two models have different vocabs, decode-then-reencode through text — without ever putting text on the wire:
+When agent A's output feeds agent B as a prompt and the two models have different vocabs, decode-then-reencode through text: without ever putting text on the wire:
 
 ```rust,ignore
 use codec_rs::Translator;
@@ -196,25 +196,25 @@ for frame in decode_msgpack_stream(stream) {
 let drain = tr.finish();
 ```
 
-Pre-tokenizers split at whitespace, so `Translator` buffers partial words until a safe boundary arrives. For analysis-only use, `static_translation_table(&from, &to)` gives a context-free `id_A → ids_B` lookup.
+Pre-tokenizers split at whitespace. `Translator` buffers partial words until a safe boundary arrives as a result. For analysis-only use, `static_translation_table(&from, &to)` gives a context-free `id_A → ids_B` lookup.
 
 ## Correctness
 
 - **Byte-level decode**: every vocab token is a sequence of GPT-2-encoded bytes. The Detokenizer reverses the byte→unicode table and accumulates bytes across tokens until a complete UTF-8 sequence forms. Tested with 3-byte (`€`) and 4-byte (`🚀`) sequences.
-- **Metaspace decode**: `▁` becomes space; SentencePiece byte-fallback IDs (`<0x00>`–`<0xFF>`) decoded through the same UTF-8 buffer.
-- **Partial sequences across frames**: `Detokenizer` is stateful — call `render(ids, DetokenizeOptions { partial: true, .. })` while frames stream, then `partial: false` on the last frame so the buffer flushes. `reset()` between conversations.
-- **BPE merge ordering**: greedy by priority, not left-to-right. Matches HuggingFace tokenizers reference behavior. Test fixture verifies this explicitly (`tests/bpe_tests.rs::merges_greedily_by_priority_not_left_to_right`).
+- **Metaspace decode**: `▁` becomes space; SentencePiece byte-fallback IDs (`<0x00>`:`<0xFF>`) decoded through the same UTF-8 buffer.
+- **Partial sequences across frames**: `Detokenizer` is stateful: call `render(ids, DetokenizeOptions { partial: true, .. })` while frames stream, then `partial: false` on the last frame so the buffer flushes. `reset()` between conversations.
+- **BPE merge ordering**: greedy by priority rather than left-to-right. Matches HuggingFace tokenizers reference behavior. Test fixture verifies this explicitly (`tests/bpe_tests.rs::merges_greedily_by_priority_not_left_to_right`).
 - **Hash verification** uses `sha2::Sha256`. Mismatch returns `LoadError::HashMismatch` (no panic).
 
 ## Map sources
 
-`MapLoader::load_blocking` / `MapLoader::load` accept any URL — the sha256 hash is what matters. For curated pre-generated maps:
+`MapLoader::load_blocking` / `MapLoader::load` accept any URL: the sha256 hash is what matters. For curated pre-generated maps:
 
 ```
 https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/<family>.json
 ```
 
-14 families covering 70+ aliases — see [`codec-maps`](https://github.com/wdunn001/codec-maps) for the index.
+14 families covering 70+ aliases: see [`codec-maps`](https://github.com/wdunn001/codec-maps) for the index.
 
 To generate from a HuggingFace `tokenizer.json`:
 
@@ -224,7 +224,7 @@ npx @codecai/maps-cli build my-org/my-model --id=my-org/my-model
 
 ## Compression
 
-`MapLoader` enables transparent decompression for gzip and brotli on its `reqwest` client, so jsDelivr's `Content-Encoding: br` (3.4× smaller transfers) works out of the box. For Codec streaming responses, the server negotiates `Content-Encoding` based on the request's `Accept-Encoding`; have your `reqwest` client request `Accept-Encoding: zstd, br, gzip` and the response stream is decompressed before any decoder sees it.
+`MapLoader` enables transparent decompression for gzip and brotli on its `reqwest` client. jsDelivr's `Content-Encoding: br` (3.4× smaller transfers) works out of the box as a result. For Codec streaming responses, the server negotiates `Content-Encoding` based on the request's `Accept-Encoding`; have your `reqwest` client request `Accept-Encoding: zstd, br, gzip` and the response stream is decompressed before any decoder sees it.
 
 ## Feature flags
 

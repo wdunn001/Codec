@@ -1,4 +1,4 @@
-# Codec.Net — coverage
+# Codec.Net: coverage
 
 Last measured: 2026-05-11 (v0.4 release-cut)
 
@@ -33,8 +33,8 @@ Per-class (selected):
 
 | Class                          | Line cov |
 |--------------------------------|---------:|
-| `SafetyPolicy.cs`              |     100% |  (new in v0.4 — descriptor + hash + load + discover paths) |
-| `Detokenizer.cs`               |     100% / 71.9% (two split classes — primary + helper) |
+| `SafetyPolicy.cs`              |     100% |  (new in v0.4: descriptor + hash + load + discover paths) |
+| `Detokenizer.cs`               |     100% / 71.9% (two split classes: primary + helper) |
 | `BPETokenizer.cs`              |      84% |  (incl. new special-token pre-scan)                     |
 | `ByteEncoder.cs`               |      84% |  |
 | `LongestMatchTokenizer.cs`     |      75% |  |
@@ -44,7 +44,7 @@ Per-class (selected):
 ## Intentionally uncovered
 
 - `MapLoader.cs` HTTP-fetch paths are exercised only by integration
-  tests against jsdelivr / well-known origins, not by `dotnet test`.
+  tests against jsdelivr / well-known origins, never by `dotnet test` alone.
 - 4 cross-vocab Translator tests skip without a Llama-3 map.
 
 ## v0.5 follow-up
@@ -52,4 +52,4 @@ Per-class (selected):
 - Wire `dotnet-reportgenerator-globaltool` into a CI step that emits
   a top-level summary and gates on regression vs the 75.40% baseline.
 - Cover `MapLoader.cs` with a `WireMockServer`-style fixture so the
-  HTTP paths run in unit tests instead of needing live origins.
+  HTTP paths run in unit tests without needing live origins.

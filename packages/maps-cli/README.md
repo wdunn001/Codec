@@ -18,7 +18,7 @@ npx @codecai/maps-cli build Qwen/Qwen2.5-7B-Instruct --id=qwen/qwen2
 
 ## CLI
 
-### `build` — fetch from HuggingFace and convert
+### `build`: fetch from HuggingFace and convert
 
 ```bash
 codecai-maps build <hf-model> [--id=<id>] [--out=<path>] [--token=<hf-token>]
@@ -39,19 +39,19 @@ $ codecai-maps build Qwen/Qwen2.5-7B-Instruct --id=qwen/qwen2
 
 For gated models (Llama, Gemma) pass a HuggingFace access token: `--token=hf_xxx`.
 
-### `convert` — local file in, map out
+### `convert`: local file in, map out
 
 ```bash
 codecai-maps convert ./tokenizer.json --id=my-org/my-model --out=./my-model.json
 ```
 
-### `validate` — schema check
+### `validate`: schema check
 
 ```bash
 codecai-maps validate ./qwen_qwen2.json
 ```
 
-### `hash` — print canonical sha256
+### `hash`: print canonical sha256
 
 ```bash
 codecai-maps hash ./qwen_qwen2.json
@@ -60,7 +60,7 @@ codecai-maps hash ./qwen_qwen2.json
 
 Use this value when pinning a map: `loadMap({ url, hash })` will reject any map that doesn't match.
 
-### `preview` — sanity check round-trip
+### `preview`: sanity check round-trip
 
 ```bash
 codecai-maps preview ./qwen_qwen2.json --text="Explain entropy."
@@ -73,7 +73,7 @@ codecai-maps preview ./qwen_qwen2.json --text="Explain entropy."
 # exact match:   YES
 ```
 
-### `translate` — cross-vocab token stream conversion
+### `translate`: cross-vocab token stream conversion
 
 Pipe one tokenizer's IDs through another's vocab with streaming-safe
 word-boundary buffering. Useful for previewing what an agent-to-agent
@@ -97,7 +97,7 @@ Or with raw IDs:
 codecai-maps translate --from=qwen2.json --to=llama-3.json --ids=785,4937
 ```
 
-### `translation-table` — context-free V_A → V_B[] lookup
+### `translation-table`: context-free V_A → V_B[] lookup
 
 ```bash
 codecai-maps translation-table --from=qwen2.json --to=llama-3.json \
@@ -106,7 +106,7 @@ codecai-maps translation-table --from=qwen2.json --to=llama-3.json \
 
 Emits a JSON file mapping every non-special source ID to the sequence
 of target IDs its rendered text encodes to. Context-free (BPE merges
-depend on context), so prefer the streaming `translate` for runtime
+depend on context): prefer the streaming `translate` for runtime
 use; the static table is for analysis (vocab overlap, cost estimation).
 
 ## Programmatic API
@@ -162,9 +162,9 @@ The output is a JSON file matching the `TokenizerMap` schema from `@codecai/web`
 
 The schema covers three tokenizer families that span ~95% of open models:
 
-- **`byte_level`** — GPT-2 byte→unicode BPE (Llama-3, Qwen, Phi-3, Mistral-Nemo, DeepSeek-V3, …).
-- **`metaspace`** — `▁`-prefix BPE with byte fallback (Llama-2, Mistral-v3, Mixtral, Gemma).
-- **identity** — vocab-only tokenizers without merges (canonical-IR / closed vocabs).
+- **`byte_level`**: GPT-2 byte→unicode BPE (Llama-3, Qwen, Phi-3, Mistral-Nemo, DeepSeek-V3, …).
+- **`metaspace`**: `▁`-prefix BPE with byte fallback (Llama-2, Mistral-v3, Mixtral, Gemma).
+- **identity**: vocab-only tokenizers without merges (canonical-IR / closed vocabs).
 
 ### Pre-tokenizer program (v2.1, additive)
 
@@ -175,7 +175,7 @@ regex engine. The CLI emits it automatically for any pre-tokenizer
 regex it recognises (currently the GPT-2-family canonical form used by
 Llama-3, Qwen, Phi-3, DeepSeek-V3, Mistral-Nemo, Falcon, SmolLM2,
 Codestral byte_level). Maps with unrecognised regexes still build
-normally — `pre_tokenizer_program` is just omitted, and runtimes fall
+normally: `pre_tokenizer_program` is just omitted, and runtimes fall
 back to the regex string.
 
 See [`spec/PRETOKENIZER_PROGRAM.md`](https://github.com/wdunn001/Codec/blob/main/spec/PRETOKENIZER_PROGRAM.md)
@@ -202,9 +202,9 @@ const map = await loadMap({
 });
 ```
 
-### `well-known` — publish for `.well-known/codec/` discovery
+### `well-known`: publish for `.well-known/codec/` discovery
 
-Generate the static directory tree clients need to find your map by `(origin, id)` alone, so consumers don't have to hard-code your CDN URL:
+Generate the static directory tree clients need to find your map by `(origin, id)` alone. Consumers don't have to hard-code your CDN URL as a result:
 
 ```bash
 codecai-maps well-known --map=./qwen_qwen2.json \
@@ -219,16 +219,16 @@ public/.well-known/codec/maps/qwen/qwen2.json   ← pointer { id, url, hash }
 public/.well-known/codec/index.json             ← directory of all your maps
 ```
 
-Drop `./public` onto any static host (GitHub Pages, S3, Vercel) under the origin you control, and any client can do:
+Drop `./public` onto any static host (GitHub Pages, S3, Vercel) under the origin you control. Any client can then do:
 
 ```ts
 import { discoverMap } from '@codecai/web';
 const map = await discoverMap({ origin: 'https://qwen.io', id: 'qwen/qwen2' });
 ```
 
-Pass `--inline` instead of `--url` to embed the full map at the well-known location (skips the CDN indirection — recommended only for small maps). Re-running with the same id replaces the existing index entry. See [`spec/WELL_KNOWN_DISCOVERY.md`](https://github.com/wdunn001/Codec/blob/main/spec/WELL_KNOWN_DISCOVERY.md) for the publishing contract.
+Pass `--inline` in place of `--url` to embed the full map at the well-known location (skips the CDN indirection: recommended only for small maps). Re-running with the same id replaces the existing index entry. See [`spec/WELL_KNOWN_DISCOVERY.md`](https://github.com/wdunn001/Codec/blob/main/spec/WELL_KNOWN_DISCOVERY.md) for the publishing contract.
 
-### `policies-*` — safety-policy descriptor lifecycle (v0.4)
+### `policies-*`: safety-policy descriptor lifecycle (v0.4)
 
 The v0.4 [safety-policy negotiation spec](https://github.com/wdunn001/Codec/blob/main/spec/versions/v0.4.md#safety-policy-negotiation) ships four CLI subcommands that mirror the tokenizer-map shape exactly:
 
@@ -238,13 +238,13 @@ codecai-maps policies-validate ./internal-config.json
 
 # Strip internal-only fields (banned_token_ids, regex_patterns,
 # grammar_constraints, multi_token_patterns, classifier thresholds /
-# weights) and emit the publishable descriptor — what the world sees
+# weights) and emit the publishable descriptor: what the world sees
 # at .well-known/codec/policies/<id>.json. Internal-field counts
 # survive as rules_summary.* for auditors.
 codecai-maps policies-sanitize --internal=./internal-config.json \
   --out=./acme-strict-v3.policy.json
 
-# Canonical sha256 over the sanitized descriptor — bit-identical
+# Canonical sha256 over the sanitized descriptor: bit-identical
 # across @codecai/web, codecai (Python), codec-rs, Codec.Net,
 # codec (Java), libcodec, and codec-supervisor.
 codecai-maps policies-hash ./acme-strict-v3.policy.json
@@ -270,9 +270,9 @@ codecai-maps policies-enumerate --map=./qwen_qwen2.json \
   --out=./enumerated-patterns.json
 ```
 
-The descriptor never contains operator-internal contents — that's the
+The descriptor never contains operator-internal contents: that's the
 disclosure-boundary contract (an attacker who can fetch the
-`.well-known` page learns the *shape* of enforcement, not the contents
+`.well-known` page learns only the *shape* of enforcement, never the contents
 of banned-token lists or classifier thresholds). The internal-config
 side lives in [`codec-supervisor`](https://github.com/wdunn001/codec-supervisor)
 under `policies_dir/` and is never published.

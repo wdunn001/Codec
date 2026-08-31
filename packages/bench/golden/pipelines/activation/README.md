@@ -4,7 +4,7 @@ Conformance fixtures for the `raw`-pipeline activation profile (see
 [`spec/PIPELINES.md`](../../../../spec/PIPELINES.md) § Activation
 profile). Each `*.json` file freezes one `(header bytes, frame bytes)`
 pair produced by `ActivationStreamEncoder` in
-`packages/web/src/latent-frame.ts` — the bytes every conformant
+`packages/web/src/latent-frame.ts`: the bytes every conformant
 implementation (this TS module, the Python twin once it's ported, any
 future vendor of the wire contract) must keep reproducing exactly, given
 the same input activations and frame options.
@@ -29,8 +29,8 @@ the same input activations and frame options.
 }
 ```
 
-`activations` is the plaintext (never-quantized) input, so a from-scratch
-implementation in another language can regenerate `header_msgpack_b64` /
+`activations` is the plaintext (never-quantized) input. A from-scratch
+implementation in another language can therefore regenerate `header_msgpack_b64` /
 `frame_msgpack_b64` independently and diff against the frozen bytes,
 without needing to reverse-engineer them out of the msgpack payload first.
 
@@ -41,8 +41,8 @@ without needing to reverse-engineer them out of the msgpack payload first.
    / `pipeline` / `frame_meta`.
 2. Decode `frame.data` per the `raw` pipeline's inverse transform (§
    Activation profile in PIPELINES.md) and verify it equals `activations`
-   flattened, exactly (both fixtures use fp16-exact values, so this holds
-   bit-for-bit for both `fp32` and `fp16` dtype fixtures).
+   flattened, exactly (both fixtures use fp16-exact values: this holds
+   bit-for-bit for both `fp32` and `fp16` dtype fixtures as a result).
 3. Re-encode `activations` with the same `frame_meta` and verify the
    resulting bytes equal the frozen `header_msgpack_b64` /
    `frame_msgpack_b64` exactly.
@@ -54,7 +54,7 @@ side and is the reference implementation of this conformance procedure.
 ## Regenerating
 
 Fixtures are deterministic (no RNG) and should only change if the wire
-format intentionally changes — which is a breaking change to this profile
+format intentionally changes: which is a breaking change to this profile
 and must be called out in `spec/PIPELINES.md`. To regenerate after an
 intentional change, re-run the generator that produced these files against
 `ActivationStreamEncoder`, freezing new `header_msgpack_b64` /
@@ -62,6 +62,6 @@ intentional change, re-run the generator that produced these files against
 
 ## Files
 
-- `raw-fp32-prefill.json` — 3 tokens × 4-wide fp32, full sideband (`tokens`, `posStart`, `stageIndex`).
-- `raw-fp32-decode.json` — 1 token × 4-wide fp32 (decode step), no `tokens[]` (id not yet known at encode time).
-- `raw-fp16-prefill.json` — 5 tokens × 8-wide fp16, full sideband, later pipeline-split stage (`stageIndex: 2`).
+- `raw-fp32-prefill.json`: 3 tokens × 4-wide fp32, full sideband (`tokens`, `posStart`, `stageIndex`).
+- `raw-fp32-decode.json`: 1 token × 4-wide fp32 (decode step), no `tokens[]` (id not yet known at encode time).
+- `raw-fp16-prefill.json`: 5 tokens × 8-wide fp16, full sideband, later pipeline-split stage (`stageIndex: 2`).

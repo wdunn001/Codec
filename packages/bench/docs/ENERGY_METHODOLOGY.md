@@ -1,10 +1,10 @@
-# Codec — Energy Methodology
+# Codec: Energy Methodology
 
 This document is the **methodology + reproducibility artefact** behind
 the energy figures the Codec website and LinkedIn article cite. It
 exists so that the per-request energy numbers in the cost cards (e.g.
 "6.6 J → 40 mJ per request, non-GPU") are auditable from first
-principles — not "trust me, here's the headline."
+principles: not "trust me, here's the headline."
 
 GPU compute energy is **out of scope** here. Codec doesn't claim to
 reduce GPU inference energy; the win is non-GPU CPU + network energy in
@@ -25,7 +25,7 @@ appears. The 8 round-trips break down approximately as:
 | Browser → app server                           | client → server        |     1 | User prompt + history |
 | App server → model gateway                     | server → server        |     1 | Routing + auth |
 | Gateway → model engine                         | server → server        |     1 | The actual inference call |
-| Model engine → tool dispatch (avg)             | server → server        |   ~2  | Web search, code exec, file fetch — most heavy queries trigger ≥1 |
+| Model engine → tool dispatch (avg)             | server → server        |   ~2  | Web search, code exec, file fetch: most heavy queries trigger ≥1 |
 | Tool result → model engine (re-injection)      | server → server        |   ~2  | One per tool call above |
 | Model engine → gateway → app server → browser  | server → client        |     1 | Streaming render |
 
@@ -35,16 +35,16 @@ is the unit our per-request numbers are denominated in.
 
 The energy cost of **each** round-trip is split into:
 
-1. **Serialisation** — text → JSON → UTF-8 bytes (sender), and the
-   inverse (receiver). On Codec: token IDs → msgpack varint, and the
-   inverse.
-2. **Compression** — gzip/zstd CPU cycles on sender, decompressor cycles
+1. **Serialisation**: text → JSON → UTF-8 bytes (sender); the
+   inverse runs on the receiver. On Codec: token IDs → msgpack varint on the sender; the
+   inverse on the receiver.
+2. **Compression**: gzip/zstd CPU cycles on sender, decompressor cycles
    on receiver. Identical between protocols at the network primitive
    level; Codec sends fewer bytes so compression CPU drops proportionally.
-3. **Wire transmission** — datacenter LAN, internet backbone, last-mile
+3. **Wire transmission**: datacenter LAN, internet backbone, last-mile
    ISP, mobile RAN if applicable. Joules-per-bit varies by 4 orders of
    magnitude across these segments.
-4. **Re-tokenisation at the engine** — incoming JSON text must be
+4. **Re-tokenisation at the engine**: incoming JSON text must be
    re-tokenised before it can hit the model. This is the largest single
    per-hop CPU cost on the JSON-SSE path and is **completely eliminated**
    on the Codec path (token IDs flow through end-to-end).
@@ -59,8 +59,8 @@ style profiling of the Codec bench harness running locally
 Reproduction below). They are **not** load-tested production numbers,
 they are bench-run-on-laptop-CPU numbers extrapolated to a request
 shape representative of a real heavy-agent platform. Live datacenter
-SKUs typically achieve 2-3× better J/op than the lab box, so the
-per-request totals here are **conservative upper bounds** — production
+SKUs typically achieve 2-3× better J/op than the lab box. The
+per-request totals here are therefore **conservative upper bounds**: production
 numbers should be lower.
 
 | Cost component                                    | Per-byte / per-op | Source / measurement |
@@ -103,18 +103,18 @@ sender + LAN-internet-LAN + receiver across one hop:
 Per-request total (8 round-trips amortised) = **47.5 mJ × 8 ≈ 380 mJ
 per visible request on the JSON-SSE path** (non-GPU only; serialise,
 tokenise, compress, network, decompress, detokenise, parse are all
-already inside the 47.5 mJ/hop figure — do NOT double-count by adding
+already inside the 47.5 mJ/hop figure: do NOT double-count by adding
 them again on top).
 
 Note: this is per-byte work that scales with payload size. On a 50 KB
 payload (10× smaller) the per-hop work drops to ~5 mJ, ~40 mJ per
-request — Codec doesn't change shape, it changes size, and the energy
+request: Codec doesn't change shape, it changes size. The energy
 scales linearly with the bytes it eliminates.
 
 ### Worked per-hop Codec energy
 
 Codec eliminates the tokenise / detokenise work at every intermediate
-hop (token IDs flow through), and ships ~2-3 KB per visible reply
+hop (token IDs flow through). It ships ~2-3 KB per visible reply
 (see RESULTS.md §1b best cells). For the same hop:
 
 ```
@@ -159,9 +159,9 @@ efficient per byte than this lab NUC; ratios stay close.
 > non-GPU overhead above). Codec doesn't change GPU compute; the
 > savings here are a multiplier on the small slice we DO change.
 > Earlier drafts of the website/LinkedIn copy quoted "6.6 J → 40 mJ"
-> for this slice — that was inferred from incomplete arithmetic and
-> should be read as "the ratio is 100-250×; the absolute values are
-> in the hundreds of mJ, not single-digit J."
+> for this slice: that was inferred from incomplete arithmetic and
+> should be read as "the ratio is 100-250×; the absolute values sit
+> in the hundreds of mJ, well under a single-digit J."
 
 ---
 
@@ -192,8 +192,7 @@ round-trips per visible reply): the unit chain to annual savings is
 ```
 
 (Sanity check: 193 MWh ≈ the annual electricity of ~20 average US
-households. Multiply by your preferred 2030 traffic scale-up factor —
-4× brings it to ~772 MWh ≈ ~80 households.)
+households. Multiply by your preferred 2030 traffic scale-up factor: 4× brings it to ~772 MWh ≈ ~80 households.)
 
 Codec at the same volume: 1.5 mJ/request → 2.74 GJ/yr ≈ 760 kWh/yr
 (rounding error against 193 MWh).
@@ -217,10 +216,10 @@ emits ~4.6 tonnes CO2e/yr (EPA reference 2024 fleet average). At
 cars/yr CO2-equivalent.** At the projected 4× 2030 traffic scale-up:
 ~60 cars/yr.
 
-> **Earlier drafts cited ~400 cars/yr — that was wrong.** The
+> **Earlier drafts cited ~400 cars/yr: that was wrong.** The
 > arithmetic came from a per-request value that double-counted
-> serialisation+tokenisation (820 mJ instead of the correct 380 mJ).
-> See [[feedback_unit_conversion_sanity_check]] — flagged + corrected
+> serialisation+tokenisation (820 mJ where the correct figure is 380 mJ).
+> See [[feedback_unit_conversion_sanity_check]]: flagged + corrected
 > 2026-05-17 via `packages/bench/scripts/energy_bench.py`. Website +
 > LinkedIn copy will be updated to match.
 
@@ -233,8 +232,8 @@ Where Codec's impact is meaningful is:
    scale deployment captures a sizable fraction.
 2. **Network access** (the IoT / LoRaWAN / Sigfox angle in the
    LinkedIn article): wire-byte reduction unlocks workloads on
-   networks where JSON-SSE simply doesn't fit at all. That's a
-   discrete-go/no-go win, not a continuous energy win.
+   networks where JSON-SSE simply doesn't fit at all. That's purely a
+   discrete-go/no-go win, distinct from a continuous energy win.
 3. **Latency-bounded interactions** (mobile, edge, agent meshes):
    the time saved on the wire dominates the user-perceived experience
    even when the absolute joules are small.
@@ -276,13 +275,13 @@ python scripts/energy_bench.py \
 ```
 
 Outputs:
-- `wire-energy.json` — per (format, encoding, size) the J/byte
+- `wire-energy.json`: per (format, encoding, size) the J/byte
   measured at sender + receiver.
-- `per-hop.json` — per-hop energy for each protocol at each
+- `per-hop.json`: per-hop energy for each protocol at each
   representative payload size.
-- `per-request.json` — per-request totals across the standard 1/4/8
+- `per-request.json`: per-request totals across the standard 1/4/8
   round-trip amortisation profiles.
-- `report.md` — human-readable rollup with the tables above
+- `report.md`: human-readable rollup with the tables above
   regenerated for the current measurement.
 
 The script is intentionally laptop-runnable. The numbers shift on
@@ -323,16 +322,17 @@ terms but should be consistent in the JSON-SSE → Codec ratio (~150-
 
 ## Changelog
 
-- **v0.5 (2026-05-17)** — initial publication; covers heavy-agent
+- **v0.5 (2026-05-17)**: initial publication; covers heavy-agent
   compound, IoT carriers excluded, GPU compute excluded. Reproduction
   harness landed at `packages/bench/scripts/energy_bench.py`.
-- **v0.5.1 (2026-05-17, same-day correction)** — bench harness output
+- **v0.5.1 (2026-05-17, same-day correction)**: bench harness output
   caught a double-count bug in the original per-request math: the
   47.5 mJ/hop figure already includes serialise + tokenise + parse +
   detokenise; the earlier "~820 mJ per request" line was adding those
   in a second time on top of the per-hop total. Corrected: per-request
-  at 8-rt is 380 mJ JSON / 1.5 mJ Codec; annual savings 192 MWh, not
-  414 MWh; car-equivalent ~15/yr today, not ~400/yr. The unit-chain
+  at 8-rt is 380 mJ JSON / 1.5 mJ Codec; annual savings are 192 MWh
+  (previously miscalculated as 414 MWh); car-equivalent ~15/yr today
+  (previously miscalculated as ~400/yr). The unit-chain
   derivation in § "Worldwide aggregate" is now written out explicitly
   per [[feedback_unit_conversion_sanity_check]]. Website + LinkedIn
   copy needs a follow-up update.

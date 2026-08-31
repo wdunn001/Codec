@@ -12,9 +12,9 @@ npm install @codecai/web-safety
 ## What it gives you
 
 Two complementary layers, both framework-free (no React / Vue / Svelte
-dependency — host apps render their own UI using the gate's view-model):
+dependency: host apps render their own UI using the gate's view-model):
 
-### Layer 1 — Prefilter (always-on, no network, no model load)
+### Layer 1: Prefilter (always-on, no network, no model load)
 
 Catches secrets, PII, jailbreak templates, destructive-command literals,
 high-entropy strings, and any host-supplied blocked patterns in a user's
@@ -24,37 +24,37 @@ server-side moderation.
 
 Five categories:
 
-- **`secrets`** — vendor-anchored regex for AWS access keys, GitHub PATs,
+- **`secrets`**: vendor-anchored regex for AWS access keys, GitHub PATs,
   OpenAI / Anthropic / Google API keys, Slack / Stripe tokens, SSH
   private key headers, JWTs.
-- **`pii`** — email, US phone, SSN, Luhn-validated credit-card
+- **`pii`**: email, US phone, SSN, Luhn-validated credit-card
   candidates.
-- **`high_entropy`** — generic catch-all over base64-ish and hex-ish runs
+- **`high_entropy`**: generic catch-all over base64-ish and hex-ish runs
   (Shannon ≥ 4.0 bits, ≥ 24 chars). Catches API keys of unknown vendors.
-- **`dangerous_action`** — obvious bad asks: jailbreak templates
+- **`dangerous_action`**: obvious bad asks: jailbreak templates
   (`ignore previous instructions`, DAN-mode, "pretend to be
   unrestricted"), malware-authoring asks
   (`write working ransomware...`), exploit-authoring asks
   (`generate a 0-day exploit for...`), destructive command literals
   (`rm -rf /`, `dd if=/dev/zero of=/dev/sda`, `DROP TABLE prod`).
-  These are deliberately conservative regex — the semantic
+  These are deliberately conservative regex: the semantic
   classifiers in `classifiers/` (Prompt Guard 86M / Llama Guard 3
   1B) catch the nuanced cases. The point of regex-level
   enforcement here is to stop *cleanly-stated* doomed asks in the
   prefilter, before they consume wire, server inference budget, or
   classifier-tier compute.
-- **`blocked_action`** — host-supplied patterns. Empty by default; the
+- **`blocked_action`**: host-supplied patterns. Empty by default; the
   host application (`leet`, `codec-website`, etc.) passes
   `blockedActionPatterns: [{ rule, pattern, confidence? }]` to
   enforce deployment-specific gates (internal hostnames,
   `--privileged`, "no `rm -rf` against `/prod`", regulator-mandated
-  refusals). Patterns live in the host's code, not in this package.
+  refusals). Patterns live solely in the host's code.
 
 Plus dedup so vendor keys aren't double-reported as both a regex hit
 and a generic entropy hit.
 
 > **The prefilter rules are public by design.** They ship in this
-> npm package's source — visible via `npm view @codecai/web-safety`
+> npm package's source: visible via `npm view @codecai/web-safety`
 > or by reading `src/prefilter.ts`. That's the *opposite* boundary
 > from the [server-side policy disclosure
 > contract](https://github.com/wdunn001/Codec/blob/main/spec/versions/v0.4.md#safety-policy-negotiation):
@@ -63,8 +63,7 @@ and a generic entropy hit.
 > and *never* cross the wire. The published policy descriptor at
 > `.well-known/codec/policies/<id>.json` lists only categories +
 > action types + classifier family + summary counts. Server-side
-> private; client-side public. Complementary, not duplicating —
-> see the top-of-file comment in `src/prefilter.ts` for the full
+> private; client-side public. The two are purely complementary: see the top-of-file comment in `src/prefilter.ts` for the full
 > layer-mapping.
 
 ```ts
@@ -89,19 +88,19 @@ if (decision.kind === "blocked") {
 // ... tokenize and send via @codecai/web as usual
 ```
 
-### Layer 3 — Browser-side classifier registry (opt-in)
+### Layer 3: Browser-side classifier registry (opt-in)
 
 Modular `SafetyClassifier` interface mirroring the
 [`codec-supervisor` server registry](https://github.com/wdunn001/codec-supervisor)
-exactly — same shapes, same canonical-categories list, so policy
-descriptors talk about both sides without distinguishing host.
+exactly: same shapes, same canonical-categories list. Policy
+descriptors talk about both sides without distinguishing host as a result.
 
 Two shipped implementations:
 
-- **Prompt Guard 86M via Transformers.js** (tier 1, default) — ~80 MB
+- **Prompt Guard 86M via Transformers.js** (tier 1, default): ~80 MB
   ONNX, CPU/WASM, no WebGPU dependency. Best for always-on
   inbound-prompt classification.
-- **Llama Guard 3 1B via codec-web-llm** (tier 2, opt-in) — ~1 GB
+- **Llama Guard 3 1B via codec-web-llm** (tier 2, opt-in): ~1 GB
   WebGPU quant. Catches what Prompt Guard misses; same 14-category
   Llama Guard taxonomy as the server-side classifier so policy
   decisions are symmetric across mesh peers.
@@ -135,7 +134,7 @@ if (result.scores.jailbreak >= 0.5) {
   `PrefilterDecision` view-model.
 - **Stable cross-stack contract.** A policy's `classifier.family`
   string resolves to the same model on browser + server when both
-  ship the matching registry entry — so admin UIs can bind one
+  ship the matching registry entry: so admin UIs can bind one
   policy and have it enforced consistently across hosts.
 - **Audit hook receives only categories + counts.** Never log
   matched values to telemetry; the audit callback intentionally
@@ -148,10 +147,9 @@ if (result.scores.jailbreak >= 0.5) {
 
 ## Peer dependencies (optional)
 
-- [`@huggingface/transformers`](https://www.npmjs.com/package/@huggingface/transformers)
-  — only needed if you `registerPromptGuard86m()`. Without it, you can
+- [`@huggingface/transformers`](https://www.npmjs.com/package/@huggingface/transformers): only needed if you `registerPromptGuard86m()`. Without it, you can
   still use the prefilter + the gate + the registry interface.
-- [`@mlc-ai/web-llm`](https://github.com/mlc-ai/web-llm) — only
+- [`@mlc-ai/web-llm`](https://github.com/mlc-ai/web-llm): only
   needed if you `registerLlamaGuard31B()`. Same property.
 
 Both are declared as peer deps in `package.json` with
@@ -170,17 +168,15 @@ entropy-only confidence, dedup, redaction), gate state machine
 fallback semantics, capability detection), Prompt Guard 86M (label
 mapping for all variants), Llama Guard 3 1B (prompt builder + parser +
 classifier round-trip with stubbed generator). All run without
-network or model weights — generator injection is the default test
+network or model weights: generator injection is the default test
 pattern.
 
 ## See also
 
-- [`spec/versions/v0.4.md`](../../spec/versions/v0.4.md) — the safety-
+- [`spec/versions/v0.4.md`](../../spec/versions/v0.4.md): the safety-
   policy negotiation spec on the wire.
-- [`spec/safety-policy.schema.json`](../../spec/safety-policy.schema.json)
-  — the publishable descriptor format.
-- [`@codecai/web`](../web) — base tokenizer/detokenizer this package
+- [`spec/safety-policy.schema.json`](../../spec/safety-policy.schema.json): the publishable descriptor format.
+- [`@codecai/web`](../web): base tokenizer/detokenizer this package
   pairs with.
-- [`codec-supervisor`](https://github.com/wdunn001/codec-supervisor) —
-  the server-side companion shipping the policy admin REST + the
+- [`codec-supervisor`](https://github.com/wdunn001/codec-supervisor): the server-side companion shipping the policy admin REST + the
   matching `SafetyClassifier` Python registry.

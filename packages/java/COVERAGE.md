@@ -1,4 +1,4 @@
-# ai.codec:codec (Java) — coverage
+# ai.codec:codec (Java): coverage
 
 Last measured: 2026-05-11 (v0.4 release-cut)
 
@@ -44,15 +44,15 @@ Methods:      ~68%
 
 ## Intentionally uncovered
 
-- `MapLoader` HTTP-fetch paths — exercised by lab integration tests
-  against jsdelivr / well-known origins, not by `mvn test`.
+- `MapLoader` HTTP-fetch paths: exercised by lab integration tests
+  against jsdelivr / well-known origins, never by `mvn test` alone.
 - Per-class detail still needs to be filed in the v0.5 follow-up (the
   jacoco index gives line / branch / inst / method % per package but
   not per-test-file breakdown).
 
 ## v0.5 follow-up
 
-- The 49% branch coverage is the gap to close — gate-flip behaviors
+- The 49% branch coverage is the gap to close: gate-flip behaviors
   in `BPETokenizer` (lead_other / lead_space / lead_other+trailing_ci)
   + cased-letter checkpoint backtracking in the new `letters_cased`
   paths need fixtures that exercise each combination.

@@ -1,11 +1,11 @@
-# Security Attack Fixtures — v0.6 Test Suite
+# Security Attack Fixtures: v0.6 Test Suite
 
 **Purpose.** Curated attack payloads, one fixture per documented attack vector
 in [`spec/proposals/v0.6-security/`](../../../../spec/proposals/v0.6-security/),
 suitable for use as test inputs by any Codec implementation (TypeScript, Python,
 Rust, .NET, Java, C).
 
-**Status.** Initial v0.6 suite — 2026-05-18. Most fixtures are text-based for
+**Status.** Initial v0.6 suite: 2026-05-18. Most fixtures are text-based for
 easy cross-language consumption. Binary fixtures (PDFs, images, audio) have
 companion `generate_*.py` scripts since checking in binaries doesn't review well.
 
@@ -31,8 +31,8 @@ Naming convention: `<short-name>.<ext>` for the payload; optional
 `<short-name>.meta.json` for metadata (origin, related vector, severity).
 
 For attacks that need binary content (PDFs, images), the payload is generated
-by a `generate_<short-name>.py` script committed alongside, so the build is
-reproducible and the source-of-attack is readable.
+by a `generate_<short-name>.py` script committed alongside. The build is
+reproducible as a result, and the source-of-attack stays readable.
 
 ## How tests use these fixtures
 
@@ -40,8 +40,8 @@ The `@codecai/web-safety` package's `test/security/` directory contains
 TypeScript tests that load fixtures from here and run them against the
 package's `src/security/` defense functions. Each test demonstrates both:
 
-1. **The attack is real** — fixture contains the documented payload class.
-2. **The defense blocks it** — after the defense function runs, the payload
+1. **The attack is real**: fixture contains the documented payload class.
+2. **The defense blocks it**: after the defense function runs, the payload
    no longer carries the attack.
 
 Tests follow the pattern:
