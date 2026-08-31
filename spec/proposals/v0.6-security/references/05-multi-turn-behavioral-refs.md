@@ -1,12 +1,12 @@
-# 05 — Multi-Turn / Behavioral Attacks: Public Disclosure References
+# 05: Multi-Turn / Behavioral Attacks: Public Disclosure References
 
 Companion to [`../05-multi-turn-behavioral.md`](../05-multi-turn-behavioral.md).
 
-Strongly academic category — most attacks were first formalized in research papers, with mitigation work also published. CVE assignments are rare because these are model-behavior issues rather than software flaws.
+Strongly academic category: most attacks were first formalized in research papers, with mitigation work also published. CVE assignments are rare because these are model-behavior issues.
 
 ## §1. Many-shot jailbreaking
 
-**Anil, Durmus, Panickssery, Sharma, et al. — "Many-shot Jailbreaking."**
+**Anil, Durmus, Panickssery, Sharma, et al.: "Many-shot Jailbreaking."**
 
 - **Venue:** NeurIPS 2024 (Thirty-eighth Annual Conference on Neural Information Processing Systems)
 - **Anthropic research page:** https://www.anthropic.com/research/many-shot-jailbreaking
@@ -21,14 +21,14 @@ Strongly academic category — most attacks were first formalized in research pa
 **Authors:** Cem Anil, Esin Durmus, Nina Panickssery, Mrinank Sharma, Joe Benton, Sandipan Kundu, Joshua Batson, Meg Tong, Jesse Mu, Daniel J Ford, Francesco Mosconi, Rajashree Agrawal, Rylan Schaeffer, Naomi Bashkansky, Samuel Svenningsen, Mike Lambert, Ansh Radhakrishnan, Carson Denison, Evan J Hubinger, Yuntao Bai, Trenton Bricken, Timothy Maxwell, Nicholas Schiefer, James Sully, Alex Tamkin, Tamera Lanham, Karina Nguyen, Tomasz Korbak, Jared Kaplan, Deep Ganguli, Samuel R. Bowman, Ethan Perez, Roger Baker Grosse, David Duvenaud.
 
 **Mitigation literature:**
-- **"Mitigating Many-Shot Jailbreaking"** — arxiv 2504.09604 (2025)
-- **"Constitutional Classifiers: Defending against Universal Jailbreaks"** — arxiv 2501.18837 (Anthropic, 2025)
+- **"Mitigating Many-Shot Jailbreaking"**: arxiv 2504.09604 (2025)
+- **"Constitutional Classifiers: Defending against Universal Jailbreaks"**: arxiv 2501.18837 (Anthropic, 2025)
 
 ---
 
 ## §2. Crescendo attack
 
-**Russinovich, Salem, Eldan — "Great, Now Write an Article About That: The Crescendo Multi-Turn LLM Jailbreak Attack."**
+**Russinovich, Salem, Eldan: "Great, Now Write an Article About That: The Crescendo Multi-Turn LLM Jailbreak Attack."**
 
 - **Venue:** 34th USENIX Security Symposium (USENIX Security '25, Seattle)
 - **arXiv:** https://arxiv.org/abs/2404.01833 (April 2024, revised through February 2025)
@@ -42,7 +42,7 @@ Strongly academic category — most attacks were first formalized in research pa
 **Authors:** Mark Russinovich (Microsoft Azure CTO), Ahmed Salem, Ronen Eldan.
 
 **Defense literature:**
-- **Microsoft "Crescendomation"** — automated red-teaming tool building on the technique.
+- **Microsoft "Crescendomation"**: automated red-teaming tool building on the technique.
 - Trajectory-aware safety classifiers (multiple vendors' internal work, less publicly published).
 
 ---
@@ -64,7 +64,7 @@ Strongly academic category — most attacks were first formalized in research pa
 
 **Canonical references:**
 - General context-management literature; most LLM SDKs (LangChain, LlamaIndex) document the truncation-vs-summarization tradeoff.
-- No specific exploit paper — known failure mode but not formally weaponized in published research.
+- No specific exploit paper: known failure mode but not formally weaponized in published research.
 
 ---
 
@@ -73,9 +73,9 @@ Strongly academic category — most attacks were first formalized in research pa
 **Status:** Claude-specific API feature; no formal CVE; vendor-documented.
 
 **Canonical reference:**
-- **Anthropic API documentation** on the `assistant_prefill` parameter — includes warnings about its safety implications.
+- **Anthropic API documentation** on the `assistant_prefill` parameter: includes warnings about its safety implications.
 - Multiple researcher demonstrations on social media and blogs.
-- General research thread: "Pre-filling Assistant Responses" — discussed in jailbreak-research community 2024–2025.
+- General research thread: "Pre-filling Assistant Responses": discussed in jailbreak-research community 2024 to 2025.
 
 ---
 
@@ -90,9 +90,9 @@ Strongly academic category — most attacks were first formalized in research pa
 **Status:** large body of research, no single canonical CVE.
 
 **Key academic works:**
-- **Perez, Ribeiro, et al. — "Red Teaming Language Models with Language Models"** — arxiv 2202.03286 (2022). Foundational for automated extraction.
-- **Zhang et al. — "Prompt Stealing Attacks on LLMs"** — arxiv 2402.12959 (2024). Statistical / side-channel extraction.
-- **"Effective Prompt Extraction from Language Models"** — arxiv 2307.06865 (2023).
+- **Perez, Ribeiro, et al.: "Red Teaming Language Models with Language Models"**: arxiv 2202.03286 (2022). Foundational for automated extraction.
+- **Zhang et al.: "Prompt Stealing Attacks on LLMs"**: arxiv 2402.12959 (2024). Statistical / side-channel extraction.
+- **"Effective Prompt Extraction from Language Models"**: arxiv 2307.06865 (2023).
 
 **Operational guidance:**
 - **OWASP LLM01:2025 Prompt Injection** has a section on prompt-extraction defense: https://genai.owasp.org/llmrisk/llm01-prompt-injection/
@@ -106,19 +106,19 @@ Strongly academic category — most attacks were first formalized in research pa
 ## Tooling for this category
 
 **Red-team / fuzz tools:**
-- **garak (NVIDIA)** — https://github.com/leondz/garak — LLM vulnerability scanner; includes many-shot and crescendo modules
-- **PyRIT (Microsoft)** — https://github.com/Azure/PyRIT — multi-turn red-teaming framework
-- **promptfoo** — https://github.com/promptfoo/promptfoo — eval framework; includes prompt-injection test sets
-- **Lakera Gandalf** — https://gandalf.lakera.ai — interactive prompt-injection challenges
+- **garak (NVIDIA)**: https://github.com/leondz/garak: LLM vulnerability scanner; includes many-shot and crescendo modules
+- **PyRIT (Microsoft)**: https://github.com/Azure/PyRIT: multi-turn red-teaming framework
+- **promptfoo**: https://github.com/promptfoo/promptfoo: eval framework; includes prompt-injection test sets
+- **Lakera Gandalf**: https://gandalf.lakera.ai: interactive prompt-injection challenges
 
 ---
 
 ## Sources
 
 - [Anthropic many-shot jailbreaking research page](https://www.anthropic.com/research/many-shot-jailbreaking)
-- [Many-shot Jailbreaking — NeurIPS 2024](https://proceedings.neurips.cc/paper_files/paper/2024/hash/ea456e232efb72d261715e33ce25f208-Abstract-Conference.html)
-- [Crescendo — arXiv 2404.01833](https://arxiv.org/abs/2404.01833)
+- [Many-shot Jailbreaking: NeurIPS 2024](https://proceedings.neurips.cc/paper_files/paper/2024/hash/ea456e232efb72d261715e33ce25f208-Abstract-Conference.html)
+- [Crescendo: arXiv 2404.01833](https://arxiv.org/abs/2404.01833)
 - [Microsoft Security Blog on Crescendo](https://www.microsoft.com/en-us/security/blog/2024/04/11/how-microsoft-discovers-and-mitigates-evolving-attacks-against-ai-guardrails/)
-- [Constitutional Classifiers — arXiv 2501.18837](https://arxiv.org/abs/2501.18837)
+- [Constitutional Classifiers: arXiv 2501.18837](https://arxiv.org/abs/2501.18837)
 - [garak LLM vulnerability scanner](https://github.com/leondz/garak)
 - [Microsoft PyRIT](https://github.com/Azure/PyRIT)

@@ -3,8 +3,8 @@
 Status: stable, additive to v0.2.
 
 This document specifies the convention by which a model maintainer publishes
-their tokenizer dialect map at a known location on a domain they control,
-so that any Codec client can discover it given only the maintainer's origin
+their tokenizer dialect map at a known location on a domain they control.
+Any Codec client can then discover it given only the maintainer's origin
 and the map ID.
 
 It is the decentralised counterpart to a future centralised registry. Both
@@ -83,10 +83,10 @@ content-addressed path because it is provably immutable.
 The document at `.well-known/codec/maps/<id>.json` is one of two shapes.
 Clients distinguish them by inspecting the keys present.
 
-### Form A — Pointer
+### Form A: Pointer
 
 A pointer is small (typically <200 bytes) and references a tokenizer map
-hosted elsewhere — usually a CDN. This is the recommended shape: the
+hosted elsewhere: usually a CDN. This is the recommended shape: the
 `.well-known` document changes only when a new map version is published,
 the heavy map JSON sits behind a CDN's caching headers.
 
@@ -104,14 +104,14 @@ the heavy map JSON sits behind a CDN's caching headers.
 | `id`           | string | yes      | MUST equal the requested `<id>`.            |
 | `url`          | string | yes      | Absolute HTTPS URL for the actual map JSON. |
 | `hash`         | string | yes      | sha256 digest of the bytes at `url`. Format `sha256:<hex>`. |
-| `published_at` | string | no       | ISO 8601 UTC. For maintainer telemetry only — clients ignore it. |
+| `published_at` | string | no       | ISO 8601 UTC. For maintainer telemetry only: clients ignore it. |
 
 The pointer's `url` MAY be on any HTTPS origin (the maintainer's own,
-jsDelivr, R2, Hugging Face, etc.). Pointers MUST NOT chain — the loader
+jsDelivr, R2, Hugging Face, etc.). Pointers MUST NOT chain: the loader
 fetches `url`, verifies its bytes hash to `hash`, parses as a TokenizerMap,
 and returns. A pointer whose `url` resolves to another pointer is rejected.
 
-### Form B — Inline map
+### Form B: Inline map
 
 If the map is small enough that the indirection isn't worth it, the
 document MAY be the full TokenizerMap directly. Detected by the presence
@@ -142,7 +142,7 @@ Maintainers SHOULD prefer Form A for any map larger than ~10 KB.
 
 `https://<origin>/.well-known/codec/index.json` enumerates every map the
 origin publishes. Useful for clients that want to discover what's available
-without knowing IDs in advance, and for build tools that pre-warm caches.
+without knowing IDs in advance. Build tools that pre-warm caches use it too.
 
 ```json
 {
@@ -188,7 +188,7 @@ Clients MUST NOT follow pointers across more than one hop. A pointer that
 resolves to another pointer is an error.
 
 Resolution failures (404, hash mismatch, validation error) MUST surface as
-distinct error types so application code can fall back gracefully — e.g.
+distinct error types so application code can fall back gracefully: e.g.
 to a hard-coded URL+hash pair or to a centralised registry lookup.
 
 ---
@@ -208,8 +208,8 @@ discover maps cross-origin. Without it, `.well-known` discovery is
 effectively server-only.
 
 Per-map documents are cheap (Form A) or content-addressed by hash (Form
-B), so a 5-minute cache with a long stale-while-revalidate window is safe
-and gives near-zero discovery latency on hot paths.
+B). A 5-minute cache with a long stale-while-revalidate window is safe
+here and gives near-zero discovery latency on hot paths.
 
 ---
 
@@ -224,10 +224,10 @@ inside the pointer**.
     CDN URL is later compromised, a hash mismatch fails closed.
 
 For Form A, the pointer file is small and changes rarely; a maintainer who
-controls the origin controls the pointer, and the pointer pins the bytes
+controls the origin controls the pointer. The pointer in turn pins the bytes
 on the CDN. A CDN compromise alone cannot serve a poisoned map.
 
-For Form B, the maintainer controls both the bytes and the TLS — there is
+For Form B, the maintainer controls both the bytes and the TLS: there is
 no second trust hop. Equivalent to direct hosting, but at the discoverable
 location.
 
@@ -242,7 +242,7 @@ fixed-deployment use.
 
 Safety policy descriptors follow the same conventions as tokenizer maps:
 content-addressed by sha256, sanitized (operators publish the *shape* of
-enforcement, never the contents — see
+enforcement, never the contents: see
 [`safety-policy.schema.json`](./safety-policy.schema.json)), discoverable
 under `.well-known/codec/policies/`.
 
@@ -258,12 +258,11 @@ Resolution order, given `(origin, policy_id)`:
 
 A client that received `safety_policy_hash` in `READY` MAY skip the
 mutable per-id path entirely and fetch
-`<origin>/.well-known/codec/policies/sha256/<hex>.json` directly — the
-hash already pins the bytes, so the mutable indirection is unnecessary.
+`<origin>/.well-known/codec/policies/sha256/<hex>.json` directly: the
+hash already pins the bytes. The mutable indirection is unnecessary here.
 
 Resolution failures (404, hash mismatch, validation error) MUST surface
-as distinct error types so application code can fall back gracefully —
-e.g. abort the session if no acceptable policy is published.
+as distinct error types so application code can fall back gracefully: e.g. abort the session if no acceptable policy is published.
 
 ---
 
@@ -289,15 +288,15 @@ Document shape:
 ```
 
 This is the **pre-flight discovery** mirror of the 426 / `VERSION_INCOMPATIBLE`
-runtime signal — see `spec/versions/v0.4.md § Version Compatibility
+runtime signal: see `spec/versions/v0.4.md § Version Compatibility
 Signaling`. Clients MAY query this URL before opening a connection to
 avoid wasting a round-trip on a request that will 426. The runtime 426
 is still authoritative; the well-known document is opportunistic and
 MAY be cached up to `valid_until` (or 1 hour if absent).
 
 A deployment without mandatory features SHOULD NOT publish this
-document — its presence advertises that older clients will be
-rejected, which is information itself.
+document: its presence advertises that older clients will be
+rejected. That fact alone is information a server should not leak by accident.
 
 ---
 
@@ -310,7 +309,7 @@ promotes the dictionary to a discoverable, content-addressed artefact on
 the well-known surface so that:
 
 - Dictionary version drift between an engine image and its client cohort
-  fails loudly (404 / hash mismatch) instead of silently degrading to
+  fails loudly with a 404 or a hash mismatch, never a silent degrade to
   identity bytes.
 - Third-party Codec implementers can fetch the same dictionary the
   server announces in its `Codec-Zstd-Dict: sha256:<short>` response
@@ -324,7 +323,7 @@ https://<origin>/.well-known/codec/dicts/<sha256-hex>.zstd
 ```
 
 The path component IS the dictionary's sha256 hash. Clients that fetched
-the bytes MUST verify the hash matches the URL — same content-addressing
+the bytes MUST verify the hash matches the URL: same content-addressing
 trust posture as the `.well-known/codec/policies/sha256/<hex>.json` path.
 Mutable per-id paths are NOT used for dictionaries; there is no
 `.well-known/codec/dicts/<id>.zstd` form.
@@ -349,7 +348,7 @@ and take precedence over `_URL` for air-gapped deployments.
 Clients SHOULD ship a `discoverZstdDict({origin, hash})` helper parallel
 to `discoverTokenizerMap`. The URL is mechanically constructed from the
 `Codec-Zstd-Dict: sha256:<short>` response header announced by the
-server — clients only need the origin (from the response URL) and the
+server: clients only need the origin (from the response URL) and the
 full hash (looked up from a cohort known-dicts list, OR provided in full
 via a future `Codec-Zstd-Dict-Url` header at v0.6).
 
@@ -361,7 +360,7 @@ Every engine image targeting v0.5+ MUST satisfy at least one of:
 - Has `CODEC_ZSTD_DICT_MSGPACK_URL` + `CODEC_ZSTD_DICT_PROTOBUF_URL`
   configured at deploy time (URL path).
 
-Missing both is a release-blocker — see
+Missing both is a release-blocker: see
 [`docs/RELEASE_CHECKLIST.md`](../docs/RELEASE_CHECKLIST.md) Pre-publish
 gate §1.7. The v0.4.1 sglang regression (silently dropped `COPY dicts/`
 in an upstream merge, zstd degraded to identity) was the motivating
@@ -376,8 +375,7 @@ incident.
 | URL set but unreachable at boot          | Hard-fail engine boot (no degradation to identity) |
 | Neither `_URL` nor `_PATH` set, no bake  | Hard-fail per the release-checklist gate           |
 
-Hard-fail (rather than degrade to identity) is the deliberate choice —
-the v0.5 release motivation was eliminating silent degradation.
+Hard-failing on a bad dictionary is the deliberate choice: the v0.5 release motivation was eliminating silent degradation.
 
 ---
 

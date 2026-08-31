@@ -1,6 +1,6 @@
 # Wire/Protocol-Level Attacks
 
-**Status:** research — v0.6 security workstream. The Codec-specific document in this bundle. Most relevant for client-side and server-side reference implementations.
+**Status:** research: v0.6 security workstream. The Codec-specific document in this bundle. Most relevant for client-side and server-side reference implementations.
 
 ## TL;DR
 
@@ -21,10 +21,10 @@ Codec is a wire protocol. Wire protocols inherit a decades-old catalog of attack
 
 ### 1. Downgrade attacks
 
-**Mechanism.** Force the negotiated Codec version, compression, or tokenizer-map down to a known-weaker variant. Most acute case: the **identity fallthrough** when a compression dependency is missing. Per `feedback_engine_image_dep_verify`, this is already a known Codec failure mode in which an engine image silently ships without `brotli`/`zstandard`/`msgpack`, and the runtime falls through to identity encoding. An attacker who controls one peer can deliberately advertise "no compression support" to force this fallback.
+**Mechanism.** Force the negotiated Codec version, compression, or tokenizer-map down to a known-weaker variant. Most acute case: the **identity fallthrough** when a compression dependency is missing. Per `feedback_engine_image_dep_verify`, this is already a known Codec failure mode in which an engine image silently ships without `brotli`/`zstandard`/`msgpack`. The runtime then falls through to identity encoding. An attacker who controls one peer can deliberately advertise "no compression support" to force this fallback.
 
 The downstream consequence is twofold:
-- **Wire bloat** (cost vector, not security; but DoS-shaped at scale).
+- **Wire bloat** (a cost vector that becomes DoS-shaped at scale).
 - **Loss of compression-as-validation:** any wire-format check that piggybacks on compression integrity (CRC over compressed bytes, dict-handle verification) is bypassed.
 
 **Defense.**
@@ -35,11 +35,11 @@ The downstream consequence is twofold:
 
 ### 2. Tokenizer-map handshake poisoning
 
-**Mechanism.** Codec exchanges tokenizer maps between client and server to enable wire-efficient encoding. A malicious server (or a MITM) can ship a tokenizer map whose entries decode to attacker-chosen text — e.g., a map entry that claims `token_id 4242 → "the user's password is"` so that any model output containing token 4242 decodes to an attacker-injected string at the client side.
+**Mechanism.** Codec exchanges tokenizer maps between client and server to enable wire-efficient encoding. A malicious server (or a MITM) can ship a tokenizer map whose entries decode to attacker-chosen text: e.g., a map entry that claims `token_id 4242 → "the user's password is"` so that any model output containing token 4242 decodes to an attacker-injected string at the client side.
 
 Inverse direction: a malicious client can ship a tokenizer map whose entries push exotic glitch tokens into the server-side context, degrading model behavior or extracting training data hints.
 
-**Public reference:** general class — supply-chain attacks against signed-data systems. No published Codec-specific PoC because Codec is pre-v1.
+**Public reference:** general class: supply-chain attacks against signed-data systems. No published Codec-specific PoC because Codec is pre-v1.
 
 **Defense.**
 
@@ -51,12 +51,12 @@ Inverse direction: a malicious client can ship a tokenizer map whose entries pus
 
 **Mechanism.** brotli, zstd, and dict-zstd all support compression ratios that, in pathological cases, decode a small ciphertext to gigabytes of plaintext. Unbounded decompression is a classic DoS vector.
 
-**Public reference:** "zip bomb" — decades old. Modern variants for brotli/zstd documented in CVEs against various HTTP server implementations.
+**Public reference:** "zip bomb": decades old. Modern variants for brotli/zstd documented in CVEs against various HTTP server implementations.
 
 **Defense.**
 
 - **Hard cap on decompressed-size budget per request.** Codec clients MUST set a budget (default suggested: 16 MiB for chat applications, configurable upward for batch use cases).
-- **Stream-decompress with budget enforcement** — don't materialize the full plaintext before checking size. zstd and brotli both support streaming APIs; use them.
+- **Stream-decompress with budget enforcement**: don't materialize the full plaintext before checking size. zstd and brotli both support streaming APIs; use them.
 - **Reject (don't truncate) on budget exceeded.** A truncated response is worse than a rejected one; the model may receive a partial structure that misleads it.
 
 ```python
@@ -75,7 +75,7 @@ def decode_with_budget(stream, decoder, budget_bytes: int) -> bytes:
 
 **Mechanism.** When compression happens before encryption, ciphertext length leaks information about plaintext. Specifically: if an attacker can influence *part* of the plaintext (e.g., their own user-controlled content) and observe the encrypted-and-compressed size, they can iteratively guess other parts of the plaintext (a server-side secret, another user's content sharing the same encryption envelope, etc.).
 
-The TLS-layer mitigation (CRIME, BREACH) is to disable compression at the TLS layer. Codec compresses *above* TLS, which means BREACH-class attacks resurface within Codec's scope.
+The TLS-layer mitigation (CRIME, BREACH) is to disable compression at the TLS layer. Codec compresses *above* TLS. That means BREACH-class attacks resurface within Codec's scope.
 
 **Acute Codec case:** if a multi-tenant Codec endpoint shares a single TLS connection across tenants and compresses across tenant boundaries, attacker tenant A can BREACH-attack tenant B's content.
 
@@ -93,15 +93,15 @@ The TLS-layer mitigation (CRIME, BREACH) is to disable compression at the TLS la
 
 **Defense.**
 
-- **Strict length validation:** reject on mismatch rather than truncate-and-continue. The reference implementation must enforce.
-- **Single-pass framing parser** rather than re-entrant: harder to confuse.
+- **Strict length validation:** reject on mismatch; never truncate-and-continue. The reference implementation must enforce.
+- **Single-pass framing parser**, never re-entrant: harder to confuse.
 - **Fuzz the parser:** add `cargo-fuzz` / `python-afl` targets in `packages/codec-core/tests/fuzz/`.
 
 ### 6. Cross-tenant ID/routing leakage
 
 **Mechanism.** Multi-tenant Codec endpoints route requests by some combination of session id, tenant id, API key. If routing trusts a header field that's also user-influenceable (or worse, comes from user content), attackers can request another tenant's resources.
 
-**Defense.** Authenticate every tenant boundary, not just the outer connection. Tenant id derived from the authentication principal, never from a separate request field.
+**Defense.** Authenticate every tenant boundary. The outer connection alone is not enough. Tenant id derived from the authentication principal, never from a separate request field.
 
 ### 7. Replay attacks
 
@@ -116,9 +116,9 @@ The TLS-layer mitigation (CRIME, BREACH) is to disable compression at the TLS la
 
 **Mechanism.** Codec deployments commonly cache prompt prefixes (for prompt-cache hit on the model serving side) and dictionary/tokenizer-map blobs (for handshake efficiency). If cache keys don't include the trust principal, an attacker can prime a cache entry that legitimate users later hit. The poisoned entry could redirect to a malicious dictionary, mis-tokenize specific inputs, or simply waste budget.
 
-**Defense.** **Cache keys MUST include the authenticated principal**, not just the content hash. This is a one-line change but a frequent omission.
+**Defense.** **Cache keys MUST include the authenticated principal** alongside the content hash. This is a one-line change but a frequent omission.
 
-For shared public caches (e.g., common-prompt prefix caching for a public chatbot), use authenticated cache writes only — clients can hit, but not write. Cache populated only by a trusted process.
+For shared public caches (e.g., common-prompt prefix caching for a public chatbot), use authenticated cache writes only: clients can hit, but not write. Cache populated only by a trusted process.
 
 ### 9. Streaming chunk injection
 
@@ -138,7 +138,7 @@ Specifically dangerous: SSE `data:` lines whose content comes from upstream-unsa
 - **Response length:** infer model output content from response size.
 - **First-byte latency:** infer prompt processing time / tokenization complexity.
 
-**Public reference:** general timing-attack class. Specifically against LLM serving: "Prompt Stealing Attacks on LLMs" academic literature (multiple papers 2024–2025).
+**Public reference:** general timing-attack class. Specifically against LLM serving: "Prompt Stealing Attacks on LLMs" academic literature (multiple papers 2024 to 2025).
 
 **Defense.**
 - **Constant-time response framing for security-sensitive applications:** quantize response start time and response size to coarse buckets.
@@ -149,7 +149,7 @@ Specifically dangerous: SSE `data:` lines whose content comes from upstream-unsa
 
 For v0.6 spec changes:
 
-1. **Normative MUST: identity-fallthrough produces a loud client-side error**, not a silent fallback. Application can override with explicit flag, but default is reject.
+1. **Normative MUST: identity-fallthrough produces a loud client-side error.** A silent fallback is not acceptable. Application can override with an explicit flag; the default is reject.
 2. **Normative MUST: tokenizer-map signature in non-default-map mode**, with the format documented in a v0.6 addendum to `spec/PROTOCOL.md`.
 3. **Normative SHOULD: decompression budget of 16 MiB for chat tier**, with configurability and rejection (not truncation) on excess.
 4. **Normative SHOULD: per-tenant compression contexts** (no cross-tenant dictionary sharing without explicit acknowledgment).
@@ -160,7 +160,7 @@ For v0.6 spec changes:
 
 ## Verification
 
-The release checklist (`docs/RELEASE_CHECKLIST.md`) should grow a `§7 — security` section requiring:
+The release checklist (`docs/RELEASE_CHECKLIST.md`) should grow a `§7: security` section requiring:
 
 - Identity-fallthrough alert wired up and tested.
 - Tokenizer-map signature verification passes on a corpus of valid maps and rejects a corpus of tampered maps.
