@@ -92,9 +92,22 @@ export interface PreTokProgram {
 
 const RE_LETTER = /\p{L}/u;
 const RE_NUMBER = /\p{N}/u;
-/* The pre-tok regex's `\s` is broader than ASCII space — matches Unicode
- * White_Space. We use the same `\s` semantics native regex provides. */
-const RE_WS = /\s/u;
+/* The pre-tok regex's `\s` is Unicode White_Space. See
+ * spec/PRETOKENIZER_PROGRAM.md § Class membership.
+ *
+ * This must NOT be JavaScript's native `/\s/u`, which is a different set.
+ * Native `\s` excludes U+0085 NEXT LINE, which is neither a line terminator
+ * nor category Zs, and it includes U+FEFF ZERO WIDTH NO-BREAK SPACE, which
+ * Unicode does not classify as White_Space. The C runtime's table in
+ * packages/c/src/codec_unicode_tables.c and Rust's `regex` crate both use
+ * \p{White_Space} exactly. Using native `\s` here split the same input
+ * differently in TypeScript than in every other implementation, which breaks
+ * the byte-equivalence the whole format rests on. A differential run of the
+ * Qwen-2 program over 10316 inputs disagreed with C on 1074 of them.
+ *
+ * The property escape tracks the engine's Unicode version, which is what the
+ * spec asks for: the tables belong to the runtime, not to the map. */
+const RE_WS = /\p{White_Space}/u;
 /** "Upper cluster" of the o200k_base / mistral-nemo `letters_cased` op.
  * `\p{Lu}` (uppercase) + `\p{Lt}` (titlecase) + the shared `\p{Lm}` /
  * `\p{Lo}` / `\p{M}` set that's also valid in the lower cluster. */
