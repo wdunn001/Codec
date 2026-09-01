@@ -139,7 +139,7 @@ class ToolWatcher:
                     pt_start = i + 1
                 elif tok == self._start_id:
                     # Nested start: ignore. Most models don't nest these
-                    # markers, and treating an inner start as a new region
+                    # markers. Treating an inner start as a new region
                     # would silently drop the outer content.
                     pass
                 else:

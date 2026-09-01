@@ -160,7 +160,7 @@ def test_qwen_matches_hf_reference():
         m = TokenizerMap.from_json(f.read())
     tok = BPETokenizer(m)
 
-    # Prefer a locally-cached tokenizer.json over `from_pretrained`, which
+    # Prefer a locally-cached tokenizer.json over `from_pretrained`. That
     # tries to hit the network. CI / offline dev should be able to run the
     # parity test as long as either the 0.5B or 7B Qwen-2.5 snapshot is in
     # the HF cache (both share the same tokenizer).
@@ -171,8 +171,7 @@ def test_qwen_matches_hf_reference():
         "🚀 launch",
         "日本語",
         # Chat-template and FIM specials: must round-trip as atomic vocab
-        # IDs (151644/151645/151659/151660/151661), not as 6 byte-level
-        # tokens per delimiter. Regression guard for the special-token
+        # IDs (151644/151645/151659/151660/151661). Regression guard for the special-token
         # pre-scan: prior to its introduction, Qwen-2.5 chat-template
         # inputs tokenised wrong on every BPETokenizer caller.
         "<|im_start|>user\nWhat is 2+2?<|im_end|>",

@@ -64,8 +64,7 @@ class ClassifierBlock:
 
     ``family`` is a free-form lowercase identifier (e.g. ``llama-guard-3-1b``,
     ``shield-gemma-2b``, ``embedding-space-v1``, ``none``). New families
-    don't require a schema bump: this is descriptive metadata, not a
-    closed enum.
+    don't require a schema bump: this is descriptive metadata.
     """
 
     family: str
@@ -101,7 +100,7 @@ class PublisherBlock:
     """Optional human-readable publisher metadata.
 
     Non-load-bearing: the trust anchor is the origin's TLS cert plus
-    the descriptor's content hash, not this field.
+    the descriptor's content hash.
     """
 
     name: str | None = None
@@ -427,8 +426,8 @@ def descriptor_from_json(raw: dict[str, Any]) -> SafetyPolicyDescriptor:
 #
 # Canonical bytes match @codecai/maps-cli's `policies hash` output:
 # 2-space indent + trailing newline. The `safety_policy_hash` value the
-# wire carries is computed over EXACTLY these bytes, so a CLI-emitted
-# descriptor and a Python-loaded descriptor produce identical hashes.
+# wire carries is computed over EXACTLY these bytes. A CLI-emitted
+# descriptor and a Python-loaded descriptor therefore produce identical hashes.
 
 
 def descriptor_canonical_bytes(descriptor: SafetyPolicyDescriptor) -> bytes:

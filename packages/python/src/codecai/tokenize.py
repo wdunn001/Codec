@@ -109,9 +109,10 @@ class BPETokenizer(Tokenizer):
         # Pre-tokenizer: prefer the compiled program when present, otherwise
         # fall back to the legacy regex. Programs are required for clients
         # without a Unicode regex engine (libcodec/C); Python already has
-        # one via the `regex` package, so the program here is mostly a
-        # startup-time speedup plus keeping every client on the same
-        # code path, which is what makes the equivalence claim auditable.
+        # one via the `regex` package. For Python the program here is
+        # therefore mostly a startup-time speedup. It also keeps every
+        # client on the same code path. That is what makes the
+        # equivalence claim auditable.
         if self._encoder == "byte_level":
             if m.pre_tokenizer_program and m.pre_tokenizer_program.get("ops"):
                 self._pre_tok_program: dict[str, Any] | None = m.pre_tokenizer_program
@@ -134,8 +135,8 @@ class BPETokenizer(Tokenizer):
         # before a chat-template revision may carry the delimiters in
         # vocab but not in special_tokens. Length-descending order makes
         # the regex match the longest delimiter at any position. Without
-        # this pre-scan, ``<|im_start|>`` would tokenise byte-by-byte
-        # instead of as the single atomic vocab ID. The body constraint
+        # this pre-scan, ``<|im_start|>`` would tokenise byte-by-byte,
+        # never resolving to its single atomic vocab ID. The body constraint
         # excludes pathological vocab tokens like Falcon's ``<|>`` (id
         # 61799) that share the start/end pair.
         special: dict[str, int] = dict(m.special_tokens or {})

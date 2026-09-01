@@ -8,8 +8,8 @@ protobuf encoders (no codegen step), plus the seven pipeline forward
 transforms specified in `spec/PIPELINES.md`.
 
 Latent-aware engine forks (ComfyUI, diffusers reference, future ones)
-vendor this file rather than depending on `codecai[server]` at import
-time: keeps the inference container's dependency surface tight.
+vendor this file: keeps the inference container's dependency surface
+tight, without depending on `codecai[server]` at import time.
 
 Wire format
 -----------
@@ -44,7 +44,7 @@ import numpy as np
 
 # Optional torch: only loaded when the caller actually opts into the v0.5
 # gpu_quantize fast path. Importing torch is expensive (~hundreds of ms +
-# pulls in CUDA libs), so we keep it lazy.
+# pulls in CUDA libs). We keep it lazy.
 try:
     import torch as _torch  # type: ignore[import-not-found]
     _TORCH_AVAILABLE = True
@@ -242,8 +242,8 @@ def _saturating_int4_diff(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 # GPU fast paths (v0.5+, opt-in via LatentStreamEncoder(gpu_quantize=True))
 #
 # The torch-on-CUDA path runs the per-channel quantize math on-device, then
-# transfers the smaller int8 tensor across PCIe instead of the full fp16/fp32
-# latent. Bit-identical to the numpy path under the same scales (required +
+# transfers the smaller int8 tensor across PCIe. Bit-identical to the
+# numpy path under the same scales (required +
 # verified by the per-pipeline golden fixtures in
 # packages/bench/golden/pipelines/<name>/).
 #
@@ -254,7 +254,7 @@ def _saturating_int4_diff(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 #                               -max_q, +max_q).int8
 #
 # Round-half-to-even is the default for torch's tensor.round() (matches
-# numpy.rint + IEEE 754 roundTiesToEven), so the math is the same.
+# numpy.rint + IEEE 754 roundTiesToEven). The math is the same.
 # ---------------------------------------------------------------------------
 
 

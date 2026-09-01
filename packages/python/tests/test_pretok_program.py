@@ -4,14 +4,14 @@ The TypeScript reference is NOT used as the oracle here. At the time this
 file was written, TypeScript's whitespace class and its metaspace splitter
 had both been found to disagree with the C and Rust runtimes (see
 packages/python/src/codecai/pretok_program.py's module docstring and
-commit 79e93ec, which fixed the whitespace side in TypeScript). Testing
-Python against TypeScript would have pinned Python to bugs instead of to
-the spec. Every check below uses one of three oracles instead:
+commit 79e93ec). That commit fixed the whitespace side in TypeScript.
+Testing Python against TypeScript would have pinned Python to
+TypeScript's own bugs. Every check below uses one of three oracles
+instead:
 
   1. Direct interpreter unit tests against spec/PRETOKENIZER_PROGRAM.md's
      documented op behavior, using inputs and expected outputs confirmed
-     against the C runtime (packages/c/src/pretok_program.c), not against
-     TypeScript.
+     against the C runtime (packages/c/src/pretok_program.c).
   2. Equivalence with Python's own ``regex`` engine (which supports
      \\p{L} / \\p{N} / \\p{White_Space} natively) over a stress-input
      corpus.
@@ -23,9 +23,9 @@ The metaspace splitter's handling of a whitespace run longer than one code
 point (e.g. consecutive newlines) is a separate, still-open question: C
 and Rust agree with each other there, but neither has been confirmed
 against HuggingFace's own ``Metaspace`` reference. That case is
-deliberately left unpinned below rather than asserted either way; see the
-skipped test near the bottom of this file and the docstring on
-``_run_metaspace`` in pretok_program.py.
+deliberately left unpinned below; see the skipped test near the bottom
+of this file and the docstring on ``_run_metaspace`` in
+pretok_program.py.
 """
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ def test_contractions_are_case_insensitive():
 
 def test_digits_run_qwen_style_one_digit_per_piece():
     # Qwen-2's regex is bare \p{N} (no quantifier): one digit per
-    # iteration, so digit runs come out one digit at a time.
+    # iteration. Digit runs therefore come out one digit at a time.
     qwen = {
         "version": 1,
         "ops": [
@@ -110,8 +110,8 @@ def test_emoji_and_cjk_are_letters_via_unicode_letter_class():
 
 
 def test_metaspace_splits_and_prefixes_marker():
-    # No newline involved, so this input is not affected by the open
-    # metaspace question below; TS, C, and Rust all agree here.
+    # No newline involved. This input is therefore not affected by the
+    # open metaspace question below; TS, C, and Rust all agree here.
     prog = {"version": 1, "ops": [{"op": "metaspace_split", "prefix_first": False}]}
     assert run_pretok_program(prog, "Hello world") == [
         METASPACE + "Hello", METASPACE + "world",
@@ -119,7 +119,8 @@ def test_metaspace_splits_and_prefixes_marker():
 
 
 def test_metaspace_prefix_first_leaves_first_piece_bare():
-    # Same note as above: no newline, so unaffected by the open question.
+    # Same note as above: no newline is involved. This case is therefore
+    # unaffected by the open question.
     prog = {"version": 1, "ops": [{"op": "metaspace_split", "prefix_first": True}]}
     assert run_pretok_program(prog, "Hello world") == [
         "Hello", METASPACE + "world",
@@ -133,7 +134,7 @@ def test_metaspace_prefix_first_leaves_first_piece_bare():
 # `\s` disagreed with that on two code points (excluded U+0085 NEXT LINE,
 # included U+FEFF ZERO WIDTH NO-BREAK SPACE) until commit 79e93ec. The
 # oracle here is the literal Unicode White_Space list, confirmed against
-# the C runtime, not a regex, so it cannot drift with whatever the
+# the C runtime. It is not a regex. It cannot drift with whatever the
 # implementation happens to use.
 
 WHITE_SPACE_CODE_POINTS = [
@@ -157,8 +158,8 @@ def _treats_as_whitespace(cp: int) -> bool:
 
 @pytest.mark.parametrize("cp", [cp for cp in WHITE_SPACE_CODE_POINTS if cp != 0x20])
 def test_white_space_code_points_split(cp: int):
-    # 0x20 is excluded: punct_run's lead_space consumes it either way, so
-    # it can't distinguish the two classes through this probe.
+    # 0x20 is excluded: punct_run's lead_space consumes it either way.
+    # This probe can't distinguish the two classes using 0x20.
     assert _treats_as_whitespace(cp) is True, f"U+{cp:04X} is White_Space and must split"
 
 
@@ -168,18 +169,18 @@ def test_non_white_space_code_points_do_not_split(cp: int):
 
 
 def test_u0085_next_line_is_whitespace():
-    # Confirmed against the C runtime, which produces ['a', '\x85', '!'].
+    # Confirmed against the C runtime. That produces ['a', '\x85', '!'].
     assert run_pretok_program(QWEN_LIKE, "a!") == ["a", "", "!"]
 
 
 def test_ufeff_is_not_whitespace():
-    # Confirmed against the C runtime, which produces ['a', '﻿!'].
+    # Confirmed against the C runtime. That produces ['a', '﻿!'].
     assert run_pretok_program(QWEN_LIKE, "a﻿!") == ["a", "﻿!"]
 
 
 def test_ws_run_groups_a_mixed_white_space_run_as_c_does():
     # Input is a, U+0085, U+2009 THIN SPACE, U+0020, b. The C runtime
-    # emits the pieces "a" / " " / " b", so U+0085 belongs to
+    # emits the pieces "a" / " " / " b". U+0085 therefore belongs to
     # the same ws_run as U+2009 even though they're different code points.
     assert run_pretok_program(QWEN_LIKE, "a  b") == ["a", " ", " b"]
 
@@ -194,19 +195,19 @@ def test_trailing_ws_treats_u0085_as_part_of_the_run():
 
 @pytest.mark.skip(
     reason=(
-        "Open question, not resolved by this file: for a whitespace run "
+        "Open question that this file leaves unresolved: for a whitespace run "
         "longer than one code point (e.g. two consecutive newlines), C "
         "and Rust agree the whole run is a pure separator that produces "
         "no piece of its own ('a\\n\\nb' -> ['▁a', '▁b']). "
         "TypeScript, before it was fixed alongside this file landing, "
         "emitted a spurious '▁\\n' piece per extra newline instead. "
         "Neither side has been confirmed against HuggingFace's own "
-        "Metaspace pre-tokenizer, which reportedly keeps a trailing "
+        "Metaspace pre-tokenizer. That pre-tokenizer reportedly keeps a trailing "
         "newline attached to the adjacent word (a third possible "
         "answer). This module's _run_metaspace follows C and Rust "
-        "because they agree with each other, not because either has "
-        "been shown to match HuggingFace. Un-skip only once that's "
-        "settled against a real HuggingFace reference, and assert "
+        "because they agree with each other. Agreement between C and Rust is no evidence that either has "
+        "been shown to match HuggingFace. Un-skip only once that is "
+        "settled against a real HuggingFace reference. Assert "
         "whichever answer that reference gives."
     ),
 )
@@ -240,8 +241,8 @@ LLAMA_REGEX = (
 QWEN_PROGRAM = {
     # QWEN_REGEX's numbers class is bare `\p{N}` (no quantifier), i.e. one
     # digit per match. QWEN_LIKE above uses unbounded `numbers` for its own
-    # (regex-free) unit tests, so build the regex-equivalent variant here
-    # with `max_run: 1` instead of reusing QWEN_LIKE directly.
+    # (regex-free) unit tests. This block builds the regex-equivalent
+    # variant here with `max_run: 1`.
     "version": 1,
     "ops": [
         *QWEN_LIKE["ops"][:2],
@@ -356,9 +357,9 @@ def _byte_level_map(**overrides) -> TokenizerMap:
 
 def test_bpetokenizer_prefers_program_over_pattern_and_matches_it():
     # QWEN_PROGRAM / QWEN_REGEX are already proven equivalent above across
-    # the whole stress corpus; reuse that proven pair here instead of
-    # inventing a new one, so an end-to-end BPETokenizer check rides on the
-    # same equivalence guarantee rather than a fresh, unverified regex.
+    # the whole stress corpus. Reusing that proven pair here means an
+    # end-to-end BPETokenizer check rides on the same equivalence
+    # guarantee already established above.
     m_program = _byte_level_map(pre_tokenizer_program=QWEN_PROGRAM)
     m_pattern = _byte_level_map(pre_tokenizer_pattern=QWEN_REGEX)
 
@@ -367,6 +368,6 @@ def test_bpetokenizer_prefers_program_over_pattern_and_matches_it():
 
     text = "hello world!"
     assert tok_program.encode(text) == tok_pattern.encode(text)
-    # And the program path really was used, not silently ignored.
+    # Confirms the program path really was used. It was not silently ignored.
     assert tok_program._pre_tok_program is not None  # noqa: SLF001
     assert tok_program._pre_tok_re is None  # noqa: SLF001

@@ -9,7 +9,7 @@ The text intermediate is purely local; agent-to-agent traffic still
 carries only token IDs on the wire. Mirrors the TS ``Translator`` class
 from ``@codecai/web``: same word-boundary buffering rules.
 
-Streaming caveat: BPE merges depend on context, so re-tokenizing partial
+Streaming caveat: BPE merges depend on context. Re-tokenizing partial
 words mid-stream produces different IDs than re-tokenizing the complete
 word. The Translator buffers text until a safe boundary (whitespace)
 before flushing through BPE. Pass ``partial=True`` for incoming chunks
@@ -77,8 +77,8 @@ class Translator:
             return out
 
         # Streaming chunk: find the last safe boundary and flush
-        # before it. Pre-tokenizers split at whitespace, so re-encoding
-        # text up to the last whitespace yields the same IDs as
+        # before it. Pre-tokenizers split at whitespace. Re-encoding
+        # text up to the last whitespace therefore yields the same IDs as
         # re-encoding the complete word later.
         safe = self._find_last_safe_boundary(self._text_buffer)
         if safe <= 0:
@@ -130,7 +130,7 @@ def static_translation_table(
     when context-free translation is acceptable.
 
     Limitations: this is context-free: token boundaries don't align
-    across vocabs, and BPE merges depend on context. The single-shot
+    across vocabs. BPE merges also depend on context. The single-shot
     result ``static_translation_table(A, B)[id_A]`` may differ from
     what :func:`translate` produces when the same ``id_A`` appears
     mid-sentence. For exact streaming translation, use ``Translator``.
