@@ -50,13 +50,12 @@ export interface OpPunctRun {
   readonly lead_space?: boolean;
   readonly trailing_newlines?: boolean;
   /** Override `trailing_newlines` with an explicit charset. Each character
-   * in the string is accepted in the trailing run. Used by o200k_base /
-   * mistral-nemo which trail on `[\r\n/]` (note the `/`) rather than
-   * just `[\r\n]`. */
+   * in the string is accepted in the trailing run. o200k_base /
+   * mistral-nemo trailing runs use `[\r\n/]` (note the `/`). */
   readonly trailing_chars?: string;
 }
 /** Cased-letter run with optional trailing case-insensitive contractions.
- * Used by o200k_base / mistral-nemo, which split words on case boundaries
+ * Used by o200k_base / mistral-nemo. Both split words on case boundaries
  * (e.g. "MyCamelCase" → ["My", "Camel", "Case"]).
  *
  *   kind: "title"  →  [Lu Lt Lm Lo M]* [Ll Lm Lo M]+   (zero-or-more upper, then 1+ lower)
@@ -95,18 +94,20 @@ const RE_NUMBER = /\p{N}/u;
 /* The pre-tok regex's `\s` is Unicode White_Space. See
  * spec/PRETOKENIZER_PROGRAM.md § Class membership.
  *
- * This must NOT be JavaScript's native `/\s/u`, which is a different set.
- * Native `\s` excludes U+0085 NEXT LINE, which is neither a line terminator
- * nor category Zs, and it includes U+FEFF ZERO WIDTH NO-BREAK SPACE, which
- * Unicode does not classify as White_Space. The C runtime's table in
- * packages/c/src/codec_unicode_tables.c and Rust's `regex` crate both use
- * \p{White_Space} exactly. Using native `\s` here split the same input
- * differently in TypeScript than in every other implementation. That breaks
- * the byte-equivalence the whole format rests on. A differential run of the
- * Qwen-2 program over 10316 inputs disagreed with C on 1074 of them.
+ * This must NOT be JavaScript's native `/\s/u`. That is a different set.
+ * Native `\s` excludes U+0085 NEXT LINE. That code point is neither a line
+ * terminator nor category Zs. Native `\s` also includes U+FEFF ZERO WIDTH
+ * NO-BREAK SPACE. Unicode does not classify that one as White_Space either.
+ * The C runtime's table in packages/c/src/codec_unicode_tables.c and Rust's
+ * `regex` crate both use \p{White_Space} exactly. Using native `\s` here
+ * split the same input differently in TypeScript than in every other
+ * implementation. That breaks the byte-equivalence the whole format rests
+ * on. A differential run of the Qwen-2 program over 10316 inputs disagreed
+ * with C on 1074 of them.
  *
- * The property escape tracks the engine's Unicode version, which is what the
- * spec asks for: the tables belong to the runtime, not to the map. */
+ * The property escape tracks the engine's Unicode version. That is what the
+ * spec asks for: the tables belong to the runtime; the map stays free of
+ * them. */
 const RE_WS = /\p{White_Space}/u;
 /** "Upper cluster" of the o200k_base / mistral-nemo `letters_cased` op.
  * `\p{Lu}` (uppercase) + `\p{Lt}` (titlecase) + the shared `\p{Lm}` /
@@ -226,8 +227,8 @@ function matchPunctRun(op: OpPunctRun, s: string, i: number): number {
     /* No punct run; the lead space alone doesn't constitute a match. */
     return 0;
   }
-  // Trailing chars: prefer explicit `trailing_chars` charset (used by
-  // o200k_base / mistral-nemo, which trail on `[\r\n/]`). Fall back to
+  // Trailing chars: prefer explicit `trailing_chars` charset (o200k_base /
+  // mistral-nemo trailing runs use `[\r\n/]`). Fall back to
   // the legacy `trailing_newlines: true` boolean → `\r\n`.
   if (op.trailing_chars !== undefined) {
     while (p < s.length && op.trailing_chars.indexOf(s.charAt(p)) >= 0) {
@@ -435,7 +436,7 @@ export function runPreTokProgram(
     }
     /* Defensive fallback: no op matched. Emit one Unicode scalar value
      * and advance. Well-formed programs end with `ws_run` (and any
-     * non-ws becomes a `letters`/`numbers`/`punct_run` match), so this
+     * non-ws becomes a `letters`/`numbers`/`punct_run` match). This
      * branch is unreachable for valid GPT-2-family programs but
      * provides graceful degradation if a pathological input slips in. */
     const { cp, next } = nextCp(text, i);

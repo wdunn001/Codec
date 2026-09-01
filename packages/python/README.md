@@ -170,7 +170,7 @@ async for frame in decode_msgpack_stream(resp.aiter_raw()):
 - **Byte-level decode**: every vocab token is a sequence of GPT-2-encoded bytes. The Detokenizer reverses the byte→unicode table and accumulates bytes across tokens until a complete UTF-8 sequence forms. Tested with 3-byte (`€`) and 4-byte (`🚀`) sequences.
 - **Metaspace decode**: `▁` becomes space; SentencePiece byte-fallback IDs (`<0x00>`:`<0xFF>`) decoded through the same UTF-8 buffer.
 - **Partial sequences across frames**: `Detokenizer` is stateful: call `render(ids, partial=True)` while frames stream, then `partial=False` (default) on the last frame so the buffer flushes. `reset()` between conversations.
-- **BPE merge ordering**: greedy by priority rather than left-to-right. Matches HuggingFace `tokenizers` reference behavior. Test fixture verifies this explicitly.
+- **BPE merge ordering**: greedy by priority, in merge-rank order. Matches HuggingFace `tokenizers` reference behavior. Test fixture verifies this explicitly.
 - **HuggingFace round-trip**: real Qwen-2 (152K vocab, byte_level) round-trips ASCII, code, emoji, multi-script CJK / Latin diacritics. Bit-identical with HF's Rust `tokenizers` library (verified by `tests/test_bpe.py::test_qwen_matches_hf_reference`).
 - **Hash verification** uses `hashlib.sha256`. Mismatch raises `TokenizerMapHashMismatchError`.
 

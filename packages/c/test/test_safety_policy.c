@@ -195,12 +195,13 @@ static void test_verify_sha256_rejects_malformed(void) {
 /* ── Structurally incomplete JSON ───────────────────────────────────────── */
 /*
  * The root walk read `toks[i + 1]` with no comparison against the parsed
- * token count. jsmn accepts a key with no value, so a descriptor ending in
- * a bare recognised key leaves the value index one past the end. The token
- * array here starts at 256 entries and doubles, so the overread only leaves
- * the allocation when the parse lands on an exact power-of-two boundary.
- * The generated case below does exactly that: 1 root token plus 127 pairs
- * plus a trailing bare "id" is 256 tokens, and toks[256] is off the end.
+ * token count. jsmn accepts a key with no value. A descriptor ending in
+ * a bare recognised key therefore leaves the value index one past the end.
+ * The token array here starts at 256 entries and doubles. The overread
+ * therefore only leaves the allocation when the parse lands on an exact
+ * power-of-two boundary. The generated case below does exactly that: 1
+ * root token plus 127 pairs plus a trailing bare "id" is 256 tokens.
+ * toks[256] is off the end.
  */
 
 static void test_rejects_bare_key(void) {

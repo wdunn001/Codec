@@ -153,8 +153,7 @@ only by the cross-stack bench cohort flagging anomalous wire sizes.
 v0.5 promotes the zstd dictionary to a first-class discoverable
 artefact (`.well-known/codec/dicts/<sha>.zstd`, see
 `spec/WELL_KNOWN_DISCOVERY.md` § Zstd dictionaries) and adds this
-gate to make dictionary drift a release-blocker rather than a
-silent runtime degradation.
+gate to make dictionary drift a release-blocker.
 
 For every engine image cut at v0.5+ (`wdunn001/codec-{sglang,vllm,llamacpp}:vX.Y`):
 
@@ -476,7 +475,7 @@ Run **only** when every pre-publish box above is ticked or struck.
 ### 10 · Package publishes
 
 Each step has its own credentials; run one at a time so a failure halts
-the cascade rather than fanning out broken artifacts.
+the cascade before it fans out broken artifacts.
 
 - [ ] **npm**: `@codecai/web`, `@codecai/web-safety`, `@codecai/maps-cli`
       (`npm publish --access public` per package). Verify visible on
@@ -546,7 +545,7 @@ the cascade rather than fanning out broken artifacts.
 
 This is a single-maintainer project today; everything in the checklist
 is run by the maintainer or a CI job they configured. The list above
-intentionally enumerates the *steps* rather than the actors. As the
+intentionally enumerates the *steps* on their own. As the
 project grows, the assignment column can be added without the gates
 themselves changing.
 

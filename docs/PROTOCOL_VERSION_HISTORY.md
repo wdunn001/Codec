@@ -3,7 +3,7 @@
 This document defines **how each protocol version's concerns and open
 questions are tracked over time**. A reader at v0.7 can therefore reconstruct:
 
-1. What v0.2 worried about, and which of those items got resolved by
+1. What v0.2 worried about. Which of those items got resolved by
    v0.3 / v0.4 / v0.5 / etc.
 2. What v0.3 introduced as new concerns, what those concerns evolved
    into, and which got resolved later.
@@ -121,8 +121,8 @@ move to image + video VAE latents; negotiate latent space + decoder
 
 **Open questions resolved by v0.4:**
 
-- *(none: v0.4's scope was orthogonal: safety negotiation rather
-  than latent-modality refinement)*
+- *(none: v0.4's scope was safety negotiation, orthogonal to
+  latent-modality refinement)*
 
 **Open questions still open after v0.4** (carry forward to v0.5):
 

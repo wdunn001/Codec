@@ -106,7 +106,7 @@ static int parse_int(const char *s, size_t len, long *out) {
     while (i < len) {
         char c = s[i++];
         if (c < '0' || c > '9') return 0;
-        /* Signed overflow is undefined behaviour, so reject before it. */
+        /* Signed overflow is undefined behaviour. Reject before it happens. */
         if (v > (LONG_MAX - (c - '0')) / 10) return 0;
         v = v * 10 + (c - '0');
         got = 1;
@@ -152,14 +152,14 @@ static int is_byte_fallback_token(const char *s, size_t len) {
 
 /*
  * Hard ceiling on the id table. The table is sized by the largest token id
- * in the document, and that id comes straight off the wire. vocab_size is
- * parsed and validated but never compared against any id, so before this
- * cap a single entry with id 4294967295 asked for a 64 GiB table from 63
- * bytes of JSON, and id 100000000 reached 2.1 GB resident in 1.25 seconds
+ * in the document. That id comes straight off the wire. vocab_size is
+ * parsed and validated but never compared against any id. Before this
+ * cap, a single entry with id 4294967295 asked for a 64 GiB table from 63
+ * bytes of JSON. id 100000000 reached 2.1 GB resident in 1.25 seconds
  * while returning CODEC_OK.
  *
  * 2^22 is roughly sixteen times the largest vocabulary shipping today
- * (Gemma at 256k, o200k at 200k, Qwen3 at 151k), and it caps the table at
+ * (Gemma at 256k, o200k at 200k, Qwen3 at 151k). It caps the table at
  * 64 MB on a 64-bit target. Nothing real comes near it.
  */
 #define CODEC_MAP_MAX_ENTRIES ((size_t)1 << 22)
@@ -172,7 +172,7 @@ static codec_status_t ensure_entries_cap(codec_tokenizer_map_t *m, size_t need) 
         if (new_cap > SIZE_MAX / 2) return CODEC_ERR_VALIDATION;
         new_cap *= 2;
     }
-    /* On a 32-bit target new_cap * sizeof() can wrap, which would hand back
+    /* On a 32-bit target new_cap * sizeof() can wrap. That would hand back
      * a tiny block that the caller then indexes with the full id. */
     if (new_cap > SIZE_MAX / sizeof(codec_id_entry_t)) return CODEC_ERR_VALIDATION;
     codec_id_entry_t *p = (codec_id_entry_t *)realloc(
@@ -676,8 +676,8 @@ static codec_status_t install_entry(codec_tokenizer_map_t *m,
     if (!key_unesc) return CODEC_ERR_PARSE;
 
     /* Capture the raw (still-encoded) form for BPE vocab lookup before
-     * we decode it. BPE merge ranks operate on the raw vocab keys, so
-     * we need to keep them around: they're distinct from the decoded
+     * we decode it. BPE merge ranks operate on the raw vocab keys. We
+     * need to keep them around: they're distinct from the decoded
      * `entries` bytes the detokenizer uses. We strdup so subsequent
      * encoding doesn't touch our copy. */
     char *raw_dup = (char *)malloc(key_unesc_len + 1);

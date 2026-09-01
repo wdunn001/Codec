@@ -2,7 +2,7 @@
 
 **Purpose.** For each documented attack vector in [`spec/proposals/v0.6-security/`](../), what's publicly known: CVEs, academic papers, vendor advisories, GitHub PoC repos, real-world incidents. Lets the threat-model docs stay focused on mechanism + defense while this directory carries the citation evidence.
 
-**Status.** Initial inventory: 2026-05-18; updated same day with the Jan:May 2026 disclosure wave. References verified against public sources as of that date. Where no specific CVE has been assigned (CVEs typically attach to specific products rather than vulnerability classes), the academic or industry source is cited instead.
+**Status.** Initial inventory: 2026-05-18; updated same day with the Jan:May 2026 disclosure wave. References verified against public sources as of that date. Where no specific CVE has been assigned (CVEs typically attach to specific products), the academic or industry source is cited instead.
 
 **Notable 2026 additions in this update pass:**
 - The Anthropic MCP "by design" STDIO command-injection wave (April 2026, Ox Security; 7,000+ servers, 150M+ downloads affected; 30+ coordinated disclosures with 10+ high/critical CVEs).

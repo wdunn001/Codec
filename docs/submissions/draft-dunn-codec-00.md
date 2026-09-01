@@ -115,7 +115,7 @@ carries the text the human will read. For an agent-mesh deployment
 in which one inference model's output is the input to another, the
 text round-trip is overhead. The receiving model immediately
 re-tokenizes the text back into integer identifiers before
-processing, and the intermediate detokenize/re-tokenize pair
+processing. The intermediate detokenize/re-tokenize pair
 produces no value the next model can observe.
 
 The overhead is non-trivial. Empirical measurement across three
@@ -729,8 +729,8 @@ principle emit those control identifiers in non-tool-call
 contexts, causing the detector to surface a `tool_calls` entry
 that does not correspond to a structured call.
 
-Receivers SHOULD treat `tool_calls` as a hint rather than as a
-trusted parsed structure. Receivers that dispatch on
+Receivers SHOULD treat `tool_calls` as a hint requiring independent
+validation. Receivers that dispatch on
 `tool_calls` SHOULD additionally validate the `arguments_json`
 field against the expected schema for the named tool, treating
 schema-validation failures as detector false positives.

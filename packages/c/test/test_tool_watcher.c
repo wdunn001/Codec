@@ -312,8 +312,8 @@ static void test_watcher_real_qwen2(void) {
      * those tokens with `special: false`, in which case the maps-cli
      * leaves them out of `special_tokens` (they're still in `vocab`).
      * Mirror the Python test's resilience: fall back to a pair that
-     * IS guaranteed to be in special_tokens. We're testing the
-     * watcher, not the map. */
+     * IS guaranteed to be in special_tokens. The watcher is the
+     * subject under test here. */
     uint32_t start_id = 0, end_id = 0;
     const char *start_name = "<tool_call>";
     const char *end_name   = "</tool_call>";
@@ -349,9 +349,9 @@ static void test_watcher_real_qwen2(void) {
 
 /* ── Two regions in one feed ────────────────────────────────────────────── */
 /*
- * REGION_END events point into the watcher's own region buffer, and that
+ * REGION_END events point into the watcher's own region buffer. That
  * buffer was reset and reused at the start of each region. Two regions in
- * one feed therefore produced two events aliasing the same storage, and a
+ * one feed therefore produced two events aliasing the same storage. A
  * second region large enough to grow the buffer freed the memory the first
  * event still pointed at. The documented contract is that events stay valid
  * until the next feed call.
@@ -362,7 +362,7 @@ static void test_watcher_two_regions_one_feed_keep_distinct_ids(void) {
     CT_EQ_INT(codec_tool_watcher_new_with_ids(1000, 1001, &w), CODEC_OK);
 
     /* Region 1 is two ids. Region 2 is large enough to drive the buffer
-     * through several reallocs, which relocates it under glibc. */
+     * through several reallocs. That relocates it under glibc. */
     enum { BIG = 5000 };
     size_t n = 0;
     uint32_t *ids = (uint32_t *)malloc((size_t)(BIG + 8) * sizeof(uint32_t));

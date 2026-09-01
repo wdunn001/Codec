@@ -125,8 +125,8 @@ matching `codec-maps` entry. **The `mapId` you pass to `wrapEngine`
 MUST correspond to the actual tokenizer the loaded web-llm model
 uses**: mismatches produce wrong tokenization on the consumer side.
 
-This package doesn't auto-discover the map: it's a small library
-rather than a smart one. The standard mapping for the common web-llm models:
+This package doesn't auto-discover the map: it's a small library.
+The standard mapping for the common web-llm models:
 
 | web-llm model id (excerpt)                | codec-maps `mapId`     |
 |-------------------------------------------|------------------------|

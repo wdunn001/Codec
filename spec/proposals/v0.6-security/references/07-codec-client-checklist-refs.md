@@ -46,7 +46,7 @@ What this file collects instead: the **operational frameworks**, **industry chec
 
 **Anthropic Responsible Scaling Policy**: model-vendor-side framing.
 - https://www.anthropic.com/news/anthropics-responsible-scaling-policy
-- Less directly applicable to Codec, a transport rather than a model, but informs the "supervisor pass" pattern in checklist P2 #18.
+- Less directly applicable to Codec, a transport layer, but informs the "supervisor pass" pattern in checklist P2 #18.
 
 ## §2. Defensive tooling: implementations the checklist relies on or competes with
 

@@ -4,7 +4,7 @@
 
 ## TL;DR
 
-Some classes of LLM exploitation operate across the conversation as a whole rather than on a single message: many fake examples of compliance to override safety training (many-shot jailbreak), gradual topic escalation across turns (crescendo), eviction of system prompts via context pressure, prefilling of the assistant turn to steer output. These attacks largely live above the wire protocol: Codec carries the bytes but can't reason about whether the conversation is being manipulated.
+Some classes of LLM exploitation operate across the conversation as a whole: many fake examples of compliance to override safety training (many-shot jailbreak), gradual topic escalation across turns (crescendo), eviction of system prompts via context pressure, prefilling of the assistant turn to steer output. These attacks largely live above the wire protocol: Codec carries the bytes but can't reason about whether the conversation is being manipulated.
 
 What v0.6 CAN do: define wire-level **per-turn metadata** that lets server-side and client-side guardrails apply differential trust per turn. That same metadata supports **conversation-supervisor** patterns where a second model re-evaluates the conversation periodically.
 

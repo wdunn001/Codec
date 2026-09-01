@@ -55,7 +55,7 @@ test('pretok program: contractions are case-insensitive', () => {
 
 test('pretok program: digits run (Qwen-style: 1 digit per piece)', () => {
   // Qwen-2 regex is `\p{N}` (no quantifier): one digit per regex
-  // iteration, so digit runs come out one digit at a time. Match the
+  // iteration. Digit runs therefore come out one digit at a time. Match the
   // canonical regex behavior precisely.
   const qwen: PreTokProgram = {
     version: 1,
@@ -250,23 +250,24 @@ test('equivalence: real Qwen-2 map regex compiles + matches on stress inputs',
   });
 
 
-// ── `\s` must mean \p{White_Space}, not JavaScript's `\s` ───────────────────
+// ── `\s` must mean \p{White_Space} ───────────────────────────────────────
 //
 // spec/PRETOKENIZER_PROGRAM.md § Class membership pins the whitespace class:
 //
 //   `\s` means `\p{White_Space}` plus the ASCII whitespace fallbacks
 //
-// JavaScript's native `\s` is a different set. It excludes U+0085 NEXT LINE,
-// which is neither a line terminator nor category Zs, and it includes U+FEFF
-// ZERO WIDTH NO-BREAK SPACE, which Unicode does not classify as White_Space.
-// The C runtime's table (packages/c/src/codec_unicode_tables.c) and Rust's
-// `regex` crate both use \p{White_Space} exactly, so relying on native `\s`
-// here made the TypeScript pieces differ from every other implementation on
-// those two code points. A differential run of this same Qwen-like program
+// JavaScript's native `\s` is a different set. It excludes U+0085 NEXT LINE.
+// That code point is neither a line terminator nor category Zs. It also
+// includes U+FEFF ZERO WIDTH NO-BREAK SPACE. Unicode does not classify
+// that one as White_Space either. The C runtime's table
+// (packages/c/src/codec_unicode_tables.c) and Rust's `regex` crate both
+// use \p{White_Space} exactly. Relying on native `\s` here made the
+// TypeScript pieces differ from every other implementation on those two
+// code points. A differential run of this same Qwen-like program
 // over 10316 inputs disagreed with the C runtime on 1074 of them.
 //
-// The oracle below is the literal Unicode White_Space list rather than a
-// regex, so it cannot drift with whatever the implementation happens to use.
+// The oracle below is the literal Unicode White_Space list. It cannot
+// drift with whatever the implementation happens to use.
 
 /** Unicode White_Space=Yes, transcribed from UCD PropList. */
 const WHITE_SPACE_CODE_POINTS = [
@@ -282,9 +283,10 @@ const NOT_WHITE_SPACE_CODE_POINTS = [0xfeff, 0x200b, 0x180e, 0x2060, 0x00ad];
 /**
  * Probe the interpreter's whitespace predicate for one code point.
  *
- * With the Qwen-like program, the input `a<CP>!` splits three ways when CP is
- * whitespace, because `punct_run` stops at it. When CP is not whitespace,
- * `punct_run` absorbs it together with the `!` and there are two pieces.
+ * With the Qwen-like program, `punct_run` stops at CP when CP is whitespace.
+ * The input `a<CP>!` therefore splits three ways in that case. When CP is
+ * not whitespace, `punct_run` absorbs it together with the `!` and there
+ * are two pieces.
  */
 function treatsAsWhitespace(cp: number): boolean {
   const pieces = runPreTokProgram(QWEN_LIKE, `a${String.fromCodePoint(cp)}!`);
@@ -308,18 +310,18 @@ test('pretok program: whitespace class is exactly Unicode White_Space', () => {
 });
 
 test('pretok program: U+0085 NEXT LINE is whitespace', () => {
-  // Confirmed against the C runtime, which produces ['a', '', '!'].
+  // Confirmed against the C runtime. That produces ['a', '', '!'].
   assert.deepEqual(runPreTokProgram(QWEN_LIKE, 'a!'), ['a', '', '!']);
 });
 
 test('pretok program: U+FEFF is not whitespace', () => {
-  // Confirmed against the C runtime, which produces ['a', '﻿!'].
+  // Confirmed against the C runtime. That produces ['a', '﻿!'].
   assert.deepEqual(runPreTokProgram(QWEN_LIKE, 'a﻿!'), ['a', '﻿!']);
 });
 
 test('pretok program: ws_run groups a mixed White_Space run as C does', () => {
   // Input is a, U+0085, U+2009 THIN SPACE, U+0020, b. The C runtime emits
-  // the pieces 61 / c285e28089 / 2062, so U+0085 belongs to the run.
+  // the pieces 61 / c285e28089 / 2062. U+0085 therefore belongs to the run.
   assert.deepEqual(
     runPreTokProgram(QWEN_LIKE, 'a  b'),
     ['a', ' ', ' b'],

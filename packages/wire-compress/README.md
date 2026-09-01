@@ -170,10 +170,10 @@ const DEFAULT_THRESHOLDS = {
 This logic is genuinely useful outside Codec. Anywhere you have:
 
 - Streaming responses (SSE, gRPC-Web text, event streams)
-- Many small frames rather than one big blob
+- Many small frames
 - Mixed clients (modern browsers, mobile webviews, CLI tools, IoT)
 
-…the right encoding depends on size and client support. The standard "always-brotli" advice is wrong. Drop this in rather than writing your own switch statement.
+…the right encoding depends on size and client support. The standard "always-brotli" advice is wrong. Drop this in and skip writing your own switch statement.
 
 The thresholds were measured for streaming token frames specifically. They generalise to other small-frame streaming workloads (chat APIs, log streams, telemetry) but you may want to recalibrate for your data: pass a custom `thresholds` argument to `pick()`.
 

@@ -4,7 +4,7 @@ This directory builds the Docker image that produces the **reference RGB pixels*
 
 ## Why a frozen container?
 
-Codec latent streams travel as VAE latent tensors rather than pixels. The contract splits in two (see [`spec/PROTOCOL.md`](../../../spec/PROTOCOL.md) §"Validation contract"):
+Codec latent streams travel as VAE latent tensors. The contract splits in two (see [`spec/PROTOCOL.md`](../../../spec/PROTOCOL.md) §"Validation contract"):
 
 1. **Latent-byte boundary: bit-identical.** Server-emitted bytes equal client-received bytes, byte-for-byte. Tested without a decoder loaded. Every client, including ones with no GPU, can verify it as a result.
 2. **Pixel boundary: perceptual bound only.** VAE decoders are floating-point and non-deterministic across runtimes (torch / ONNX-Web / ggml / WGSL). The contract therefore collapses to "your decoded pixels match a frozen reference within published SSIM / PSNR / LPIPS thresholds."
@@ -53,7 +53,7 @@ docker run --rm --gpus all \
 Bumping torch or diffusers in the `Dockerfile` is a **breaking change** to every latent bench cell already rendered against the previous pin. To roll forward:
 
 1. Bump `TORCH_VERSION` / `DIFFUSERS_VERSION` (and friends) in `Dockerfile`.
-2. Bump the matching `ARG` block in `codec-supervisor/Dockerfile.diffusers` so the codec-diffusers server image tracks the same versions. Out-of-lockstep pins make the diffusers server's `quality_reference` mismatch the canonical golden, and the bench fingerprint-validator will quarantine every cell from that server.
+2. Bump the matching `ARG` block in `codec-supervisor/Dockerfile.diffusers` so the codec-diffusers server image tracks the same versions. Out-of-lockstep pins make the diffusers server's `quality_reference` mismatch the canonical golden. The bench fingerprint-validator then quarantines every cell from that server.
 3. Rebuild this image, re-render every latent fixture, push the new image with a new tag (`torch-X.Y.Z-diffusers-A.B.C`), publish the new digest.
 4. Bump `methodology.modality.quality_reference.container_sha256` in any methodology JSON that references the prior pin.
 

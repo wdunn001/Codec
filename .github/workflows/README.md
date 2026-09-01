@@ -34,7 +34,7 @@ since v0.3.x).
    other registries (each accepts no input, but you can re-run on
    the same tag).
 
-## Why one workflow per registry, instead of one big "release.yml"?
+## Why one workflow per registry?
 
 A registry-specific failure (e.g. a transient PyPI 500 mid-upload)
 shouldn't force a retag of the entire release. Per-target workflows

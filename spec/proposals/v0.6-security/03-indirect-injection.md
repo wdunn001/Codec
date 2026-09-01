@@ -4,7 +4,7 @@
 
 ## TL;DR
 
-**Indirect prompt injection** is when adversarial instructions reach the model via *external content the model has been asked to process*, rather than through the user's direct prompt: a PDF the user uploaded, a web page the agent fetched, an email the assistant summarized, a tool result that came back from an API. The model has no architectural way to distinguish "data to analyze" from "instructions to follow": they arrive through the same channel (the context window).
+**Indirect prompt injection** is when adversarial instructions reach the model via *external content the model has been asked to process*: a PDF the user uploaded, a web page the agent fetched, an email the assistant summarized, a tool result that came back from an API. The model has no architectural way to distinguish "data to analyze" from "instructions to follow": they arrive through the same channel (the context window).
 
 For Codec specifically: any client-side Codec feature that ingests external content (file uploads, web fetches, RAG retrieval, MCP tool results) is part of this attack surface. The protocol can help by **structurally marking content as untrusted at the wire level** so the model and the client can apply differential policy.
 
