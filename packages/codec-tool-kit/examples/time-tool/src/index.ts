@@ -41,7 +41,7 @@ const ROOT = dirname(__dirname); // examples/time-tool
 
 // Stub slot tokenizer: same shape as the build-time one. Production
 // would load the real tokenizer here. This is the only place the tool
-// pays runtime tokenization, and it only sees slot values (digits,
+// pays runtime tokenization. It only sees slot values (digits,
 // dates): typically <20 chars total per call.
 function stubTokenizer(modelId: string): Tokenizer {
   const encode = (text: string): number[] => {

@@ -5,7 +5,7 @@
  * deployed, and authored, but speak token IDs natively when the model
  * is one they've pre-built a cache for. The gateway (sglang, vLLM,
  * llama.cpp, MetaMCP) stays a pure token router; the tokenization
- * work is done once at the tool's build time, not on every call.
+ * work is done once at the tool's build time.
  *
  * Public surface:
  *   - ToolManifest, validateManifest, findBinding (the contract)

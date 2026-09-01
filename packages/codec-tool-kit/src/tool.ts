@@ -12,8 +12,7 @@
  *    state → token IDs. The gateway never sees text.
  *
  * 2. **Text fallback**: if the tool doesn't have a pre-cached binding
- *    for the model the gateway is serving, the tool returns text
- *    instead of tokens. The gateway tokenises the text using its own
+ *    for the model the gateway is serving, the tool returns text. The gateway tokenises the text using its own
  *    tokeniser to inject the result. Slower, but works for any model.
  *
  * Tools are independently versioned and deployed. The gateway only
