@@ -1,6 +1,6 @@
 # codec-tool-kit
 
-Build Codec-native tools as **bolt-ons**: independently versioned, deployed, and authored, hosted in their own repos. Tools speak token IDs natively when the model is one they've pre-built a cache for, and gracefully fall back to text when it isn't.
+Build Codec-native tools as **bolt-ons**: independently versioned, deployed, and authored, hosted in their own repos. Tools speak token IDs natively when the model is one they've pre-built a cache for. They gracefully fall back to text when it isn't.
 
 The architectural premise: **the gateway should stay a pure token router**. Today, every agent platform pays detokenize → JSON → tool → JSON → tokenize on every tool call. Most of that work is repeated thousands of times for the same response fragments ("It is currently ", " UTC.", "°F", common error messages). This SDK lets a tool author tokenize those fragments **once at build time**, ship the cached IDs, and pay nothing on the hot path.
 
@@ -28,7 +28,7 @@ An earlier sketch of this architecture had the gateway dispatch tools in-process
 
 1. **Modularity.** Tools want their own release cadence, security review, dependencies, and deploy surface. Locking them into the inference server forces every tool change into a server release.
 2. **Independent hosting.** A team that builds a Codec-native search tool wants to host it in their own repo, on their own infra, with their own SLOs. The gateway only needs the manifest URL.
-3. **Pre-cached tokenization belongs at the tool rather than the gateway.** Every tool knows its own response shape better than any gateway can. Putting the cache in the tool means each tool ships *exactly the fragments it emits*: no central dictionary to maintain, no cross-tool coupling.
+3. **Pre-cached tokenization belongs at the tool.** Every tool knows its own response shape better than any gateway can. Putting the cache in the tool means each tool ships *exactly the fragments it emits*: no central dictionary to maintain, no cross-tool coupling.
 
 The wire savings are the same as in-process dispatch. The latency win is one extra hop (tool ↔ gateway, typically a unix socket or LAN RTT: single-digit ms): worth it for the operational decoupling.
 

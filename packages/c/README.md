@@ -409,7 +409,7 @@ The BPE encoder + Translator + pretok runtime + Unicode tables are ~25 KB of obj
 cmake -S . -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DCODEC_WITH_BPE_ENCODER=OFF
 ```
 
-Result: ~25 KB lighter static lib on x86-64 (more like 15-30 KB on Cortex-M / Xtensa / RISC-V depending on toolchain). The public-API symbols still link: they return `CODEC_ERR_NOT_BUILT` consistently: so consumer code doesn't need any `#ifdef` guards. Calling `codec_bpe_encode` / `codec_translator_translate` / `codec_pretok_run_program` on a decode-only build produces a clean runtime error rather than a link failure.
+Result: ~25 KB lighter static lib on x86-64 (more like 15-30 KB on Cortex-M / Xtensa / RISC-V depending on toolchain). The public-API symbols still link: they return `CODEC_ERR_NOT_BUILT` consistently: so consumer code doesn't need any `#ifdef` guards. Calling `codec_bpe_encode` / `codec_translator_translate` / `codec_pretok_run_program` on a decode-only build produces a clean runtime error.
 
 **Deliberately not in scope**:
 

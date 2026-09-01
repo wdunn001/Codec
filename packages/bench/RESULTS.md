@@ -285,11 +285,10 @@ prompt: "Explain entropy in one sentence:"  max_tokens: 64
 
 Notes:
 - `N/A` cells: vanilla sglang silently ignores `stream_format` and falls
-  back to JSON-SSE; the response is plain text rather than the requested binary
-  format. Auto-detected and excluded.
+  back to JSON-SSE, returning plain text. Auto-detected and excluded.
 - `br` is *bigger than identity* on these small payloads (sub-KB binary)
   because brotli's per-frame overhead exceeds its savings on dense
-  msgpack. This is a real artifact rather than a bug.
+  msgpack. This reflects real per-frame compression overhead.
 - JSON-SSE doesn't compress on either server even with `Accept-Encoding`
   set: the text path doesn't honor the header. The Codec path's
   `codec_compression.py` is what actually does compression.
@@ -339,7 +338,7 @@ prompt: long-form essay request (forces ~80 / 630 / 2078 emitted tokens)
 ### What this shows
 
 - **Identity ratio is roughly flat across size** (16-25×): Codec's wire
-  is constant-bytes-per-token, and JSON-SSE is too. The ratio is therefore just the
+  is constant-bytes-per-token. JSON-SSE is too. The ratio is therefore just the
   bytes-per-token ratio. This is the floor.
 - **Compressed Codec ratio grows dramatically with size**: msgpack+zstd
   goes from 59× at 80 tokens to **562× at 2,078 tokens**. The compressor
@@ -488,9 +487,9 @@ where they exist) makes zstd a dead end for streaming workloads
 including agent-to-agent. Even a 4-second TTFT in a model→model
 hop compounds disastrously across multi-hop chains. zstd's ~30%
 extra wire savings over gzip don't pay for that latency. Callers
-must explicitly set `zstdEnabled: true` to opt in, and even then only after
-confirming the gateway uses *streaming-zstd with periodic flushes*
-rather than the default buffered-finalisation path.
+must explicitly set `zstdEnabled: true` to opt in. Even then, the
+gateway must use *streaming-zstd with periodic flushes* for that
+opt-in to help.
 
 Run yourself:
 
@@ -673,7 +672,7 @@ The earlier "zstd at scale for agent traffic" recommendation didn't
 survive the timing data. **zstd-as-shipped is a dead end for
 streaming workloads, including agent-to-agent.** Even agent loops
 care about TTFT: a 4-second wait between hops compounds
-catastrophically across multi-hop chains, and zstd's ~30% extra
+catastrophically across multi-hop chains. zstd's ~30% extra
 wire savings over gzip don't pay for that latency. The picker
 treats zstd as opt-in until streaming-zstd middleware exists.
 
@@ -844,7 +843,7 @@ decode_args(call.argumentIds) →
 Tokenization cost on the hot path: just the digits in the timestamp.
 Everything else is memcpy. CPU per call drops from "BPE on N hundred
 bytes" to "memcpy of N hundred bytes": typically a 50-100× CPU
-reduction at the tool layer, and zero CPU at the gateway.
+reduction at the tool layer. Gateway CPU for that call falls to zero.
 
 ### What ships today
 
@@ -976,8 +975,7 @@ should hit roughly:
 | br TTFT ratio | 1.0 | ≤ 1.5 | > 2.0 |
 
 Stacks that fall into the "bad" column for any of these have a
-fixable middleware issue rather than a fundamental encoder problem. Patch
-the middleware, the ratio improves.
+fixable middleware issue. Patch the middleware, the ratio improves.
 
 ### sglang: measured
 
@@ -1191,8 +1189,8 @@ for the round-trip-verified measurement.
 The numbers below come from the **synthetic corpus** (256 streams per
 format, generated deterministically from `bench/golden/qwen2.json` plus
 RNG-shaped framing). Synthetic dicts are weaker than live-trained dicts
-because they only see the model's tokenizer test corpus rather than the
-model's actual generation distribution: replace with the live numbers
+because they only see the model's tokenizer test corpus, a narrow proxy
+for the model's actual generation distribution: replace with the live numbers
 once `bench/scripts/capture-codec-samples.py` has been run against
 sglang and `dict:train` re-emits a `qwen2.5-msgpack-v1.dict` (no
 `-synth-` infix).

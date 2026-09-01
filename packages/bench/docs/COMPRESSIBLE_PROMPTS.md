@@ -196,10 +196,9 @@ bandwidth-constrained Codec consumer:
 2. **Constrain vocabulary** where the domain allows (enum fields, fixed
    precision, known templates).
 3. **Train a domain-specific zstd dict** if you control both ends.
-4. **Measure realised wire bytes** rather than just whether the response
-   "looks right": the prompt-engineering changes show up in the wire
-   bytes first, before they ever affect human readability.
+4. **Measure realised wire bytes**: the prompt-engineering changes show
+   up in the wire bytes first, before they ever affect human readability.
 
-For benchmarking the protocol itself rather than the model + protocol
-together, prefer the v0.5 synthetic-stream cell when it lands (see
+For benchmarking the protocol itself, prefer the v0.5 synthetic-stream
+cell when it lands (see
 `packages/bench/methodology/SCHEMA.md` § synthetic-stream: TBD).

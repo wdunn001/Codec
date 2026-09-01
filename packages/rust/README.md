@@ -203,7 +203,7 @@ Pre-tokenizers split at whitespace. `Translator` buffers partial words until a s
 - **Byte-level decode**: every vocab token is a sequence of GPT-2-encoded bytes. The Detokenizer reverses the byte→unicode table and accumulates bytes across tokens until a complete UTF-8 sequence forms. Tested with 3-byte (`€`) and 4-byte (`🚀`) sequences.
 - **Metaspace decode**: `▁` becomes space; SentencePiece byte-fallback IDs (`<0x00>`:`<0xFF>`) decoded through the same UTF-8 buffer.
 - **Partial sequences across frames**: `Detokenizer` is stateful: call `render(ids, DetokenizeOptions { partial: true, .. })` while frames stream, then `partial: false` on the last frame so the buffer flushes. `reset()` between conversations.
-- **BPE merge ordering**: greedy by priority rather than left-to-right. Matches HuggingFace tokenizers reference behavior. Test fixture verifies this explicitly (`tests/bpe_tests.rs::merges_greedily_by_priority_not_left_to_right`).
+- **BPE merge ordering**: greedy by priority, in merge-rank order. Matches HuggingFace tokenizers reference behavior. Test fixture verifies this explicitly (`tests/bpe_tests.rs::merges_greedily_by_priority_not_left_to_right`).
 - **Hash verification** uses `sha2::Sha256`. Mismatch returns `LoadError::HashMismatch` (no panic).
 
 ## Map sources

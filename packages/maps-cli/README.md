@@ -175,7 +175,7 @@ regex engine. The CLI emits it automatically for any pre-tokenizer
 regex it recognises (currently the GPT-2-family canonical form used by
 Llama-3, Qwen, Phi-3, DeepSeek-V3, Mistral-Nemo, Falcon, SmolLM2,
 Codestral byte_level). Maps with unrecognised regexes still build
-normally: `pre_tokenizer_program` is just omitted, and runtimes fall
+normally: `pre_tokenizer_program` is just omitted. Runtimes fall
 back to the regex string.
 
 See [`spec/PRETOKENIZER_PROGRAM.md`](https://github.com/wdunn001/Codec/blob/main/spec/PRETOKENIZER_PROGRAM.md)

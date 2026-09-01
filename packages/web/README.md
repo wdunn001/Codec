@@ -188,7 +188,7 @@ The watcher is stateful: regions split between network frames buffer until the e
 - **Byte-level decode**: every vocab token is a sequence of GPT-2-encoded bytes. The Detokenizer reverses the byte→unicode table and accumulates bytes across tokens until they form a complete UTF-8 sequence. Tested against 3-byte (`€`) and 4-byte (`🚀`) sequences.
 - **Metaspace decode**: `▁` becomes space; SentencePiece byte-fallback IDs (`<0x00>`:`<0xFF>`) are decoded as raw bytes through the same UTF-8 buffer.
 - **Partial sequences across frames**: `Detokenizer` is stateful: call `render(ids, { partial: true })` while frames are streaming, then `render(ids, { partial: false })` (or omit `partial`) on the last frame so the buffer flushes. Use `reset()` between conversations.
-- **BPE merge ordering**: merges are applied greedily by priority rather than left-to-right. Matches HuggingFace tokenizers reference behaviour. Test fixture verifies this explicitly.
+- **BPE merge ordering**: merges are applied greedily by priority, in merge-rank order. Matches HuggingFace tokenizers reference behaviour. Test fixture verifies this explicitly.
 - **Hash verification** uses Web Crypto's `SubtleCrypto.digest('SHA-256', ...)`: available in every target runtime. A mismatch throws `TokenizerMapHashMismatchError`.
 
 ## Map sources

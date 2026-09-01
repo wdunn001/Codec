@@ -7,7 +7,7 @@ This directory holds the **canonical Python bodies** that the latent-aware engin
 | [`wdunn001/ComfyUI`](https://github.com/wdunn001/ComfyUI) | `feat/codec-latent-transport` | [`comfyui/`](./comfyui/) | [`wdunn001/codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui): `:vX.Y.Z` + `:latest` + `:sha-<git7>` (built by [`Dockerfile.comfyui`](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.comfyui), auto-pushed by [`release.yml`](https://github.com/wdunn001/codec-supervisor/blob/main/.github/workflows/release.yml) on every `v*` git tag) |
 | [`wdunn001/diffusers`](https://github.com/wdunn001/diffusers) | `feat/codec-latent-transport` | [`diffusers/codec_server/`](./diffusers/codec_server/) | [`wdunn001/codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers): `:vX.Y.Z` + `:latest` + `:sha-<git7>` (built by [`Dockerfile.diffusers`](https://github.com/wdunn001/codec-supervisor/blob/main/Dockerfile.diffusers), same release workflow) |
 
-Why "fork-only" rather than upstream PRs:
+Why fork-only:
 
 - **ComfyUI**: the codec endpoints touch enough of the request loop (latent capture during sampling, msgpack/protobuf streaming response, zstd dict negotiation) that a downstream fork is cleaner than threading hooks through ComfyUI's plugin system. Also: ComfyUI moves fast and PRs land slowly.
 - **diffusers**: diffusers is purely a *library*. Our fork adds an `examples/codec_server/` FastAPI wrapper: the surface area HuggingFace would never accept upstream because they don't ship servers. The codec_server doubles as the **bench/golden perceptual-conformance reference**.

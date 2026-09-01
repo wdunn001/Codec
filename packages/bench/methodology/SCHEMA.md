@@ -274,7 +274,7 @@ columns; those numbers anchor the rate-distortion plots.
      headers are available, before any body bytes have arrived. They
      are NOT canonical TTFB under SCHEMA-v1. Their numbers are
      correctly recorded but the aggregator routes them into the
-     "headers-byte cohort" column rather than the canonical column.
+     "headers-byte cohort" column.
 
    On non-buffering encodings (identity, gzip, br) headers and first
    body byte arrive in the same TCP segment in practice. The
@@ -323,12 +323,11 @@ When building MATRIX.md from a `results/{run_id}/` tree:
 ## Synthetic-stream wire bench (v0.4.1+): protocol-only headline
 
 Added after the v0.4.1 post-mortem caught that the engine-output ratios
-were **content-dependent** rather than measuring protocol efficiency in
-isolation. Two engines fed the same prompt at temperature=0 generate
-different token sequences (floating-point non-associativity in CUDA
-reductions + sampler/attention divergence), and those sequences compress
-differently: producing wildly different headline ratios for what should
-have been a protocol comparison.
+were **content-dependent**. Two engines fed the same prompt at
+temperature=0 generate different token sequences (floating-point
+non-associativity in CUDA reductions + sampler/attention divergence).
+Those sequences compress differently, producing wildly different
+headline ratios for what should have been a protocol comparison.
 
 The synthetic-stream bench fixes this by **never invoking a model**. It
 takes known token-ID sequences from a small set of canonical corpora and
@@ -486,7 +485,7 @@ Codec-aware MCP server: `get_current_time` + `convert_time` tools
 wrapped via `@codecai/mcp-leaf`'s `wrapToolCall`). Without it, the
 gateway logs `[Codec][shim]` warnings on every result and variant 5's
 numbers regress to variant-4-equivalent (the gateway tokenizes on the
-seam rather than forwarding pre-tokenized IDs).
+seam because the IDs never arrived pre-tokenized).
 
 ### Result file layout
 

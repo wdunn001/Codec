@@ -63,7 +63,7 @@ To add a new attack vector:
 ## What this suite deliberately does NOT do
 
 - **Run live model evaluations.** Some attacks (many-shot jailbreak, crescendo, image OCR) need an actual model run to validate. Those tests are stubbed in fixtures with a `RUN_MODEL_TESTS=1` env gate planned for a follow-up.
-- **Generate binary fixtures.** PDFs, images, audio: the planned generator scripts (`generate_*.py`) live alongside their target fixtures and run at build time rather than commit time.
+- **Generate binary fixtures.** PDFs, images, audio: the planned generator scripts (`generate_*.py`) live alongside their target fixtures and run at build time.
 - **Test against real recruiter/agent stacks.** The vulnerable-pipeline functions in `03-indirect-injection.test.ts` are *models* of real pipelines, never the real things. The defended-pipeline functions are *examples* of what real client code should do.
 
-The point of this suite is to make each documented threat **falsifiable**: when v0.6 ships, every test here must pass, and any new attack discovered in the wild gets added here as a regression test before its mitigation lands.
+The point of this suite is to make each documented threat **falsifiable**: when v0.6 ships, every test here must pass. Any new attack discovered in the wild gets added here as a regression test before its mitigation lands.

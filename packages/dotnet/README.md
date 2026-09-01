@@ -142,7 +142,7 @@ Pre-tokenizers split at whitespace. `Translator` buffers partial words until a s
 - **Byte-level decode**: every vocab token is a sequence of GPT-2-encoded bytes. The Detokenizer reverses the byte→unicode table and accumulates bytes across tokens until a complete UTF-8 sequence forms. Tested with 3-byte (`€`) and 4-byte (`🚀`) sequences.
 - **Metaspace decode**: `▁` becomes space; SentencePiece byte-fallback IDs (`<0x00>`:`<0xFF>`) decoded through the same UTF-8 buffer.
 - **Partial sequences across frames**: `Detokenizer` is stateful: call `Render(ids, new DetokenizeOptions { Partial = true })` while frames stream, then `Partial = false` (or default) on the last frame so the buffer flushes. `Reset()` between conversations.
-- **BPE merge ordering**: greedy by priority rather than left-to-right. Matches HuggingFace tokenizers reference behavior. Test fixture verifies this explicitly.
+- **BPE merge ordering**: greedy by priority, in merge-rank order. Matches HuggingFace tokenizers reference behavior. Test fixture verifies this explicitly.
 - **HuggingFace round-trip**: real Qwen-2 (152K vocab, byte_level) round-trips ASCII, code, emoji, multi-script CJK / Latin diacritics. Bit-identical with HF's Rust `tokenizers` library.
 - **Hash verification** uses `System.Security.Cryptography.SHA256`. Mismatch throws `TokenizerMapHashMismatchException`.
 

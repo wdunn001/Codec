@@ -51,7 +51,7 @@ BENCH_MAX_TOKENS=512 \
   npm run bench:live
 ```
 
-If the server is unreachable, `bench:live` exits with a skip notice rather than failing.
+If the server is unreachable, `bench:live` exits with a skip notice.
 
 ## What the numbers mean
 

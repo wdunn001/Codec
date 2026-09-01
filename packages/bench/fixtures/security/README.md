@@ -32,7 +32,7 @@ Naming convention: `<short-name>.<ext>` for the payload; optional
 
 For attacks that need binary content (PDFs, images), the payload is generated
 by a `generate_<short-name>.py` script committed alongside. The build is
-reproducible as a result, and the source-of-attack stays readable.
+reproducible as a result. The source-of-attack stays readable.
 
 ## How tests use these fixtures
 

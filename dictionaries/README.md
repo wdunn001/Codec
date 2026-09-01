@@ -33,7 +33,7 @@ qwen2.5-synth-msgpack-v1.dict     ← synthetic (offline corpus)
 ```
 
 The `synth-` infix means the dict was trained against the deterministic
-synthetic corpus rather than real sglang output. Synthetic dicts are weaker
+synthetic corpus. Synthetic dicts are weaker
 (they only see the model's tokenizer test corpus, never its actual
 generation distribution). They are, however, reproducible without GPU access: they're
 what CI uses.
@@ -123,7 +123,7 @@ worse TTFB. The picker (`packages/wire-compress`) enforces a hard rule:
    `zstd_dictionaries[]` whose `format` matches the response's
    `stream_format`. Set per request.
 2. **`zstdEnabled`**: the operator has confirmed the middleware uses
-   streaming-zstd-with-flush rather than buffered finalisation.
+   streaming-zstd-with-flush.
 
 Either gate failing → the picker drops zstd from the candidate set and
 returns gzip (or br as the Safari/iOS fallback). This means: if you
