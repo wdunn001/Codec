@@ -39,8 +39,8 @@ describe('parseAcceptEncoding', () => {
 // Selection rule under the new model: zstd is chosen ONLY when both
 // `zstdHasDict` and `zstdEnabled` are true. Otherwise gzip > br > identity.
 // No-dict zstd is never picked: RESULTS.md §1d showed it's catastrophically
-// slow on shipped middleware, and §1f showed its byte advantage over gzip is
-// noise on Codec streams.
+// slow on shipped middleware. §1f also showed its byte advantage over gzip
+// is noise on Codec streams.
 
 describe('pick: rule: zstd only with dict + streaming middleware', () => {
   const ALL_CLIENT = 'zstd, gzip, br';

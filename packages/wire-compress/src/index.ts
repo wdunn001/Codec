@@ -142,8 +142,8 @@ export const LOW_ENTROPY_THRESHOLD = 3.0;
 
 /**
  * Enum of pick() decisions. Each value identifies one branch of the picker's
- * decision tree, so dashboards can group/count outcomes without parsing free
- * text. The closed enum is the v0.5 contract; new picker branches require a
+ * decision tree. Dashboards can therefore group/count outcomes without
+ * parsing free text. The closed enum is the v0.5 contract; new picker branches require a
  * new enum value (additive: never reassign / never remove existing ones,
  * same trust posture as the wire-format versioning policy).
  */
@@ -199,7 +199,7 @@ export interface Thresholds {
   zstdPreferredFrom: number;
   /** Brotli is only used if it's the *only* option above identity. */
   brotliFallbackOnly: boolean;
-  /** Even at 16 tokens compressed beats raw, so raw is never preferred. */
+  /** Even at 16 tokens compressed beats raw. Raw is never preferred. */
   identityFallbackOnly: boolean;
 }
 
@@ -212,8 +212,8 @@ export const DEFAULT_THRESHOLDS: Thresholds = {
 
 /**
  * Per-stack measured compression characteristics. Lets the picker tune
- * itself for the gateway it's actually running behind, instead of
- * assuming sglang-shaped numbers everywhere.
+ * itself for the gateway it's actually running behind, using the real
+ * measured numbers for that stack.
  *
  * Each entry is `{ wireCoeff, ttftRatio }` per encoding:
  *   - wireCoeff:  measured `compressed_bytes / raw_codec_bytes` (lower = better)
@@ -370,8 +370,9 @@ function isKnownEncoding(s: string): s is Encoding {
  *
  * Algorithm:
  *   1. Parse Accept-Encoding (if absent, treat as gzip-only: RFC 7231 §5.3.4
- *      says identity is always acceptable, and gzip is universally supported,
- *      so gzip is a safe assumption when the client said nothing).
+ *      says identity is always acceptable. It also treats gzip as
+ *      universally supported. gzip is therefore a safe assumption when
+ *      the client said nothing).
  *   2. Intersect with serverSupports (defaults to all four).
  *   3. From the candidate set, pick the smallest-bytes-at-size winner using
  *      the thresholds. zstd wins big payloads, gzip wins small.
@@ -526,10 +527,10 @@ export function shannonEntropyBitsPerByte(bytes: Uint8Array): number {
  *
  * The q-values reflect the measured preference order on streaming Codec
  * frames: gzip > br > identity. zstd is omitted by default for two
- * reasons: shipped middleware buffers the whole response (RESULTS.md §1d
- * TTFT cliff), and even with streaming middleware, no-dict zstd's
+ * reasons. Shipped middleware buffers the whole response (RESULTS.md §1d
+ * TTFT cliff). Even with streaming middleware, no-dict zstd's
  * wire-byte advantage over gzip is essentially zero on Codec streams
- * (RESULTS.md §1f): so advertising zstd to a server without a
+ * (RESULTS.md §1f). Advertising zstd to a server without a
  * pre-trained dict for this tokenizer just risks a worse outcome.
  *
  * Opt back in by passing `{ zstd: true }` only when:
