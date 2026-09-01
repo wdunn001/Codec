@@ -75,7 +75,7 @@ Round-trip: take a sentence, tokenize it through Qwen, translate the IDs through
 
 Both of these examples: tool detection and cross-vocab handoff: exist as expensive infrastructure problems for the same reason: agent workloads send AI output to AI input. The presentation layer was sized for the human-in-the-loop case, where rendering text on a screen was the actual point. Agent workloads inherit that sizing without inheriting the requirement.
 
-It's worth being precise about why this is an AI-specific opportunity rather than a generic protocol-design point. Most network protocols transit *opaque payloads*. The transport doesn't know what's inside; it carries bytes from one address to another. The text-layer waste in HTTP is purely JSON envelope overhead.
+It's worth being precise about why this is an AI-specific opportunity. Most network protocols transit *opaque payloads*. The transport doesn't know what's inside; it carries bytes from one address to another. The text-layer waste in HTTP is purely JSON envelope overhead.
 
 AI APIs are different. The payload IS structured by the model into discrete units that the model itself produces and consumes. Tokens are the *internal data type of the system*. They are not opaque to the endpoints; they are the only thing the endpoints actually understand. The tokenizer at the API boundary is a pure adapter: it exists to translate between the system's native data type and the human-facing one. When neither endpoint is human, the adapter is doing zero useful work, every time.
 

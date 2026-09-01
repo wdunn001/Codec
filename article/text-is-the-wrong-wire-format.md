@@ -96,7 +96,7 @@ The honest list of work, with no padding:
 
 A protocol specification for the tokenizer-map contract. Roughly the size of a small RFC. Defines map structure, declaration at session start, versioning, byte-fallback marking, special-token semantics, streaming framing.
 
-A wire format for token IDs. Probably a binary framing on top of HTTP/2 or QUIC. Existing protocols (gRPC, MessagePack, CBOR) already do binary framing well; this is choosing among them rather than inventing something new.
+A wire format for token IDs. Probably a binary framing on top of HTTP/2 or QUIC. Existing protocols (gRPC, MessagePack, CBOR) already do binary framing well; this is choosing among them.
 
 Tooling for human-readable inspection. A Wireshark equivalent that decodes a captured token stream into text using the declared map. Logging, debugging, and audit systems all currently assume text; they will need to learn to decode tokens for human eyes the same way network tools learned to decode binary protocols decades ago.
 
