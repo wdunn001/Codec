@@ -58,7 +58,7 @@ export interface ConvertOptions {
    * converter inspects `chat_template` and emits a `tool_calling`
    * block on the resulting map per the registry of known calling
    * conventions. Pass undefined to skip: the resulting map simply
-   * omits the block, which readers treat per the spec's prose table.
+   * omits the block. Readers treat that per the spec's prose table.
    */
   tokenizerConfig?: HFTokenizerConfig;
   /**
@@ -133,7 +133,7 @@ const BYTE_FALLBACK_RE = /^<0x([0-9A-Fa-f]{2})>$/;
 // before the block is emitted; if either is absent the detector returns
 // undefined and the caller falls back to omitting the block. The map
 // reader then treats absence per the spec ("convention not declared;
-// behave per the prose table") rather than as an error.
+// behave per the prose table").
 
 interface ChatTemplateBearing {
   /** Top-level chat_template string. Some configs use a list of
@@ -171,7 +171,7 @@ interface ConventionEntry {
 // Known opt-in-only cases (rationale, in case re-derivation looks
 // possible later):
 //   - mistral_nemo: opens with `[TOOL_CALLS][` but the closing `]` is
-//     the JSON array's closing bracket, not a paired marker token. The
+//     the JSON array's closing bracket. It is not a paired marker token. The
 //     paired-markers schema can't represent this without inventing a
 //     sentinel.
 //   - phi4: the public phi-4 chat template is short enough that it
@@ -180,7 +180,7 @@ interface ConventionEntry {
 const CONVENTIONS: readonly ConventionEntry[] = [
   // Llama 3.1+: `<|python_tag|>get_weather(location="NYC")<|eom_id|>`.
   // args_format is python_args because the convention emits a
-  // Python-style call expression after the tag rather than a JSON object.
+  // Python-style call expression after the tag.
   {
     convention: 'llama3',
     templateSignature: '<|python_tag|>',
@@ -377,7 +377,7 @@ export function convertHFTokenizer(
   }
 
   // Optional tool-calling convention block. The deriver looks up
-  // markers in vocab + special_tokens, and promotes vocab-only markers
+  // markers in vocab + special_tokens. It promotes vocab-only markers
   // into special_tokens (in-place) when a convention matches: the
   // spec contract "markers MUST be keys in special_tokens" stays
   // satisfied. A partial match still returns undefined and the block
@@ -440,7 +440,7 @@ export async function fetchAndConvert(
   const hf = (await resp.json()) as HFTokenizerJson;
 
   // Best-effort fetch of tokenizer_config.json. The chat_template lives
-  // there (not in tokenizer.json), and we need it to derive the
+  // there (not in tokenizer.json). We need it to derive the
   // tool_calling block. A 404 here means "no chat template published":
   // we proceed without and the map simply omits the block. Network
   // errors propagate normally.

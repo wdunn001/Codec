@@ -13,8 +13,8 @@
  *     <base64-encoded-BPE-merge-bytes> <rank>
  *
  * where rank is the integer token ID. Single-byte entries occupy
- * scattered ranks (NOT 0-255: tiktoken trains BPE on raw bytes, not on
- * a fixed base alphabet, so single bytes get whatever rank the trainer
+ * scattered ranks (NOT 0-255: tiktoken trains BPE on raw bytes over a
+ * variable alphabet. Single bytes get whatever rank the trainer
  * assigned). Special tokens are NOT in the .tiktoken file; they're
  * baked into the encoding's Python definition. We hardcode them here
  * per the four production encodings.
@@ -217,7 +217,7 @@ function base64Decode(b64: string): Uint8Array {
  *
  * The resulting merge list is correct for inference (the BPETokenizer's
  * encode loop produces the same token IDs as tiktoken). The order of
- * the list matches rank order, which is also the priority order for
+ * the list matches rank order. That is also the priority order for
  * BPETokenizer's greedy merge pass.
  */
 export function deriveMergesFromRanks(vocab: Map<string, number>): string[] {

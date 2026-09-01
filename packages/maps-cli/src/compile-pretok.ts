@@ -7,7 +7,7 @@
  * spec/PRETOKENIZER_PROGRAM.md for the spec.
  *
  * The compiler is intentionally conservative: it pattern-matches a
- * known set of regexes (canonicalized whitespace), and returns
+ * known set of regexes (canonicalized whitespace). It returns
  * `null` for anything else. Maps for unrecognised tokenizers keep
  * `pre_tokenizer_pattern` only: old behavior preserved.
  *
@@ -70,7 +70,7 @@ export function compilePreTokenizerRegex(regex: string): PreTokProgram | null {
 
   // GPT-2-family alternation. We split on top-level `|` (the regex has no
   // nested groups that would contain unescaped `|` aside from the
-  // contractions group, which is `(?i:...)` and we handle it specially).
+  // contractions group. That group is `(?i:...)`; we handle it specially).
   const parts = splitTopLevelAlt(r);
   if (parts.length < 7 || parts.length > 8) return null;
 
@@ -87,8 +87,8 @@ export function compilePreTokenizerRegex(regex: string): PreTokProgram | null {
 
   // 3. \p{N} (single-digit, Qwen-style) or \p{N}{1,K} (Llama-3) or \p{N}+ (unbounded)
   //    `\p{N}` with no quantifier matches ONE digit per regex iteration:
-  //    the engine then re-enters the alternation, so digit runs come out
-  //    one digit at a time. We model that as max_run=1.
+  //    the engine then re-enters the alternation. Digit runs therefore
+  //    come out one digit at a time. We model that as max_run=1.
   const nMatch = parts[2]!.match(/^\\p\{N\}(?:(\+)|\{1,(\d+)\}\??)?$/);
   if (!nMatch) return null;
   let maxRun: number;

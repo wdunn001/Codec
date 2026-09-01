@@ -292,7 +292,7 @@ test(
 
     // Keep the literals byte-level-tokenisable in the test fixture (which
     // only has ASCII single-byte tokens). The semantics under test are the
-    // enumerate/dedupe/output-shape contract, not the BPE vocab.
+    // enumerate/dedupe/output-shape contract.
     fs.writeFileSync(literalsPath, JSON.stringify(['abc']), 'utf-8');
 
     const r = run([
@@ -435,7 +435,7 @@ test(
 
     const indexPath = path.join(dir, '.well-known', 'codec', 'index.json');
     const index = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
-    assert.equal(index.maps.length, 1, 'second publish should replace, not duplicate');
+    assert.equal(index.maps.length, 1, 'second publish should replace the existing entry');
     assert.equal(index.maps[0].url, 'https://cdn.example/v2.json');
 
     fs.rmSync(dir, { recursive: true });

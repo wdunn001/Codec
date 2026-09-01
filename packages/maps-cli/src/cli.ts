@@ -320,8 +320,8 @@ async function cmdTranslationTable(_args: string[], flags: Flags): Promise<void>
 }
 
 /**
- * Validate the same id constraints as the discover.ts loader, so the CLI fails
- * fast rather than emitting a tree the runtime would later reject.
+ * Validate the same id constraints as the discover.ts loader. The CLI
+ * then fails fast, before emitting a tree the runtime would later reject.
  */
 function validateMapIdForWellKnown(id: string): void {
   if (!/^[a-z0-9._/-]+$/.test(id)) {
@@ -588,9 +588,9 @@ async function cmdPoliciesEnumerate(_args: string[], flags: Flags): Promise<void
 
   const tokMap = mapJson as { id: string; version?: string };
   const tokenizer = pickTokenizer(tokMap as Parameters<typeof pickTokenizer>[0]);
-  // The output is keyed by the canonical hash, NOT the mutable id, so the
-  // operator can pin which exact map bytes the enumeration was produced
-  // against: same trust posture as safety-policy hash pinning.
+  // The output is keyed by the canonical hash. That lets the operator
+  // pin which exact map bytes the enumeration was
+  // produced against: same trust posture as safety-policy hash pinning.
   const mapHash = 'sha256:' + (await sha256HexOfText(rawMap));
 
   const literalsRaw = JSON.parse(await readFile(flags.literals!, 'utf-8'));
@@ -611,7 +611,7 @@ async function cmdPoliciesEnumerate(_args: string[], flags: Flags): Promise<void
       const variants = enumerateVariants(literal);
       // Each variant becomes one allowed tokenization for the pattern.
       // Dedupe by the joined-IDs string: different surface variants often
-      // collapse to the same token sequence, and we want one entry per
+      // collapse to the same token sequence. We want one entry per
       // unique sequence.
       const seen = new Set<string>();
       const tokenizations: Array<{ variant: string; ids: number[] }> = [];
@@ -655,8 +655,8 @@ async function cmdPoliciesEnumerate(_args: string[], flags: Flags): Promise<void
  * extend the literals file directly with the variant strings they care
  * about.
  *
- * Order matters: variant[0] is the input verbatim, so a caller who
- * only wants the literal tokenization can take just the first entry.
+ * Order matters: variant[0] is the input verbatim. A caller who
+ * only wants the literal tokenization can therefore take just the first entry.
  */
 const VARIANT_SET_NAMES = [
   'verbatim',
