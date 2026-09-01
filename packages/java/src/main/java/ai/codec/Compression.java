@@ -55,7 +55,7 @@ public final class Compression {
      *
      * <p>Headers are looked up case-insensitively (HTTP headers are not
      * case-sensitive: {@code HttpHeaders} is, plain {@code Map<String,
-     * String>} isn't, so we normalise here).
+     * String>} isn't. We normalise here as a result).
      *
      * @param responseHeaders header map from the HTTP response. May use
      *     any casing for keys.
