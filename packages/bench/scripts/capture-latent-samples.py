@@ -306,7 +306,7 @@ def main() -> None:
     )
     ap.add_argument(
         "--overwrite", action="store_true",
-        help="overwrite the existing manifest",
+        help="overwrite the existing manifest (the default resumes)",
     )
     args = ap.parse_args()
     sys.exit(asyncio.run(main_async(args)))

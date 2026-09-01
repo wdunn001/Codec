@@ -314,7 +314,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0xC0DEC,
                     help="prompt-shuffle RNG seed (default: 0xC0DEC)")
     ap.add_argument("--overwrite", action="store_true",
-                    help="overwrite the existing manifest")
+                    help="overwrite the existing manifest (the default resumes)")
     args = ap.parse_args()
     sys.exit(asyncio.run(main_async(args)))
 
