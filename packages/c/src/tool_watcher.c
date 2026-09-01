@@ -18,7 +18,7 @@
  *     buffer continues accumulating until end token arrives.
  *   - Stray end_id outside a region: ignored (passes through as-is).
  *   - Nested start_id inside an active region: ignored. Most chat models
- *     don't nest these markers, and treating an inner start as a new
+ *     don't nest these markers. Treating an inner start as a new
  *     region would silently drop the outer content.
  */
 #include "codec/codec.h"
@@ -32,10 +32,10 @@ struct codec_tool_watcher {
     uint32_t end_id;
     bool     inside;
 
-    /* Captured-region arena. Every region completed during the current
-     * feed() keeps its own span here, because the REGION_END events handed
-     * back to the caller point into it and must all stay valid until the
-     * next feed(). Resetting per region (the original design) made the
+    /* Captured-region arena. The REGION_END events handed back to the
+     * caller point into it and must all stay valid until the next
+     * feed(). Every region completed during the current feed() therefore
+     * keeps its own span here. Resetting per region (the original design) made the
      * second region alias and then realloc out from under the first.
      * `region_start` is where the region currently being captured begins. */
     uint32_t *region_buf;
@@ -49,8 +49,8 @@ struct codec_tool_watcher {
     size_t                 events_cap;
     /* Parallel to `events`. For a REGION_END event this holds the region's
      * offset into region_buf; every other event kind holds NO_REGION. The
-     * arena can move under realloc mid-feed, so the pointers are resolved
-     * once at the end of feed() rather than at emit time. */
+     * arena can move under realloc mid-feed. The pointers are resolved
+     * once, at the end of feed(). */
     size_t                *event_region_off;
     size_t                 event_region_off_cap;
 };
@@ -171,8 +171,8 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
     w->events_len = 0;
 
     /* Recycle the arena. Spans captured for the previous call's events are
-     * dead now. A region still in progress has to survive, because it may
-     * span any number of feeds. Slide it down to offset 0 and drop the rest. */
+     * dead now. A region still in progress may span any number of feeds.
+     * It has to survive. Slide it down to offset 0 and drop the rest. */
     if (w->inside) {
         if (w->region_start > 0) {
             memmove(w->region_buf, w->region_buf + w->region_start,
@@ -212,7 +212,7 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
             /* else: token continues the passthrough run; no action. */
         } else {
             if (id == w->end_id) {
-                /* Region complete. Record the arena span, not a pointer.
+                /* Region complete. Record the arena span.
                  * A later region in this same feed can realloc the arena.
                  * That would dangle any pointer taken now. */
                 if (!emit_region(w, w->region_start,

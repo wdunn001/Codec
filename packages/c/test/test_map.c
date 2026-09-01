@@ -32,8 +32,8 @@ static void test_v2_basic_parse(void) {
 
 static void test_v2_roundtrip_render(void) {
     /* Decode 'hello' then ' world' (id 0 + id 1): id 1's vocab key
-     * "Ġworld" is GPT-2 byte-encoded " world", so the byte_level
-     * decoder should emit a leading space. */
+     * "Ġworld" is GPT-2 byte-encoded " world". The byte_level
+     * decoder should therefore emit a leading space. */
     codec_tokenizer_map_t *m = NULL;
     CT_EQ_INT(codec_map_from_json(V2_MAP_JSON, sizeof(V2_MAP_JSON) - 1, &m), CODEC_OK);
     codec_detokenizer_t *d = NULL;
@@ -128,7 +128,7 @@ static void test_real_qwen2_round_trip(void) {
 /*
  * jsmn accepts a key with no value: `{"a"}` yields an OBJECT of size 1 and
  * a single STRING, with no JSMN_ERROR_PART. Every walker here assumed an
- * object of size N is backed by 2N tokens, so it read one past the end of
+ * object of size N is backed by 2N tokens. It read one past the end of
  * a token array allocated to exactly the parsed count. In install_entry and
  * the special_tokens loop the garbage token's start/end then became an
  * offset and length into the JSON buffer.
@@ -162,8 +162,8 @@ static void test_rejects_bare_key_in_special_tokens(void) {
 /* ── Token id as an allocation primitive ────────────────────────────────── */
 /*
  * The id table is sized by the largest token id in the document. vocab_size
- * is parsed and validated but never compared against any id, so a single
- * entry with a huge id sized the allocation on its own. A 63-byte document
+ * is parsed and validated but never compared against any id. A single
+ * entry with a huge id therefore sized the allocation on its own. A 63-byte document
  * with id 100000000 reached 2.1 GB resident in 1.25 seconds and returned
  * CODEC_OK. id 4294967295 asks for 64 GiB.
  */

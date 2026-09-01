@@ -77,8 +77,8 @@ static int mp_pack_array_header(bytebuf_t *b, uint32_t n) {
 
 static int mp_pack_map_header(bytebuf_t *b, uint32_t n) {
     if (n <= 15) return bb_putc(b, (uint8_t)(0x80 | n));
-    /* CodecFrame map only ever has 2 or 3 fields, so we don't need the
-     * larger encodings. Defensive: support up to 0xFFFF. */
+    /* CodecFrame map only ever has 2 or 3 fields. The larger encodings
+     * aren't needed. Defensive: support up to 0xFFFF. */
     uint8_t tmp[3] = { 0xDE, (uint8_t)(n >> 8), (uint8_t)n };
     return bb_put(b, tmp, 3);
 }
@@ -265,10 +265,10 @@ static int mp_read_bool(mp_reader_t *r, bool *v) {
  * remaining bytes consumed via the reader; 0 on malformed input.
  *
  * `depth` bounds the container nesting. Without it every 0x91 byte
- * (fixarray of one element) costs a stack frame, so a run of them in an
- * unknown field is a remote stack-exhaustion crash for one byte each. Codec
- * frames nest three deep at most (map, tool_calls array, tool-call object),
- * so the cap is far above anything legitimate. */
+ * (fixarray of one element) costs a stack frame. A run of them in an
+ * unknown field is therefore a remote stack-exhaustion crash for one byte
+ * each. Codec frames nest three deep at most (map, tool_calls array,
+ * tool-call object). The cap is far above anything legitimate. */
 #define CODEC_MP_MAX_DEPTH 64
 static int mp_skip_value(mp_reader_t *r, unsigned depth);
 static int mp_skip_n(mp_reader_t *r, uint32_t n, unsigned depth) {
@@ -506,8 +506,8 @@ static int pb_read_varint(const uint8_t *data, size_t len, size_t *pos, uint64_t
  *
  * `need` is a uint64_t read straight off the wire; `pos` is a size_t that
  * pb_read_varint guarantees is <= len. Writing `pos + need > len` lets a
- * length varint of 0xFFFFFFFFFFFFFFFF wrap the sum and pass the check, so
- * subtract on the trusted side instead. */
+ * length varint of 0xFFFFFFFFFFFFFFFF wrap the sum and pass the check.
+ * Subtract on the trusted side instead. */
 static int pb_fits(size_t len, size_t pos, uint64_t need) {
     return need <= (uint64_t)(len - pos);
 }
@@ -577,8 +577,8 @@ codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
         } else if (wt == 2) {
             uint64_t length;
             if (!pb_read_varint(data, len, &pos, &length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
-            /* Re-check here rather than relying on the pre-scan. The two
-             * passes must not be able to disagree about what fits. */
+            /* Re-check here. The pre-scan alone is not authoritative: the
+             * two passes must not be able to disagree about what fits. */
             if (!pb_fits(len, pos, length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
             const uint8_t *chunk = data + pos;
             size_t chunk_len = (size_t)length;

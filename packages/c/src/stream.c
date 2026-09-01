@@ -66,9 +66,9 @@ codec_status_t codec_msgpack_stream_feed(codec_msgpack_stream_t *s,
  * buffer is too short, -1 on malformed input, otherwise the byte index
  * just past the value. */
 /* `depth` bounds container nesting. This walker runs on the raw accumulated
- * buffer before any frame is decoded, so a plain run of 0x91 bytes with no
- * valid frame in it is enough to exhaust the stack. Codec frames nest three
- * deep at most. */
+ * buffer before any frame is decoded. A plain run of 0x91 bytes with no
+ * valid frame in it is therefore enough to exhaust the stack. Codec frames
+ * nest three deep at most. */
 #define CODEC_MP_MAX_DEPTH 64
 static long mp_end_offset(const uint8_t *p, size_t len, size_t pos, unsigned depth);
 

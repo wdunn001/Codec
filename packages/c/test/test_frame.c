@@ -189,7 +189,7 @@ static void test_protobuf_tool_calls(void) {
 /*
  * The two-pass decoder pre-scans to size the id array, then trusts that scan
  * completely on the second pass. The pre-scan bound was `scan + length > len`
- * with `scan` a size_t and `length` a uint64_t off the wire, so a length
+ * with `scan` a size_t and `length` a uint64_t off the wire. A length
  * varint of 0xFFFFFFFFFFFFFFFF wrapped the sum and slipped past the check.
  * Pass two then ran memcpy with a SIZE_MAX count, or wrote packed ids through
  * a NULL base. Both are reachable straight from codec_protobuf_stream_next.
@@ -252,10 +252,10 @@ static void test_protobuf_rejects_truncated_fixed_width_fields(void) {
 /* ── Unbounded msgpack container nesting ────────────────────────────────── */
 /*
  * Both msgpack skippers recursed once per container with no depth cap.
- * Every 0x91 byte (fixarray of one element) costs one stack frame, so a run
+ * Every 0x91 byte (fixarray of one element) costs one stack frame. A run
  * of them exhausts an 8 MiB thread stack well before a megabyte of input.
  * codec_msgpack_stream_next is the worse of the two: mp_end_offset walks
- * the raw accumulated buffer before any frame is decoded, so a plain run of
+ * the raw accumulated buffer before any frame is decoded. A plain run of
  * 0x91 with no valid frame in it is enough.
  */
 

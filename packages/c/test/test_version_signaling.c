@@ -187,11 +187,11 @@ static void test_matrix_cells(void) {
 
 /* ── Structurally incomplete JSON ───────────────────────────────────────── */
 /*
- * find_field_ returns `i + 1` after matching a key at index i, and i was
+ * find_field_ returns `i + 1` after matching a key at index i. i was
  * only checked against toks_count. On `{"minimum_version"}` jsmn emits two
- * tokens, so the returned index equals toks_count and the required-field
- * paths read one token past a heap array sized to exactly that count. The
- * garbage token's start/end then reached strndup_tok_, which memcpy'd from
+ * tokens. The returned index therefore equals toks_count. The required-field
+ * paths then read one token past a heap array sized to exactly that count. The
+ * garbage token's start/end then reached strndup_tok_. That memcpy'd from
  * an attacker-unbounded offset into a string the caller reads back.
  */
 
