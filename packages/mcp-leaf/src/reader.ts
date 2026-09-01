@@ -25,7 +25,7 @@
  *
  * Backwards compatibility: results produced by older Codec-aware tools
  * may carry the legacy `{ type: '_codec_meta', map_id, ids }` SIBLING
- * content block instead of the new per-block `_meta` field. The reader
+ * content block. The reader
  * accepts both shapes: the `_meta` form is preferred (passes MCP SDK
  * validation; sibling form crashes the SDK with -32602 on the server
  * side and was withdrawn in v0.3.2).

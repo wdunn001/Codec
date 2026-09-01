@@ -15,7 +15,7 @@ import { makeMetaTokenizer, wrapToolCall, buildMetaBlock } from '../src/leaf.js'
 import { makeMap, MemoryMapCache } from '@codecai/web';
 
 // Fixture: a minimal v2 vocab-only map. The runtime falls back to
-// LongestMatchTokenizer when no merges are present, which gives stable
+// LongestMatchTokenizer when no merges are present. That gives stable
 // IDs for any input matching the small vocab.
 const MAP_FIXTURE = makeMap({
   id: 'codec-test/leaf',
@@ -42,9 +42,9 @@ describe('makeMetaTokenizer', () => {
   it('normalises a bare hex hash to sha256:<hex>', async () => {
     const cache = new MemoryMapCache();
     // makeMetaTokenizer normalises the bare hex to `sha256:<hex>` BEFORE
-    // calling loadMap (per bef03a1's "validate before fetch" rule), so
-    // loadMap's cacheKey is `${url}#sha256:${hex}` regardless of which
-    // form the caller passed. Pre-populate with the normalised key.
+    // calling loadMap (per bef03a1's "validate before fetch" rule).
+    // loadMap's cacheKey is therefore `${url}#sha256:${hex}` regardless
+    // of which form the caller passed. Pre-populate with the normalised key.
     await cache.set(`${MAP_URL}#sha256:${MAP_HASH_HEX}`, MAP_FIXTURE);
     const meta = await makeMetaTokenizer({
       mapUrl: MAP_URL,

@@ -4,17 +4,17 @@
  * An MCP tool author calls `makeMetaTokenizer({ mapUrl, mapHash })` once at
  * server startup, then `wrapToolCall(result, meta)` on every CallToolResult
  * before returning it. The wrapper inspects every `text` content block and
- * adds a sibling `_codec_meta` block carrying the tokenized IDs, so a
- * Codec-aware gateway (metamcp) detects pre-tokenized output and bypasses
- * its back-compat shim.
+ * adds a sibling `_codec_meta` block carrying the tokenized IDs. A
+ * Codec-aware gateway (metamcp) then detects pre-tokenized output and
+ * bypasses its back-compat shim.
  *
  * Block-level shape: see metamcp `codec-content.ts` `hasExistingCodecMeta`:
  *
  *   { type: '_codec_meta', map_id: '<sha256:hex>', ids: number[] }
  *
- * Inserted next to (not in place of) the original `text` block, so
- * non-Codec-aware clients in the same namespace see the result they always
- * have. The contract is additive: leaf-mode is invisible to legacy clients.
+ * Inserted next to (not in place of) the original `text` block.
+ * Non-Codec-aware clients in the same namespace therefore see the
+ * result they always have. The contract is additive: leaf-mode is invisible to legacy clients.
  */
 
 import {
@@ -47,8 +47,8 @@ export type ContentBlock =
  * @deprecated Pre-v0.3.2 sibling-block shape. Replaced by per-block
  * `_meta['ai.codec/leaf-tokenization']` (see `CODEC_META_KEY` /
  * `CodecMetaPayload`). The MCP SDK rejects custom-typed content
- * blocks at the SERVER (not just the gateway), so the sibling-block
- * design crashed time-server itself with -32602. Kept exported only
+ * blocks at the SERVER (not just the gateway). The sibling-block
+ * design crashed time-server itself with -32602 as a result. Kept exported only
  * so the reader-side helper's type guards stay backwards compatible
  * with results emitted by older Codec-aware tools: new tools should
  * use `CODEC_META_KEY` / `CodecMetaPayload`.
@@ -107,9 +107,9 @@ export async function makeMetaTokenizer(
   opts: MakeMetaTokenizerOptions,
 ): Promise<MetaTokenizer> {
   // Validate the hash shape BEFORE the network fetch: a malformed hash
-  // should fail fast with the validation error, not eventually surface as
-  // "fetch failed" (which is what happens when loadMap's hash-mismatch
-  // check fires AFTER the fetch). The test
+  // should fail fast with the validation error. Otherwise it eventually
+  // surfaces as "fetch failed" (which is what happens when loadMap's
+  // hash-mismatch check fires AFTER the fetch). The test
   // `test/leaf.test.ts → rejects malformed hashes` enforces this contract.
   const normalisedHash = normaliseHash(opts.mapHash);
   const map = await loadMap({
@@ -147,7 +147,7 @@ function normaliseHash(input: string): string {
  * Record<string, unknown>` with namespaced application metadata. We use
  * a single, stable, reverse-DNS-style key that the gateway recognizes.
  *
- * Why per-block `_meta` instead of a sibling content block: the original
+ * Why per-block `_meta`: the original
  * v0.3 design used a `{ type: '_codec_meta', map_id, ids }` SIBLING
  * block in the content array. The MCP SDK's `ContentBlockSchema` is a
  * discriminated union over `text|image|audio|resource|resource_link`,
