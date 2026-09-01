@@ -205,7 +205,7 @@ console.log(
     '  - If a row\'s ratio is *flat*, the stream is already near the entropy floor\n' +
     '    for that encoder: more bytes won\'t help.\n' +
     '  - JSON-SSE+compression has a structural advantage from repeated keys ("data:",\n' +
-    '    "id":, etc.). Codec frames are denser, so absolute ratios are smaller :\n' +
+    '    "id":, etc.). Codec frames are denser: absolute ratios are smaller,\n' +
     '    but the *bytes/token* number is what hits the wire.\n' +
     '  - zstd dictionaries pre-train on typical token sequences and push Codec\n' +
     '    further at every size: measured 16 to 18% beyond no-dict zstd overall, and\n' +

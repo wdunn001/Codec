@@ -7,8 +7,8 @@
  *   Text path:  IDs → detokenize → JSON-SSE → wire → JSON.parse → tokenize → IDs
  *   Codec path: IDs → msgpack → wire → msgpack-decode → IDs
  *
- * We don't ship a real tokenizer (would force a heavy dep), so we model
- * detokenize/tokenize as a hash-table lookup per token. That's an under-estimate
+ * We don't ship a real tokenizer (would force a heavy dep). We model
+ * detokenize/tokenize as a hash-table lookup per token instead. That's an under-estimate
  *: real BPE tokenization is significantly more expensive: so the text path
  * looks better here than it does in production. Even with that handicap, the
  * gap is large.
@@ -28,8 +28,8 @@ const REPS = 5;
 const WARMUP = 2;
 
 // Synthetic vocab: IDs map to placeholder strings. This stands in for a real
-// tokenizer. Real BPE is 5-50× slower than a hash lookup, so the JSON-SSE
-// numbers below understate the real cost.
+// tokenizer. Real BPE is 5-50× slower than a hash lookup. The JSON-SSE
+// numbers below therefore understate the real cost.
 const VOCAB_SIZE = 128_000;
 const VOCAB: string[] = new Array(VOCAB_SIZE);
 for (let i = 0; i < VOCAB_SIZE; i++) VOCAB[i] = `tok${i}`;

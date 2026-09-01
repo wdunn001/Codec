@@ -41,9 +41,8 @@ import httpx
 
 
 # Curated prompt set: varied lengths and shapes so the trained dictionary
-# captures the *distribution* of real traffic, not just one prompt's pattern.
-# Add liberally. Keep prompts short; the model output is the corpus, not the
-# prompt.
+# captures the *distribution* of real traffic. Add liberally. Keep prompts
+# short. The model output is the corpus that matters here.
 PROMPTS_SHORT = [
     "Explain entropy in one sentence:",
     "What is 12 * 17?",
@@ -315,7 +314,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0xC0DEC,
                     help="prompt-shuffle RNG seed (default: 0xC0DEC)")
     ap.add_argument("--overwrite", action="store_true",
-                    help="overwrite existing manifest instead of resuming")
+                    help="overwrite the existing manifest")
     args = ap.parse_args()
     sys.exit(asyncio.run(main_async(args)))
 

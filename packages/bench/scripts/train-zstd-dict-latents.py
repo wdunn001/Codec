@@ -7,16 +7,17 @@ Sibling of train-zstd-dict.py for the latent modality. Two key
 differences from the text-side trainer:
 
 1. **Three-axis keying.** Latent dicts are keyed on
-   (latent_space_id, format, pipeline) instead of (model, format).
+   (latent_space_id, format, pipeline), a finer axis than the
+   text-side trainer's (model, format).
    A dict trained for `(sd-vae-ft-mse, msgpack, int8)` is meaningless
    against `(sd-vae-ft-mse, msgpack, raw)`: the byte distributions
    are different distributions. Servers MUST NOT cross-apply.
 
 2. **Pipeline-driven byte distribution.** Raw VAE latents are
-   near-Gaussian by training, so a dict on raw bytes wins ~5-15% over
-   no-dict zstd. The dict pays off only after a structural pre-pass:
+   near-Gaussian by training. A dict on raw bytes therefore wins only
+   ~5-15% over no-dict zstd. The dict pays off only after a structural pre-pass:
    per-channel int8/int4 quantization concentrates bytes into a small
-   alphabet, and (for video) delta-coding collapses temporally
+   alphabet. For video, delta-coding also collapses temporally
    redundant values into mostly-zero residuals. So `--pipelines int8
    delta+int8` is where the meaningful dict gains live; training
    `--pipelines raw` is mostly for completeness / comparison.

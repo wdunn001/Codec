@@ -98,8 +98,8 @@ const VARIANTS: VariantSpec[] = [
 
 // ── HTTP plumbing (raw socket byte counting) ─────────────────────────────────
 //
-// fetch() hides the headers from us and gives us the decompressed body, which
-// is the wrong measurement: we want the bytes that actually crossed the wire.
+// fetch() hides the headers from us and gives us the decompressed body.
+// That is the wrong measurement: we want the bytes that actually crossed the wire.
 // So we use Node's http(s) module and tally headers + body ourselves, with
 // decompression deferred until after the count is taken.
 
@@ -198,8 +198,8 @@ function send(
 // Reuse the same wire format as the metamcp Codec layer: each JSON-RPC message
 // is one msgpack-encoded frame with a 4-byte BE length prefix. For requests,
 // metamcp's express.raw() body parser accepts the inline msgpack bytes WITHOUT
-// the length prefix (since HTTP already framed it), so request bodies are bare
-// msgpack. For responses, every frame has the prefix; we parse them back into
+// the length prefix (since HTTP already framed it). Request bodies are
+// therefore bare msgpack. For responses, every frame has the prefix; we parse them back into
 // JSON-RPC objects to compare with the JSON variant.
 
 function encodeJsonRpcReq(msg: object, variant: VariantSpec): { body: Buffer; contentType: string } {
@@ -386,15 +386,15 @@ async function openSession(
   };
   // initialize: spec requires Accept include both application/json and
   // text/event-stream; the metamcp codec wrapper spoofs the Accept header
-  // for the SDK when respMsgpack is set, so this still works.
+  // for the SDK when respMsgpack is set. This still works as a result.
   const r = await call(variant, 'initialize', initParams, undefined);
   if (!r.ok) {
     return { error: `initialize failed: HTTP ${r.status} ${r.reason ?? ''}` };
   }
   // The session id comes back as a header; we exposed it through resp.headers.
   // We need to re-issue the call so we can capture the header. Cleaner: rerun
-  // openSession via send() directly?: but call() already did the work, so we
-  // surface the session-id by reading the last raw response. Easiest fix:
+  // openSession via send() directly?: but call() already did the work.
+  // We surface the session-id here by reading the last raw response instead. Easiest fix:
   // do the initialize via send() inline so we keep the headers.
   return { sessionId: '', init: r }; // overwritten below
 }

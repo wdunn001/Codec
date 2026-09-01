@@ -17,8 +17,7 @@
  *     single-direction under-counts what these workloads actually pay.
  *   - The ENERGY_METHODOLOGY.md heavy-agent compound assumes ~8 wire
  *     round-trips per visible reply; ~3-4 of those are duplex by nature.
- *     This bench produces the realistic number rather than the
- *     single-direction floor.
+ *     This bench produces the realistic number.
  *
  *   npx tsx packages/bench/src/duplex.ts
  *   npx tsx packages/bench/src/duplex.ts --tokens=2048 --reps=10

@@ -294,7 +294,8 @@ async function main() {
       }
       const prepMs = performance.now() - t0;
       // Integrity: every leaf sample's ids MUST equal a fresh re-tokenize of
-      // the same text. Counted, not aborted: we still want the numbers.
+      // the same text. These mismatches are counted; the run continues
+      // regardless. We still want the numbers.
       const expected: number[] = [];
       for (const p of pairings) expected.push(...tokenizer.encode(p.text));
       if (expected.join(',') !== ids.join(',')) {

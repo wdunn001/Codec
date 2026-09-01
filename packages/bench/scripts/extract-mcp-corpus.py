@@ -9,7 +9,7 @@ real gateway traffic: same envelope shape, same tool-result text content,
 same JSON-RPC method patterns.
 
 This is faster + cheaper than re-hammering the live gateway with hundreds
-of fresh requests, and it reuses traffic already paid for. The
+of fresh requests. It also reuses traffic already paid for. The
 reconstructed bytes aren't byte-identical to what was on the wire (the
 gateway's msgpack encoder may serialize identical content slightly
 differently than ours) but the *distribution*: which is what the zstd
@@ -23,7 +23,7 @@ Output layout matches what train-zstd-dict.py expects:
         manifest.jsonl
 
 A separate protobuf path is left for a follow-up: the live gateway
-returns msgpack today, so re-encoding to protobuf would invent a corpus
+returns msgpack today. Re-encoding to protobuf would invent a corpus
 that doesn't exist. Train protobuf dicts by capturing fresh against a
 gateway running with stream_format=protobuf.
 
@@ -59,8 +59,8 @@ def iter_messages(results_root: Path) -> Iterable[tuple[str, dict[str, Any]]]:
                 if not row.get('ok'):
                     continue
                 # Only msgpack-* variants give us realistic message shapes:
-                # json variants are JSON-RPC over text, which we don't
-                # currently train a dict for.
+                # json variants are JSON-RPC over text. We don't
+                # currently train a dict for that shape.
                 variant = row.get('variant', '')
                 if not variant.startswith('msgpack'):
                     continue

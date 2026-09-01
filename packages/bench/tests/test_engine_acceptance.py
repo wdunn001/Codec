@@ -44,8 +44,8 @@ ENGINE_FORK_SRC = os.environ.get("CODEC_ENGINE_FORK_SRC", "")    # e.g. /opt/cod
 # Required codec endpoints: fork-engine-side. Codec patches add a small surface
 # above the engine's own routes. The supervisor's /openapi.json typically only
 # enumerates admin endpoints (the codec routes are mounted on the engine side
-# and proxied), so we probe each path with a real GET rather than reading
-# openapi.json: that's the contract that matters operationally anyway.
+# and proxied). We probe each path with a real GET. The GET response is
+# the contract that matters operationally. We read that over openapi.json.
 REQUIRED_CODEC_ENDPOINTS = [
     ("GET", "/codec/schema", {200}),
 ]
@@ -172,7 +172,7 @@ def test_compression_negotiation_per_spec_preference_order(
     """For each Accept-Encoding combination, server picks per spec preference order.
 
     Catches: (a) brotli/zstandard module missing in image (br/zstd silently
-    fall through to identity instead of being honored), (b) preference-order
+    fall through to identity, unhonored), (b) preference-order
     bugs in the negotiator (server picks gzip when zstd+dict available).
 
     Uses raw_post() to avoid httpx's auto-decompression: we need to see the

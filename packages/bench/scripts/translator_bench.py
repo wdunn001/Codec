@@ -32,7 +32,7 @@ this as a correctness check). The bench reports:
 The output JSON is SCHEMA-v1-shaped (rows[].size, format, encoding,
 …) so it slots into the same aggregator as the cross-stack matrix.
 
-Hardware-agnostic: this is a CPU microbench, not a GPU run, so it
+Hardware-agnostic: this is a CPU microbench. It
 can land on any laptop. Run on the lab box for parity with the
 cross-stack matrix; numbers are stable to ~1 ms either way.
 
@@ -121,9 +121,8 @@ def _build_target_ids(detok: Detokenizer, llama_tok: BPETokenizer, target: int) 
 def _encode_codec_msgpack_frame(ids: list[int]) -> bytes:
     """Build one Codec msgpack frame matching the wire format used by sglang/vllm/llamacpp.
 
-    Single-frame here (no chunking): we're measuring bridge-side CPU,
-    not stream chunking; chunk overhead is subsumed in the cross-stack
-    matrix already.
+    Single-frame here (no chunking): we're measuring bridge-side CPU;
+    chunk overhead is subsumed in the cross-stack matrix already.
     """
     body = msgpack.packb({"ids": ids, "done": True}, use_bin_type=True)
     length = len(body).to_bytes(4, "big")

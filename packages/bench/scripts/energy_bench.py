@@ -136,7 +136,8 @@ def json_sse_hop(payload_bytes: int, costs: dict[str, float]) -> HopBudget:
 
 def codec_hop(payload_bytes: int, costs: dict[str, float]) -> HopBudget:
     """Per-hop budget on the Codec path. Zero tokenise/detokenise on
-    intermediate hops (token IDs flow through). msgpack instead of JSON."""
+    intermediate hops (token IDs flow through). The wire format here is
+    msgpack."""
     return HopBudget(
         payload_bytes=payload_bytes,
         label="codec",
@@ -168,7 +169,7 @@ def per_request_total(
 
     The leaf (user-facing) hop on Codec MUST detokenise once to render. That
     cost is added after the n-round-trip multiplier: it happens exactly
-    once per visible reply, not per hop.
+    once per visible reply.
     """
     json_hop = json_sse_hop(json_sse_payload_bytes, costs)
     cd_hop = codec_hop(codec_payload_bytes, costs)
@@ -264,8 +265,8 @@ def measure_op_nj_per_byte(
 ) -> float:
     """Run ``fn(payload)`` ``iterations`` times, return mean nJ/byte.
 
-    Sanity: the RAPL counter wraps; a single iteration takes microseconds,
-    so we batch iterations into one measurement window.
+    Sanity: the RAPL counter wraps; a single iteration takes microseconds.
+    We batch iterations into one measurement window to compensate.
     """
     # Warm-up so JITted bytecode / page faults don't pollute the measurement.
     for _ in range(min(10, iterations)):
@@ -285,7 +286,7 @@ def rapl_probe_costs(payload_bytes: int, iterations: int) -> dict[str, float]:
     """Measure per-byte energy for each cost component using a real payload.
 
     Falls back to the published table for anything we can't measure locally
-    (LAN/backbone/RAN are infrastructure costs, not CPU costs: those stay
+    (LAN/backbone/RAN are infrastructure costs; those stay
     published per the methodology).
     """
     measured = dict(PUBLISHED_NJ_PER_BYTE)  # start from published, override CPU ops

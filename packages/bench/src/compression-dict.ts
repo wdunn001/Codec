@@ -5,8 +5,7 @@
  * Sibling of compression.ts, but with two differences:
  *
  *   1. Input is a *corpus directory* of captured `.bin` files (the output
- *      of capture-codec-samples.py or synth-codec-samples.py), not a
- *      synthetic RNG stream. That's the only way to honestly measure the
+ *      of capture-codec-samples.py or synth-codec-samples.py). That's the only way to honestly measure the
  *      payoff of pre-training: the dict has to compress real-shaped traffic.
  *
  *   2. We bin samples into small / medium / large buckets and report mean
@@ -523,7 +522,7 @@ const flags = parseFlags();
 console.log('# Pre-trained ZSTD dictionary bench\n');
 console.log(
   'Each row aggregates real (captured) or synthesised CodecFrame streams\n' +
-  'binned by raw byte size, and reports mean compressed length under each\n' +
+  'binned by raw byte size. It reports mean compressed length under each\n' +
   'algorithm. The headline number is the rightmost column: how much smaller\n' +
   'a stream gets when zstd loads the pre-trained dictionary at the start of\n' +
   'the response, vs zstd starting cold. Round-trip is verified per sample :\n' +

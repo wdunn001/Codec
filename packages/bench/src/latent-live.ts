@@ -224,8 +224,8 @@ function buildRequest(variant: VariantSpec, fixture: FixtureSpec): RequestSpec {
 // same gzip/br decompression after the count is taken. Adds ttff_ms (first
 // body chunk arrival) which for the latent stream approximates the time to
 // first LatentFrame: the typical engine emits the LatentStreamHeader and
-// the first LatentFrame in the same TCP segment, so first-body-chunk and
-// first-LatentFrame coincide on every server we've measured.
+// the first LatentFrame in the same TCP segment. first-body-chunk and
+// first-LatentFrame therefore coincide on every server we've measured.
 
 interface MeasuredResponse {
   status: number;

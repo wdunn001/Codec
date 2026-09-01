@@ -4,7 +4,7 @@
 Measures protocol efficiency in isolation: takes a deterministic token-ID
 sequence, runs it through the Codec msgpack/protobuf encoder + each
 HTTP-level compression (identity, gzip, br, zstd-with-dict) using the
-SAME library calls every engine uses, and records the resulting wire
+SAME library calls every engine uses. It records the resulting wire
 bytes. No HTTP server, no inference engine, no model.
 
 Purpose: the cross-stack matrix's §1 headline ratios are content-dependent
