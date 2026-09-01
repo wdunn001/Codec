@@ -50,8 +50,8 @@ export const CODEC_REQUIRED_FEATURES_HEADER = 'codec-required-features';
  * `node-fetch`, undici, etc.
  *
  * @param init Existing fetch init (or undefined).
- * @param overrideVersion If set, use this value instead of the package
- *   constant. Useful for tests that want to act as a v0.3 client.
+ * @param overrideVersion Overrides the package's default version
+ *   constant when set. Useful for tests that want to act as a v0.3 client.
  */
 export function withCodecClientVersion(
   init?: RequestInit,
@@ -151,8 +151,7 @@ export async function parseVersionRequired(
   }
 
   if (!isVersionRequiredBody(raw)) {
-    // 426 with JSON that isn't ours. Fall through with a helpful error
-    // rather than misinterpreting the response.
+    // 426 with JSON that isn't ours. Fall through with a helpful error.
     throw new Error(
       `Codec server returned 426 Upgrade Required with an unrecognized body: ${JSON.stringify(
         raw,

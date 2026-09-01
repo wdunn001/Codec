@@ -2,9 +2,9 @@
  * @codecai/web: isomorphic tokenizer + detokenizer for the Codec binary
  * transport protocol.
  *
- * Loads per-model tokenizer dialect maps, tokenizes text at the edge before
- * transport, and detokenizes IDs to text only when a human is going to read
- * them. Agent-to-agent calls skip detokenization entirely: text never
+ * Loads per-model tokenizer dialect maps and tokenizes text at the edge
+ * before transport. It detokenizes IDs to text only when a human is going
+ * to read them. Agent-to-agent calls skip detokenization entirely: text never
  * enters the transport at all.
  *
  * Works in browsers, Node 18+, Cloudflare Workers, Deno, Bun. No Node-only

@@ -306,8 +306,8 @@ export interface DiscoverZstdDictOptions {
  *                                // cohort registry
  *   });
  *
- * Throws `ZstdDictDiscoveryError` for 404 / malformed hash, and
- * `ZstdDictHashMismatchError` for byte-tampering (origin served wrong
+ * Throws `ZstdDictDiscoveryError` for 404 / malformed hash.
+ * Throws `ZstdDictHashMismatchError` for byte-tampering (origin served wrong
  * bytes â€” never trust them).
  */
 export async function discoverZstdDict(opts: DiscoverZstdDictOptions): Promise<Uint8Array> {

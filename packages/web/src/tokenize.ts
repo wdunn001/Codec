@@ -112,7 +112,7 @@ export class LongestMatchTokenizer implements Tokenizer {
 /**
  * Build the right tokenizer for the map. Uses `BPETokenizer` when the map
  * carries BPE data (vocab + merges + encoder); otherwise falls back to
- * `LongestMatchTokenizer`, which works on any vocab-bearing map.
+ * `LongestMatchTokenizer`. That works on any vocab-bearing map.
  */
 export function pickTokenizer(map: TokenizerMap): Tokenizer {
   if (BPETokenizer.supports(map)) return new BPETokenizer(map);

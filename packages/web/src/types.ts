@@ -264,7 +264,8 @@ export interface SafetyPolicyClientHooks {
   readonly prefilter_categories?: readonly string[];
   /**
    * Suggested classifier family for client-side semantic checks. Often
-   * smaller than the server-side `classifier.family`. Hint, not contract.
+   * smaller than the server-side `classifier.family`. This is a hint,
+   * with no contractual weight.
    */
   readonly client_classifier_family?: string;
 }
@@ -277,8 +278,8 @@ export interface SafetyPolicyPublisher {
 
 /**
  * Pluggable cache for loaded safety-policy descriptors. Same shape as
- * `MapCache`; descriptors are immutable per `(id, hash)`, so cache hits
- * are always valid.
+ * `MapCache`; descriptors are immutable per `(id, hash)`. Cache hits
+ * are therefore always valid.
  */
 export interface SafetyPolicyCache {
   get(key: string): Promise<SafetyPolicyDescriptor | undefined>;

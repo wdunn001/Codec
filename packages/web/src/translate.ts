@@ -16,7 +16,7 @@
  *   - Drop a Mistral-v3 step into a Llama-3 chain (different families)
  *   - Run a router / orchestrator that fans out to heterogeneous models
  *
- * Streaming caveat: BPE merges depend on context, so re-tokenizing partial
+ * Streaming caveat: BPE merges depend on context. Re-tokenizing partial
  * words mid-stream produces different IDs than re-tokenizing the complete
  * word. The Translator buffers text until a safe boundary (whitespace)
  * before flushing through BPE. Call `translate(ids, { partial: true })`
@@ -30,7 +30,7 @@ import type { Tokenizer, TokenizerMap } from './types.js';
 export interface TranslateOptions {
   /**
    * If true, this is not the final chunk: buffer any trailing partial
-   * word rather than flushing it through BPE prematurely. Set to `false`
+   * word. Set to `false`
    * (or omit) on the last chunk so the buffer drains.
    */
   partial?: boolean;
@@ -140,7 +140,7 @@ export function translate(
  * acceptable.
  *
  * Limitations: this is context-free: token boundaries don't align across
- * vocabs, and BPE merges depend on context. The single-shot result
+ * vocabs. BPE merges also depend on context. The single-shot result
  * `staticTranslationTable(A, B)[id_A]` may differ from what `translate`
  * produces when the same `id_A` appears mid-sentence. For exact streaming
  * translation, use the `Translator` class.

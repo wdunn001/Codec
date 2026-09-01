@@ -181,7 +181,7 @@ test('selectZstdDictForResponse throws on empty dict header value', () => {
 // The @codecai/web package intentionally does not ship a zstd decompressor
 // (browser callers bring their own: DecompressionStream('zstd'),
 // @mongodb-js/zstd in Node, etc.). But the dict-zstd-interop fixture is the
-// cross-client conformance contract, so we exercise the full path here using
+// cross-client conformance contract. We exercise the full path here using
 // Node's bundled zlib.zstdDecompress (Node 22.15+ / 23.8+).
 //
 // On older Node, the test skips with a note: the matrix bench runner in

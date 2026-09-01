@@ -60,7 +60,7 @@ export class BPETokenizer implements Tokenizer {
    * Returns true if `map` carries the data BPETokenizer needs (vocab, merges,
    * a supported encoder). When false, callers should fall back to
    * LongestMatchTokenizer: the top-level `tokenize()` helper does this
-   * automatically, and `pickTokenizer(map)` returns the right one.
+   * automatically. `pickTokenizer(map)` returns the right one.
    */
   static supports(map: TokenizerMap): boolean {
     return Boolean(
@@ -175,8 +175,8 @@ export class BPETokenizer implements Tokenizer {
     // First pass: split on special tokens. Each special is emitted as its
     // single atomic vocab ID; the gaps between specials are BPE-encoded
     // normally. Mirrors HuggingFace's added-token splitter: without this,
-    // `<|im_start|>` would tokenize as 6 byte-level tokens instead of one
-    // ID, breaking chat-template round-trips on Qwen/Llama-3/Phi/etc.
+    // `<|im_start|>` would tokenize as 6 byte-level tokens, breaking
+    // chat-template round-trips on Qwen/Llama-3/Phi/etc.
     if (this.specialRegex !== null) {
       const out: number[] = [];
       this.specialRegex.lastIndex = 0;
@@ -402,7 +402,7 @@ function isDelimiterShape(tok: string): boolean {
  * letter `x` with `[xX]`. Used to make GPT-2-family contractions groups
  * compile on runtimes without ES2025 RegExp Pattern Modifiers.
  *
- * Limitations (acceptable for tokenizer pre-tokenizers, which never
+ * Limitations (acceptable for tokenizer pre-tokenizers: they never
  * exercise these shapes):
  *   - assumes the body has no nested groups or unescaped `)`.
  *   - leaves character classes `[...]` and escapes `\x` alone: only

@@ -375,7 +375,7 @@ test('matrix coverage check: all combinations exercised', () => {
   const expected = SERVER_CONFIGS.length * CLIENT_VERSIONS.length;
   // 4 server configs × 4 client versions = 16 (refusal) + a subset for
   // header visibility (only cells that weren't refused) + 4 well-known
-  // tests. Spot-check the multiplication, not the runtime count.
+  // tests. Spot-check the multiplication here.
   assert.ok(expected === 16);
 });
 

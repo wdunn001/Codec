@@ -39,7 +39,7 @@ export class CodecZstdDictError extends Error {
  * value and the `hash` field in tokenizer-map `zstd_dictionaries[]`
  * entries.
  *
- * Async because we use Web Crypto's `SubtleCrypto.digest`, which is the
+ * Async because we use Web Crypto's `SubtleCrypto.digest`. That is the
  * isomorphic hash API available in browsers, Node 18+, Cloudflare
  * Workers, and Deno (matches the rest of `@codecai/web`).
  */
