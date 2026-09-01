@@ -126,7 +126,7 @@ public class CompressionTests
             {
                 ["Content-Encoding"] = enc,
                 // Header is harmlessly present: but the response is not
-                // zstd, so we MUST NOT throw and MUST return null.
+                // zstd. We MUST NOT throw. We MUST return null instead.
                 ["Codec-Zstd-Dict"] = ExpectedFixtureDictHash,
             };
             Assert.Null(Compression.SelectZstdDictForResponse(headers, loaded));

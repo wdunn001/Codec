@@ -29,9 +29,9 @@ public enum WatcherEventKind
 /// <summary>One event from <see cref="ToolWatcher.Feed(System.Collections.Generic.IReadOnlyList{uint})"/>.</summary>
 /// <remarks>
 /// <see cref="Ids"/> is always a fresh array: safe to retain across
-/// subsequent Feed calls. (Unlike the C version, which returns pointers
-/// aliasing the watcher's internal buffer, .NET callers don't have to
-/// copy out before continuing the read loop.)
+/// subsequent Feed calls. The C version returns pointers aliasing the
+/// watcher's internal buffer instead: .NET callers don't have to
+/// copy out before continuing the read loop.
 /// </remarks>
 public readonly struct WatcherEvent
 {
@@ -161,7 +161,7 @@ public sealed class ToolWatcher
                 else if (id == StartId)
                 {
                     // Nested start: ignore. Most models don't nest these
-                    // markers, and treating an inner start as a new region
+                    // markers. Treating an inner start as a new region
                     // would silently drop the outer content.
                 }
                 else

@@ -20,9 +20,9 @@ namespace Codec.Net.Tests;
 ///   <item>msgpack-parse the result into 32 token IDs starting with
 ///   <c>[53365, 1593, 7552, 57218, 5371, 37, 11278, 43, 9909, 2773]</c>.</item>
 /// </list>
-/// This proves the dotnet bench would round-trip a real server stream
-/// rather than the previous "pass-through" placeholder that fed garbage
-/// into MessagePack and threw <c>MessagePackSerializationException</c>.
+/// This proves the dotnet bench round-trips a real server stream. The
+/// previous "pass-through" placeholder fed garbage into MessagePack and
+/// threw <c>MessagePackSerializationException</c>.
 /// </summary>
 public class DictZstdInteropTests
 {
@@ -89,7 +89,7 @@ public class DictZstdInteropTests
         Assert.Equal(expected, actual);
 
         // Step 4: msgpack-parse via the same StreamDecoder the bench uses
-        // for token counting, and check the token-ID sequence matches
+        // for token counting. Check the token-ID sequence matches
         // the manifest's expected_first_10_ids + expected_token_count.
         using var ms = new MemoryStream(actual);
         var allIds = new List<int>();

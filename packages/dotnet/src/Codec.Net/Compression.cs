@@ -129,7 +129,7 @@ public static class Compression
     /// <summary>
     /// Loaded-dict lookup. Keys are <c>sha256:&lt;hex&gt;</c>; both the
     /// declared header and the registry keys are normalised to lowercase
-    /// hex per the spec, so an ordinal match suffices for the common
+    /// hex per the spec. An ordinal match therefore suffices for the common
     /// path. We still fall through to an ordinal-ignore-case scan to
     /// defend against callers that key the registry with mixed case.
     /// </summary>
