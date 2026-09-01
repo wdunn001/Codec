@@ -8,8 +8,8 @@
  * tokenization or detokenization on the wire path:
  *
  *   - The MLC engine's generate loop samples token IDs from logits.
- *   - The patched fork yields those IDs in `CodecFrame` objects
- *     instead of running them through the model's detokenizer first.
+ *   - The patched fork yields those IDs directly in `CodecFrame`
+ *     objects.
  *   - This wrapper passes the frames through verbatim: the consumer
  *     ships them via WebRTC / HTTP / BroadcastChannel / whatever.
  *
@@ -44,7 +44,7 @@
  * The patched fork adds `stream_format: "raw" | "msgpack"` which
  * bypasses that decode, yielding the IDs directly. Until upstream
  * merges that patch, `@codecai/web-llm` pins the fork as its
- * dependency rather than the upstream package.
+ * dependency.
  */
 import { encode as msgpackEncode } from '@msgpack/msgpack';
 import {
@@ -63,8 +63,8 @@ import type {
 // the app config, the types. They never have to type the bare
 // `@mlc-ai/web-llm` import: that's a fork-vs-upstream detail this
 // package abstracts over. NPM resolves `@mlc-ai/web-llm` to the
-// patched `wdunn001/web-llm` fork pinned in our package.json, so
-// `CreateMLCEngine` here ships the `stream_format: "raw"` patch.
+// patched `wdunn001/web-llm` fork pinned in our package.json.
+// `CreateMLCEngine` here therefore ships the `stream_format: "raw"` patch.
 export const CreateMLCEngine = _CreateMLCEngine;
 export const prebuiltAppConfig = _prebuiltAppConfig;
 export type {
@@ -160,8 +160,8 @@ export interface CodecEngine {
   /**
    * `ReadableStream<Uint8Array>` of msgpack-encoded frames: drop-in for
    * `@codecai/web`'s `decodeMsgpackStream`. Same bytes an HTTP-served
-   * Codec server emits, so a consumer reading from this stream is
-   * byte-identical to one reading from a remote engine.
+   * Codec server emits. A consumer reading from this stream is
+   * therefore byte-identical to one reading from a remote engine.
    */
   completionsStream(req: CompletionsRequest): ReadableStream<Uint8Array>;
 }
