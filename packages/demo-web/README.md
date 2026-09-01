@@ -4,7 +4,7 @@ Browser bench app for the Codec wire format. Pure-client React + Vite + `@codeca
 
 ## What it does
 
-Sends the **same prompt** to your sglang server in **3 wire formats × 4 compression encodings** and shows the live wire-byte grid. Browser does the binary decode using `@codecai/web`. Wire-byte numbers come from `Performance.encodedBodySize` — the actual bytes that crossed the network, not estimates.
+Sends the **same prompt** to your sglang server in **3 wire formats × 4 compression encodings** and shows the live wire-byte grid. Browser does the binary decode using `@codecai/web`. Wire-byte numbers come from `Performance.encodedBodySize`: the actual bytes that crossed the network, never estimates.
 
 | | identity | gzip | br | zstd |
 |---|---|---|---|---|
@@ -22,7 +22,7 @@ npm install
 npm run dev
 ```
 
-Opens on `http://localhost:5173`. Point the **server** field at your sglang instance — defaults to `http://192.168.1.88:30000` (the lab box). The sglang server needs to allow CORS from the demo's origin (or run sglang with `--api-key` and host the demo on the same origin).
+Opens on `http://localhost:5173`. Point the **server** field at your sglang instance: defaults to `http://192.168.1.88:30000` (the lab box). The sglang server needs to allow CORS from the demo's origin (or run sglang with `--api-key` and host the demo on the same origin).
 
 ## Deploy
 

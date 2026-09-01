@@ -1,4 +1,4 @@
-# 06 — Tool / Agent / MCP Attack Fixtures
+# 06: Tool / Agent / MCP Attack Fixtures
 
 Maps to [`spec/proposals/v0.6-security/06-tool-agent-attacks.md`](../../../../../spec/proposals/v0.6-security/06-tool-agent-attacks.md).
 
@@ -6,7 +6,7 @@ Maps to [`spec/proposals/v0.6-security/06-tool-agent-attacks.md`](../../../../..
 
 | File | Vector | Status |
 |---|---|---|
-| `poisoned-tool-description.json` | Malicious MCP server tool description | Below — initial example |
+| `poisoned-tool-description.json` | Malicious MCP server tool description | Below: initial example |
 | `tool-result-injection.json` | Tool returns adversarial content | TODO |
 | `capability-spoof.json` | Tool advertises X, does Y | TODO |
 | `tool-name-collision.json` | Two servers register same tool name | TODO |

@@ -1,12 +1,12 @@
 /**
- * ToolWatcher — detect tool-call regions in a token-ID stream without
+ * ToolWatcher: detect tool-call regions in a token-ID stream without
  * decoding.
  *
  * Mirrors the C `codec_tool_watcher` API. Most chat-tuned models delimit
  * tool calls with single-token specials (`<tool_call>` / `</tool_call>`
  * for Qwen 2.5+, `<|python_tag|>` / `<|eom_id|>` for Llama 3.1+, etc.).
  * Detecting *that* a tool call happened is therefore a uint32 compare
- * in the hot loop — no detokenization, no string allocation.
+ * in the hot loop: no detokenization, no string allocation.
  *
  * The watcher emits two kinds of events per `feed()` call:
  *   - `passthrough`: IDs outside any watched region (route as-is to the
@@ -41,7 +41,7 @@ export class ToolWatcher {
   readonly endName:   string;
 
   private _inside = false;
-  /* Region buffer survives across feeds — markers excluded. */
+  /* Region buffer survives across feeds: markers excluded. */
   private region: number[] = [];
 
   constructor(map: TokenizerMap, startName: string, endName: string) {
@@ -66,7 +66,7 @@ export class ToolWatcher {
   get inside(): boolean { return this._inside; }
 
   /**
-   * Reset state — drops any in-flight region buffer. Call between
+   * Reset state: drops any in-flight region buffer. Call between
    * conversations so a leftover unclosed region from session N doesn't
    * spill into session N+1.
    */
@@ -89,7 +89,7 @@ export class ToolWatcher {
     let ptStart = 0;
 
     /* Single-pass scan. Identical state machine to the C
-     * implementation — keep them in sync if you change one. */
+     * implementation: keep them in sync if you change one. */
     for (let i = 0; i < n; i++) {
       const id = input[i]!;
 
@@ -105,7 +105,7 @@ export class ToolWatcher {
         /* else: token continues the passthrough run; no action. */
       } else {
         if (id === this.endId) {
-          /* Region complete — emit a fresh array (caller-owned, doesn't
+          /* Region complete: emit a fresh array (caller-owned, doesn't
            * alias our buffer the way the C version does). */
           events.push({ kind: 'region', ids: this.region });
           this.region = [];

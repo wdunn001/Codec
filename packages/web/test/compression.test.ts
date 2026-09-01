@@ -179,12 +179,12 @@ test('selectZstdDictForResponse throws on empty dict header value', () => {
 
 // ── End-to-end fixture decompression (demo-side equivalent) ─────────────────
 // The @codecai/web package intentionally does not ship a zstd decompressor
-// (browser callers bring their own — DecompressionStream('zstd'),
+// (browser callers bring their own: DecompressionStream('zstd'),
 // @mongodb-js/zstd in Node, etc.). But the dict-zstd-interop fixture is the
 // cross-client conformance contract, so we exercise the full path here using
 // Node's bundled zlib.zstdDecompress (Node 22.15+ / 23.8+).
 //
-// On older Node, the test skips with a note — the matrix bench runner in
+// On older Node, the test skips with a note: the matrix bench runner in
 // packages/demo uses @mongodb-js/zstd directly and is the production path.
 
 import * as zlib from 'node:zlib';
@@ -225,7 +225,7 @@ test('fixture: select + decompress yields byte-identical decompressed.bin', { sk
 });
 
 test('fixture: decompressed msgpack frames yield 32 token IDs starting with the manifest sequence', { skip: !hasNodeZstd }, async () => {
-  // msgpack lives next door — same dep the rest of @codecai/web uses.
+  // msgpack lives next door: same dep the rest of @codecai/web uses.
   const { decodeMulti } = await import('@msgpack/msgpack');
 
   const dict = readDictBytes();

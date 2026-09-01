@@ -1,5 +1,5 @@
 """
-codec_server — FastAPI wrapper around HuggingFace diffusers that emits
+codec_server: FastAPI wrapper around HuggingFace diffusers that emits
 Codec latent streams (msgpack/protobuf) instead of decoded pixels.
 
 Lives at `<fork>/codec_server/` after vendoring into the wdunn001/diffusers
@@ -27,7 +27,7 @@ The server pre-loads the model on first request (or eagerly with
     GET  /health
 
 This wrapper doubles as the bench/golden perceptual-conformance
-reference — the torch + diffusers versions pinned in the parent
+reference: the torch + diffusers versions pinned in the parent
 Dockerfile.diffusers MUST match packages/bench/golden-builder/Dockerfile
 in the main Codec repo, or the bench validator quarantines its cells.
 """

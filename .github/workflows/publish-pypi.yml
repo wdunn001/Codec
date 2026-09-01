@@ -1,6 +1,6 @@
 # Publish `codecai` to PyPI on a v* tag, or manually from the Actions
 # tab. Uses PyPI Trusted Publishing (OIDC) so no token secret is
-# required in the repo — instead, configure PyPI:
+# required in the repo: instead, configure PyPI:
 #
 #   https://pypi.org/manage/project/codecai/settings/publishing/
 #   Owner: wdunn001
@@ -8,7 +8,7 @@
 #   Workflow: publish-pypi.yml
 #   Environment: pypi
 #
-# If OIDC isn't set up yet, fall back to a `PYPI_API_TOKEN` secret —
+# If OIDC isn't set up yet, fall back to a `PYPI_API_TOKEN` secret:
 # uncomment the env block under "Publish" below and remove the
 # `id-token: write` permission.
 

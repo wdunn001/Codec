@@ -19,13 +19,13 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-# libcurl — required for codec-bench / codec-matrix (live wire benches).
+# libcurl: required for codec-bench / codec-matrix (live wire benches).
 # codec-token-bench has no network deps, so we make libcurl optional and
 # disable the curl-dependent targets when it's missing. This lets a
 # dev box without libcurl still build the token-bench micro-driver.
 find_package(CURL)
 
-# libzstd — required by codec-matrix to honour the dict-zstd contract
+# libzstd: required by codec-matrix to honour the dict-zstd contract
 # (verify Codec-Zstd-Dict, decompress with the matching dict). On Debian /
 # Ubuntu: apt install libzstd-dev. On macOS: brew install zstd. On
 # Windows: vcpkg install zstd. If unavailable, we drop libzstd-using
@@ -66,7 +66,7 @@ endif()
 # driver decode-only, encode_* fields are null in output.
 add_executable(codec-token-bench token_bench.c)
 
-# Link against the static lib — the shared lib uses hidden visibility
+# Link against the static lib: the shared lib uses hidden visibility
 # and not every public symbol carries an export attribute yet.
 if(TARGET codec::codec_static)
     target_link_libraries(codec-token-bench PRIVATE codec::codec_static)
@@ -96,7 +96,7 @@ if(CURL_FOUND)
         endif()
         target_compile_definitions(codec-matrix PRIVATE CODEC_DEMO_HAVE_ZSTD=1)
     else()
-        message(STATUS "libzstd not found — codec-matrix will skip dict-zstd cells. "
+        message(STATUS "libzstd not found: codec-matrix will skip dict-zstd cells. "
                        "Install libzstd-dev (Debian/Ubuntu) / zstd (brew) / zstd (vcpkg) "
                        "to enable.")
     endif()

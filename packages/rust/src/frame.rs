@@ -8,13 +8,13 @@ use crate::map::TokenizerMap;
 
 /// One streaming frame produced by a Codec-compliant server.
 ///
-/// Identical shape across MessagePack and Protobuf wire modes — only
+/// Identical shape across MessagePack and Protobuf wire modes: only
 /// serialization differs.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CodecFrame {
     /// Token IDs emitted by the model in this chunk.
     pub ids: Vec<u32>,
-    /// `true` on the final frame — no further frames follow.
+    /// `true` on the final frame: no further frames follow.
     pub done: bool,
     /// Set on the final frame: e.g. `"length"`, `"stop"`, `"eos_token"`, `"error"`.
     pub finish_reason: Option<String>,

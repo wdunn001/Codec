@@ -1,5 +1,5 @@
 /**
- * Codec tool manifest spec — the contract a bolt-on tool publishes so a
+ * Codec tool manifest spec: the contract a bolt-on tool publishes so a
  * gateway (sglang, vLLM, MetaMCP, etc.) knows what it speaks and which
  * model token vocabularies it has pre-cached.
  *
@@ -11,7 +11,7 @@
 /**
  * SHA-256 hex of the model's tokenizer.json (or equivalent vocab+merges
  * file). Used to verify a tool's pre-cached token IDs are valid for the
- * model the gateway is currently serving — if the hashes don't match,
+ * model the gateway is currently serving: if the hashes don't match,
  * the cache is stale and the tool falls back to text-mode (or refuses to
  * run, depending on policy).
  */
@@ -29,7 +29,7 @@ export interface ModelBinding {
   /**
    * Path (relative to the manifest) of the precompiled cache file for
    * this model. The cache is whatever shape the tool's implementation
-   * needs — for most tools it's a JSON array of "common response
+   * needs: for most tools it's a JSON array of "common response
    * fragments" mapped to their token-ID sequences for this model.
    */
   cacheFile: string;
@@ -50,11 +50,11 @@ export interface ToolManifest {
   /**
    * JSON-Schema for the tool's argument object. This is how the model
    * is told *what to call*. The schema text itself stays at the
-   * gateway — only the resulting tool-call's argument *values* travel
+   * gateway: only the resulting tool-call's argument *values* travel
    * as tokens to the tool.
    */
   argumentsSchema: object;
-  /** Model bindings — at least one. */
+  /** Model bindings: at least one. */
   models: ModelBinding[];
   /** Optional: maintainer contact / repo URL. */
   homepage?: string;
@@ -89,7 +89,7 @@ export function validateManifest(m: unknown): string | null {
 
 /**
  * Look up the binding for a given model in a manifest. Returns null if
- * the manifest doesn't support that model — the gateway should then
+ * the manifest doesn't support that model: the gateway should then
  * either skip this tool, fall back to a text-mode call, or reject the
  * request, depending on its policy.
  */

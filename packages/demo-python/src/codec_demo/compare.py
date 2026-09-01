@@ -3,8 +3,8 @@ codec-bench --compare: run the same matrix against two sglang servers
 (typically: vanilla main vs PR #24483) and print a side-by-side report.
 
 Cells where the path doesn't exist on a given server (Codec msgpack/protobuf
-on vanilla sglang — the field is silently ignored, response falls back to
-JSON-SSE) are detected and marked N/A — we identify this case by
+on vanilla sglang: the field is silently ignored, response falls back to
+JSON-SSE) are detected and marked N/A: we identify this case by
 content-type: vanilla returns text/event-stream; PR returns application/x-msgpack
 or application/x-protobuf for those paths.
 """
@@ -42,7 +42,7 @@ async def run_grid(client: httpx.AsyncClient, url: str, model: str,
 
 def detect_na(cell: Cell, server_supports_codec: bool) -> bool:
     """True if this cell should be reported as N/A.
-    For vanilla sglang, the Codec paths fall back to JSON-SSE silently —
+    For vanilla sglang, the Codec paths fall back to JSON-SSE silently:
     the response shape doesn't match the requested format. The bench's
     JSON counter would still produce token counts but the comparison is
     meaningless because we requested binary and got text. We detect that

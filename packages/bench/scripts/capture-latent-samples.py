@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-capture-latent-samples.py — capture raw Codec latent streams from a running
+capture-latent-samples.py: capture raw Codec latent streams from a running
 latent-aware Codec server (Dockerfile.diffusers or Dockerfile.comfyui in
 codec-supervisor). Sibling of capture-codec-samples.py for the latent
 modality (Codec v0.3+).
 
 Two purposes, one collection step:
 
-  1. Bench corpus — deterministic per-fixture capture (one .bin per
+  1. Bench corpus: deterministic per-fixture capture (one .bin per
      (latent_space, format, pipeline, fixture-key) tuple). The bytes
      match the wire bench cells will measure against, and the same
      latent tensor inside (after pipeline inversion) feeds golden-builder
      so the perceptual reference is rendered against bit-exact inputs.
-  2. Dict-training corpus — repeated capture across many seed +
+  2. Dict-training corpus: repeated capture across many seed +
      prompt variants for a given (format, pipeline) pair, so
      train-zstd-dict-latents.py has enough byte-distribution diversity
      to produce a useful dict. Pass --mode=train and --n-samples=N to
@@ -46,16 +46,16 @@ Wire request shape (per spec/PROTOCOL.md §"Endpoints"):
 Response: a single LatentStreamHeader followed by N LatentFrames in
 msgpack or protobuf (the LATENT_HEADER + LATENTS frame types in the
 session protocol). The script saves the entire response body (header +
-frames) verbatim — the dict trainer treats the whole captured stream
+frames) verbatim: the dict trainer treats the whole captured stream
 as one corpus entry.
 
-Status — engine fork dependency
+Status: engine fork dependency
 -------------------------------
 The `wdunn001/ComfyUI` and `wdunn001/diffusers` forks at branch
 `feat/codec-latent-transport` are required for this script to fetch
 real bytes. Without them the script runs but every fixture errors out
 on connection / 404. The script ships now so capture is wired up the
-moment the forks land — no follow-up CLI work blocks the bench.
+moment the forks land: no follow-up CLI work blocks the bench.
 """
 from __future__ import annotations
 
@@ -142,7 +142,7 @@ async def fetch_latent_stream(
         if ce != "identity":
             raise RuntimeError(
                 f"server returned content-encoding={ce!r} despite Accept-Encoding: identity. "
-                "the corpus would be polluted with already-compressed bytes — aborting."
+                "the corpus would be polluted with already-compressed bytes: aborting."
             )
         # Capture the Codec-Latent-Map and Codec-Zstd-Dict headers so the
         # corpus manifest can record what map + dict the server was
@@ -261,7 +261,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(prog="capture-latent-samples")
     ap.add_argument(
         "--url", default="http://127.0.0.1:8090",
-        help="latent-aware Codec server URL — typically the codec-comfyui or "
+        help="latent-aware Codec server URL: typically the codec-comfyui or "
              "codec-diffusers container in codec-supervisor compose. "
              "(default: %(default)s)",
     )

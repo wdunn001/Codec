@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// Translator tests — mirror packages/web/test/translate.test.ts and
+// Translator tests: mirror packages/web/test/translate.test.ts and
 // packages/python/tests/test_translate.py.
 //
 // Real-map tests gate on environment variables (CODEC_MAPS_QWEN +
@@ -58,7 +58,7 @@ public class TranslatorTests
     {
         var m = Fixtures.TinyMap;
         var tr = new Translator(m, m);
-        // Feed something with a partial flag, then reset, then finish — should
+        // Feed something with a partial flag, then reset, then finish: should
         // produce no output (buffer was cleared).
         tr.Translate(new int[] { 3, 4 }, partial: true);  // "hello "
         tr.Reset();

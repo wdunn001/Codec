@@ -18,7 +18,7 @@
 /* ── Helpers to build a Qwen-style or Llama-3-style program in-code ───── */
 
 /* Pattern lists are owned by the test; the program's literals_ci op
- * borrows them. Lifetime: stack — programs do NOT outlive the test fn. */
+ * borrows them. Lifetime: stack: programs do NOT outlive the test fn. */
 static const char *CONTRACTIONS[] = {
     "'s", "'t", "'re", "'ve", "'m", "'ll", "'d",
 };
@@ -150,7 +150,7 @@ static void test_emoji_and_cjk_as_letters(void) {
 }
 
 static void test_metaspace_split(void) {
-    /* Single-op metaspace program — runs through codec_pretok_run_metaspace,
+    /* Single-op metaspace program: runs through codec_pretok_run_metaspace,
      * NOT codec_pretok_run_program. */
     char **pieces = NULL; size_t count = 0;
     codec_status_t r = codec_pretok_run_metaspace(
@@ -177,7 +177,7 @@ static void test_metaspace_prefix_first_skips_first(void) {
 }
 
 /* The Unicode class predicates (codec_unicode_is_letter/_number/_ws)
- * are internal — exercised indirectly by every match_* op below. The
+ * are internal: exercised indirectly by every match_* op below. The
  * letters / numbers / ws_run tests would fail loudly if the tables
  * were broken. */
 

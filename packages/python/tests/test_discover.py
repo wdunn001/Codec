@@ -1,4 +1,4 @@
-"""Discovery tests — mirror packages/web/test/discover.test.ts."""
+"""Discovery tests: mirror packages/web/test/discover.test.ts."""
 from __future__ import annotations
 
 import hashlib
@@ -328,7 +328,7 @@ async def test_discover_zstd_dict_404_raises_discovery_error() -> None:
 
 @pytest.mark.asyncio
 async def test_discover_zstd_dict_hash_mismatch_raises() -> None:
-    """Origin serves bytes that don't hash to the URL's path component — never trust them."""
+    """Origin serves bytes that don't hash to the URL's path component: never trust them."""
     declared_hex = "0" * 64
     url = well_known_dict_url(ORIGIN, declared_hex)
     wrong_bytes = b"this-payload-does-not-hash-to-zeros"
@@ -342,7 +342,7 @@ async def test_discover_zstd_dict_hash_mismatch_raises() -> None:
 
 @pytest.mark.asyncio
 async def test_discover_zstd_dict_rejects_malformed_hash_before_fetch() -> None:
-    # No HTTP routes registered — if we fetched we'd get a 404. Reject up front.
+    # No HTTP routes registered: if we fetched we'd get a 404. Reject up front.
     async with _client({}) as client:
         with pytest.raises(ZstdDictDiscoveryError, match="64 hex"):
             await discover_zstd_dict(origin=ORIGIN, hash="not-a-real-hash", client=client)

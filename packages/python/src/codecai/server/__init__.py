@@ -1,7 +1,7 @@
 """
-codecai.server — server-side encoding utilities for the Codec binary transport.
+codecai.server: server-side encoding utilities for the Codec binary transport.
 
-Most users of `codecai` are *clients* — they decode token-ID frames from a
+Most users of `codecai` are *clients*: they decode token-ID frames from a
 remote inference server. This submodule is the other side: helpers a
 *server* uses to *produce* Codec frames.
 

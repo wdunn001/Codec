@@ -52,13 +52,13 @@
     },
     "classifier": {
       "type": "object",
-      "description": "Classifier family that backs this policy's semantic enforcement layer (Layer 3). The descriptor exposes the family — never weights, thresholds, or training data. `family` is enough for an auditor to know what kind of judgments are being made; thresholds and per-category sensitivities are operator-internal.",
+      "description": "Classifier family that backs this policy's semantic enforcement layer (Layer 3). The descriptor exposes the family: never weights, thresholds, or training data. `family` is enough for an auditor to know what kind of judgments are being made; thresholds and per-category sensitivities are operator-internal.",
       "required": ["family"],
       "additionalProperties": false,
       "properties": {
         "family": {
           "type": "string",
-          "description": "Classifier model family. Free-form lowercase ASCII identifier; examples: `llama-guard-3-1b`, `shield-gemma-2b`, `prompt-guard-86m`, `embedding-space-v1`, `none` (rules-only enforcement). New families do not require a schema bump — this is descriptive metadata."
+          "description": "Classifier model family. Free-form lowercase ASCII identifier; examples: `llama-guard-3-1b`, `shield-gemma-2b`, `prompt-guard-86m`, `embedding-space-v1`, `none` (rules-only enforcement). New families do not require a schema bump: this is descriptive metadata."
         },
         "host": {
           "type": "string",
@@ -77,7 +77,7 @@
     },
     "rules_summary": {
       "type": "object",
-      "description": "Summary statistics describing the size of the enforcement surface — without revealing its contents. Lets an auditor compare policies on coverage breadth (a policy with 20k banned IDs and 50 regex rules is qualitatively different from one with 0 banned IDs and 0 regex rules) without giving an attacker an enumeration map.",
+      "description": "Summary statistics describing the size of the enforcement surface, without revealing its contents. Lets an auditor compare policies on coverage breadth (a policy with 20k banned IDs and 50 regex rules is qualitatively different from one with 0 banned IDs and 0 regex rules) without giving an attacker an enumeration map.",
       "additionalProperties": false,
       "properties": {
         "banned_token_id_count": {
@@ -88,7 +88,7 @@
         "regex_pattern_count": {
           "type": "integer",
           "minimum": 0,
-          "description": "Number of regex patterns enforced (by Layer 1 client prefilter or Layer 2 server post-detok scans). Patterns themselves are NEVER published — they would form an evasion guide."
+          "description": "Number of regex patterns enforced (by Layer 1 client prefilter or Layer 2 server post-detok scans). Patterns themselves are NEVER published: they would form an evasion guide."
         },
         "grammar_constraint_count": {
           "type": "integer",
@@ -114,18 +114,18 @@
         },
         "client_classifier_family": {
           "type": "string",
-          "description": "Suggested classifier family for client-side semantic checks. Often a smaller model than `classifier.family` (e.g. server runs `llama-guard-3-1b`, client runs `prompt-guard-86m`). Clients MAY ignore this and pick their own model; this is a hint, not a contract."
+          "description": "Suggested classifier family for client-side semantic checks. Often a smaller model than `classifier.family` (e.g. server runs `llama-guard-3-1b`, client runs `prompt-guard-86m`). Clients MAY ignore this and pick their own model; this is only a hint."
         }
       }
     },
     "published_at": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 timestamp when this descriptor was published. Informational only — content addressing is via sha256 hash."
+      "description": "ISO 8601 timestamp when this descriptor was published. Informational only: content addressing is via sha256 hash."
     },
     "publisher": {
       "type": "object",
-      "description": "Optional human-readable publisher metadata. Non-load-bearing; clients SHOULD treat the origin's TLS certificate as the trust anchor, not this field.",
+      "description": "Optional human-readable publisher metadata. Non-load-bearing; clients SHOULD treat the origin's TLS certificate alone as the trust anchor.",
       "additionalProperties": false,
       "properties": {
         "name": { "type": "string", "description": "Human-readable publisher name." },

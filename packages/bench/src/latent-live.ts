@@ -1,5 +1,5 @@
 /**
- * latent-live.ts — measure Codec latent-modality wire cost against a live
+ * latent-live.ts: measure Codec latent-modality wire cost against a live
  * latent-stream server (codec-comfyui or codec-diffusers).
  *
  * Twin of mcp-live.ts for the v0.3 latent modality. Same structure (per-
@@ -12,7 +12,7 @@
  *   fixtures:   from methodology/latent-fixtures.json
  *
  * For text-modality MCP work the variant axis is what we want to compare.
- * For latents, the bigger axis is *pipeline* — the bench's job is to
+ * For latents, the bigger axis is *pipeline*: the bench's job is to
  * produce the rate-distortion curve (wire bytes vs SSIM) every classical
  * video codec publishes. The same harness records `ttff_ms` (time to first
  * frame), decoder cost (when a decoder is loaded), and perceptual quality
@@ -28,7 +28,7 @@
  *
  * Notes on what this DOES and DOES NOT measure today:
  * - DOES: wire_bytes (raw socket bytes received before any
- *   Content-Encoding decompression), ttff_ms (first body chunk arrival —
+ *   Content-Encoding decompression), ttff_ms (first body chunk arrival:
  *   approximation of "first LatentFrame" since the HTTP server typically
  *   emits header+first-frame in a single TCP segment), total_ms (last
  *   byte). codec_latent_map + codec_zstd_dict header echoes.
@@ -94,17 +94,17 @@ interface VariantSpec {
  * conform to.
  */
 const DEFAULT_VARIANTS: VariantSpec[] = [
-  // Format defaults to msgpack — matches what the engines actually serve in v0.3.
+  // Format defaults to msgpack: matches what the engines actually serve in v0.3.
   { format: 'msgpack', encoding: 'identity', pipeline: 'raw' },
   { format: 'msgpack', encoding: 'identity', pipeline: 'int8' },
   { format: 'msgpack', encoding: 'identity', pipeline: 'int4' },
   { format: 'msgpack', encoding: 'identity', pipeline: 'int8-adaptive' },
   { format: 'msgpack', encoding: 'identity', pipeline: 'int4-adaptive' },
-  // Compression on top of int8 — the production-shape lane that carries
+  // Compression on top of int8: the production-shape lane that carries
   // the headline wire-byte reduction for static images.
   { format: 'msgpack', encoding: 'gzip', pipeline: 'int8' },
   { format: 'msgpack', encoding: 'zstd', pipeline: 'int8' },
-  // Video-only delta variants — fixture filter narrows to video-* keys.
+  // Video-only delta variants: fixture filter narrows to video-* keys.
   { format: 'msgpack', encoding: 'zstd', pipeline: 'delta+int8' },
   { format: 'msgpack', encoding: 'zstd', pipeline: 'delta+int4' },
 ];
@@ -154,19 +154,19 @@ interface LatentCell {
   rep_wire_bytes:     number[];
   rep_ttff_ms:        number[];
   rep_total_ms:       number[];
-  // Decoder cost — populated by a sibling perceptual pass when a decoder
+  // Decoder cost: populated by a sibling perceptual pass when a decoder
   // is loaded; null on parse-only cells (this harness).
   decode_cold_ms:     number | null;
   decode_steady_ms:   number | null;
   decode_peak_mem_mb: number | null;
-  // Perceptual quality vs the golden-builder reference — populated by
+  // Perceptual quality vs the golden-builder reference: populated by
   // the sibling perceptual pass.
   ssim:               number | null;
   psnr:               number | null;
   lpips:              number | null;
   vmaf:               number | null;
   temporal_ssim:      number | null;
-  // Negotiation header echoes — see SCHEMA.md §"Negotiation headers".
+  // Negotiation header echoes: see SCHEMA.md §"Negotiation headers".
   codec_tokenizer_map: string | null;     // null on latent cells
   codec_latent_map:    string | null;
   codec_zstd_dict:     string | null;
@@ -220,7 +220,7 @@ function buildRequest(variant: VariantSpec, fixture: FixtureSpec): RequestSpec {
 }
 
 // ── Raw-socket measured response ────────────────────────────────────────────
-// Mirrors src/mcp-live.ts's send() — same headers-byte reconstruction trick,
+// Mirrors src/mcp-live.ts's send(): same headers-byte reconstruction trick,
 // same gzip/br decompression after the count is taken. Adds ttff_ms (first
 // body chunk arrival) which for the latent stream approximates the time to
 // first LatentFrame: the typical engine emits the LatentStreamHeader and
@@ -282,7 +282,7 @@ function send(req: RequestSpec): Promise<MeasuredResponse> {
             if (enc.includes('gzip')) bodyDecoded = gunzipSync(raw);
             else if (enc.includes('br')) bodyDecoded = brotliDecompressSync(raw);
             // zstd: Node 22+ has zlib.zstdDecompressSync; we leave it raw if
-            // unavailable (the wire-bytes count is what we care about — the
+            // unavailable (the wire-bytes count is what we care about: the
             // body parse is best-effort for sanity).
           } catch {
             /* leave raw */
@@ -311,7 +311,7 @@ function send(req: RequestSpec): Promise<MeasuredResponse> {
 // ── Codec frame body parser (count frames, surface header) ──────────────────
 
 interface ParsedBody {
-  /** Number of frames in the body — first is the LatentStreamHeader. */
+  /** Number of frames in the body: first is the LatentStreamHeader. */
   frameCount: number;
   /** Number of LatentFrames after the header (frameCount - 1). */
   framesEmitted: number;
@@ -416,10 +416,10 @@ function summaryRows(cells: LatentCell[]): { headers: string[]; rows: string[][]
     c.pipeline,
     c.format,
     c.encoding,
-    c.wire_bytes !== null ? fmtBytes(c.wire_bytes) : '—',
-    c.ttff_ms    !== null ? fmtNum(c.ttff_ms, 1) + ' ms' : '—',
-    c.total_ms   !== null ? fmtNum(c.total_ms, 0) + ' ms' : '—',
-    c.frames_emitted !== null ? String(c.frames_emitted) : '—',
+    c.wire_bytes !== null ? fmtBytes(c.wire_bytes) : 'n/a',
+    c.ttff_ms    !== null ? fmtNum(c.ttff_ms, 1) + ' ms' : 'n/a',
+    c.total_ms   !== null ? fmtNum(c.total_ms, 0) + ' ms' : 'n/a',
+    c.frames_emitted !== null ? String(c.frames_emitted) : 'n/a',
     c.error ? c.error.slice(0, 60) : '',
   ]);
   return { headers, rows };
@@ -458,19 +458,19 @@ function writeResults(cells: LatentCell[]) {
 
   const sr = summaryRows(cells);
   const md: string[] = [
-    `# latent-live results — ${STAMP}\n`,
+    `# latent-live results: ${STAMP}\n`,
     `Endpoint: \`${LATENT_URL}\`  ·  latent space: \`${LATENT_SPACE}\``,
     `reps: ${REPS}  ·  cells: ${cells.length}\n`,
     table(sr.headers, sr.rows),
     '',
     hr(),
-    `Generated by \`packages/bench/src/latent-live.ts\`. Schema: [bench/methodology/SCHEMA.md](../../methodology/SCHEMA.md) §"Latent modality (v0.3+ — additive fields)".`,
+    `Generated by \`packages/bench/src/latent-live.ts\`. Schema: [bench/methodology/SCHEMA.md](../../methodology/SCHEMA.md) §"Latent modality (v0.3+: additive fields)".`,
   ];
   writeFileSync(join(OUT_DIR, 'latent-live.md'), md.join('\n') + '\n');
 
-  // Headline summary — the wire-bytes ratio against `raw` per fixture.
+  // Headline summary: the wire-bytes ratio against `raw` per fixture.
   const summary: string[] = [
-    `# SUMMARY — latent-live ${STAMP}\n`,
+    `# SUMMARY: latent-live ${STAMP}\n`,
     `Endpoint: \`${LATENT_URL}\`  ·  latent space: \`${LATENT_SPACE}\`\n`,
     `## Wire-bytes reduction vs \`raw\` (per fixture)\n`,
   ];
@@ -484,17 +484,17 @@ function writeResults(cells: LatentCell[]) {
     const baseline = rawRow?.wire_bytes ?? null;
     summary.push(`### Fixture \`${fixture}\``);
     if (baseline === null) {
-      summary.push(`(no \`raw\` baseline cell — skipping ratios)\n`);
+      summary.push(`(no \`raw\` baseline cell: skipping ratios)\n`);
       continue;
     }
     const fHeaders = ['pipeline', 'enc', 'wire_bytes', 'vs raw'];
     const fRows: string[][] = [];
     for (const c of group) {
-      const ratioStr = c.wire_bytes && baseline ? ratio(baseline, c.wire_bytes) : '—';
+      const ratioStr = c.wire_bytes && baseline ? ratio(baseline, c.wire_bytes) : 'n/a';
       fRows.push([
         c.pipeline,
         c.encoding,
-        c.wire_bytes !== null ? fmtBytes(c.wire_bytes) : '—',
+        c.wire_bytes !== null ? fmtBytes(c.wire_bytes) : 'n/a',
         ratioStr,
       ]);
     }
@@ -525,7 +525,7 @@ async function main() {
       if (cell.error) console.log(`ERROR: ${cell.error.slice(0, 80)}`);
       else
         console.log(
-          `wire=${cell.wire_bytes !== null ? fmtBytes(cell.wire_bytes) : '—'} ttff=${cell.ttff_ms !== null ? fmtNum(cell.ttff_ms, 0) + 'ms' : '—'}`,
+          `wire=${cell.wire_bytes !== null ? fmtBytes(cell.wire_bytes) : 'n/a'} ttff=${cell.ttff_ms !== null ? fmtNum(cell.ttff_ms, 0) + 'ms' : 'n/a'}`,
         );
       cells.push(cell);
     }

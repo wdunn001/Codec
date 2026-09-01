@@ -243,7 +243,7 @@ def decode_protobuf_frame(data: bytes) -> CodecFrame:
             val, pos = _read_varint(data, pos)
             if field == 2:
                 done = bool(val)
-        elif wt == 1:  # 64-bit fixed — skip
+        elif wt == 1:  # 64-bit fixed: skip
             pos += 8
         elif wt == 2:  # length-delimited
             length, pos = _read_varint(data, pos)
@@ -256,7 +256,7 @@ def decode_protobuf_frame(data: bytes) -> CodecFrame:
                     ids.append(val)
             elif field == 3:  # optional string finish_reason
                 finish_reason = chunk.decode("utf-8")
-        elif wt == 5:  # 32-bit fixed — skip
+        elif wt == 5:  # 32-bit fixed: skip
             pos += 4
         else:
             raise ValueError(

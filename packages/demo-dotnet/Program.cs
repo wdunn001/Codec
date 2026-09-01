@@ -45,7 +45,7 @@ internal static class Program
 
     /// <summary>
     /// Load each dict file into the client-side registry, keyed by its
-    /// sha256. Missing files are silently skipped — the bench then
+    /// sha256. Missing files are silently skipped: the bench then
     /// decompresses successfully only on cells whose Codec-Zstd-Dict
     /// header matches a hash we have. Same shape as
     /// <c>codec_demo.load_zstd_dict_files</c> in demo-python.
@@ -150,7 +150,7 @@ internal static class Program
         var ttfb = sw.Elapsed.TotalMilliseconds;
         resp.EnsureSuccessStatusCode();
 
-        // Read raw stream (no automatic decompression — see CreateClient below).
+        // Read raw stream (no automatic decompression: see CreateClient below).
         using var raw = await resp.Content.ReadAsStreamAsync();
         using var ms = new MemoryStream();
         await raw.CopyToAsync(ms);
@@ -322,7 +322,7 @@ internal static class Program
             return;
         }
 
-        // Phase 2: token counting — best-effort. Failure here records the
+        // Phase 2: token counting: best-effort. Failure here records the
         // error string but leaves wire/TTFB/total intact (cell.Status =
         // done_undecoded). Mirrors the Python codec_demo behaviour.
         try
@@ -588,7 +588,7 @@ internal static class Program
     /// <summary>
     /// Resolve <c>&lt;repo-root&gt;/dictionaries/</c> relative to this
     /// assembly. Mirrors the path-walk in
-    /// <c>RunMatrixAsync</c> — codec-bench.dll lives at
+    /// <c>RunMatrixAsync</c>: codec-bench.dll lives at
     /// <c>packages/demo-dotnet/bin/.../codec-bench.dll</c>, so the repo
     /// root is five hops up.
     /// </summary>
@@ -611,7 +611,7 @@ internal static class Program
         // Load reference zstd dicts so the client can decompress dict-zstd
         // responses. The bench harness ships the canonical Qwen2.5 dicts
         // at repo-root/dictionaries/. If the server is configured to use a
-        // different dict, the wire/ttft numbers still land — only the
+        // different dict, the wire/ttft numbers still land: only the
         // decoded-tokens count drops to 0 and the row carries a
         // Codec-Zstd-Dict mismatch error so reviewers see it.
         // Mirrors codec_demo.matrix_run (Python) and the TS bench.

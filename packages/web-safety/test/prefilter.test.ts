@@ -87,7 +87,7 @@ test('flags a high-entropy base64-ish run', () => {
   const matches = scanText(
     'opaque token: aB3$dE5gH7iK9lM1nO3pQ5rS7tU9vW1xY3zA5bC7dE9fG (continuing)',
   );
-  // The "$" inside breaks the run — pick a cleaner base64 case.
+  // The "$" inside breaks the run: pick a cleaner base64 case.
   const cleaner = scanText(
     'opaque token: AbCdEfGhIjKlMnOpQrStUvWxYzAbCdEfGhIjKlMnOp012345 next',
   );
@@ -241,7 +241,7 @@ test('blocked_action skipped when category not enabled', () => {
       { rule: 'rm_foo', pattern: /rm\s+-rf\s+\/tmp/g },
     ],
   });
-  // category not enabled — host pattern doesn't fire.
+  // category not enabled: host pattern doesn't fire.
   assert.equal(matches.length, 0);
 });
 

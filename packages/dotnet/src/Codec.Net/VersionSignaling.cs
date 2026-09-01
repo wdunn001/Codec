@@ -1,4 +1,4 @@
-// Codec v0.4 version negotiation — client-side surface.
+// Codec v0.4 version negotiation: client-side surface.
 //
 // Mirror of `packages/web/src/version-signaling.ts` and
 // `packages/python/src/codecai/version_signaling.py`. See
@@ -32,7 +32,7 @@ namespace Codec;
 /// Shape of the JSON body on a v0.4 server's <c>426 Upgrade Required</c>
 /// response. Pre-v0.4 clients that parse this as a generic JSON error can
 /// still render <see cref="Error"/> + <see cref="MinimumVersion"/> as a
-/// string — the structure degrades gracefully.
+/// string: the structure degrades gracefully.
 /// </summary>
 public sealed record CodecVersionRequiredBody(
     [property: JsonPropertyName("error")] string Error,
@@ -91,7 +91,7 @@ public sealed class CodecVersionRequiredException : Exception
 }
 
 /// <summary>
-/// Codec v0.4 version negotiation primitives. Static class — no state.
+/// Codec v0.4 version negotiation primitives. Static class: no state.
 /// </summary>
 public static class VersionSignaling
 {
@@ -151,7 +151,7 @@ public static class VersionSignaling
     /// Parse a 426 Upgrade Required response body into a typed exception.
     /// Returns <c>null</c> if the response is not a 426. Throws
     /// <see cref="FormatException"/> if it is a 426 but the body isn't
-    /// a recognized v0.4 shape — never silently swallows a 426.
+    /// a recognized v0.4 shape: never silently swallows a 426.
     /// </summary>
     public static async Task<CodecVersionRequiredException?> ParseVersionRequiredAsync(
         HttpResponseMessage response,

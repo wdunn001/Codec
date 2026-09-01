@@ -1,5 +1,5 @@
 /**
- * @codecai/mcp-leaf — leaf-mode wrapper round-trip tests.
+ * @codecai/mcp-leaf: leaf-mode wrapper round-trip tests.
  *
  * Uses an inline minimal TokenizerMap so the tests don't depend on a CDN
  * fetch. The encode contract is tested against the LongestMatchTokenizer
@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { makeMetaTokenizer, wrapToolCall, buildMetaBlock } from '../src/leaf.js';
 import { makeMap, MemoryMapCache } from '@codecai/web';
 
-// Fixture — a minimal v2 vocab-only map. The runtime falls back to
+// Fixture: a minimal v2 vocab-only map. The runtime falls back to
 // LongestMatchTokenizer when no merges are present, which gives stable
 // IDs for any input matching the small vocab.
 const MAP_FIXTURE = makeMap({
@@ -77,7 +77,7 @@ describe('wrapToolCall', () => {
     };
 
     const wrapped = wrapToolCall(result, meta);
-    // Per-block _meta — no extra sibling blocks. Length stays 2.
+    // Per-block _meta: no extra sibling blocks. Length stays 2.
     assert.equal(wrapped.content.length, 2);
     assert.equal(wrapped.content[0]!.type, 'text');
     assert.equal(wrapped.content[1]!.type, 'text');
@@ -139,7 +139,7 @@ describe('wrapToolCall', () => {
     );
   });
 
-  it('is idempotent — wrapping twice produces the same tree as once', async () => {
+  it('is idempotent: wrapping twice produces the same tree as once', async () => {
     const meta = await buildMeta();
     const result = {
       content: [

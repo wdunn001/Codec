@@ -1,5 +1,5 @@
 /**
- * BPETokenizer — pure JS BPE encoder. Text → token IDs.
+ * BPETokenizer: pure JS BPE encoder. Text → token IDs.
  *
  * Required for the bidirectional Codec endpoint: when a human types into a
  * chat box, the client tokenizes locally so input goes over the wire as
@@ -17,7 +17,7 @@
  *   2. Encode each piece to the vocab's character space.
  *        byte_level: UTF-8 encode the piece, map each byte through the
  *                    GPT-2 byte→unicode table.
- *        metaspace:  text already lives in vocab space — replace spaces
+ *        metaspace:  text already lives in vocab space: replace spaces
  *                    inside the piece with ▁ and we're done.
  *
  *   3. Apply BPE merges. Start with each codepoint as its own token; greedily
@@ -49,7 +49,7 @@ export class BPETokenizer implements Tokenizer {
    * Special-token scanner. Built from `map.special_tokens` plus any token in
    * `map.vocab` whose surface form looks like a delimiter (`<|...|>`). HF's
    * reference tokenizer splits input on added/special tokens BEFORE running
-   * BPE — emit each match as the atomic vocab ID, BPE the surrounding text.
+   * BPE: emit each match as the atomic vocab ID, BPE the surrounding text.
    * Required for chat templates (`<|im_start|>...<|im_end|>`), tool-call
    * delimiters, FIM markers, etc. to round-trip with HF.
    */
@@ -59,7 +59,7 @@ export class BPETokenizer implements Tokenizer {
   /**
    * Returns true if `map` carries the data BPETokenizer needs (vocab, merges,
    * a supported encoder). When false, callers should fall back to
-   * LongestMatchTokenizer — the top-level `tokenize()` helper does this
+   * LongestMatchTokenizer: the top-level `tokenize()` helper does this
    * automatically, and `pickTokenizer(map)` returns the right one.
    */
   static supports(map: TokenizerMap): boolean {
@@ -94,7 +94,7 @@ export class BPETokenizer implements Tokenizer {
     for (const [tok, id] of Object.entries(mapVocab)) vocab.set(tok, id);
     this.vocab = vocab;
 
-    // Build merge ranks. HuggingFace stores merges in priority order — index
+    // Build merge ranks. HuggingFace stores merges in priority order: index
     // 0 has highest priority. Each merge is "left right".
     const ranks = new Map<string, number>();
     for (let i = 0; i < mapMerges.length; i++) {
@@ -141,7 +141,7 @@ export class BPETokenizer implements Tokenizer {
     // `map.special_tokens` (the canonical source) AND any vocab key that
     // looks like a delimiter (`<|...|>` or `<...>`). Older maps shipped
     // before a chat-template revision may carry the delimiters in `vocab`
-    // but not in `special_tokens` — without the vocab-key fallback, those
+    // but not in `special_tokens`: without the vocab-key fallback, those
     // would still tokenise byte-by-byte. Length-descending order makes
     // the regex match the longest delimiter at any position.
     const specialIds = new Map<string, number>();
@@ -174,7 +174,7 @@ export class BPETokenizer implements Tokenizer {
 
     // First pass: split on special tokens. Each special is emitted as its
     // single atomic vocab ID; the gaps between specials are BPE-encoded
-    // normally. Mirrors HuggingFace's added-token splitter — without this,
+    // normally. Mirrors HuggingFace's added-token splitter: without this,
     // `<|im_start|>` would tokenize as 6 byte-level tokens instead of one
     // ID, breaking chat-template round-trips on Qwen/Llama-3/Phi/etc.
     if (this.specialRegex !== null) {
@@ -283,7 +283,7 @@ export class BPETokenizer implements Tokenizer {
       }
       if (bestIdx === -1) break;
 
-      // Merge ALL non-overlapping occurrences of that pair in one pass —
+      // Merge ALL non-overlapping occurrences of that pair in one pass:
       // this matches HuggingFace's behavior and runs in linear time per
       // outer iteration.
       const left = parts[bestIdx]!;
@@ -324,8 +324,8 @@ export class BPETokenizer implements Tokenizer {
           ids.push(this.byteFallbackStart + bytes[i]!);
         }
       }
-      // For byte_level this branch is unreachable in well-formed input — every
-      // byte has a vocab entry — so we silently drop. (Defensive: should never
+      // For byte_level this branch is unreachable in well-formed input: every
+      // byte has a vocab entry: so we silently drop. (Defensive: should never
       // happen for valid maps and well-formed UTF-8 input.)
     }
     return ids;
@@ -343,8 +343,8 @@ export function bpeEncode(map: TokenizerMap, text: string): number[] {
  * Compile a `pre_tokenizer_pattern` to a RegExp across the runtime matrix
  * we ship to. Three escalating attempts:
  *
- *   1. `'gv'` (Unicode-sets, ES2024) — preferred for newer maps.
- *   2. `'gu'` (Unicode, ES2018) — covers maps that don't need set notation.
+ *   1. `'gv'` (Unicode-sets, ES2024): preferred for newer maps.
+ *   2. `'gu'` (Unicode, ES2018): covers maps that don't need set notation.
  *   3. Desugar `(?i:...)` inline-flag groups, then retry `'gu'`.
  *
  * The third step is what unblocks older runtimes: Chrome <125, iOS Safari
@@ -405,7 +405,7 @@ function isDelimiterShape(tok: string): boolean {
  * Limitations (acceptable for tokenizer pre-tokenizers, which never
  * exercise these shapes):
  *   - assumes the body has no nested groups or unescaped `)`.
- *   - leaves character classes `[...]` and escapes `\x` alone — only
+ *   - leaves character classes `[...]` and escapes `\x` alone: only
  *     bare letters are expanded.
  */
 export function desugarInlineFlagGroups(pattern: string): string {

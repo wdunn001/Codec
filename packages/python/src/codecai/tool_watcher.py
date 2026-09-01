@@ -1,12 +1,12 @@
 """Tool-call / region watcher.
 
 Detect delimited regions in a token-ID stream without ever decoding.
-Mirrors the C ``codec_tool_watcher`` and TS ``ToolWatcher`` APIs — same
+Mirrors the C ``codec_tool_watcher`` and TS ``ToolWatcher`` APIs: same
 state-machine semantics, same edge cases.
 
 Most chat-tuned models delimit tool calls (and reasoning blocks, vision
 spans, sandbox regions, channel headers) with single-token specials.
-Detecting *that* one happened is a uint32 compare in the hot loop —
+Detecting *that* one happened is a uint32 compare in the hot loop:
 no detokenization, no string allocation.
 
 Quick start::
@@ -21,7 +21,7 @@ Quick start::
             else:  # "region"
                 dispatch_tool(json.loads(detok.render(ev.ids)))
 
-State survives across ``feed()`` calls — a region split between network
+State survives across ``feed()`` calls: a region split between network
 frames buffers internally until the end marker arrives.
 """
 from __future__ import annotations
@@ -55,7 +55,7 @@ class ToolWatcher:
     """Stateful watcher for delimited regions in a token-ID stream.
 
     Construct with a map and the names of the start/end specials. The
-    watcher resolves them to uint32 IDs once and caches them — no
+    watcher resolves them to uint32 IDs once and caches them: no
     further map access happens during ``feed()``.
     """
 
@@ -102,11 +102,11 @@ class ToolWatcher:
         """Feed a chunk of token IDs and return a flat list of events.
 
         Single-pass scan, identical state machine to the C and TS
-        implementations — keep them in sync if you change one.
+        implementations: keep them in sync if you change one.
         """
         # Materialize once so we can index. Tolerates list / tuple /
         # generator alike. For tight inner loops the caller should pass
-        # a sequence directly — generators add a copy.
+        # a sequence directly: generators add a copy.
         if not isinstance(ids, (list, tuple)):
             ids = list(ids)
 
@@ -129,7 +129,7 @@ class ToolWatcher:
                 # else: token continues the passthrough run; no action.
             else:
                 if tok == self._end_id:
-                    # Region complete — hand the body to the caller as
+                    # Region complete: hand the body to the caller as
                     # an immutable tuple. Reset internal buffer.
                     events.append(WatcherEvent(
                         kind="region",
@@ -138,7 +138,7 @@ class ToolWatcher:
                     self._inside = False
                     pt_start = i + 1
                 elif tok == self._start_id:
-                    # Nested start — ignore. Most models don't nest these
+                    # Nested start: ignore. Most models don't nest these
                     # markers, and treating an inner start as a new region
                     # would silently drop the outer content.
                     pass

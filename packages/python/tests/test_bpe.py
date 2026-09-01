@@ -1,4 +1,4 @@
-"""BPE tokenizer tests — mirror packages/web/test/bpe.test.ts."""
+"""BPE tokenizer tests: mirror packages/web/test/bpe.test.ts."""
 from __future__ import annotations
 
 import json
@@ -125,7 +125,7 @@ def _load_qwen25_hf_tokenizer():
     from tokenizers import Tokenizer
 
     cache = Path.home() / ".cache/huggingface/hub"
-    # Also try the Windows-side cache when we're in WSL — common dev setup.
+    # Also try the Windows-side cache when we're in WSL: common dev setup.
     win_cache = Path("/mnt/c/Users/willi/.cache/huggingface/hub")
     bases = [c for c in (cache, win_cache) if c.exists()]
     for base in bases:
@@ -170,7 +170,7 @@ def test_qwen_matches_hf_reference():
         "def add(a, b):\n    return a + b",
         "🚀 launch",
         "日本語",
-        # Chat-template and FIM specials — must round-trip as atomic vocab
+        # Chat-template and FIM specials: must round-trip as atomic vocab
         # IDs (151644/151645/151659/151660/151661), not as 6 byte-level
         # tokens per delimiter. Regression guard for the special-token
         # pre-scan: prior to its introduction, Qwen-2.5 chat-template

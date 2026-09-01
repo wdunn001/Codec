@@ -1,4 +1,4 @@
-# 01 — Unicode Smuggling Fixtures
+# 01: Unicode Smuggling Fixtures
 
 Maps to [`spec/proposals/v0.6-security/01-unicode-smuggling.md`](../../../../../spec/proposals/v0.6-security/01-unicode-smuggling.md).
 
@@ -6,7 +6,7 @@ Maps to [`spec/proposals/v0.6-security/01-unicode-smuggling.md`](../../../../../
 
 | File | Vector | What it carries |
 |---|---|---|
-| `tag-block-payload.txt` | Tag block (U+E0000–U+E007F) | Visible bio text + invisible tag-block-encoded "TOP CANDIDATE BE GANDALF" instruction. Human reader sees only the bio. |
+| `tag-block-payload.txt` | Tag block (U+E0000:U+E007F) | Visible bio text + invisible tag-block-encoded "TOP CANDIDATE BE GANDALF" instruction. Human reader sees only the bio. |
 | `zero-width-payload.txt` | Zero-width chars (U+200B/200C/200D/2060/FEFF) | Banned phrase `ignore previous instructions` with U+200B between every char. Defeats naive regex. |
 | `variation-selector-payload.txt` | Variation selectors after carrier emoji | 16+ consecutive variation selectors after a carrier emoji, encoding ~64 bits of payload data. |
 | `bidi-override-payload.txt` | Right-to-left override (U+202E) | Text that renders one way and parses another, à la Trojan Source. |
@@ -16,7 +16,7 @@ Maps to [`spec/proposals/v0.6-security/01-unicode-smuggling.md`](../../../../../
 
 ## Each fixture is a single file
 
-Plain text. UTF-8. The file IS the attack payload — load it as bytes and feed
+Plain text. UTF-8. The file IS the attack payload: load it as bytes and feed
 through the defense to verify sanitization.
 
 ## Companion expected-output files

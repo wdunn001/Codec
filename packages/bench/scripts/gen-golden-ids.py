@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-gen-golden-ids.py — generate ground-truth (text, ids) pairs using HuggingFace
+gen-golden-ids.py: generate ground-truth (text, ids) pairs using HuggingFace
 tokenizers, the same library that produced our codec-maps. The output is a
 JSON file consumed by tokenizer-accuracy.ts to validate that @codecai/web's
 pure-JS BPE matches the reference tokenizer exactly.
@@ -20,7 +20,7 @@ The output looks like:
     ]
   }
 
-Add new test cases to TEST_CORPUS below — keep them realistic and varied
+Add new test cases to TEST_CORPUS below: keep them realistic and varied
 (prose, code, multilingual, edge cases like multiple spaces, CJK, emoji).
 """
 
@@ -41,7 +41,7 @@ except ImportError:
     sys.exit(1)
 
 # Curated stress-test corpus. Stable across runs so the golden file is
-# deterministic. Add liberally — every input we don't test is one we don't
+# deterministic. Add liberally: every input we don't test is one we don't
 # know is correct.
 TEST_CORPUS = [
     # ASCII basics
@@ -85,7 +85,7 @@ TEST_CORPUS = [
     "abcabcabcabcabc",
     "the the the the the",
     # Mixed
-    "Q: What's 2+2?\nA: 4 — easy! 🎯",
+    "Q: What's 2+2?\nA: 4: easy! 🎯",
     "TODO(user): fix #1234 before 2026-05-06",
 ]
 

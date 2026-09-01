@@ -49,7 +49,7 @@ fn tables() -> &'static Tables {
     })
 }
 
-/// Maps a byte (0–255) to its GPT-2-encoded character.
+/// Maps a byte (0 to 255) to its GPT-2-encoded character.
 pub fn byte_to_char(b: u8) -> char {
     tables().byte_to_char[b as usize]
 }
@@ -62,7 +62,7 @@ pub fn char_to_byte(c: char) -> Option<u8> {
 
 /// Decode a byte-level BPE token (e.g. `"Ġhello"`) to its raw bytes by
 /// reversing the GPT-2 byte→unicode table. Characters outside the table
-/// fall back to UTF-8 bytes (defensive — shouldn't happen for valid
+/// fall back to UTF-8 bytes (defensive: shouldn't happen for valid
 /// vocab entries).
 pub fn decode_byte_level_token(raw_token: &str) -> Vec<u8> {
     let mut buf: Vec<u8> = Vec::with_capacity(raw_token.len());
@@ -70,7 +70,7 @@ pub fn decode_byte_level_token(raw_token: &str) -> Vec<u8> {
         match char_to_byte(c) {
             Some(b) => buf.push(b),
             None => {
-                // Unknown char — emit as UTF-8 bytes.
+                // Unknown char: emit as UTF-8 bytes.
                 let mut tmp = [0u8; 4];
                 let s = c.encode_utf8(&mut tmp);
                 buf.extend_from_slice(s.as_bytes());

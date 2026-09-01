@@ -1,0 +1,33 @@
+# Guard against em-dashes, en-dashes, and horizontal bars anywhere in the
+# tracked tree: docs, spec, article, code comments, commit-adjacent config.
+# House rule (see CLAUDE.md): no fancy dash is ever allowed as a clause
+# delimiter, aside marker, or sentence break, in anything this repo ships.
+#
+# Runs on every push and pull request so a violation is caught before merge,
+# not just at publish time. Uses a full checkout (not a shallow diff) so the
+# scan always sees the complete tracked tree for the commit under test: a
+# pre-commit hook can miss a file added in the same commit if the hook fires
+# before `git add` finishes staging it, but a post-checkout CI run cannot.
+
+name: lint-prose
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  no-emdash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check for forbidden dash characters
+        run: node scripts/check-no-emdash.mjs

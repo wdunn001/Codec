@@ -3,7 +3,7 @@
  * BPE encoder tests.
  *
  * Two layers:
- *   1. Synthetic byte_level fixture — a tiny hand-built map with vocab,
+ *   1. Synthetic byte_level fixture: a tiny hand-built map with vocab,
  *      merges, pre_tokenizer_program. Verifies the merge loop, vocab
  *      lookup, and pretok integration without depending on the real
  *      codec-maps repo.
@@ -128,7 +128,7 @@ static void test_encode_empty_input(void) {
 }
 
 static void test_encoder_construction_requires_program(void) {
-    /* Same map but with pre_tokenizer_program stripped — encoder
+    /* Same map but with pre_tokenizer_program stripped: encoder
      * construction must fail. We can't easily build that JSON without
      * duplicating a lot, so just verify the error path with a v1-style
      * map that has no encoder, no merges. */
@@ -154,12 +154,12 @@ static void test_encoder_construction_requires_program(void) {
 static void test_real_qwen2_round_trip(void) {
     const char *path = getenv("CODEC_MAPS_QWEN");
     if (!path || !*path) {
-        fprintf(stdout, "  (skipped — set CODEC_MAPS_QWEN to enable)\n");
+        fprintf(stdout, "  (skipped: set CODEC_MAPS_QWEN to enable)\n");
         return;
     }
     FILE *f = fopen(path, "rb");
     if (!f) {
-        fprintf(stdout, "  (skipped — could not open %s)\n", path);
+        fprintf(stdout, "  (skipped: could not open %s)\n", path);
         return;
     }
     fseek(f, 0, SEEK_END);
@@ -180,7 +180,7 @@ static void test_real_qwen2_round_trip(void) {
     codec_bpe_encoder_t *enc = NULL;
     codec_status_t st = codec_bpe_encoder_new(m, &enc);
     if (st == CODEC_ERR_VALIDATION) {
-        fprintf(stdout, "  (skipped — qwen2 map lacks pre_tokenizer_program; "
+        fprintf(stdout, "  (skipped: qwen2 map lacks pre_tokenizer_program; "
                         "regenerate with maps-cli >= 0.3.0)\n");
         codec_map_free(m);
         return;

@@ -34,8 +34,8 @@ per cell: wire_bytes / tokens / B-per-tok / ttfb / total / ratio-vs-json
 
 ## Why this exists
 
-Same-shaped numbers across all four language clients (TS, Python, .NET, C) is the polyglot interop proof: the wire contract is language-agnostic, so the bytes-on-wire don't change between clients.
+Same-shaped numbers across all four language clients (TS, Python, .NET, C) is the polyglot interop proof: the wire contract is language-agnostic. The bytes-on-wire don't change between clients as a result.
 
 ## Notes
 
-Wire-byte capture: `httpx` decompresses by default, so we wrap its transport with a counter that tallies bytes off the socket before decompression. `Content-Length` falls back if the counter sees zero (unusual for streaming).
+Wire-byte capture: `httpx` decompresses by default. We wrap its transport with a counter that tallies bytes off the socket before decompression as a result. `Content-Length` falls back if the counter sees zero (unusual for streaming).

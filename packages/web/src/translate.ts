@@ -1,5 +1,5 @@
 /**
- * Translator — cross-vocab token-stream pipe.
+ * Translator: cross-vocab token-stream pipe.
  *
  * Take Agent A's token IDs in vocab V_A, produce Agent B's token IDs in
  * vocab V_B, with no text ever leaving the process. Internally:
@@ -8,7 +8,7 @@
  *
  * The text intermediate is purely local; agent-to-agent traffic still
  * carries only token IDs on the wire. This is the scenario the Codec
- * spec calls a "cross-vocab agent handoff" — when two models with
+ * spec calls a "cross-vocab agent handoff": when two models with
  * different vocabularies are chained without a human reader in between.
  *
  * Use cases:
@@ -29,7 +29,7 @@ import type { Tokenizer, TokenizerMap } from './types.js';
 
 export interface TranslateOptions {
   /**
-   * If true, this is not the final chunk — buffer any trailing partial
+   * If true, this is not the final chunk: buffer any trailing partial
    * word rather than flushing it through BPE prematurely. Set to `false`
    * (or omit) on the last chunk so the buffer drains.
    */
@@ -52,24 +52,24 @@ export class Translator {
 
   /**
    * Translate a chunk of source-vocab IDs to target-vocab IDs.
-   * Stateful across calls — partial words are buffered when
+   * Stateful across calls: partial words are buffered when
    * `opts.partial` is true.
    */
   translate(ids: readonly number[], opts: TranslateOptions = {}): number[] {
     const partial = opts.partial ?? false;
-    // Render through V_A's detokenizer with the same partial flag — this
+    // Render through V_A's detokenizer with the same partial flag: this
     // already handles partial UTF-8 byte sequences across token boundaries.
     const text = this.fromDetok.render(ids, { partial });
     if (text.length > 0) this.textBuffer += text;
 
     if (!partial) {
-      // Final chunk — flush everything.
+      // Final chunk: flush everything.
       const out = this.toTok.encode(this.textBuffer);
       this.textBuffer = '';
       return out;
     }
 
-    // Streaming chunk — find the last safe boundary and flush before it.
+    // Streaming chunk: find the last safe boundary and flush before it.
     // Pre-tokenizers (both byte_level and metaspace) split at whitespace,
     // so re-encoding text up to and including the last whitespace yields
     // the same IDs as re-encoding the complete word later.
@@ -82,7 +82,7 @@ export class Translator {
   }
 
   /**
-   * Reset internal state — call between conversations.
+   * Reset internal state: call between conversations.
    */
   reset(): void {
     this.fromDetok.reset();
@@ -101,7 +101,7 @@ export class Translator {
    * Find the last index that's safe to cut at. We prefer the position
    * just after the last whitespace character, since BPE pre-tokenizers
    * always split there. If the buffer has no whitespace, return 0
-   * (nothing safe to flush — keep buffering).
+   * (nothing safe to flush: keep buffering).
    */
   private findLastSafeBoundary(s: string): number {
     // Iterate codepoints from the end. Stop at the last whitespace and
@@ -109,7 +109,7 @@ export class Translator {
     // buffered until the next whitespace arrives.
     for (let i = s.length - 1; i >= 0; i--) {
       const c = s.charCodeAt(i);
-      // ASCII whitespace + common Unicode whitespace block — covers the
+      // ASCII whitespace + common Unicode whitespace block: covers the
       // pre-tokenizer regexes used by Llama-3, Qwen, Phi-3, Mistral, etc.
       if (c === 0x20 || c === 0x09 || c === 0x0A || c === 0x0D ||
           c === 0x0B || c === 0x0C || c === 0x00A0 || c === 0x2028 ||
@@ -139,7 +139,7 @@ export function translate(
  * cost estimation) and for fast lookups when context-free translation is
  * acceptable.
  *
- * Limitations: this is context-free — token boundaries don't align across
+ * Limitations: this is context-free: token boundaries don't align across
  * vocabs, and BPE merges depend on context. The single-shot result
  * `staticTranslationTable(A, B)[id_A]` may differ from what `translate`
  * produces when the same `id_A` appears mid-sentence. For exact streaming
@@ -153,7 +153,7 @@ export function staticTranslationTable(
   const tok = pickTokenizer(toMap);
   const out = new Map<number, number[]>();
 
-  // Walk the source vocab. Skip special tokens — they have no semantic
+  // Walk the source vocab. Skip special tokens: they have no semantic
   // text representation that translates meaningfully.
   const specialIds = new Set(Object.values(fromMap.special_tokens ?? {}));
   const vocab = fromMap.vocab ?? {};

@@ -89,7 +89,7 @@ static int events_reserve(codec_tool_watcher_t *w, size_t need) {
 static int emit(codec_tool_watcher_t *w,
                 codec_watcher_event_kind_t kind,
                 const uint32_t *ids, size_t len) {
-    /* Skip degenerate empty events — they add noise without information. */
+    /* Skip degenerate empty events: they add noise without information. */
     if (len == 0) return 1;
     if (!events_reserve(w, w->events_len + 1)) return 0;
     w->events[w->events_len].kind    = kind;
@@ -165,14 +165,14 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
                                        codec_watcher_event_t **out_events,
                                        size_t *out_len) {
     if (!w) return CODEC_ERR_INVALID_ARG;
-    /* Reset events from previous call — pointers issued earlier are now
+    /* Reset events from previous call: pointers issued earlier are now
      * stale (the input buffer has rolled over and the region buffer may
      * have been overwritten). */
     w->events_len = 0;
 
     /* Recycle the arena. Spans captured for the previous call's events are
-     * dead now, but a region still in progress has to survive — it may span
-     * any number of feeds. Slide it down to offset 0 and drop the rest. */
+     * dead now. A region still in progress has to survive, because it may
+     * span any number of feeds. Slide it down to offset 0 and drop the rest. */
     if (w->inside) {
         if (w->region_start > 0) {
             memmove(w->region_buf, w->region_buf + w->region_start,
@@ -197,7 +197,7 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
             if (id == w->start_id) {
                 /* Flush any passthrough run accumulated up to (but not
                  * including) the start marker. The marker itself is
-                 * consumed — orchestrators don't want to forward the
+                 * consumed: orchestrators don't want to forward the
                  * "begin tool call" token to the next agent. */
                 if (i > pt_start) {
                     if (!emit(w, CODEC_WATCH_PASSTHROUGH,
@@ -212,9 +212,9 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
             /* else: token continues the passthrough run; no action. */
         } else {
             if (id == w->end_id) {
-                /* Region complete. Record the arena span rather than a
-                 * pointer — a later region in this same feed can realloc
-                 * the arena, which would dangle any pointer taken now. */
+                /* Region complete. Record the arena span, not a pointer.
+                 * A later region in this same feed can realloc the arena.
+                 * That would dangle any pointer taken now. */
                 if (!emit_region(w, w->region_start,
                                  w->region_len - w->region_start)) {
                     return CODEC_ERR_OUT_OF_MEMORY;
@@ -222,7 +222,7 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
                 w->inside   = false;
                 pt_start    = i + 1;  /* passthrough resumes after end marker */
             } else if (id == w->start_id) {
-                /* Nested start; ignore — see file comment. */
+                /* Nested start; ignore: see file comment. */
             } else {
                 if (!region_buf_reserve(w, w->region_len + 1)) {
                     return CODEC_ERR_OUT_OF_MEMORY;
@@ -233,7 +233,7 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
     }
 
     /* Trailing passthrough run, if any. Only emitted when we end OUTSIDE
-     * a region — if we end mid-region, the data stays buffered. */
+     * a region: if we end mid-region, the data stays buffered. */
     if (!w->inside && pt_start < n) {
         if (!emit(w, CODEC_WATCH_PASSTHROUGH,
                   &ids[pt_start], n - pt_start)) {

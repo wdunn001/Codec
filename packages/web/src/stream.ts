@@ -4,11 +4,11 @@
  *
  * Two formats are supported, both emitted by the vLLM Codec server:
  *
- *   msgpack  — concatenated MessagePack maps. Decoded with the official
+ *   msgpack: concatenated MessagePack maps. Decoded with the official
  *              streaming unpacker (`decodeMultiStream`), which handles frame
  *              boundaries that fall inside a single msgpack object.
  *
- *   protobuf — 4-byte big-endian length prefix followed by raw CodecFrame
+ *   protobuf: 4-byte big-endian length prefix followed by raw CodecFrame
  *              bytes. We do the framing manually here to avoid pulling in a
  *              full protobuf runtime for one tiny message.
  */
@@ -16,7 +16,7 @@ import { decodeMultiStream } from '@msgpack/msgpack';
 
 import type { CodecFrame } from './types.js';
 
-/** Unified entry point — picks the decoder based on the format hint. */
+/** Unified entry point: picks the decoder based on the format hint. */
 export function decodeStream(
   stream: ReadableStream<Uint8Array>,
   format: 'msgpack' | 'protobuf' = 'msgpack'
@@ -125,7 +125,7 @@ export function decodeProtobufFrame(data: Uint8Array): CodecFrame {
       [val, pos] = decodeVarint(data, pos);
       if (field === 2) done = val !== 0;
     } else if (wt === 1) {
-      // 64-bit — not used in CodecFrame, skip.
+      // 64-bit: not used in CodecFrame, skip.
       pos += 8;
     } else if (wt === 2) {
       let len: number;
@@ -143,7 +143,7 @@ export function decodeProtobufFrame(data: Uint8Array): CodecFrame {
         finishReason = TEXT_DEC.decode(payload);
       }
     } else if (wt === 5) {
-      // 32-bit — not used, skip.
+      // 32-bit: not used, skip.
       pos += 4;
     } else {
       throw new Error(`Codec protobuf: unsupported wire type ${wt}`);

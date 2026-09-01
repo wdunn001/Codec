@@ -11,18 +11,18 @@ and the `zstd_dictionaries` field in
 
 Each `.dict` is a raw zstd dictionary as produced by
 `zstandard.train_dictionary()` (or equivalently `zstd --train`). It is a
-binary blob — load it with `dictionary:` on the encoder/decoder side.
+binary blob: load it with `dictionary:` on the encoder/decoder side.
 
 `manifest.json` is the source of truth for what each file is:
 
-- `model` — HF model id the corpus came from
-- `codec_format` — `msgpack` or `protobuf` (dicts are not interchangeable)
-- `dict_size_bytes` — the dict's byte size (4 KB / 16 KB / 64 KB sweep
+- `model`: HF model id the corpus came from
+- `codec_format`: `msgpack` or `protobuf` (dicts are not interchangeable)
+- `dict_size_bytes`: the dict's byte size (4 KB / 16 KB / 64 KB sweep
   picks the smallest size within 1 percentage point of the best gain)
-- `sha256` — content hash; this MUST match the dict body
-- `corpus.source` — `live-sglang` (real captures) or `synthetic` (offline
+- `sha256`: content hash; this MUST match the dict body
+- `corpus.source`: `live-sglang` (real captures) or `synthetic` (offline
   generator from `bench/golden/qwen2.json`)
-- `holdout` — the gain the trainer measured on held-out 20% of the corpus
+- `holdout`: the gain the trainer measured on held-out 20% of the corpus
 
 ## Naming
 
@@ -33,9 +33,9 @@ qwen2.5-synth-msgpack-v1.dict     ← synthetic (offline corpus)
 ```
 
 The `synth-` infix means the dict was trained against the deterministic
-synthetic corpus, not real sglang output. Synthetic dicts are weaker
-(they only see the model's tokenizer test corpus, not its actual
-generation distribution) but reproducible without GPU access — they're
+synthetic corpus rather than real sglang output. Synthetic dicts are weaker
+(they only see the model's tokenizer test corpus, never its actual
+generation distribution). They are, however, reproducible without GPU access: they're
 what CI uses.
 
 ## How to retrain
@@ -103,9 +103,9 @@ vLLM/llama.cpp PR equivalents) to pick the right dict by
 (`tokenizer_id`, `stream_format`) using the `zstd_dictionaries[]` field
 on the loaded tokenizer map. Until that lands, these dicts compress fine
 in offline benches but the wire negotiation never selects zstd at all
-(see "Why dicts are a precondition, not an optimization" below).
+(see "Why dicts are a precondition for zstd" below).
 
-## Why dicts are a precondition for zstd, not an optimization
+## Why dicts are the precondition for zstd
 
 It's tempting to think of `zstd-no-dict` as a graceful fallback when
 the dict is missing. **It isn't.** On Codec streams specifically:
@@ -113,23 +113,23 @@ the dict is missing. **It isn't.** On Codec streams specifically:
 | | bytes vs gzip | streaming TTFB |
 |---|---:|---:|
 | zstd-no-dict | within noise (RESULTS.md §1f) | catastrophic on shipped middleware (§1d, 334× at 2K tokens) |
-| zstd-with-dict | **16–38% smaller** (§1g) | +0.13 ms over no-dict (§1g) |
+| zstd-with-dict | **16 to 38% smaller** (§1g) | +0.13 ms over no-dict (§1g) |
 
 So no-dict zstd is the worst of both worlds: same bytes as gzip, much
 worse TTFB. The picker (`packages/wire-compress`) enforces a hard rule:
 `Content-Encoding: zstd` is selected ONLY when both gates pass:
 
-1. **`zstdHasDict`** — the server has loaded a dict from
+1. **`zstdHasDict`**: the server has loaded a dict from
    `zstd_dictionaries[]` whose `format` matches the response's
    `stream_format`. Set per request.
-2. **`zstdEnabled`** — the operator has confirmed the middleware uses
-   streaming-zstd-with-flush, not buffered finalisation.
+2. **`zstdEnabled`**: the operator has confirmed the middleware uses
+   streaming-zstd-with-flush rather than buffered finalisation.
 
 Either gate failing → the picker drops zstd from the candidate set and
 returns gzip (or br as the Safari/iOS fallback). This means: if you
 don't ship a dict for some tokenizer, requests for that tokenizer
 land on gzip. **There is no zstd-no-dict path.** The dict isn't a
-performance tweak — it's the gate that lets zstd be on the menu.
+performance tweak: it's the gate that lets zstd be on the menu.
 
 Operationally that turns the per-tokenizer training cost from "extra
 work to optimise zstd" into "the work that makes zstd usable, period."
@@ -139,8 +139,8 @@ intermediate `zstd-no-dict` step.
 ## Why per-format dicts
 
 A msgpack frame and a protobuf frame look totally different on the wire
-(map key strings vs varint field tags), so a dict trained on one is
-almost useless on the other. Cheap to train both; the storage cost is
+(map key strings vs varint field tags). A dict trained on one is
+almost useless on the other as a result. Cheap to train both; the storage cost is
 ~16 KB per format.
 
 ## When to retrain

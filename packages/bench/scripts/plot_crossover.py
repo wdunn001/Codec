@@ -132,7 +132,7 @@ def plot_summary(ax) -> None:
     ax.grid(True, which="both", alpha=0.3)
     ax.set_xlabel("response size (tokens)")
     ax.set_ylabel("wire bytes (log)")
-    ax.set_title("Codec encoding crossover — msgpack vs protobuf, all encodings")
+    ax.set_title("Codec encoding crossover: msgpack vs protobuf, all encodings")
     ax.axvspan(128, 256, alpha=0.08, color="green")
     ax.text(180, 250, "gzip → zstd\ncrossover", ha="center", color="green",
             fontsize=9, fontweight="bold")

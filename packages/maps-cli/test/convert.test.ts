@@ -1,5 +1,5 @@
 /**
- * convertHFTokenizer correctness — synthetic fixtures + a real Qwen-2
+ * convertHFTokenizer correctness: synthetic fixtures + a real Qwen-2
  * round-trip check (skipped if codec-maps isn't present locally).
  */
 import test from 'node:test';
@@ -113,7 +113,7 @@ test('hashMap: returns sha256:<64 hex chars>', async () => {
   assert.match(hash, /^sha256:[0-9a-f]{64}$/);
 });
 
-test('hashMap: deterministic — same input → same hash', async () => {
+test('hashMap: deterministic: same input → same hash', async () => {
   const opts = { id: 'test/byte-level', publishedAt: '2026-01-01T00:00:00.000Z' };
   const a = await hashMap(convertHFTokenizer(makeByteLevelHF(), opts));
   const b = await hashMap(convertHFTokenizer(makeByteLevelHF(), opts));
@@ -133,7 +133,7 @@ test('hashMap: id change flips the hash', async () => {
 // ── Real Qwen-2 round-trip (uses codec-maps if checked out locally) ────────
 
 function findQwenSource(): string | null {
-  // We don't ship the source HF tokenizer.json — test against the converted
+  // We don't ship the source HF tokenizer.json: test against the converted
   // codec-maps file as a smoke check that the existing artefact is at least
   // self-consistent (validateMap passes + round-trips through BPE).
   const candidates = [

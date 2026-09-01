@@ -1,5 +1,5 @@
 /**
- * Codec version negotiation — client-side surface for the v0.4 wire
+ * Codec version negotiation: client-side surface for the v0.4 wire
  * contract in `spec/versions/v0.4.md`:
  *
  *   - § Version Compatibility Signaling (Codec-Client-Version, 426 path)
@@ -17,7 +17,7 @@
  *     const resp = await fetch(url, withCodecClientVersion({ method: 'POST', body }));
  *     if (resp.status === 426) {
  *       const err = await parseVersionRequired(resp);
- *       throw err;  // CodecVersionRequiredError — surfaces the upgrade prompt
+ *       throw err;  // CodecVersionRequiredError: surfaces the upgrade prompt
  *     }
  */
 
@@ -41,7 +41,7 @@ export const CODEC_REQUIRED_FEATURES_HEADER = 'codec-required-features';
 /**
  * Return a new `RequestInit` with `Codec-Client-Version` set. If the
  * caller already passed a header collection (object, Headers, or array
- * of tuples) it's merged in — the version header is added if absent
+ * of tuples) it's merged in: the version header is added if absent
  * and left alone if the caller explicitly set it (so test harnesses
  * can simulate v0.3 clients).
  *
@@ -72,7 +72,7 @@ export function withCodecClientVersion(
  * response per spec § Version Compatibility Signaling.
  *
  * Pre-v0.4 clients that parse this as a generic JSON error can still
- * render `error` + `minimum_version` as a string — the structure
+ * render `error` + `minimum_version` as a string: the structure
  * degrades gracefully.
  */
 export interface CodecVersionRequiredBody {
@@ -121,11 +121,11 @@ export class CodecVersionRequiredError extends Error {
 /**
  * Parse a `426 Upgrade Required` response into a `CodecVersionRequiredError`.
  *
- * If the response is NOT a 426, returns null — caller continues with
+ * If the response is NOT a 426, returns null: caller continues with
  * its usual response handling. If the response is 426 but the body
  * isn't shaped like the v0.4 schema (e.g. a pre-v0.4 server that
  * misuses 426 for something else), throws a generic Error with the
- * raw body text — never silently swallows a 426.
+ * raw body text: never silently swallows a 426.
  *
  * This function reads the response body. Callers MUST NOT have already
  * consumed the body. After this call the response body is exhausted.
@@ -135,7 +135,7 @@ export async function parseVersionRequired(
 ): Promise<CodecVersionRequiredError | null> {
   if (resp.status !== 426) return null;
 
-  // Read once as text, then try to parse — calling .clone() after a
+  // Read once as text, then try to parse: calling .clone() after a
   // failed .json() leaves the body half-consumed and clone() throws.
   const text = await resp.text();
   let raw: unknown;
@@ -208,12 +208,12 @@ export interface DiscoverVersionPolicyOptions {
  * Returns the parsed document when the well-known path exists, or
  * `null` when the server returns 404 (the normal state for an
  * unrestricted deployment). Throws on non-404 errors (5xx, malformed
- * body, hash mismatch — none of which are possible silent-skip
+ * body, hash mismatch: none of which are possible silent-skip
  * conditions).
  *
  * Use this if you want to surface "this server requires v0.4" before
  * attempting any real requests. Otherwise let `parseVersionRequired`
- * handle the 426 lazily on first use — both are valid patterns.
+ * handle the 426 lazily on first use: both are valid patterns.
  */
 export async function discoverVersionPolicy(
   opts: DiscoverVersionPolicyOptions,

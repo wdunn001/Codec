@@ -5,7 +5,7 @@
  * register their factories here at module load time. A policy descriptor
  * carries `classifier.family` (or `client_hooks.client_classifier_family`
  * for browser-side), the host calls `resolveClassifier(modelId)`, and
- * the registry returns a ready-to-use instance — falling back to a
+ * the registry returns a ready-to-use instance: falling back to a
  * lower-tier model if capability detection rules out the requested one.
  */
 import type { SafetyClassifier } from './base.js';
@@ -16,13 +16,13 @@ export interface RegistryEntry {
   readonly modelId: string;
   readonly factory: ClassifierFactory;
   /**
-   * Tier hint — lower numbers are "always-runs" (small, CPU-only); higher
+   * Tier hint: lower numbers are "always-runs" (small, CPU-only); higher
    * numbers are "opt-in heavy" (WebGPU, large weights). Used by
    * `resolveClassifier` for fallback ordering when the requested model
    * isn't capable on the current device.
    *
-   *   1 — tier 1, always-on (Prompt Guard 86M)
-   *   2 — tier 2, opt-in    (Llama Guard 3 1B)
+   *   1: tier 1, always-on (Prompt Guard 86M)
+   *   2: tier 2, opt-in    (Llama Guard 3 1B)
    */
   readonly tier: number;
   /**
@@ -37,7 +37,7 @@ const INSTANCE_CACHE = new Map<string, SafetyClassifier>();
 
 /**
  * Register a classifier factory. Slice-3/4 modules call this at import
- * time. Re-registering the same `modelId` throws — implementations are
+ * time. Re-registering the same `modelId` throws: implementations are
  * meant to be append-only.
  */
 export function register(entry: RegistryEntry): void {
@@ -51,7 +51,7 @@ export function register(entry: RegistryEntry): void {
 
 /**
  * Drop a previously registered classifier. Idempotent: unknown ids
- * silently no-op. Drops the cached instance too — hosts that want to
+ * silently no-op. Drops the cached instance too: hosts that want to
  * release weights / GPU memory should `await classifier.unload()` first
  * (the registry doesn't because unregistration must stay synchronous
  * for predictable UI toggling). Returns `true` when something was
@@ -97,7 +97,7 @@ export interface ResolveOptions {
 
 export interface ResolveResult {
   readonly classifier: SafetyClassifier;
-  /** True when fallback fired — the host SHOULD surface a "downgraded enforcement" badge. */
+  /** True when fallback fired: the host SHOULD surface a "downgraded enforcement" badge. */
   readonly downgraded: boolean;
   /** When `downgraded`, the original modelId the policy asked for. */
   readonly requestedModelId?: string;

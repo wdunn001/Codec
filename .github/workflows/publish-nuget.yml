@@ -2,7 +2,7 @@
 # Actions tab.
 #
 # Required secret: `NUGET_API_KEY` (from https://www.nuget.org/account/apikeys
-# — scope: Push, glob `Codec.Net`).
+#: scope: Push, glob `Codec.Net`).
 
 name: publish-nuget
 

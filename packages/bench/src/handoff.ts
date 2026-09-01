@@ -1,5 +1,5 @@
 /**
- * handoff.ts — agent-to-agent round-trip cost.
+ * handoff.ts: agent-to-agent round-trip cost.
  *
  * Models the central claim of the Codec protocol: when Agent A's output is
  * Agent B's input (no human in the loop), the text round-trip is pure waste.
@@ -9,7 +9,7 @@
  *
  * We don't ship a real tokenizer (would force a heavy dep), so we model
  * detokenize/tokenize as a hash-table lookup per token. That's an under-estimate
- * — real BPE tokenization is significantly more expensive — so the text path
+ *: real BPE tokenization is significantly more expensive: so the text path
  * looks better here than it does in production. Even with that handicap, the
  * gap is large.
  *
@@ -27,7 +27,7 @@ import { fmtBytes, fmtNs, fmtNum, hr, ratio, table } from './lib/format.js';
 const REPS = 5;
 const WARMUP = 2;
 
-// Synthetic vocab — IDs map to placeholder strings. This stands in for a real
+// Synthetic vocab: IDs map to placeholder strings. This stands in for a real
 // tokenizer. Real BPE is 5-50× slower than a hash lookup, so the JSON-SSE
 // numbers below understate the real cost.
 const VOCAB_SIZE = 128_000;
@@ -42,7 +42,7 @@ function detokenize(ids: number[]): string {
 
 function tokenize(text: string): number[] {
   // Toy tokenizer that splits on the synthetic boundary. In production this
-  // is the regex+merge phase of BPE — orders of magnitude slower.
+  // is the regex+merge phase of BPE: orders of magnitude slower.
   const out: number[] = [];
   let i = 0;
   while (i < text.length) {
@@ -197,7 +197,7 @@ function main() {
   console.log('# Agent-to-agent handoff microbench\n');
   console.log(
     `Round-trip of ${fmtNum(SHAPE.totalTokens)} tokens, ${SHAPE.chunkSize} per chunk.\n` +
-      `Note: tokenize/detokenize modeled as hashtable lookup. Real BPE is 5–50× slower,\n` +
+      `Note: tokenize/detokenize modeled as hashtable lookup. Real BPE is 5 to 50× slower,\n` +
       `so the text path numbers below are a *lower bound* on its real cost.\n`
   );
 

@@ -1,6 +1,6 @@
 """Delta-varint stream encoding for Codec (v0.5+, opt-in axis).
 
-Spec: ``spec/versions/v0.5.md § "v0.5-1 — Delta-varint stream encoding (opt-in)"``.
+Spec: ``spec/versions/v0.5.md § "v0.5-1: Delta-varint stream encoding (opt-in)"``.
 
 Wire shape per frame (msgpack):
 
@@ -27,7 +27,7 @@ Stateless framing preserved: every frame carries its own base_id, so a proxy
 that drops a frame in the middle of a stream doesn't desynchronise the
 decoder for subsequent frames.
 
-The chained-vs-base-relative choice is normative — picked because chained
+The chained-vs-base-relative choice is normative: picked because chained
 gives 10-15% better wire on real token sequences (see v0.5 OQ2 for the
 "per-frame base_id" knob discussion).
 """

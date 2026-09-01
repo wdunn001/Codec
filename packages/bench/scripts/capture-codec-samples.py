@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-capture-codec-samples.py — capture raw Codec response streams from a running
+capture-codec-samples.py: capture raw Codec response streams from a running
 sglang (or any Codec-aware server) for use as zstd-dictionary training data.
 
 We deliberately request `Accept-Encoding: identity` so the saved bytes are
@@ -18,7 +18,7 @@ manifest.jsonl. Run separately per (model, format) to keep the corpus tidy:
         --n-samples 256 \\
         --out ./corpora/qwen2.5
 
-Re-uses the streaming POST plumbing from `codec_demo.run_one` indirectly —
+Re-uses the streaming POST plumbing from `codec_demo.run_one` indirectly:
 this script writes its own slim httpx loop because we need pre-decompression
 bytes (the demo decompresses for token counting; we want the raw frames).
 """
@@ -40,7 +40,7 @@ from pathlib import Path
 import httpx
 
 
-# Curated prompt set — varied lengths and shapes so the trained dictionary
+# Curated prompt set: varied lengths and shapes so the trained dictionary
 # captures the *distribution* of real traffic, not just one prompt's pattern.
 # Add liberally. Keep prompts short; the model output is the corpus, not the
 # prompt.
@@ -195,7 +195,7 @@ async def fetch_stream(
         "temperature": temperature,
         "stream_format": fmt,
     }
-    headers = {"Accept-Encoding": "identity"}  # raw frames — no compression layer
+    headers = {"Accept-Encoding": "identity"}  # raw frames: no compression layer
     t0 = time.perf_counter()
     buf = bytearray()
     async with client.stream(
@@ -207,7 +207,7 @@ async def fetch_stream(
         if ce != "identity":
             raise RuntimeError(
                 f"server returned content-encoding={ce!r} despite Accept-Encoding: identity. "
-                "the corpus would be polluted with already-compressed bytes — aborting."
+                "the corpus would be polluted with already-compressed bytes: aborting."
             )
         async for chunk in resp.aiter_raw():
             buf.extend(chunk)
@@ -259,7 +259,7 @@ async def main_async(args: argparse.Namespace) -> int:
                     prompt = rng.choice(ALL_PROMPTS)
                     max_tokens = pick_size(rng)
                     # Slight temperature jitter so identical (prompt,size) pairs
-                    # don't collapse to the same bytes — the trained dict
+                    # don't collapse to the same bytes: the trained dict
                     # benefits from diversity.
                     temp = rng.uniform(0.0, 0.4)
                     try:

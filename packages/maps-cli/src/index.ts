@@ -1,5 +1,5 @@
 /**
- * @codecai/maps-cli — programmatic API.
+ * @codecai/maps-cli: programmatic API.
  *
  * Use this when integrating dialect map generation into a build pipeline.
  * For one-off generation use the `codecai-maps` CLI.

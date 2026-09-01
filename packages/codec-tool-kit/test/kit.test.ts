@@ -30,7 +30,7 @@ const VALID: ToolManifest = {
   ],
 };
 
-// A toy tokenizer for tests — splits on space, hashes characters into IDs.
+// A toy tokenizer for tests: splits on space, hashes characters into IDs.
 const toy: Tokenizer = {
   encode(text: string): number[] {
     return text.split('').map((c) => c.charCodeAt(0) % 50_000);
@@ -80,7 +80,7 @@ describe('findBinding', () => {
   });
 });
 
-describe('precache — static fragments', () => {
+describe('precache: static fragments', () => {
   it('encodes static text once', () => {
     const cache = precache({
       fragments: [
@@ -96,7 +96,7 @@ describe('precache — static fragments', () => {
   });
 });
 
-describe('precache — template fragments', () => {
+describe('precache: template fragments', () => {
   it('splits a template on slot markers', () => {
     const cache = precache({
       fragments: [
@@ -107,7 +107,7 @@ describe('precache — template fragments', () => {
     const tpl = cache.fragments['weather']!;
     assert.equal(tpl.kind, 'template');
     const parts = (tpl as { parts: ({ ids: number[] } | { slot: string })[] }).parts;
-    // Expected order: {city} : ' ' : {temp} : '°F'   — actually
+    // Expected order: {city} : ' ' : {temp} : '°F': actually
     //                {city} ': ' {temp} '°F' since the parser eats the
     //                literal between markers.
     assert.deepEqual(

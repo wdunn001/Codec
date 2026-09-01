@@ -1,15 +1,15 @@
 /**
- * Layer 0 — boundary sanitizer for invisible / special-token attacks.
+ * Layer 0: boundary sanitizer for invisible / special-token attacks.
  *
  * Runs BEFORE the prefilter ([prefilter.ts](../prefilter.ts)). Strips
  * classes of input that should not survive into the wire payload regardless
  * of intent:
  *
- *   - Unicode Tag block (U+E0000–U+E007F) — invisible covert channel
- *   - Zero-width chars (U+200B/200C/200D/2060/FEFF) — filter-evasion
- *   - Variation selector runs — covert payload encoding
- *   - BiDi controls (U+202A–U+202F, U+2066–U+2069) — Trojan Source
- *   - Chat-template special tokens — boundary-break injection
+ *   - Unicode Tag block (U+E0000:U+E007F): invisible covert channel
+ *   - Zero-width chars (U+200B/200C/200D/2060/FEFF): filter-evasion
+ *   - Variation selector runs: covert payload encoding
+ *   - BiDi controls (U+202A:U+202F, U+2066:U+2069): Trojan Source
+ *   - Chat-template special tokens: boundary-break injection
  *
  * Why this is layer 0 and not part of prefilter:
  *
@@ -30,7 +30,7 @@ const TAG_BLOCK_END = 0xe007f;
 const ZERO_WIDTH_CHARS = new Set([
   '​', // zero-width space
   '‌', // zero-width non-joiner
-  '‍', // zero-width joiner (legitimate in emoji/Indic — see options)
+  '‍', // zero-width joiner (legitimate in emoji/Indic: see options)
   '⁠', // word joiner
   '﻿', // zero-width no-break space / BOM
 ]);
@@ -65,7 +65,7 @@ const CHAT_TEMPLATE_TOKENS: readonly string[] = [
 ];
 
 export interface SanitizeOptions {
-  /** Preserve U+200D (ZWJ) — set true if the app accepts emoji or Indic scripts. Default false. */
+  /** Preserve U+200D (ZWJ): set true if the app accepts emoji or Indic scripts. Default false. */
   preserveZeroWidthJoiner?: boolean;
   /** Strip variation selector runs of length >= this. Default 2. */
   variationSelectorRunMin?: number;
@@ -74,7 +74,7 @@ export interface SanitizeOptions {
 export interface SanitizeResult {
   /** The sanitized text. */
   text: string;
-  /** Per-vector strip counts — emit as telemetry. Nonzero values indicate attack-in-progress. */
+  /** Per-vector strip counts: emit as telemetry. Nonzero values indicate attack-in-progress. */
   removed: {
     tagBlock: number;
     zeroWidth: number;
@@ -109,7 +109,7 @@ export function sanitizeForCodec(
     ? new Set([...ZERO_WIDTH_CHARS].filter((c) => c !== '‍'))
     : ZERO_WIDTH_CHARS;
 
-  // First pass — character-level strips using a code-point-aware iteration.
+  // First pass: character-level strips using a code-point-aware iteration.
   const chars = Array.from(input);
   const filtered: string[] = [];
   let vsRunLen = 0;
@@ -157,7 +157,7 @@ export function sanitizeForCodec(
 
   let text = filtered.join('');
 
-  // Second pass — chat-template token string-replace.
+  // Second pass: chat-template token string-replace.
   for (const tok of CHAT_TEMPLATE_TOKENS) {
     const before = text.length;
     text = text.split(tok).join('');
@@ -172,7 +172,7 @@ export function sanitizeForCodec(
 /**
  * Minimal cross-script confusables fold. NFKC handles compatibility-class
  * confusables (mathematical alphanumerics, fullwidth Latin, enclosed alphanums)
- * but NOT cross-script confusables — Cyrillic 'а' (U+0430) is visually
+ * but NOT cross-script confusables: Cyrillic 'а' (U+0430) is visually
  * identical to Latin 'a' but has no compatibility decomposition. This table
  * is the small Latin-look-alike subset of Cyrillic and Greek needed for the
  * common cases. Production deployments should layer in the full Unicode
@@ -206,7 +206,7 @@ export function foldConfusables(s: string): string {
  * alphanumerics (Ⓣ → T), and the common Cyrillic/Greek lookalikes (Cyrillic
  * 'а' → Latin 'a'). Useful for keyword matching against banned-word lists.
  *
- * **Lossy** — never ship the normalized form to the model or over the wire;
+ * **Lossy**: never ship the normalized form to the model or over the wire;
  * ship the original NFC form. This is for policy decisions only.
  */
 export function normalizeForPolicy(s: string): string {
@@ -214,7 +214,7 @@ export function normalizeForPolicy(s: string): string {
 }
 
 /**
- * NFC normalize for wire payload — preserves user content exactly while
+ * NFC normalize for wire payload: preserves user content exactly while
  * stabilizing combining sequences. Safe to ship.
  */
 export function normalizeForWire(s: string): string {

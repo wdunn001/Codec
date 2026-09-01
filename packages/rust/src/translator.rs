@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! Translator — cross-vocab token-stream pipe.
+//! Translator: cross-vocab token-stream pipe.
 //!
 //! Take Agent A's token IDs in vocab `V_A`, produce Agent B's token IDs
 //! in vocab `V_B`, with no text ever leaving the process. Internally:
@@ -10,7 +10,7 @@
 //!
 //! The text intermediate is purely local; agent-to-agent traffic still
 //! carries only token IDs on the wire. Mirrors the TS Translator class
-//! from `@codecai/web` and the Python Translator from `codecai` — same
+//! from `@codecai/web` and the Python Translator from `codecai`: same
 //! word-boundary buffering rules.
 //!
 //! Streaming caveat: BPE merges depend on context, so re-tokenizing
@@ -87,7 +87,7 @@ impl Translator {
     }
 }
 
-// ASCII whitespace + common Unicode whitespace block — covers the
+// ASCII whitespace + common Unicode whitespace block: covers the
 // pre-tokenizer regexes used by Llama-3, Qwen, Phi-3, Mistral, etc.
 fn is_whitespace_cp(c: char) -> bool {
     matches!(

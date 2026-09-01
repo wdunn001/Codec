@@ -1,5 +1,5 @@
 /*
- * codec_compression.h — client-side helpers for the Codec compression
+ * codec_compression.h: client-side helpers for the Codec compression
  * contract.
  *
  * SPDX-License-Identifier: MIT
@@ -12,7 +12,7 @@
  * "Codec-Zstd-Dict response header" for the full contract.
  *
  * Why this is a separate module: the actual zstd decompression is
- * intentionally out of scope here — libcurl / libsoup / a custom HTTP
+ * intentionally out of scope here: libcurl / libsoup / a custom HTTP
  * stack all already own that path, and libzstd is the standard library
  * for the decompression step itself. This module just exposes the small
  * piece that's specific to Codec: hashing a dict to its canonical
@@ -21,7 +21,7 @@
  *
  * The "fail fast" stance matters: wrong-dict decompression produces
  * garbage bytes that msgpack / protobuf parsers downstream will
- * misinterpret — refuse to decompress with the wrong dict rather than
+ * misinterpret: refuse to decompress with the wrong dict rather than
  * let a malformed token-ID stream into the model layer.
  */
 
@@ -37,8 +37,8 @@ extern "C" {
 /*
  * Result codes for codec_select_zstd_dict_for_response. Distinct from
  * codec_status_t because the "not zstd" outcome is a *positive* signal
- * — the caller's HTTP stack should pass the body through to whatever
- * handles gzip / brotli / identity — not an error.
+ *: the caller's HTTP stack should pass the body through to whatever
+ * handles gzip / brotli / identity: not an error.
  */
 typedef enum codec_zstd_dict_result {
     /* Response is Content-Encoding: zstd, Codec-Zstd-Dict header matches
@@ -63,7 +63,7 @@ typedef enum codec_zstd_dict_result {
 
 /*
  * One (name, value) HTTP header pair. Pass the caller's response
- * headers as a flat array of these — keys are matched case-insensitively
+ * headers as a flat array of these: keys are matched case-insensitively
  * so the caller doesn't have to pre-normalise.
  *
  * Strings are borrowed; the array and its contents must outlive the
@@ -76,7 +76,7 @@ typedef struct codec_header_kv {
 
 /*
  * One loaded dictionary entry. ``hash`` is the canonical
- * ``sha256:<lowercase 64-hex>`` form — same shape codec_hash_zstd_dict
+ * ``sha256:<lowercase 64-hex>`` form: same shape codec_hash_zstd_dict
  * produces and the server emits in Codec-Zstd-Dict.
  *
  * Strings + bytes are borrowed; the array and its contents must outlive
@@ -125,14 +125,14 @@ int codec_hash_zstd_dict(const uint8_t *bytes, size_t len,
  * Returns CODEC_ZSTD_DICT_MISSING_HEADER / _MALFORMED_HASH /
  * _UNKNOWN_HASH for the documented server / configuration errors. A
  * wrong-dict decompression would produce garbage bytes that downstream
- * msgpack / protobuf parsers would misinterpret — refusing to
+ * msgpack / protobuf parsers would misinterpret: refusing to
  * decompress is the safe default.
  *
  * out_dict_bytes / out_dict_len may be NULL if the caller only wants
  * the OK / error signal.
  *
  * Memory: the dict bytes are borrowed from the matching
- * ``loaded_dicts`` entry — no allocation, no caller-side free.
+ * ``loaded_dicts`` entry: no allocation, no caller-side free.
  */
 codec_zstd_dict_result_t codec_select_zstd_dict_for_response(
     const codec_header_kv_t       *headers,
@@ -153,7 +153,7 @@ codec_zstd_dict_result_t codec_select_zstd_dict_for_response(
  *
  * Spec: spec/WELL_KNOWN_DISCOVERY.md § "Zstd dictionaries (v0.5+)".
  *
- * The discovery surface is hard-fail by design — silent fallback to
+ * The discovery surface is hard-fail by design: silent fallback to
  * identity bytes was the v0.4.1 sglang COPY-dicts regression class this
  * surface eliminates.
  */
@@ -204,7 +204,7 @@ codec_status_t codec_well_known_dict_url(
  *   1. codec_well_known_dict_url(...) to build the URL
  *   2. fetch the bytes with your HTTP stack of choice
  *   3. codec_verify_zstd_dict_bytes(...) to confirm the origin served
- *      the right bytes — never feed unverified bytes into a zstd decoder
+ *      the right bytes: never feed unverified bytes into a zstd decoder
  */
 codec_status_t codec_verify_zstd_dict_bytes(
     const uint8_t *bytes,

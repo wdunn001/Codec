@@ -10,7 +10,7 @@ import java.util.Map;
  * Vocab-only longest-prefix-match tokenizer. Walks input left-to-right,
  * emitting the ID of the longest vocab fragment that matches at each
  * position. Suitable for canonical-IR / synthetic test maps. NOT
- * BPE-correct for real model vocabs — use {@link BPETokenizer} for those.
+ * BPE-correct for real model vocabs: use {@link BPETokenizer} for those.
  */
 public final class LongestMatchTokenizer implements ITokenizer {
     private final String id;

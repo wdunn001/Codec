@@ -1,5 +1,5 @@
 /**
- * Codec benchmark — measures actual wire bytes for a streaming Anthropic API call
+ * Codec benchmark: measures actual wire bytes for a streaming Anthropic API call
  * in text mode, then shows what the same response would cost over Codec binary frames.
  *
  * Usage:
@@ -200,7 +200,7 @@ async function main() {
   console.log(`  Input tokens : ${num(inputTokens)}`);
   console.log(`  Output tokens: ${num(outputTokens)}`);
 
-  console.log('\n' + bold('  TEXT TRANSPORT') + dim('  (current API — JSON/SSE over HTTPS)'));
+  console.log('\n' + bold('  TEXT TRANSPORT') + dim('  (current API: JSON/SSE over HTTPS)'));
   console.log(hr());
   console.log(`  SSE events   : ${num(sseEventCount)}`);
   console.log(`  Wire bytes   : ${yellow(num(rawWireBytes))}`);

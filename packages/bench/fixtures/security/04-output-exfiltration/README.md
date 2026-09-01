@@ -1,4 +1,4 @@
-# 04 — Output Exfiltration Fixtures
+# 04: Output Exfiltration Fixtures
 
 Maps to [`spec/proposals/v0.6-security/04-output-exfiltration.md`](../../../../../spec/proposals/v0.6-security/04-output-exfiltration.md).
 

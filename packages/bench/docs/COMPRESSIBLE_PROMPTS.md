@@ -1,11 +1,11 @@
 # Crafting compressible response prompts
 
-Codec's wire-byte savings come from two layers stacked: (1) token-ID
+Codec's wire-byte savings come from two layers stacked. Layer 1: token-ID
 framing replaces detokenized-text framing (~15× over JSON-SSE at default
-identity), and (2) HTTP `Content-Encoding` compression crushes the
-repetitive bytes left in the stream (gzip/br to ~3–5 B/token, dict-zstd
+identity). Layer 2: HTTP `Content-Encoding` compression crushes the
+repetitive bytes left in the stream (gzip/br to ~3 to 5 B/token, dict-zstd
 to under 1 B/token on highly-structured outputs). Layer 2's effectiveness
-depends on what the model actually emits — token sequences with low
+depends on what the model actually emits: token sequences with low
 entropy and structural repetition compress orders of magnitude better
 than free-form prose.
 
@@ -18,7 +18,7 @@ issue tracking task #43).
 
 The cross-stack v0.4.1 bench surfaced a 14× ratio gap on the same prompt
 (sglang 86×, vllm 8×) caused entirely by the engines settling into
-different greedy continuations at temperature=0 — same framing, same
+different greedy continuations at temperature=0: same framing, same
 compressor, different bytes. This document is the prompt-engineering
 side of that observation.
 
@@ -28,14 +28,14 @@ side of that observation.
 
 You want each line of the response to be **mostly predictable from
 earlier lines**, with only the actual data carrying entropy. gzip's
-LZ77 stage memorises any repeated byte sequence within ~32 KB, and
+LZ77 stage memorises any repeated byte sequence within ~32 KB. Then
 deflate's Huffman stage cheap-encodes the high-frequency tokens that
 result. dict-zstd starts with ~16 KB of pre-trained context already in
-its window, so the first response byte already pays for itself.
+its window. The first response byte already pays for itself as a result.
 
 The framing bytes inside a Codec msgpack frame are ~9 constant bytes
-plus a 1–3 byte varint per token ID. Over 2048 frames that's ~20 KB of
-identical structural bytes that gzip eats down to near-zero — only the
+plus a 1 to 3 byte varint per token ID. Over 2048 frames that's ~20 KB of
+identical structural bytes that gzip eats down to near-zero: only the
 content (token IDs and their patterns) carries through. If the content
 itself is templated, you get another order of magnitude.
 
@@ -75,7 +75,7 @@ markedly higher compressibility.
 
 Three tokens (`YES`, `NO`, `MAYBE`) and the word `because` repeat every
 line. Only the reason varies. The maturity field in the schema example
-above is the same idea — a closed enum.
+above is the same idea: a closed enum.
 
 ### Restate-then-answer
 
@@ -86,16 +86,16 @@ above is the same idea — a closed enum.
 > ```
 > Questions: ...
 
-The `Q:` line is essentially free under gzip — its tokens are already in
-the prompt context, and the deflate window memorises them after the
+The `Q:` line is essentially free under gzip: its tokens are already in
+the prompt context. The deflate window memorises them after the
 first iteration. The `A:` lines carry the actual content.
 
 ### Enumerated lists over prose
 
 > List the 10 most common Python errors. One per line. Format:
-> `<N>. <error name> — <one-sentence cause>` — no headers, no intro.
+> `<N>. <error name>: <one-sentence cause>`: no headers, no intro.
 
-The `. ` and ` — ` separators repeat. Numerals 1–10 are single-token IDs.
+The `. ` and `: ` separators repeat. Numerals 1 to 10 are single-token IDs.
 Only the error names + causes are entropy.
 
 ### Tabular
@@ -103,7 +103,7 @@ Only the error names + causes are entropy.
 > Output as a markdown table with columns: Name | Year | Author |
 > Subject. No prose. Five rows.
 
-Column separators and header row repeat — and for cross-row repetition,
+Column separators and header row repeat: and for cross-row repetition,
 gzip eats the `|` token-IDs cheaply.
 
 ### Known-template formats
@@ -111,14 +111,14 @@ gzip eats the `|` token-IDs cheaply.
 > Respond as a man page entry: NAME / SYNOPSIS / DESCRIPTION / OPTIONS /
 > SEE ALSO sections.
 
-The man-page scaffold is highly repetitive and the model has seen
-thousands of examples in training, so it produces a structurally
-consistent skeleton. Compresses well, reads well to humans.
+The man-page scaffold is highly repetitive. The model has also seen
+thousands of examples in training. It produces a structurally
+consistent skeleton as a result. Compresses well, reads well to humans.
 
 ### Numeric-precision constraints
 
 > All scores to 2 decimal places. All durations in seconds. All
-> percentages as integers 0–100.
+> percentages as integers 0 to 100.
 
 Predictable number formats compress better than free-form floats. A
 2-decimal field like `0.87` is two token-IDs the compressor sees
@@ -129,9 +129,8 @@ time.
 
 ## What to avoid if you care about compressibility
 
-- "Be creative", "vary your phrasing", "use different words each time"
-  — kills the repetition gzip needs
-- "Use bullet points but vary the formatting" — kills templates
+- "Be creative", "vary your phrasing", "use different words each time": kills the repetition gzip needs
+- "Use bullet points but vary the formatting": kills templates
 - Asking for synonyms or alternate phrasings
 - Free-form prose with no structure
 
@@ -143,11 +142,11 @@ All of the above interacts with Codec's dict-zstd path. A zstd dict
 trained on a corpus of typical responses for your domain (medical,
 legal, code, finance, support tickets, etc.) starts the compressor with
 ~16 KB of pre-loaded context. A domain-tuned dict + a templated output
-prompt can push response sizes into the 100–1000× compression range
+prompt can push response sizes into the 100 to 1000× compression range
 without losing any information.
 
 See `spec/versions/v0.4.md` § "Pre-trained ZSTD dictionaries" for the
-dict contract, and `packages/bench/scripts/train-zstd-dict.py` for the
+dict contract. See `packages/bench/scripts/train-zstd-dict.py` for the
 reference training pipeline.
 
 ---
@@ -171,13 +170,13 @@ varint carries entropy. If those token IDs are themselves repetitive
 a bit each.
 
 With 2048 frames × low-entropy content, the wire reduces from ~30 KB
-identity to ~350 B gzipped or ~290 B dict-zstd — matching the v0.4.1
+identity to ~350 B gzipped or ~290 B dict-zstd: matching the v0.4.1
 bench's observed ratios when the model output happens to be highly
 structured.
 
 When the model output is free-form (one of the bench's tokenizer-stream
 runs against a creative prompt would do this), the same compressor on
-the same wire format yields ~3–4 KB — still 8–10× better than JSON-SSE
+the same wire format yields ~3 to 4 KB: still 8 to 10× better than JSON-SSE
 but a far cry from the 1700× headline.
 
 **Therefore:** Codec's headline compression is **real but
@@ -197,10 +196,10 @@ bandwidth-constrained Codec consumer:
 2. **Constrain vocabulary** where the domain allows (enum fields, fixed
    precision, known templates).
 3. **Train a domain-specific zstd dict** if you control both ends.
-4. **Measure realised wire bytes**, not just whether the response
-   "looks right" — the prompt-engineering changes show up in the wire
-   bytes, not in human readability.
+4. **Measure realised wire bytes** rather than just whether the response
+   "looks right": the prompt-engineering changes show up in the wire
+   bytes first, before they ever affect human readability.
 
 For benchmarking the protocol itself rather than the model + protocol
 together, prefer the v0.5 synthetic-stream cell when it lands (see
-`packages/bench/methodology/SCHEMA.md` § synthetic-stream — TBD).
+`packages/bench/methodology/SCHEMA.md` § synthetic-stream: TBD).

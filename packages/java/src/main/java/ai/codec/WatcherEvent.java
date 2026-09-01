@@ -6,7 +6,7 @@ import java.util.Arrays;
 /**
  * One event from {@link ToolWatcher#feed(long[])}.
  *
- * <p>{@code ids} is always a fresh array — safe to retain across
+ * <p>{@code ids} is always a fresh array: safe to retain across
  * subsequent feed calls.
  *
  * <p>IDs are stored as {@code long} so the full uint32 range (up to

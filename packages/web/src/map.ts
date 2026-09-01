@@ -27,7 +27,7 @@ const defaultCache: MapCache = new MemoryMapCache();
 
 // ── Validation ────────────────────────────────────────────────────────────────
 //
-// Light shape check — we don't pull a full JSON-Schema validator into the wire
+// Light shape check: we don't pull a full JSON-Schema validator into the wire
 // path. The contract is small enough that a hand-written check is honest about
 // what we actually require.
 
@@ -84,7 +84,7 @@ export function validateMap(value: unknown): asserts value is TokenizerMap {
   }
 }
 
-// ── Hashing (SubtleCrypto — works in browser, Node 18+, Cloudflare, Deno) ─────
+// ── Hashing (SubtleCrypto: works in browser, Node 18+, Cloudflare, Deno) ─────
 
 export class TokenizerMapHashMismatchError extends Error {
   constructor(expected: string, actual: string) {
@@ -166,7 +166,7 @@ export async function loadMap(opts: LoadOptions): Promise<TokenizerMap> {
 
   // Static-artifact fetch: NO custom headers. `codec-client-version` forces a
   // CORS preflight, and third-party CDN hosts (jsDelivr etc.) don't allowlist
-  // it — the whole fetch fails. Version signaling is a client<->server
+  // it: the whole fetch fails. Version signaling is a client<->server
   // handshake; static maps get integrity from the hash check below instead.
   const resp = await fetchImpl(opts.url, { signal: opts.signal });
   if (!resp.ok) {

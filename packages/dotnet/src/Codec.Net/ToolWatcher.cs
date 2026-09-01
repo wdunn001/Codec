@@ -2,14 +2,14 @@
 //
 // Tool-call / region watcher.
 //
-// Mirrors libcodec's codec_tool_watcher and @codecai/web's ToolWatcher —
+// Mirrors libcodec's codec_tool_watcher and @codecai/web's ToolWatcher:
 // same state-machine semantics. Detects delimited regions (tool calls,
 // reasoning blocks, vision spans, sandbox regions, channel headers) in
 // a token-ID stream without ever decoding. The hot loop is a uint
 // compare against two cached IDs; no vocab read, no detokenize call,
 // no string allocation.
 //
-// State survives across Feed() calls — a region split between network
+// State survives across Feed() calls: a region split between network
 // frames buffers internally until the end marker arrives.
 using System;
 using System.Collections.Generic;
@@ -28,7 +28,7 @@ public enum WatcherEventKind
 
 /// <summary>One event from <see cref="ToolWatcher.Feed(System.Collections.Generic.IReadOnlyList{uint})"/>.</summary>
 /// <remarks>
-/// <see cref="Ids"/> is always a fresh array — safe to retain across
+/// <see cref="Ids"/> is always a fresh array: safe to retain across
 /// subsequent Feed calls. (Unlike the C version, which returns pointers
 /// aliasing the watcher's internal buffer, .NET callers don't have to
 /// copy out before continuing the read loop.)
@@ -54,7 +54,7 @@ public sealed class ToolWatcherException : Exception
 /// <summary>
 /// Stateful watcher for delimited regions in a token-ID stream.
 /// Construct with a map and the names of the start/end specials. The
-/// watcher resolves them to IDs once and caches them — no further map
+/// watcher resolves them to IDs once and caches them: no further map
 /// access happens during <see cref="Feed(System.Collections.Generic.IReadOnlyList{uint})"/>.
 /// </summary>
 /// <example>
@@ -80,7 +80,7 @@ public sealed class ToolWatcher
     public string EndName { get; }
 
     private bool _inside;
-    /// <summary>Captured region body — accumulates while Inside, cleared on Region emit.</summary>
+    /// <summary>Captured region body: accumulates while Inside, cleared on Region emit.</summary>
     private readonly List<uint> _region = new();
 
     public ToolWatcher(TokenizerMap map, string startName, string endName)
@@ -125,7 +125,7 @@ public sealed class ToolWatcher
         int ptStart = 0;
 
         // Single-pass scan. Identical state machine to the C and TS
-        // implementations — keep them in sync if you change one.
+        // implementations: keep them in sync if you change one.
         for (int i = 0; i < n; i++)
         {
             uint id = ids[i];
@@ -160,7 +160,7 @@ public sealed class ToolWatcher
                 }
                 else if (id == StartId)
                 {
-                    // Nested start — ignore. Most models don't nest these
+                    // Nested start: ignore. Most models don't nest these
                     // markers, and treating an inner start as a new region
                     // would silently drop the outer content.
                 }

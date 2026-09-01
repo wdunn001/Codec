@@ -2,15 +2,15 @@
  * Codec agent-to-agent demo.
  *
  * Simulates two agents collaborating on a task:
- *   Agent A  — researcher, answers a question
- *   Agent B  — synthesiser, summarises Agent A's answer
+ *   Agent A: researcher, answers a question
+ *   Agent B: synthesiser, summarises Agent A's answer
  *
  * Shows the same workflow in two modes:
  *
- *   TEXT MODE   — current state of the world
+ *   TEXT MODE: current state of the world
  *     A generates text → text transmitted → B re-tokenises → B generates text
  *
- *   CODEC MODE  — token-native transport
+ *   CODEC MODE: token-native transport
  *     A generates token IDs → IDs transmitted → B consumes IDs directly
  *
  * Usage:
@@ -182,14 +182,14 @@ async function main() {
   }
 
   console.log('\n' + bold('━'.repeat(W)));
-  console.log(bold('  CODEC  —  Agent-to-Agent Demo'));
+  console.log(bold('  CODEC: Agent-to-Agent Demo'));
   console.log(bold('━'.repeat(W)));
   console.log(dim('\n  Two agents collaborate on a question.'));
   console.log(dim('  Agent A: researcher   |   Agent B: synthesiser\n'));
 
   // ── Agent A ───────────────────────────────────────────────────────────────
 
-  console.log(cyan(bold('  ▸ Agent A')) + dim(' — generating research notes…'));
+  console.log(cyan(bold('  ▸ Agent A')) + dim(': generating research notes…'));
   const agentA = await streamAndMeasure(apiKey, [{ role: 'user', content: AGENT_A_PROMPT }]);
   console.log(dim('    ' + agentA.text.replace(/\n/g, '\n    ').slice(0, 300) + '…\n'));
 
@@ -201,7 +201,7 @@ async function main() {
   console.log(`  Agent A output      : ${num(agentA.outputTokens)} tokens, ${num(agentA.wireBytes)} bytes on wire`);
 
   // Simulate the text being shipped and Agent B receiving it
-  // (the text is already in memory as a string — this represents the cost of
+  // (the text is already in memory as a string: this represents the cost of
   //  transmitting it and Agent B's tokeniser ingesting it)
   const textHandoffBytes = new TextEncoder().encode(
     JSON.stringify({ role: 'user', content: agentA.text })
@@ -211,7 +211,7 @@ async function main() {
   console.log(`  Text payload to B   : ${yellow(num(textHandoffBytes))} bytes`);
   console.log(dim('  Agent B ingests text → tokeniser runs → token IDs produced'));
 
-  process.stdout.write(cyan('  ▸ Agent B') + dim(' — synthesising…'));
+  process.stdout.write(cyan('  ▸ Agent B') + dim(': synthesising…'));
   const agentB_text = await streamAndMeasure(
     apiKey,
     [
@@ -239,7 +239,7 @@ async function main() {
   const codecA = buildCodecStream(agentA.outputTokens);
   console.log(`  Agent A output      : ${num(agentA.outputTokens)} tokens`);
   console.log(`  Codec stream to B   : ${green(num(codecA.totalBytes))} bytes`);
-  console.log(dim('  Agent B receives token IDs directly — no detokenisation, no re-tokenisation'));
+  console.log(dim('  Agent B receives token IDs directly: no detokenisation, no re-tokenisation'));
 
   // Agent B's codec stream (its own output)
   const codecB = buildCodecStream(agentB_text.outputTokens);

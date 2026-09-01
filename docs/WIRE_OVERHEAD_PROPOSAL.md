@@ -1,4 +1,4 @@
-# Wire-overhead thinning proposal — headers can't dominate the payload
+# Wire-overhead thinning proposal: headers can't dominate the payload
 
 **Status:** proposal. Not executed.
 
@@ -12,7 +12,7 @@ Measured today on `vinez@192.168.1.88`, sglang `codec-sglang:v0.3.0`:
 | 2,048-token msgpack + dict-zstd|        291 |          185 | **0.6×** (manageable) |
 | 2,048-token msgpack + zstd     |       4549 |          185 | (negligible) |
 
-Today's headers are ONLY standard HTTP (`content-type`, `content-encoding`, `vary`, `transfer-encoding`, `date`, `server`). No Codec-* headers are emitted. **The current "thin wire" is an accident — the server is omitting metadata the spec implies should be there.**
+Today's headers are ONLY standard HTTP (`content-type`, `content-encoding`, `vary`, `transfer-encoding`, `date`, `server`). No Codec-* headers are emitted. **The current "thin wire" is an accident: the server is omitting metadata the spec implies should be there.**
 
 When we wire up the spec-conformant header set per v0.4:
 
@@ -34,12 +34,12 @@ Codec-Min-Version:          0.4                                                 
 
 Spec-conformant response header total: **~580 bytes**. On an 84-byte payload that's a **7× header-to-body ratio**. Even on a 291-byte dict-zstd response it's 2:1.
 
-HTTP/2 HPACK helps inside a single connection — common header NAMES are pre-indexed in the static table, and repeated header VALUES build up in the dynamic table over the connection. But:
+HTTP/2 HPACK helps inside a single connection: common header NAMES are pre-indexed in the static table. Repeated header VALUES also build up in the dynamic table over the connection. But:
 - First response of a connection always pays full freight.
 - Many deployments run HTTP/1.1 (uvicorn for vllm; nginx-proxy in front; common reverse-proxy stacks).
 - Header VALUES like `sha256:887311…` are unique enough that even HPACK only saves on exact repetition.
 
-The headers are mostly **connection-invariant**: the map URL, the dict hash, the safety policy ID, the minimum-version floor — none of these change per request. Repeating them every response is what makes the wire fat.
+The headers are mostly **connection-invariant**: the map URL, the dict hash, the safety policy ID, the minimum-version floor: none of these change per request. Repeating them every response is what makes the wire fat.
 
 ## Five interventions
 
@@ -55,7 +55,7 @@ The server computes a short deterministic hash of its current Codec session stat
 
 8 hex chars = 32 bits of entropy. Per-connection scope means collision risk is negligible (a malicious server still can't cause a wrong-state lookup because the client validates the resulting frames against its cached state).
 
-**Saves ~400–500 bytes per response after the first** when full v0.4 headers are in play. Works on HTTP/1.1 — no HPACK dependency. Works behind reverse proxies that strip/re-add headers (the session id is opaque; proxies pass it through).
+**Saves ~400 to 500 bytes per response after the first** when full v0.4 headers are in play. Works on HTTP/1.1: no HPACK dependency. Works behind reverse proxies that strip/re-add headers (the session id is opaque; proxies pass it through).
 
 ```
 First response:
@@ -71,9 +71,9 @@ Subsequent responses (cache hit):
 
 ### 2. Truncate `sha256:` in headers from 64 hex to 12-16 hex
 
-A sha256 in full hex is 64 chars. At 16 hex (64 bits), collision-resistance for cache lookups is still 2⁶⁴ buckets — astronomically safe for "look up the right map in my local cache" use cases.
+A sha256 in full hex is 64 chars. At 16 hex (64 bits), collision-resistance for cache lookups is still 2⁶⁴ buckets: astronomically safe for "look up the right map in my local cache" use cases.
 
-The full hash STILL appears in the well-known descriptor body — that's where integrity verification happens. The header is just an index. Headers are not the integrity boundary.
+The full hash STILL appears in the well-known descriptor body: that's where integrity verification happens. The header is just an index. Headers are not the integrity boundary.
 
 - Old: `Codec-Tokenizer-Map-Hash: sha256:887311099cdc09e7022001a01fa1da396750d669b7ed2c242a000b9badd09791` (95 B)
 - New: `Codec-Tokenizer-Map-Hash: sha256:887311099cdc0973` (47 B)
@@ -83,7 +83,7 @@ If we want to drop a level further, integrate the hash into the value:
 
 - `Codec-Tokenizer-Map: qwen2@887311099cdc0973` (~35 B for ID + truncated hash)
 
-### 3. Drop URLs from headers — use `(id, hash)` and discover URL via well-known
+### 3. Drop URLs from headers: use `(id, hash)` and discover URL via well-known
 
 `Codec-Tokenizer-Map` currently carries the full URL (`https://cdn.jsdelivr.net/.../qwen2.json`). But every v0.4-aware client knows the well-known convention (`.well-known/codec/maps/<id>.json`). The ID + the hash is enough; URL is recoverable.
 
@@ -91,23 +91,23 @@ If we want to drop a level further, integrate the hash into the value:
 - New: `Codec-Tokenizer-Map: qwen2 sha256:887311099cdc0973` (~38 B)
 - **Saves ~50 B per map-bearing header.**
 
-Trade-off: a v0.3 or earlier client that only knew to read the URL from the header would have to be upgraded. Mitigated by §4 below (the well-known convention is older than v0.4 — discovery works for any version).
+Trade-off: a v0.3 or earlier client that only knew to read the URL from the header would have to be upgraded. Mitigated by §4 below (the well-known convention is older than v0.4: discovery works for any version).
 
 ### 4. Drop advisory headers on 200 OK; emit only when they matter
 
-`Codec-Min-Version` and `Codec-Required-Features` are signals the spec ADDED in v0.4 § Version Compatibility Signaling. On a 426 response they're load-bearing — the client uses them to render the upgrade prompt. On a **200 OK** they're advisory; the client already speaks the right version or it wouldn't have gotten a 200.
+`Codec-Min-Version` and `Codec-Required-Features` are signals the spec ADDED in v0.4 § Version Compatibility Signaling. On a 426 response they're load-bearing: the client uses them to render the upgrade prompt. On a **200 OK** they're advisory; the client already speaks the right version or it wouldn't have gotten a 200.
 
 - Default: server omits `Codec-Min-Version` and `Codec-Required-Features` on 2xx responses.
 - Server MUST emit them on 426 (already required).
 - Server MAY emit them on 2xx if a deployment policy wants advisory advertisement (e.g. for monitoring tooling).
 
-**Saves 100–150 B per 2xx response on v0.4-mandated deployments.**
+**Saves 100 to 150 B per 2xx response on v0.4-mandated deployments.**
 
 ### 5. Short header names where the verbosity isn't load-bearing
 
 `Codec-Tokenizer-Map-Hash` is 24 chars before the colon. The shorter form `Codec-Tm-Hash` is 13. Across 6+ Codec-* headers per response that's ~60 B/response just on names (before HPACK).
 
-Trade-off: readability in `curl -v` output suffers. I'd argue the truncated-hash trick (§2) and session-id (§1) reduce the count of headers per response so much that the name length stops mattering — easier to keep readable names than save another 60 B on top of the 600+ already saved.
+Trade-off: readability in `curl -v` output suffers. I'd argue the truncated-hash trick (§2) and session-id (§1) reduce the count of headers per response so much that the name length stops mattering: easier to keep readable names than save another 60 B on top of the 600+ already saved.
 
 **Recommendation: skip §5.** Apply §1-4 instead.
 
@@ -143,10 +143,10 @@ Per-intervention gating:
 | §1 `Codec-Session` ID caching             | `client_version >= 0.6`              | New header introduced in v0.6; older clients never see it. |
 | §2 Truncated `sha256:` in headers         | `client_version >= 0.5`              | Format change to existing v0.2 `Codec-Tokenizer-Map-Hash` etc.; older clients keep getting the full 64-hex form. |
 | §3 ID+hash instead of URL in headers      | `client_version >= 0.5`              | Format change to existing v0.2 `Codec-Tokenizer-Map` value; older clients keep getting the full URL form. |
-| §4 Drop advisory headers on 200 OK        | server-side only — transparent       | The advisory v0.4 headers (`Codec-Min-Version`, `Codec-Required-Features`) on 2xx were never required reading for any client; suppressing them is invisible. |
+| §4 Drop advisory headers on 200 OK        | server-side only: transparent       | The advisory v0.4 headers (`Codec-Min-Version`, `Codec-Required-Features`) on 2xx were never required reading for any client; suppressing them is invisible. |
 
 A v0.4 client connecting to a v0.6+ server gets the v0.4 wire
-shape — no session id, no truncated hashes, no URL-less map
+shape: no session id, no truncated hashes, no URL-less map
 headers. The server holds back the v0.5+ optimizations. The wire
 weight stays at the v0.4 floor (~580 B headers on a tiny payload).
 That's the cost of supporting that client; the user explicitly
@@ -160,23 +160,23 @@ thinning applies and steady-state headers drop to ~85 B as planned.
 
 Each section is independently shippable; ordered by safety + impact:
 
-1. **§4 — Drop advisory on 200 OK.** Pure server-side change; no client work. Servers stop sending `Codec-Min-Version` on 2xx. Land in v0.4.1 or v0.5 cut.
+1. **§4: Drop advisory on 200 OK.** Pure server-side change; no client work. Servers stop sending `Codec-Min-Version` on 2xx. Land in v0.4.1 or v0.5 cut.
 
-2. **§2 — Truncate hashes in headers.** Server emits 16-hex; clients accept both 64-hex (legacy) and 16-hex+. Wire-additive — older servers' 64-hex still parses. Land in v0.5.
+2. **§2: Truncate hashes in headers.** Server emits 16-hex; clients accept both 64-hex (legacy) and 16-hex+. Wire-additive: older servers' 64-hex still parses. Land in v0.5.
 
-3. **§3 — `(id, hash)` instead of URLs.** Server emits the new form; clients still accept the old URL form. The well-known convention is v0.2+ so this works against any deployment with the convention published. Wire-additive. Land in v0.5 alongside §2.
+3. **§3: `(id, hash)` in place of URLs.** Server emits the new form; clients still accept the old URL form. The well-known convention is v0.2+ so this works against any deployment with the convention published. Wire-additive. Land in v0.5 alongside §2.
 
-4. **§1 — `Codec-Session` caching.** Most impactful, most work — needs a client-side state cache, server-side session-id derivation, and a spec'd cache invalidation rule. Codec-Session header is new; older clients ignore it. Wire-additive. **Land in v0.6.**
+4. **§1: `Codec-Session` caching.** Most impactful, most work: needs a client-side state cache, server-side session-id derivation, and a spec'd cache invalidation rule. Codec-Session header is new; older clients ignore it. Wire-additive. **Land in v0.6.**
 
 ## Open questions
 
 - **`Codec-Session` scope: per-connection or per-tuple?** Per-connection is the simplest (cache invalidates on TCP close); per-tuple `(origin, map_id, dict_id, safety_policy_id, version_floor)` is more reusable across connections but needs a longer hash (16 hex?) to dodge cross-origin collisions. Recommendation: per-connection for v0.6, revisit if the cache hit rate suffers in practice.
-- **Should the session-id derivation be canonical (hash of sorted fields) or arbitrary (server picks)?** Arbitrary is simpler — server emits whatever short id it wants, client treats it opaquely. Canonical lets two different servers with the same state share a session id, which a CDN could use. Recommendation: arbitrary for v0.6 — canonical is a future additive.
-- **`Codec-Session` invalidation on state change**: server emits new id + full headers; client invalidates old. Does the client also need to RE-VALIDATE the cached state via the full header set on every Nth response? Recommendation: no — the cache is in-memory per-client per-connection, no persistence, no risk of stale.
+- **Should the session-id derivation be canonical (hash of sorted fields) or arbitrary (server picks)?** Arbitrary is simpler: server emits whatever short id it wants, client treats it opaquely. Canonical lets two different servers with the same state share a session id. A CDN could make use of that. Recommendation: arbitrary for v0.6: canonical is a future additive.
+- **`Codec-Session` invalidation on state change**: server emits new id + full headers; client invalidates old. Does the client also need to RE-VALIDATE the cached state via the full header set on every Nth response? Recommendation: no: the cache is in-memory per-client per-connection, no persistence, no risk of stale.
 
 ## What this does NOT change
 
 - The well-known fabric (URL conventions, schemas, content-addressing).
-- HELLO/READY exchange when session protocol lands — that's a different layer where the same state can live once and be referenced by frame id; this proposal is purely about the stateless HTTP completion layer.
+- HELLO/READY exchange when session protocol lands: that's a different layer where the same state can live once and be referenced by frame id; this proposal is purely about the stateless HTTP completion layer.
 - Body bytes. The frame format on the wire is unchanged.
 - Backward compatibility per `spec/versions/v0.4.md` § Versioning Policy. Every change here is additive; older clients still parse the wire.

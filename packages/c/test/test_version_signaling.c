@@ -1,4 +1,4 @@
-/* C parity tests for codec_version_signaling — mirrors the TS / Python /
+/* C parity tests for codec_version_signaling: mirrors the TS / Python /
  * Rust / .NET / Java suites at the parser-and-URL-builder layer.
  *
  * libcodec stays HTTP-transport-agnostic; these tests exercise the

@@ -7,7 +7,7 @@
  * safety-policy) can drop the BPE encoder + pre-tokenizer runtime + the
  * Unicode tables they depend on by passing `-DCODEC_WITH_BPE_ENCODER=OFF`
  * at CMake configure time. That cuts ~50 KB of compiled code + data from
- * the library — worthwhile on flash-budget microcontrollers and tools
+ * the library: worthwhile on flash-budget microcontrollers and tools
  * built around the `@codecai/tool-kit` pre-cached pattern where runtime
  * BPE is never needed.
  *

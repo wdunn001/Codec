@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  *
- * codec_unicode_tables.c — generated. Do not edit by hand.
+ * codec_unicode_tables.c: generated. Do not edit by hand.
  *
  * Source generator: packages/c/scripts/gen-unicode-tables.py
  * Unicode revision: 15.1.0

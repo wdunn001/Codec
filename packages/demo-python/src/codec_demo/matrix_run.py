@@ -1,9 +1,9 @@
-"""matrix_run — runs the standard 3 paths × 4 encodings × N sizes grid
+"""matrix_run: runs the standard 3 paths × 4 encodings × N sizes grid
 against an engine and emits a SCHEMA-v1 result JSON.
 
 This is the *only* python bench runner that should be used for the
 cross-stack matrix. It MUST consume a methodology JSON written by
-packages/bench/scripts/capture_methodology.py — it never invents
+packages/bench/scripts/capture_methodology.py: it never invents
 methodology fields. The runner only fills in the `client` and
 `bench_tool` blocks before emitting.
 
@@ -161,7 +161,7 @@ async def main_async(args: argparse.Namespace) -> None:
     # Load reference zstd dicts so the client can decompress dict-zstd
     # responses. The bench harness ships the canonical Qwen2.5 dicts at
     # repo-root/dictionaries/. If the server is configured to use a
-    # different dict, the wire/ttft numbers still land — only the
+    # different dict, the wire/ttft numbers still land: only the
     # decoded-tokens count drops to 0 with a "Codec-Zstd-Dict mismatch"
     # error string on the row, which keeps reviewers honest.
     dict_dir = REPO_ROOT / "dictionaries"

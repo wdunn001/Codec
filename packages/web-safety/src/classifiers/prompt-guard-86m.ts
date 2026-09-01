@@ -1,5 +1,5 @@
 /**
- * `PromptGuard86m` — tier-1 default browser safety classifier.
+ * `PromptGuard86m`: tier-1 default browser safety classifier.
  *
  * Wraps Meta's Prompt Guard 86M (a BERT-tier classifier for prompt
  * injection / jailbreak detection) via Transformers.js. ~80 MB after
@@ -75,7 +75,7 @@ export interface PromptGuard86mOptions {
   readonly pipelineFactory?: PipelineFactory;
   /**
    * Override the `topk` argument the classifier passes to Transformers.js.
-   * Default: 10 — covers all classes a Prompt Guard variant emits.
+   * Default: 10: covers all classes a Prompt Guard variant emits.
    */
   readonly topK?: number;
 }
@@ -125,12 +125,12 @@ export class PromptGuard86m implements SafetyClassifier {
   }
 
   async capability(): Promise<string | null> {
-    // Prompt Guard 86M is CPU/WASM-friendly — runs in any modern browser
+    // Prompt Guard 86M is CPU/WASM-friendly: runs in any modern browser
     // (Node 18+ too). The only failure modes we surface here are: missing
     // global fetch (very-old runtimes) and missing WebAssembly support
     // (extremely old / locked-down environments).
     if (typeof fetch !== 'function') {
-      return 'no global fetch — upgrade to Node 18+ or a modern browser';
+      return 'no global fetch: upgrade to Node 18+ or a modern browser';
     }
     if (typeof WebAssembly === 'undefined') {
       return 'WebAssembly not available in this runtime';
@@ -233,7 +233,7 @@ export function registerPromptGuard86m(opts: PromptGuard86mOptions = {}): void {
       factory,
       tier: 1,
       description:
-        'Meta Prompt Guard 86M via Transformers.js — tier-1 default; CPU/WASM, ~80 MB',
+        'Meta Prompt Guard 86M via Transformers.js: tier-1 default; CPU/WASM, ~80 MB',
     });
   } catch (e) {
     // Re-registration is a no-op rather than a hard error (hosts may

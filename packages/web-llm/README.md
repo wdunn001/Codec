@@ -4,11 +4,10 @@
 (WebGPU inference in the browser) and emits the same Codec msgpack
 frame stream that vLLM / sglang / llama.cpp containers produce over
 HTTP. From a consumer's perspective, a local web-llm engine and a
-remote Codec-aware HTTP server look **byte-identical on the wire** —
-the same `@codecai/web` `decodeMsgpackStream` consumes from both.
+remote Codec-aware HTTP server look **byte-identical on the wire**: the same `@codecai/web` `decodeMsgpackStream` consumes from both.
 
 New in Codec v0.4, paired with
-[Unstable Legion](https://github.com/wdunn001/unstable-legion) — the
+[Unstable Legion](https://github.com/wdunn001/unstable-legion): the
 peer-to-peer browser-AI mesh that exchanges these frames over WebRTC
 data channels.
 
@@ -28,7 +27,7 @@ already flow:
 The text-token modality needed one more piece: a **producer** of
 those frames in the browser. That's this package. With it, a
 peer-to-peer browser mesh can route LLM completions between tabs
-using the existing Codec wire format — no new sub-protocol.
+using the existing Codec wire format: no new sub-protocol.
 
 The bandwidth math (500-token completion over a typical Trystero
 BitTorrent relay):
@@ -48,7 +47,7 @@ on the BitTorrent / IPFS / Nostr / MQTT relays Trystero uses.
 npm install @codecai/web-llm @codecai/web @mlc-ai/web-llm
 ```
 
-`@mlc-ai/web-llm` is a peer dep — install the version your bundler
+`@mlc-ai/web-llm` is a peer dep: install the version your bundler
 prefers (>= 0.2.x).
 
 ## Usage
@@ -90,7 +89,7 @@ for await (const frame of decodeMsgpackStream(stream)) {
 
 ```ts
 for await (const frame of codecEngine.frames({ prompt, max_tokens: 256 })) {
-  // Forward `frame.ids` somewhere — another peer, a detokenizer, a tool watcher.
+  // Forward `frame.ids` somewhere: another peer, a detokenizer, a tool watcher.
 }
 ```
 
@@ -115,7 +114,7 @@ for await (const frame of codecEngine.frames({ prompt: incomingRequest, max_toke
 }
 ```
 
-Receiving side just decodes the frame and detokenizes — same code path
+Receiving side just decodes the frame and detokenizes: same code path
 that consumes an HTTP-served vLLM stream.
 
 ## Tokenizer parity
@@ -124,10 +123,10 @@ The Codec frame carries raw token IDs from the model's tokenizer.
 Receivers detokenize via `@codecai/web`'s `Detokenizer` against the
 matching `codec-maps` entry. **The `mapId` you pass to `wrapEngine`
 MUST correspond to the actual tokenizer the loaded web-llm model
-uses** — mismatches produce wrong tokenization on the consumer side.
+uses**: mismatches produce wrong tokenization on the consumer side.
 
-This package doesn't auto-discover the map (it's a small library,
-not a smart one). The standard mapping for the common web-llm models:
+This package doesn't auto-discover the map: it's a small library
+rather than a smart one. The standard mapping for the common web-llm models:
 
 | web-llm model id (excerpt)                | codec-maps `mapId`     |
 |-------------------------------------------|------------------------|
@@ -145,14 +144,14 @@ non-streaming + tool-use paths are followups.
 
 ## See also
 
-- [Codec spec](https://github.com/wdunn001/Codec) — the wire format.
-- [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) — the decoder.
-- [`@mlc-ai/web-llm`](https://github.com/mlc-ai/web-llm) — the WebGPU
+- [Codec spec](https://github.com/wdunn001/Codec): the wire format.
+- [`@codecai/web`](https://www.npmjs.com/package/@codecai/web): the decoder.
+- [`@mlc-ai/web-llm`](https://github.com/mlc-ai/web-llm): the WebGPU
   inference engine this package wraps.
-- [`wdunn001/web-llm`](https://github.com/wdunn001/web-llm) — Codec-aware
+- [`wdunn001/web-llm`](https://github.com/wdunn001/web-llm): Codec-aware
   fork (adds opt-in `stream_format: 'msgpack'` to skip the wrap+rewrap
   cost when caller has a Codec-compatible consumer).
-- [Unstable Legion](https://github.com/wdunn001/unstable-legion) — the
+- [Unstable Legion](https://github.com/wdunn001/unstable-legion): the
   peer-to-peer browser mesh that consumes these frames over WebRTC.
 
 ## License

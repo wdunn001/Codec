@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// Translator — cross-vocab token-stream pipe.
+// Translator: cross-vocab token-stream pipe.
 //
 // Take Agent A's token IDs in vocab V_A, produce Agent B's token IDs in
 // vocab V_B, with no text ever leaving the process. Internally:
@@ -8,7 +8,7 @@
 //     ids_A → Detokenizer(V_A) → utf8 → BPETokenizer(V_B) → ids_B
 //
 // The text intermediate is purely local; agent-to-agent traffic still
-// carries only token IDs on the wire. Mirrors the .NET Translator —
+// carries only token IDs on the wire. Mirrors the .NET Translator:
 // same word-boundary buffering rules.
 package ai.codec;
 
@@ -22,7 +22,7 @@ import java.util.Set;
  *
  * <p>Construct with a source map and a target map. Call translate
  * repeatedly with chunks of source IDs; receive chunks of target IDs.
- * Stateful across calls — partial words buffer internally.
+ * Stateful across calls: partial words buffer internally.
  *
  * <pre>{@code
  * Translator tr = new Translator(qwenMap, llamaMap);
@@ -68,7 +68,7 @@ public final class Translator {
     public int[] translate(int[] ids, boolean partial) {
         if (ids == null) throw new NullPointerException("ids");
 
-        // Render through V_A's detokenizer with the same partial flag — the
+        // Render through V_A's detokenizer with the same partial flag: the
         // detokenizer handles partial UTF-8 byte sequences for us.
         String text = fromDetok.render(ids, DetokenizeOptions.partial(partial));
         if (!text.isEmpty()) textBuffer.append(text);
@@ -79,7 +79,7 @@ public final class Translator {
             return toTok.encode(allText);
         }
 
-        // Streaming chunk — find the last safe boundary and flush before it.
+        // Streaming chunk: find the last safe boundary and flush before it.
         int safe = findLastSafeBoundary(textBuffer);
         if (safe <= 0) return new int[0];
 
@@ -106,7 +106,7 @@ public final class Translator {
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    /** ASCII whitespace + common Unicode whitespace block — covers Llama-3, Qwen, Phi-3, Mistral pre-tok regexes. */
+    /** ASCII whitespace + common Unicode whitespace block: covers Llama-3, Qwen, Phi-3, Mistral pre-tok regexes. */
     private static boolean isWhitespaceCp(int cp) {
         return cp == 0x20 || cp == 0x09 || cp == 0x0A || cp == 0x0D
                 || cp == 0x0B || cp == 0x0C

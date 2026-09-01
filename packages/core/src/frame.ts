@@ -1,5 +1,5 @@
 /**
- * Codec wire format — binary frame encoding/decoding.
+ * Codec wire format: binary frame encoding/decoding.
  *
  * Frame layout:
  *   [1 byte : type]
@@ -7,11 +7,11 @@
  *   [N bytes: payload]
  *
  * Frame types:
- *   0x00  HELLO   — client declares version + accepted tokenizers (JSON payload)
- *   0x01  READY   — server declares chosen tokenizer + map URL (JSON payload)
- *   0x02  TOKENS  — packed token IDs, uint32 big-endian, 4 bytes each
- *   0x03  EOS     — end of stream, empty payload
- *   0x04  ERROR   — UTF-8 error message
+ *   0x00  HELLO: client declares version + accepted tokenizers (JSON payload)
+ *   0x01  READY: server declares chosen tokenizer + map URL (JSON payload)
+ *   0x02  TOKENS: packed token IDs, uint32 big-endian, 4 bytes each
+ *   0x03  EOS: end of stream, empty payload
+ *   0x04  ERROR: UTF-8 error message
  */
 
 export const FrameType = {

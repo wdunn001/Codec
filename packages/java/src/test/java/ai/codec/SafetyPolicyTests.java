@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Java parity tests for slice 11. Mirrors the TS / Python / Rust /
- * .NET suites — same shape, same assertions.
+ * .NET suites: same shape, same assertions.
  */
 class SafetyPolicyTests {
 

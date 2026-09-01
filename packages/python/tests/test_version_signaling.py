@@ -1,4 +1,4 @@
-"""Tests for codecai.version_signaling — mirrors @codecai/web's
+"""Tests for codecai.version_signaling: mirrors @codecai/web's
 version-signaling.test.ts so both sides of the wire stay in step.
 
 Run::
@@ -215,7 +215,7 @@ def test_matrix_refusal_and_body(cfg, client_version):
 @pytest.mark.parametrize("cfg", SERVER_CONFIGS, ids=lambda c: c["name"])
 def test_matrix_well_known_doc(cfg):
     """When the server publishes a well-known doc, parse it. When it
-    returns 404, we'd see ``None`` upstream — exercise only the parse
+    returns 404, we'd see ``None`` upstream: exercise only the parse
     path here."""
     if cfg["well_known"] is None:
         # Nothing to parse.

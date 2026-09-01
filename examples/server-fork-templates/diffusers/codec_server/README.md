@@ -1,4 +1,4 @@
-# `codec_server` — diffusers fork integration template
+# `codec_server`: diffusers fork integration template
 
 This is the FastAPI wrapper that lives at `examples/codec_server/` inside the [`wdunn001/diffusers`](https://github.com/wdunn001/diffusers) fork's `feat/codec-latent-transport` branch. The fork's Dockerfile build (in [`codec-supervisor`](https://github.com/wdunn001/codec-supervisor) `Dockerfile.diffusers`) clones the fork, `pip install -e`'s it, and invokes this package's `__main__` as the container entry point.
 
@@ -39,24 +39,24 @@ examples/codec_server/
 |---|---|---|
 | `__init__.py`       | ~30  | Module init + re-exports. |
 | `__main__.py`       | ~60  | `python -m codec_server` entry point. Reads CODEC_* env vars, parses CLI flags, runs uvicorn. |
-| `app.py`            | ~250 | FastAPI routes — `/v1/images/generations`, `/v1/videos/generations`, `/codec/info`, `/codec/schema`, `/health`. Stays thin: parses requests, calls into `LatentPipelineRunner`, runs the result through `LatentStreamEncoder`, returns a `StreamingResponse`. |
-| `pipeline.py`       | ~200 | Loads the diffusers pipeline once, runs sampling up to but not including VAE decode. The latent capture point is the official `output_type="latent"` argument — no torch internals patching. Image done; video stub points at `StableVideoDiffusionPipeline` for the integrator to wire. |
-| `settings.py`       | ~70  | `CodecServerSettings` — env-var-backed config (CODEC_INITIAL_MODEL / CODEC_INITIAL_LATENT_SPACE / CODEC_BACKEND_HOST etc.) plus CLI overrides. |
+| `app.py`            | ~250 | FastAPI routes: `/v1/images/generations`, `/v1/videos/generations`, `/codec/info`, `/codec/schema`, `/health`. Stays thin: parses requests, calls into `LatentPipelineRunner`, runs the result through `LatentStreamEncoder`, returns a `StreamingResponse`. |
+| `pipeline.py`       | ~200 | Loads the diffusers pipeline once, runs sampling up to but not including VAE decode. The latent capture point is the official `output_type="latent"` argument: no torch internals patching. Image done; video stub points at `StableVideoDiffusionPipeline` for the integrator to wire. |
+| `settings.py`       | ~70  | `CodecServerSettings`: env-var-backed config (CODEC_INITIAL_MODEL / CODEC_INITIAL_LATENT_SPACE / CODEC_BACKEND_HOST etc.) plus CLI overrides. |
 | `latent_frame.py`   | ~470 | Vendored from `packages/python/src/codecai/server/latent_frame.py`. Contains `LatentStreamEncoder` and the seven pipeline forward transforms. **Do not modify**; bit-pinned by `spec/PIPELINES.md`. |
 
 ## What the template does
 
-- Implements the v0.3 wire surface from `spec/PROTOCOL.md` §"Latent Modality" — image-latents endpoint complete, video-latents endpoint stubbed (one swap on the pipeline class wires it).
+- Implements the v0.3 wire surface from `spec/PROTOCOL.md` §"Latent Modality": image-latents endpoint complete, video-latents endpoint stubbed (one swap on the pipeline class wires it).
 - Validates `pipeline` against the seven-name registry from `spec/PIPELINES.md` and rejects invalid (modality, pipeline) combinations.
 - Computes per-channel scales upfront for static-scale pipelines (`int8`, `int4`); leaves them out of the header for adaptive/delta.
-- Streams the response via FastAPI's `StreamingResponse` — first frame is `LatentStreamHeader`, subsequent frames are `LatentFrame`s.
+- Streams the response via FastAPI's `StreamingResponse`: first frame is `LatentStreamHeader`, subsequent frames are `LatentFrame`s.
 - Sets `Codec-Latent-Map` response header from `--latent-map-sha256` config.
 
 ## What the template does *not* do (left for the integrator)
 
 - **Video pipeline**: `pipeline.py:_load_video_pipe()` raises `NotImplementedError`. The integrator picks the diffusers video class matching the configured latent_space (SVD, AnimateDiff, CogVideoX, etc.) and wires it the same way image is wired.
 - **zstd-with-dict negotiation**: `Codec-Zstd-Dict` header machinery is in place but the dict-loading path needs supervisor wiring (read `CODEC_LATENT_DICTS_DIR`, hold a per-(format, pipeline) dict pool, attach to `zstandard.ZstdCompressor` per response). Punted to a follow-up; gzip + identity work today.
-- **Brotli**: the protocol allows `br`, but on small msgpack streams brotli overhead dominates — see `RESULTS.md` §1b in the main Codec repo. Add only if there's a measured reason to.
+- **Brotli**: the protocol allows `br`, but on small msgpack streams brotli overhead dominates: see `RESULTS.md` §1b in the main Codec repo. Add only if there's a measured reason to.
 - **WebSocket / WebRTC transport upgrade**: HTTP only for v0.3-initial. Transport upgrade is open-question territory (PROTOCOL.md §"Transport selection").
 
 ## Running it
@@ -96,10 +96,10 @@ python -m codecai.bench.decode_latent_stream \
     --out /tmp/decoded.png
 ```
 
-(The decode script is part of the bench harness, not this template.)
+(The decode script is part of the bench harness only, separate from this template.)
 
 ## When to re-vendor `latent_frame.py`
 
-Re-vendor when the main Codec repo bumps the pipeline registry — adding pipeline #8, fixing a math bug, etc. The change protocol is documented in `spec/PIPELINES.md` §Compatibility and `spec/PROTOCOL.md` Open Question (v0.3) #2.
+Re-vendor when the main Codec repo bumps the pipeline registry: adding pipeline #8, fixing a math bug, etc. The change protocol is documented in `spec/PIPELINES.md` §Compatibility and `spec/PROTOCOL.md` Open Question (v0.3) #2.
 
-The fork's vendored `latent_frame.py` should always carry the relative path comment at the top noting the upstream commit it came from, so a reader can `git log` from the upstream copy to see what changed.
+The fork's vendored `latent_frame.py` should always carry the relative path comment at the top noting the upstream commit it came from. A reader can then `git log` from the upstream copy to see what changed.

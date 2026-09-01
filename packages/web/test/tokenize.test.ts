@@ -6,7 +6,7 @@ import { detokenize } from '../src/detokenize.js';
 import { TINY_MAP } from './fixtures.js';
 
 test('tokenize: longest-match wins over shorter prefixes', () => {
-  // 'h'=1, 'he'=2, 'hello'=3 — must pick 3
+  // 'h'=1, 'he'=2, 'hello'=3: must pick 3
   const ids = tokenize(TINY_MAP, 'hello');
   assert.deepEqual(ids, [3]);
 });

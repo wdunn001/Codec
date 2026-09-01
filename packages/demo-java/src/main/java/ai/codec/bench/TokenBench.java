@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// Per-language tokenize/detokenize micro-benchmark — Java.
+// Per-language tokenize/detokenize micro-benchmark: Java.
 // Cross-language companion of codec_demo.token_bench (Python) /
 // demo/src/token_bench.ts / demo-rust/src/token_bench.rs /
 // demo-dotnet/TokenBench.cs.

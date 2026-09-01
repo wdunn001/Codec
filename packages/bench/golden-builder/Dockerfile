@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# golden-builder — frozen torch + diffusers + CUDA reference image.
+# golden-builder: frozen torch + diffusers + CUDA reference image.
 #
 # This container is the **perceptual trust anchor** for every latent bench
 # cell. Given a latent tensor (the bytes a Codec server emits) and a
@@ -11,7 +11,7 @@
 # The container's sha256 digest IS the contract. Bench fingerprints
 # (methodology.modality.quality_reference.container_sha256) reference this
 # digest by hash, not by tag. Bumping torch or diffusers here re-pins the
-# perceptual reference for every downstream cell — bump
+# perceptual reference for every downstream cell: bump
 # `codec-supervisor/Dockerfile.diffusers` in lockstep, or the bench
 # fingerprint-validator quarantines diffusers cells against a stale golden.
 #

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# release-bench.sh — full release-checklist §3 + §3.5 bench cohort, end-to-end.
+# release-bench.sh: full release-checklist §3 + §3.5 bench cohort, end-to-end.
 #
 # One script that runs every bench surface required by the release gate:
 #
@@ -34,20 +34,20 @@
 #   - packages/demo-c/build/codec-matrix  built  (for C)
 #
 # Env overrides:
-#   RUN_ID                  — UTC timestamp; auto-generated if absent
-#   SGLANG_URL              — default http://192.168.1.88:30002
-#   VLLM_URL                — default http://192.168.1.88:30003
-#   LLAMACPP_URL            — default http://192.168.1.88:30004
-#   VLLM_REPS               — default 4 (per the documented scheduler-variance mitigation)
-#   SKIP_TRANSLATOR         — 1 to skip; default 0
-#   SKIP_AGENT_MCP          — 1 to skip metamcp + leaf paths (requires metamcp); default 0
-#   SKIP_SEARXNG            — 1 to skip the searxng agent-loop path; default 0
-#   FAIL_FAST               — 1 to exit on first surface failure; default 0 (report all)
+#   RUN_ID: UTC timestamp; auto-generated if absent
+#   SGLANG_URL: default http://192.168.1.88:30002
+#   VLLM_URL: default http://192.168.1.88:30003
+#   LLAMACPP_URL: default http://192.168.1.88:30004
+#   VLLM_REPS: default 4 (per the documented scheduler-variance mitigation)
+#   SKIP_TRANSLATOR: 1 to skip; default 0
+#   SKIP_AGENT_MCP: 1 to skip metamcp + leaf paths (requires metamcp); default 0
+#   SKIP_SEARXNG: 1 to skip the searxng agent-loop path; default 0
+#   FAIL_FAST: 1 to exit on first surface failure; default 0 (report all)
 #
 # Exit codes:
-#   0   — all surfaces ran cleanly
-#   1   — one or more surfaces failed (summary printed at end)
-#   2   — pre-flight error (missing toolchain, unreachable engine, etc.)
+#   0: all surfaces ran cleanly
+#   1: one or more surfaces failed (summary printed at end)
+#   2: pre-flight error (missing toolchain, unreachable engine, etc.)
 
 set -uo pipefail
 
@@ -96,7 +96,7 @@ run_surface() {
 report() {
     echo
     echo "================================================================"
-    echo "  release-bench summary — RUN_ID=$RUN_ID"
+    echo "  release-bench summary: RUN_ID=$RUN_ID"
     echo "================================================================"
     for name in "${!SURFACE_STATUS[@]}"; do
         printf "  %-40s %s\n" "$name" "${SURFACE_STATUS[$name]}"
@@ -112,7 +112,7 @@ report() {
 
 # ── Pre-flight ─────────────────────────────────────────────────────────────
 
-echo "release-bench.sh — RUN_ID=$RUN_ID"
+echo "release-bench.sh: RUN_ID=$RUN_ID"
 echo
 
 # Engine endpoints reachable?

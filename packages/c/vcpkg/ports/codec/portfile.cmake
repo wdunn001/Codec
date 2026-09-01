@@ -41,7 +41,7 @@ vcpkg_cmake_install()
 vcpkg_cmake_config_fixup(PACKAGE_NAME codec)
 vcpkg_fixup_pkgconfig()
 
-# Strip duplicates from include / cmake debug copies — vcpkg convention.
+# Strip duplicates from include / cmake debug copies: vcpkg convention.
 file(REMOVE_RECURSE
     "${CURRENT_PACKAGES_DIR}/debug/include"
     "${CURRENT_PACKAGES_DIR}/debug/share"

@@ -52,7 +52,7 @@ def _hash_zstd_dict(dict_bytes: bytes) -> str:
 
 def load_zstd_dict_files(*paths: str) -> None:
     """Load each dict file into the client-side registry, keyed by its
-    sha256. Missing files are silently skipped — the bench then
+    sha256. Missing files are silently skipped: the bench then
     decompresses successfully only on cells whose Codec-Zstd-Dict header
     matches a hash we have. Use this from matrix_run.py before the
     matrix loop begins."""
@@ -189,7 +189,7 @@ COUNTERS = {
 # so summing them gives the actual wire size. We then decompress manually for
 # token counting (gzip via stdlib, brotli via brotli pkg, zstd via zstandard
 # pkg). If a codec isn't available the request still happens with that
-# Accept-Encoding header — the server just won't pick it.
+# Accept-Encoding header: the server just won't pick it.
 
 
 async def run_one(client: httpx.AsyncClient, url: str, model: str, prompt: str,
@@ -234,7 +234,7 @@ async def run_one(client: httpx.AsyncClient, url: str, model: str, prompt: str,
         cell.status = "error"
         return
 
-    # Wire/TTFB/total are now safe regardless of decompression outcome —
+    # Wire/TTFB/total are now safe regardless of decompression outcome:
     # the bench's primary signal stays valid even on a mismatched dict
     # or missing decompressor library.
     cell.wire_bytes = len(wire_bytes)
@@ -271,7 +271,7 @@ async def run_one(client: httpx.AsyncClient, url: str, model: str, prompt: str,
         cell.tokens = COUNTERS[cell.format](decompressed)
         cell.status = "done"
     except Exception as e:
-        # Decompression-only failure — record it but keep wire/TTFB.
+        # Decompression-only failure: record it but keep wire/TTFB.
         cell.tokens = 0
         cell.error = (
             f"decompress {content_encoding}: {type(e).__name__}: {e}"

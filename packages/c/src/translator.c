@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  *
- * Translator — cross-vocab agent-handoff pipe.
+ * Translator: cross-vocab agent-handoff pipe.
  *
  * Mirrors @codecai/web's Translator, codecai's Translator, and
  * Codec.Net's Translator. Pipeline:
@@ -8,7 +8,7 @@
  *     ids_A → Detokenizer(V_A) → utf8 → BPETokenizer(V_B) → ids_B
  *
  * The text intermediate exists only inside the translator's address
- * space — it never enters a wire frame. Agent-to-agent traffic still
+ * space: it never enters a wire frame. Agent-to-agent traffic still
  * carries only token IDs.
  *
  * Streaming model: BPE merges depend on context. Re-tokenizing a
@@ -99,12 +99,12 @@ static codec_status_t buf_append(codec_translator_t *tr,
 /* Scan backward through the buffer for the last byte position that's
  * the END of a whitespace UTF-8 code point, returning the byte index
  * just after that whitespace. If no whitespace is found, return 0
- * (nothing safe to flush yet — keep buffering).
+ * (nothing safe to flush yet: keep buffering).
  *
  * The whitespace set mirrors the other Translator implementations:
  * ASCII whitespace + the common Unicode whitespace block (U+00A0,
  * U+2028, U+2029, U+3000). We re-decode UTF-8 backwards by walking
- * forward — slower for huge buffers but tiny under the streaming
+ * forward: slower for huge buffers but tiny under the streaming
  * chunk sizes the Translator actually sees. */
 static int is_ws_cp(uint32_t cp) {
     return cp == 0x20 || cp == 0x09 || cp == 0x0A || cp == 0x0D
@@ -149,7 +149,7 @@ codec_status_t codec_translator_translate(
     *out_count = 0;
 
     /* Step 1: render source IDs through the source detokenizer with the
-     * same partial flag — the detokenizer handles partial UTF-8
+     * same partial flag: the detokenizer handles partial UTF-8
      * sequences across chunk boundaries for us. */
     if (ids_count > 0) {
         char  *text = NULL;
@@ -171,13 +171,13 @@ codec_status_t codec_translator_translate(
     /* Step 2: pick a flush window. */
     size_t flush_len;
     if (!partial) {
-        /* Final chunk — drain everything. */
+        /* Final chunk: drain everything. */
         flush_len = tr->text_len;
     } else {
-        /* Streaming chunk — flush only up to the last whitespace. */
+        /* Streaming chunk: flush only up to the last whitespace. */
         flush_len = find_last_safe_boundary(tr->text_buf, tr->text_len);
         if (flush_len == 0) {
-            /* Nothing safe to flush — keep buffering. */
+            /* Nothing safe to flush: keep buffering. */
             return CODEC_OK;
         }
     }

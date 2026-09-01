@@ -25,7 +25,7 @@ Limitations:
     same inputs.
 
 Output:
-  packages/bench/results/<run_id>/synthetic/wire.json — SCHEMA:
+  packages/bench/results/<run_id>/synthetic/wire.json: SCHEMA:
   {
     "schema_version": "1",
     "kind": "synthetic_wire_bench",
@@ -92,7 +92,7 @@ def encode_protobuf_frame(ids: list[int], *, done: bool, finish_reason: str | No
     """One CodecFrame in protobuf mode (4-byte BE length prefix + payload).
 
     Matches the engine encoders: field 1 (packed uint32 ids), field 2
-    (bool done), field 3 (string finish_reason — only when set).
+    (bool done), field 3 (string finish_reason: only when set).
     """
     payload = bytearray()
     # Field 1: repeated uint32, packed.
@@ -189,7 +189,7 @@ def compress_zstd_with_dict(stream: bytes, dict_bytes: bytes) -> bytes:
 
 def corpus_uniform_random(n_tokens: int, *, vocab_size: int = 152064, seed: int = 42) -> list[int]:
     """Uniformly random token IDs from [0, vocab_size). Worst case for
-    compression — no patterns, no repetition. Codec's wire-level structural
+    compression: no patterns, no repetition. Codec's wire-level structural
     bytes (msgpack overhead) still compress because they're identical
     across frames; only the token IDs are entropy."""
     import numpy as np
@@ -199,7 +199,7 @@ def corpus_uniform_random(n_tokens: int, *, vocab_size: int = 152064, seed: int 
 
 
 def corpus_cyclic(n_tokens: int, *, period: int = 10) -> list[int]:
-    """Cyclic [0, 1, 2, ..., period-1, 0, 1, ...]. Highly compressible —
+    """Cyclic [0, 1, 2, ..., period-1, 0, 1, ...]. Highly compressible:
     upper bound for what dict-zstd can achieve on Codec wire."""
     return [i % period for i in range(n_tokens)]
 
@@ -268,7 +268,7 @@ def main() -> None:
             dict_hashes[fmt] = _hash_dict(dicts[fmt])
             print(f"loaded dict {fname} → {dict_hashes[fmt][:24]}…", file=sys.stderr)
         else:
-            print(f"WARN: dict {p} missing — zstd cells for {fmt} will skip", file=sys.stderr)
+            print(f"WARN: dict {p} missing: zstd cells for {fmt} will skip", file=sys.stderr)
 
     # Encoder versions for reproducibility.
     import brotli  # type: ignore

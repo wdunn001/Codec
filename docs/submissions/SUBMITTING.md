@@ -17,8 +17,8 @@ if missed.**
 - [ ] `docs/submissions/draft-dunn-codec-00.md` exists and is the
   intended source.
 - [ ] `author:` block in the frontmatter has the actual postal/email
-  addresses (the current draft has email only, which is acceptable
-  but **not optimal** — IETF prefers a real postal address; see
+  addresses (the current draft has email only. That is acceptable
+  but **not optimal**: IETF prefers a real postal address; see
   RFC 7322 §4.1.2). If you want to keep email-only, leave as is;
   if you want to add a postal address before the first submission,
   edit the `author:` block now.
@@ -38,7 +38,7 @@ if missed.**
       "the de-facto standard") are fine, references to RFCs by
       their status are fine. Direct claims that this draft is any
       named status are not.
-- [ ] Abstract is 50–150 words. Count with:
+- [ ] Abstract is 50 to 150 words. Count with:
       ```
       sed -n '/^# Abstract/,/^# Status/p' docs/submissions/draft-dunn-codec-00.md | wc -w
       ```
@@ -81,9 +81,9 @@ kdrfc draft-dunn-codec-00.md
 
 `kdrfc` produces three sibling files:
 
-- `draft-dunn-codec-00.xml`  — the **submission artefact**.
-- `draft-dunn-codec-00.txt`  — the canonical plain-text rendering.
-- `draft-dunn-codec-00.html` — preview for local review.
+- `draft-dunn-codec-00.xml`: the **submission artefact**.
+- `draft-dunn-codec-00.txt`: the canonical plain-text rendering.
+- `draft-dunn-codec-00.html`: preview for local review.
 
 The Status-of-Memo and Copyright Notice sections are auto-generated
 from the `ipr: trust200902` frontmatter field. The markdown source's
@@ -99,7 +99,7 @@ start draft-dunn-codec-00.html      # Windows
 ```
 
 Read top-to-bottom. The IETF datatracker submission will reject if the
-XML is malformed, but it does not check semantics — readability is on
+XML is malformed, but it does not check semantics: readability is on
 the author.
 
 ---
@@ -118,7 +118,7 @@ Upload `draft-dunn-codec-00.xml`. The page reports:
 - A rendering of the document for visual inspection.
 
 If the validator flags errors, fix them in the markdown source,
-re-run `kdrfc`, and re-upload. **Do not edit the XML by hand** — the
+re-run `kdrfc`, and re-upload. **Do not edit the XML by hand**: the
 markdown is the source of truth.
 
 Common validator complaints + fixes:
@@ -159,9 +159,9 @@ manages all future drafts under any `draft-dunn-*` name.
 3. The page extracts the document metadata (name, version, abstract,
    authors) and previews them. Verify before continuing.
 4. The page asks which stream the draft belongs to:
-   - **Independent Submission** — the current frontmatter sets this.
+   - **Independent Submission**: the current frontmatter sets this.
      Pick this option.
-   - **IETF Working Group** — only if a WG chair has agreed to adopt
+   - **IETF Working Group**: only if a WG chair has agreed to adopt
      the draft; not applicable for `-00`.
 5. Submit.
 
@@ -190,9 +190,9 @@ If pitching for WG sponsorship (the path from Independent Submission
 to standards-track), post to the most relevant WG list with a brief
 note + I-D link. Codec is HTTP-adjacent; the two natural targets:
 
-- **HTTPBIS WG** — `ietf-http-wg@w3.org`. Subscribe first at
+- **HTTPBIS WG**: `ietf-http-wg@w3.org`. Subscribe first at
   `https://www.ietf.org/mailman/listinfo/ietf-http-wg`.
-- **AI Preferences WG** — `aipref@ietf.org`. Subscribe at
+- **AI Preferences WG**: `aipref@ietf.org`. Subscribe at
   `https://www.ietf.org/mailman/listinfo/aipref`.
 
 Format the post as a 3-paragraph introduction:
@@ -208,7 +208,7 @@ Do **not** attach the .xml; post the link only.
 ### 5b · IETF meeting
 
 IETF meets three times per year (March, July, November). Each
-meeting publishes its agenda 4–6 weeks before; WG chairs accept
+meeting publishes its agenda 4 to 6 weeks before; WG chairs accept
 new-draft presentation slots until ~2 weeks before the meeting.
 
 - IETF meeting calendar: `https://www.ietf.org/how/meetings/`
@@ -228,9 +228,9 @@ Submissions Editor (ISE):
 
 The ISE process is lighter-weight than WG adoption but produces an
 Informational RFC rather than a Standards-Track one. For Codec
-specifically, Informational is sufficient — the draft is
-descriptive (here's a thing that exists), not prescriptive (here's
-a thing the IETF endorses).
+specifically, Informational is sufficient: the draft is purely
+descriptive. It says "here's a thing that exists," never "here's
+a thing the IETF endorses."
 
 ---
 
@@ -241,7 +241,7 @@ draft has not been revised in that window, the datatracker removes
 it from the active listing. The draft remains in the archive
 forever, but stops being considered "current work in progress."
 
-To refresh, follow steps 1–4 again with the next version number:
+To refresh, follow steps 1 to 4 again with the next version number:
 
 - Edit `docname: draft-dunn-codec-01` (increment by 1).
 - Rename the markdown source file to match.
@@ -250,8 +250,8 @@ To refresh, follow steps 1–4 again with the next version number:
   the prior version and links them.
 
 Successive revisions are cheap. The convention is to ship `-01`
-within 2–4 weeks of `-00` to incorporate review feedback; subsequent
-revisions every 1–3 months as the spec stabilizes.
+within 2 to 4 weeks of `-00` to incorporate review feedback; subsequent
+revisions every 1 to 3 months as the spec stabilizes.
 
 When a WG adopts the draft (if it ever does), the name changes to
 `draft-ietf-<wg>-codec-00`, restarting the version counter. The

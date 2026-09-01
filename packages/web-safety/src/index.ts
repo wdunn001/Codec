@@ -1,5 +1,5 @@
 /**
- * @codecai/web-safety — optional client-side safety layer for Codec.
+ * @codecai/web-safety: optional client-side safety layer for Codec.
  *
  * Layer 1 (prefilter): regex + Shannon-entropy detection of secrets, PII,
  * and high-entropy runs. Catches doomed prompts before they hit the wire.
@@ -28,7 +28,7 @@
  *   // ...tokenize & send via @codecai/web as usual.
  */
 
-// Layer 1 — prefilter
+// Layer 1: prefilter
 export {
   scanText,
   redactMatches,
@@ -37,7 +37,7 @@ export {
   type PrefilterOptions,
 } from './prefilter.js';
 
-// Gate — pure-logic decision/apply state machine
+// Gate: pure-logic decision/apply state machine
 export {
   SafetyGate,
   type PrefilterDecision,
@@ -47,7 +47,7 @@ export {
   type SafetyGateAuditEvent,
 } from './gate.js';
 
-// Layer 3 — classifier interface + registry
+// Layer 3: classifier interface + registry
 export {
   type SafetyClassifier,
   type ClassifierInputForm,
@@ -68,7 +68,7 @@ export {
   type ResolveResult,
 } from './registry.js';
 
-// v0.4 server-policy pre-flight — discoverServerPolicy() returns a
+// v0.4 server-policy pre-flight: discoverServerPolicy() returns a
 // tagged union describing whether the server mandates v0.4 features.
 // Thin layer over @codecai/web's discoverVersionPolicy with a
 // safety-aware shape.

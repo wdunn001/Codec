@@ -7,7 +7,7 @@ namespace Codec;
 public readonly struct DetokenizeOptions
 {
     /// <summary>
-    /// If <c>true</c>, this is not the final chunk — buffer any trailing
+    /// If <c>true</c>, this is not the final chunk: buffer any trailing
     /// partial UTF-8 sequence rather than emitting replacement characters.
     /// Set to <c>false</c> on the last chunk so the buffer flushes.
     /// </summary>
@@ -22,8 +22,8 @@ public readonly struct DetokenizeOptions
 /// handles:
 /// <list type="number">
 /// <item>Per-token decoding via the map's encoder (byte_level / metaspace / identity).</item>
-/// <item>Byte-fallback range — IDs in <c>[byte_fallback_start, byte_fallback_end]</c> are decoded as raw bytes and accumulated until a valid UTF-8 sequence forms.</item>
-/// <item>Partial multi-byte sequences across frame boundaries — buffered between calls when <c>Partial: true</c>.</item>
+/// <item>Byte-fallback range: IDs in <c>[byte_fallback_start, byte_fallback_end]</c> are decoded as raw bytes and accumulated until a valid UTF-8 sequence forms.</item>
+/// <item>Partial multi-byte sequences across frame boundaries: buffered between calls when <c>Partial: true</c>.</item>
 /// </list>
 /// </summary>
 public sealed class Detokenizer
@@ -105,7 +105,7 @@ public sealed class Detokenizer
         return sb.ToString();
     }
 
-    /// <summary>Reset internal state — call between conversations / requests.</summary>
+    /// <summary>Reset internal state: call between conversations / requests.</summary>
     public void Reset() => _byteBuffer.Clear();
 
     /// <summary>
@@ -151,9 +151,9 @@ public sealed class Detokenizer
     }
 
     private static int Utf8SequenceLength(byte b) =>
-        (b & 0x80) == 0x00 ? 1 :
-        (b & 0xE0) == 0xC0 ? 2 :
-        (b & 0xF0) == 0xE0 ? 3 :
+        (b & 0x80) == 0x00 ? 1:
+        (b & 0xE0) == 0xC0 ? 2:
+        (b & 0xF0) == 0xE0 ? 3:
         (b & 0xF8) == 0xF0 ? 4 : 0;
 
     private static readonly Encoding Utf8Strict =

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// codec-bench (Java) — same shape as packages/demo-web (TypeScript),
+// codec-bench (Java): same shape as packages/demo-web (TypeScript),
 // packages/demo-python, packages/demo-dotnet, packages/demo-c,
 // packages/demo-rust. Runs the same prompt across 3 wire formats × 4
 // compression encodings, prints the wire-byte table.
@@ -282,7 +282,7 @@ public final class Bench {
         System.err.println("model:  " + args.model);
         System.err.println("prompt: " + args.prompt + "  (max_tokens=" + args.maxTokens + ")");
 
-        // No automatic decompression — JDK HttpClient doesn't auto-decompress,
+        // No automatic decompression: JDK HttpClient doesn't auto-decompress,
         // so wire bytes are exactly what's off the socket.
         HttpClient http = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))

@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code packages/python/tests/test_compression.py}, the TS suite in
  * {@code packages/web/test/compression.test.ts}, and the .NET suite.
  *
- * <p>Fixture is {@code packages/bench/fixtures/dict-zstd-interop/} — the
+ * <p>Fixture is {@code packages/bench/fixtures/dict-zstd-interop/}: the
  * cross-client interop reference: every Codec client must agree on the
  * hash of {@code dict.bin} and select it for the canned headers.
  */
@@ -60,13 +60,13 @@ class CompressionTest {
         byte[] dict = loadDictBin();
         String h = Compression.hashZstdDict(dict);
         assertEquals(EXPECTED_DICT_HASH, h,
-                "dict.bin hash must match the interop manifest — every Codec "
+                "dict.bin hash must match the interop manifest: every Codec "
                         + "client computes the same digest for this byte sequence");
     }
 
     @Test
     void hashZstdDict_emptyInput_returnsKnownSha256() {
-        // sha256("") is well-known — sanity check that we're not off-by-one
+        // sha256("") is well-known: sanity check that we're not off-by-one
         // on the encoding format.
         String h = Compression.hashZstdDict(new byte[0]);
         assertEquals(
@@ -77,7 +77,7 @@ class CompressionTest {
     @Test
     void hashZstdDict_lowercaseHex() {
         // The spec says "lowercase hex". Make sure we never emit uppercase
-        // — a server validating the inbound header against ours must match.
+        //: a server validating the inbound header against ours must match.
         String h = Compression.hashZstdDict(new byte[]{1, 2, 3, 4});
         assertTrue(h.startsWith("sha256:"), "must have sha256: prefix");
         String hex = h.substring("sha256:".length());
@@ -108,7 +108,7 @@ class CompressionTest {
         Map<String, byte[]> loaded = new HashMap<>();
         loaded.put(EXPECTED_DICT_HASH, dict);
 
-        // HTTP headers are case-insensitive — caller might pass any casing.
+        // HTTP headers are case-insensitive: caller might pass any casing.
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put("content-encoding", "ZSTD");
         headers.put("codec-zstd-dict", EXPECTED_DICT_HASH);
@@ -139,7 +139,7 @@ class CompressionTest {
         Map<String, byte[]> loaded = new HashMap<>();
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put("Content-Encoding", "zstd");
-        // no Codec-Zstd-Dict — server protocol error per spec
+        // no Codec-Zstd-Dict: server protocol error per spec
         CodecZstdDictError ex = assertThrows(CodecZstdDictError.class,
                 () -> Compression.selectZstdDictForResponse(headers, loaded));
         assertTrue(ex.getMessage().contains("Codec-Zstd-Dict"));

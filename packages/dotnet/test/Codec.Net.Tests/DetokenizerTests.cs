@@ -53,7 +53,7 @@ public class DetokenizerTests
     public void PartialMultiByteSequenceBufferedAcrossFrames()
     {
         var d = new Detokenizer(Fixtures.TinyMap);
-        // Frame 1: first 2 bytes of € — incomplete, must not emit anything.
+        // Frame 1: first 2 bytes of €: incomplete, must not emit anything.
         var out1 = d.Render(
             new[] { Fixtures.ByteId(0xE2), Fixtures.ByteId(0x82) },
             new DetokenizeOptions { Partial = true });

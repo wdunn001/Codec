@@ -1,12 +1,12 @@
 /*
- * codec_safety_policy.h — public API for the safety-policy descriptor.
+ * codec_safety_policy.h: public API for the safety-policy descriptor.
  *
  * SPDX-License-Identifier: MIT
  *
  * Lean C port of @codecai/web's safety_policy module + its Python /
  * Rust / .NET / Java twins. Same descriptor shape; same field
  * semantics; same URL convention. The C surface is intentionally
- * lighter than the higher-level languages — embedded / FFI consumers
+ * lighter than the higher-level languages: embedded / FFI consumers
  * typically *receive* descriptors and verify hashes; descriptor
  * publishing happens upstream in TS / Python / Rust / .NET / Java.
  *

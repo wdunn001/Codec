@@ -128,9 +128,9 @@ static void test_protobuf_chunked_reassembly(void) {
 }
 
 static void test_msgpack_stream_rejects_deep_nesting(void) {
-    /* No valid frame at all — just a run of fixarray-of-1 headers. The
-     * stream walker sizes the next frame before decoding anything, so this
-     * reaches mp_end_offset directly. */
+    /* No valid frame at all, just a run of fixarray-of-1 headers. The
+     * stream walker sizes the next frame before decoding anything. That
+     * makes this reach mp_end_offset directly. */
     const size_t N = 200000;
     uint8_t *b = (uint8_t *)malloc(N);
     CT_TRUE(b != NULL);

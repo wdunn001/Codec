@@ -1,4 +1,4 @@
-/* Tool-calling block — round-trip + validation tests.
+/* Tool-calling block: round-trip + validation tests.
  *
  * Mirrors packages/python (TokenizerMap.tool_calling), packages/rust
  * (tests/tool_calling_block_tests.rs), and packages/web (TS interface
@@ -67,7 +67,7 @@ static void test_round_trip_qwen25(void) {
     CT_EQ_STR(tc->marker_start_name, "<tool_call>");
     CT_EQ_STR(tc->marker_end_name,   "</tool_call>");
     /* Markers also resolve via codec_map_special_id, since they live in
-     * special_tokens — that's the spec invariant the validator enforces. */
+     * special_tokens: that's the spec invariant the validator enforces. */
     uint32_t id = 0;
     CT_EQ_INT(codec_map_special_id(m, "<tool_call>",  &id), CODEC_OK);
     CT_EQ_INT((int)id, 151657);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! Per-language tokenize/detokenize micro-benchmark — Rust.
+//! Per-language tokenize/detokenize micro-benchmark: Rust.
 //!
 //! Cross-language companion of `codec_demo.token_bench` (Python) /
 //! `demo/src/token_bench.ts` (TypeScript). See the Python file's docstring
@@ -61,7 +61,7 @@ fn sha256_hex(bytes: &[u8]) -> String {
     use std::collections::hash_map::DefaultHasher;
     // We don't actually have sha2 in this crate's deps. Use codec_rs's
     // TokenizerMap::verify_sha256 logic implicitly by precomputing the hash
-    // via the system command — simpler than pulling a new dep.
+    // via the system command: simpler than pulling a new dep.
     // Fallback: a non-cryptographic hash, clearly labeled.
     use std::hash::{Hash, Hasher};
     let mut h = DefaultHasher::new();

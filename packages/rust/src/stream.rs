@@ -400,7 +400,7 @@ impl<'a> MsgpackParser<'a> {
                 }
                 Ok(v as u32)
             }
-            // signed ints (we coerce to u32 — match .NET ReadInt32 behavior)
+            // signed ints (we coerce to u32: match .NET ReadInt32 behavior)
             0xD0 => Ok((self.next_byte()? as i8) as u32),
             0xD1 => {
                 let s = self.take(2)?;

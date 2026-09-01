@@ -1,5 +1,5 @@
 /**
- * Per-language tokenize/detokenize micro-benchmark — TypeScript / Node.
+ * Per-language tokenize/detokenize micro-benchmark: TypeScript / Node.
  *
  * Cross-language companion of `codec_demo.token_bench` (Python),
  * `demo-rust/src/bin/token_bench.rs`, etc. See the Python file's

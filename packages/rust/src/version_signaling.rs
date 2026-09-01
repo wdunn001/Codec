@@ -1,4 +1,4 @@
-//! Codec v0.4 version negotiation — client-side primitives.
+//! Codec v0.4 version negotiation: client-side primitives.
 //!
 //! Rust mirror of `packages/web/src/version-signaling.ts` and
 //! `packages/python/src/codecai/version_signaling.py`.
@@ -133,7 +133,7 @@ pub fn well_known_version_policy_url(origin: &str) -> String {
 
 /// Parse a (status, body) pair into a typed error. Returns `Ok(None)` for
 /// non-426 responses, `Ok(Some(err))` for valid 426 bodies, and `Err` for
-/// 426s with malformed/non-JSON bodies — never silently swallows a 426.
+/// 426s with malformed/non-JSON bodies: never silently swallows a 426.
 pub fn parse_version_required(
     status: &impl HttpStatus,
     body_text: &str,

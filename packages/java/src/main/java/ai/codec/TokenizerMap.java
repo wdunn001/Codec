@@ -15,7 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
- * A per-model tokenizer dialect — the data needed to encode text into
+ * A per-model tokenizer dialect: the data needed to encode text into
  * token IDs and decode IDs back to text. Maps are immutable once
  * published; a new model version publishes a new map at a new URL with
  * a new sha256 hash.
@@ -75,7 +75,7 @@ public final class TokenizerMap {
     /**
      * Per-model tool-calling convention. Optional; populated by
      * {@code @codecai/maps-cli} when it detects a known chat-template
-     * signature. Absence means "convention not declared in this map" — see
+     * signature. Absence means "convention not declared in this map": see
      * {@code spec/PROTOCOL.md} § "Tool-call calling conventions in the map".
      */
     @JsonProperty("tool_calling")

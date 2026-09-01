@@ -2,14 +2,14 @@
 
 **Isomorphic tokenizer + lazy detokenizer for the [Codec](https://github.com/wdunn001/Codec) binary transport protocol.**
 
-Codec ships token IDs over the wire instead of UTF-8 text. `@codecai/web` is the presentation layer:
+Codec ships token IDs over the wire in place of UTF-8 text. `@codecai/web` is the presentation layer:
 
 - **Detokenizer** (IDs → text) for rendering binary streams in the browser, lazily, only when a human needs to read them.
-- **BPETokenizer** (text → IDs) — pure-JS, exact, no wasm — so the browser can send token-ID prompts upstream and skip the JSON-text round trip entirely.
+- **BPETokenizer** (text → IDs): pure-JS, exact, no wasm: so the browser can send token-ID prompts upstream and skip the JSON-text round trip entirely.
 - **Stream decoder** for both Codec wire modes (msgpack, protobuf) plus the future zstd/gzip-compressed variants (handled transparently by `fetch()`).
-- **`LatentStreamEncoder` / `LatentStreamDecoder`** (v0.3) for the latent modality — VAE latents on the wire across the seven [pipelines](https://github.com/wdunn001/Codec/blob/main/spec/PIPELINES.md) (`raw` / `int8` / `int4` / `int8-adaptive` / `int4-adaptive` / `delta+int8` / `delta+int4`). TypeScript twin of the Python reference encoder; works against [`codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui) and [`codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers).
-- **`tool_calling` block** on `TokenizerMap` — per-model tool-calling convention auto-derived from chat templates. Same field exposed in the Python / Rust / Java / .NET / C clients.
-- **`SafetyPolicyDescriptor` + `discoverSafetyPolicy`** (v0.4) — load the sanitized publishable safety-policy descriptor a server advertised via `safety_policy_id` + `safety_policy_hash` in `READY`. Fetches and verifies against `.well-known/codec/policies/<id>.json` or the content-addressed `.well-known/codec/policies/sha256/<hex>.json` sibling. Companion optional package [`@codecai/web-safety`](../web-safety) adds the client-side prefilter (secrets/PII/entropy) and a classifier registry (Prompt Guard 86M default, Llama Guard 3 1B opt-in).
+- **`LatentStreamEncoder` / `LatentStreamDecoder`** (v0.3) for the latent modality: VAE latents on the wire across the seven [pipelines](https://github.com/wdunn001/Codec/blob/main/spec/PIPELINES.md) (`raw` / `int8` / `int4` / `int8-adaptive` / `int4-adaptive` / `delta+int8` / `delta+int4`). TypeScript twin of the Python reference encoder; works against [`codec-comfyui`](https://hub.docker.com/r/wdunn001/codec-comfyui) and [`codec-diffusers`](https://hub.docker.com/r/wdunn001/codec-diffusers).
+- **`tool_calling` block** on `TokenizerMap`: per-model tool-calling convention auto-derived from chat templates. Same field exposed in the Python / Rust / Java / .NET / C clients.
+- **`SafetyPolicyDescriptor` + `discoverSafetyPolicy`** (v0.4): load the sanitized publishable safety-policy descriptor a server advertised via `safety_policy_id` + `safety_policy_hash` in `READY`. Fetches and verifies against `.well-known/codec/policies/<id>.json` or the content-addressed `.well-known/codec/policies/sha256/<hex>.json` sibling. Companion optional package [`@codecai/web-safety`](../web-safety) adds the client-side prefilter (secrets/PII/entropy) and a classifier registry (Prompt Guard 86M default, Llama Guard 3 1B opt-in).
 
 Works in browsers, Node 18+, Cloudflare Workers, Deno, Bun. No Node-only imports. Only runtime dep is `@msgpack/msgpack` for stream decoding (~5 kB).
 
@@ -24,7 +24,7 @@ Real numbers from `Codec/packages/bench`:
 | Codec protobuf (identity)                  |    10.9 |   **14.2×** |
 | Codec msgpack + `Content-Encoding: zstd`   |     3.4 |   **45.0×** |
 
-End-to-end agent round-trip (1024 tokens): **3.6× faster** with binary frames, because both the wire shrinks AND detokenize+tokenize gets eliminated.
+End-to-end agent round-trip (1024 tokens): **3.6× faster** with binary frames. Both the wire shrinks AND detokenize+tokenize gets eliminated.
 
 ## Install
 
@@ -32,7 +32,7 @@ End-to-end agent round-trip (1024 tokens): **3.6× faster** with binary frames, 
 npm install @codecai/web
 ```
 
-## Quick start — decoding a stream
+## Quick start: decoding a stream
 
 ```ts
 import { loadMap, Detokenizer, decodeStream } from '@codecai/web';
@@ -55,7 +55,7 @@ const resp = await fetch('http://localhost:8000/v1/completions', {
   }),
 });
 
-// 3. Detokenize lazily — only when rendering for a human.
+// 3. Detokenize lazily: only when rendering for a human.
 const detok = new Detokenizer(map);
 for await (const frame of decodeStream(resp.body!, 'msgpack')) {
   // frame.ids is the raw token output. Pass it forward unchanged for
@@ -66,7 +66,7 @@ for await (const frame of decodeStream(resp.body!, 'msgpack')) {
 
 ## Forwarding IDs to another model (agent-to-agent, same vocab)
 
-When the next consumer of this stream is another model on the same vocab — agent → agent, orchestrator → planner, model → tool that re-feeds the model — you do NOT need a `Detokenizer` at all. Forward `frame.ids` directly:
+When the next consumer of this stream is another model on the same vocab: agent → agent, orchestrator → planner, model → tool that re-feeds the model: you do NOT need a `Detokenizer` at all. Forward `frame.ids` directly:
 
 ```ts
 // No Detokenizer constructed: zero UTF-8 reassembly, zero BPE-merge work.
@@ -75,11 +75,11 @@ for await (const frame of decodeStream(resp.body!, 'msgpack')) {
 }
 ```
 
-This is the **hot-loop fast path** for agent mesh code. Skipping `detok.render(...)` saves ~10-20% client CPU on heavy reply streams (no string allocation, no partial-UTF-8 buffering, no metaspace decode). For cross-vocab handoff use `Translator` — that case still needs the byte-level path because the two vocabs disagree.
+This is the **hot-loop fast path** for agent mesh code. Skipping `detok.render(...)` saves ~10-20% client CPU on heavy reply streams (no string allocation, no partial-UTF-8 buffering, no metaspace decode). For cross-vocab handoff use `Translator`: that case still needs the byte-level path because the two vocabs disagree.
 
-## Quick start — encoding text (for the bidirectional path)
+## Quick start: encoding text (for the bidirectional path)
 
-When you want **zero text on the wire in either direction** — agent A's output IDs feeding straight into agent B's input — encode text to IDs in the browser before sending:
+When you want **zero text on the wire in either direction**: agent A's output IDs feeding straight into agent B's input: encode text to IDs in the browser before sending:
 
 ```ts
 import { BPETokenizer } from '@codecai/web';
@@ -159,7 +159,7 @@ const ids = tok.encode(text);
 
 ## Detect tool calls without decoding
 
-Most chat-tuned models delimit tool calls with single-token specials (`<tool_call>` / `</tool_call>` for Qwen 2.5+, `<|python_tag|>` / `<|eom_id|>` for Llama 3.1+, `<think>` / `</think>` for DeepSeek-R1, etc.). Detecting *that* one happened is a uint32 compare — no detokenize, no string allocation.
+Most chat-tuned models delimit tool calls with single-token specials (`<tool_call>` / `</tool_call>` for Qwen 2.5+, `<|python_tag|>` / `<|eom_id|>` for Llama 3.1+, `<think>` / `</think>` for DeepSeek-R1, etc.). Detecting *that* one happened is a uint32 compare: no detokenize, no string allocation.
 
 ```ts
 import { ToolWatcher } from '@codecai/web';
@@ -181,25 +181,25 @@ for await (const frame of decodeStream(resp.body!)) {
 }
 ```
 
-The watcher is stateful: regions split between network frames buffer until the end marker arrives. `watcher.inside` reports whether one is currently in flight. The same primitive works for reasoning blocks, multimodal spans, code-interpreter regions — anything delimited by a (start, end) special pair.
+The watcher is stateful: regions split between network frames buffer until the end marker arrives. `watcher.inside` reports whether one is currently in flight. The same primitive works for reasoning blocks, multimodal spans, code-interpreter regions: anything delimited by a (start, end) special pair.
 
 ## Correctness notes
 
 - **Byte-level decode**: every vocab token is a sequence of GPT-2-encoded bytes. The Detokenizer reverses the byte→unicode table and accumulates bytes across tokens until they form a complete UTF-8 sequence. Tested against 3-byte (`€`) and 4-byte (`🚀`) sequences.
-- **Metaspace decode**: `▁` becomes space; SentencePiece byte-fallback IDs (`<0x00>`–`<0xFF>`) are decoded as raw bytes through the same UTF-8 buffer.
-- **Partial sequences across frames**: `Detokenizer` is stateful — call `render(ids, { partial: true })` while frames are streaming, then `render(ids, { partial: false })` (or omit `partial`) on the last frame so the buffer flushes. Use `reset()` between conversations.
-- **BPE merge ordering**: merges are applied greedily by priority, not left-to-right. Matches HuggingFace tokenizers reference behaviour. Test fixture verifies this explicitly.
-- **Hash verification** uses Web Crypto's `SubtleCrypto.digest('SHA-256', ...)` — available in every target runtime. A mismatch throws `TokenizerMapHashMismatchError`.
+- **Metaspace decode**: `▁` becomes space; SentencePiece byte-fallback IDs (`<0x00>`:`<0xFF>`) are decoded as raw bytes through the same UTF-8 buffer.
+- **Partial sequences across frames**: `Detokenizer` is stateful: call `render(ids, { partial: true })` while frames are streaming, then `render(ids, { partial: false })` (or omit `partial`) on the last frame so the buffer flushes. Use `reset()` between conversations.
+- **BPE merge ordering**: merges are applied greedily by priority rather than left-to-right. Matches HuggingFace tokenizers reference behaviour. Test fixture verifies this explicitly.
+- **Hash verification** uses Web Crypto's `SubtleCrypto.digest('SHA-256', ...)`: available in every target runtime. A mismatch throws `TokenizerMapHashMismatchError`.
 
 ## Map sources
 
-`loadMap` accepts any URL — the sha256 hash is what matters. For a curated set of pre-generated maps:
+`loadMap` accepts any URL: the sha256 hash is what matters. For a curated set of pre-generated maps:
 
 ```
 https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/<family>.json
 ```
 
-14 families covering 70+ aliases — see [`codec-maps`](https://github.com/wdunn001/codec-maps) for the index.
+14 families covering 70+ aliases: see [`codec-maps`](https://github.com/wdunn001/codec-maps) for the index.
 
 To generate your own from a HuggingFace `tokenizer.json`:
 
@@ -210,7 +210,7 @@ npx @codecai/maps-cli hash my-org_my-model.json
 
 ### Self-hosted discovery via `.well-known/codec/`
 
-Model maintainers can publish their own maps at a known location on a domain they control, so clients only need to know the origin and the map ID — no out-of-band URL+hash exchange:
+Model maintainers can publish their own maps at a known location on a domain they control. Clients only need to know the origin and the map ID as a result: no out-of-band URL+hash exchange:
 
 ```ts
 import { discoverMap } from '@codecai/web';
@@ -221,7 +221,7 @@ const map = await discoverMap({
 });
 ```
 
-This fetches `https://qwen.io/.well-known/codec/maps/qwen/qwen2.json`. The document is either a tiny pointer (`{ id, url, hash }`) referencing the actual map on a CDN, or the full map served inline. Either way, hash verification still anchors the bytes. See [`spec/WELL_KNOWN_DISCOVERY.md`](https://github.com/wdunn001/Codec/blob/main/spec/WELL_KNOWN_DISCOVERY.md) for the convention, and [`@codecai/maps-cli`](https://www.npmjs.com/package/@codecai/maps-cli)'s `well-known` command to generate the publishing tree.
+This fetches `https://qwen.io/.well-known/codec/maps/qwen/qwen2.json`. The document is either a tiny pointer (`{ id, url, hash }`) referencing the actual map on a CDN, or the full map served inline. Either way, hash verification still anchors the bytes. See [`spec/WELL_KNOWN_DISCOVERY.md`](https://github.com/wdunn001/Codec/blob/main/spec/WELL_KNOWN_DISCOVERY.md) for the convention. See [`@codecai/maps-cli`](https://www.npmjs.com/package/@codecai/maps-cli)'s `well-known` command to generate the publishing tree.
 
 ## Compatibility
 

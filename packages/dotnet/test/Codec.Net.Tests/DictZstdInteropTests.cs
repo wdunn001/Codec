@@ -59,7 +59,7 @@ public class DictZstdInteropTests
         var expected = File.ReadAllBytes(Path.Combine(dir, "decompressed.bin"));
 
         // Step 1: hash matches the manifest. If this fails the bench
-        // would refuse to decompress in production (which is correct —
+        // would refuse to decompress in production (which is correct:
         // never feed mismatched dicts to a decompressor).
         Assert.Equal(ExpectedDictHash, Compression.HashZstdDict(dictBytes));
 
@@ -105,7 +105,7 @@ public class DictZstdInteropTests
     {
         // Sanity check that the placeholder behaviour (pass through the
         // compressed bytes, or decompress without the dict) really would
-        // have produced garbage — justifying the failure-mode the user
+        // have produced garbage: justifying the failure-mode the user
         // hit ("MessagePackSerializationException: Unexpected m..."). We
         // assert that ZstdSharp either throws on no-dict decompression
         // or returns bytes that DON'T match the reference output.
@@ -121,7 +121,7 @@ public class DictZstdInteropTests
         }
         catch
         {
-            // ZstdSharp threw — that is acceptable evidence the dict is
+            // ZstdSharp threw: that is acceptable evidence the dict is
             // required for this stream.
             return;
         }

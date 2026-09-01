@@ -2,14 +2,14 @@
 //! # codec-rs
 //!
 //! Rust port of the [Codec](https://github.com/wdunn001/Codec) binary
-//! transport protocol — the functional twin of `Codec.Net`,
+//! transport protocol: the functional twin of `Codec.Net`,
 //! `@codecai/web`, and `codecai`.
 //!
 //! Codec carries `uint32` token IDs on the wire instead of UTF-8 / JSON,
 //! deferring text decoding to the presentation layer. This crate lets a
 //! Rust client decode/encode Codec frames, parse tokenizer maps,
 //! detokenize/tokenize, watch for tool calls, translate cross-vocab, and
-//! load maps over HTTP — all with full sha256 verification.
+//! load maps over HTTP: all with full sha256 verification.
 //!
 //! ## Quick start
 //!

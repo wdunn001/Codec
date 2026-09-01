@@ -1,7 +1,7 @@
 {
   "name": "@codec/client",
   "version": "0.1.0",
-  "description": "Client for Codec-enabled TGI servers — streams token IDs, never text",
+  "description": "Client for Codec-enabled TGI servers: streams token IDs, never text",
   "type": "module",
   "main": "./src/index.ts",
   "exports": {

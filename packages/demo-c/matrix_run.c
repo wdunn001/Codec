@@ -16,7 +16,7 @@
  * reps grid, emits SCHEMA-v1 result JSON.
  *
  * Dependencies: libcurl (HTTP), libcodec (codec_decode_msgpack /
- * codec_decode_protobuf_frame for token counting). No JSON library —
+ * codec_decode_protobuf_frame for token counting). No JSON library:
  * we hand-roll narrow substring extraction for the few methodology
  * fields we read, and printf-format the result. The bench's primary
  * signal (wire bytes / TTFB / total) doesn't depend on the JSON layer
@@ -81,12 +81,12 @@ static void buf_free(buf_t *b) { free(b->data); b->data = NULL; b->len = b->cap 
  * by curl_header_cb below), calls codec_select_zstd_dict_for_response to
  * pick a matching dict, then hands the dict bytes to libzstd for
  * decompression. Wrong-dict decompression would produce garbage bytes
- * that msgpack/protobuf parsers would misinterpret — codec_select fails
+ * that msgpack/protobuf parsers would misinterpret: codec_select fails
  * fast with UNKNOWN_HASH / MALFORMED_HASH / MISSING_HEADER instead.
  */
 typedef struct {
-    char *hash;       /* "sha256:<hex>" — owned */
-    uint8_t *bytes;   /* dict file contents — owned */
+    char *hash;       /* "sha256:<hex>": owned */
+    uint8_t *bytes;   /* dict file contents: owned */
     size_t len;
 } dict_owned_t;
 
@@ -95,7 +95,7 @@ typedef struct {
 static dict_owned_t g_dicts[CODEC_DEMO_MAX_DICTS];
 static size_t       g_dict_count = 0;
 
-/* Load one dict file into the registry. Silent on missing files — the
+/* Load one dict file into the registry. Silent on missing files: the
  * matrix run still completes, but zstd cells that need this dict will
  * fail with "Codec-Zstd-Dict mismatch" in the error column (the row's
  * wire_bytes / ttft / total numbers stay valid). Same behaviour as
@@ -135,7 +135,7 @@ static void free_dict_registry(void) {
 }
 
 /* Build a codec_zstd_dict_entry_t snapshot of the registry for the
- * codec_select_zstd_dict_for_response call. Borrowed pointers — the
+ * codec_select_zstd_dict_for_response call. Borrowed pointers: the
  * snapshot is valid as long as the registry isn't mutated. */
 static size_t snapshot_dict_registry(codec_zstd_dict_entry_t out[CODEC_DEMO_MAX_DICTS]) {
     for (size_t i = 0; i < g_dict_count; i++) {
@@ -169,7 +169,7 @@ static void stream_state_reset(stream_state_t *st) {
 
 /* curl header callback. Headers arrive one line at a time, including the
  * CRLF terminator. We snapshot Content-Encoding and Codec-Zstd-Dict only.
- * Case-insensitive name match — HTTP/2 lowercases everything but HTTP/1.1
+ * Case-insensitive name match: HTTP/2 lowercases everything but HTTP/1.1
  * leaves casing to the server. */
 static size_t curl_header_cb(char *buf, size_t size, size_t nitems, void *userdata) {
     stream_state_t *st = (stream_state_t *)userdata;
@@ -405,7 +405,7 @@ static void run_one(CURL *curl, const char *endpoint, const char *model,
 
     char body[8192];  /* 8K covers the canonical 2K-token essay prompt with escapes */
     int blen;
-    /* Escape the prompt's quotes — it can contain " from the canonical
+    /* Escape the prompt's quotes: it can contain " from the canonical
      * 2K-token essay prompt. We only need to escape \" and \\. */
     char *escaped = malloc(strlen(prompt) * 2 + 1);
     char *e = escaped;
@@ -453,7 +453,7 @@ static void run_one(CURL *curl, const char *endpoint, const char *model,
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, curl_header_cb);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &st);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 180L);
-    /* CRITICAL: do NOT set CURLOPT_ACCEPT_ENCODING — that would tell
+    /* CRITICAL: do NOT set CURLOPT_ACCEPT_ENCODING: that would tell
      * curl to auto-decompress, which would corrupt our wire-byte count.
      * The Accept-Encoding header is set manually above. */
     curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
@@ -479,11 +479,11 @@ static void run_one(CURL *curl, const char *endpoint, const char *model,
 
     /* Token counting.
      *
-     *   identity        — bytes are already the canonical content; count directly.
-     *   zstd            — verify Codec-Zstd-Dict against the loaded dict registry
+     *   identity: bytes are already the canonical content; count directly.
+     *   zstd: verify Codec-Zstd-Dict against the loaded dict registry
      *                     (codec_select_zstd_dict_for_response), decompress with
      *                     libzstd, then count post-decompression tokens.
-     *   gzip / br       — libcodec doesn't link a gzip/brotli decoder, so we
+     *   gzip / br: libcodec doesn't link a gzip/brotli decoder, so we
      *                     report the requested `size` (same fallback the bench
      *                     used before this change). The primary signal
      *                     (wire_bytes / TTFB / total_ms) is captured pre-decompress
@@ -575,7 +575,7 @@ static void run_one(CURL *curl, const char *endpoint, const char *model,
 #endif
         }
     } else {
-        /* gzip / br — wire bytes correct, fall back to requested size
+        /* gzip / br: wire bytes correct, fall back to requested size
          * for tokens (deterministic at temp=0 in normal completion). */
         out->tokens = size;
     }
@@ -611,7 +611,7 @@ static char *find_repo_root_and_load(const char *methodology_path,
                                      char **out_path) {
     /* Walk up from methodology_path looking for the file
      * "<root>/packages/bench/<prompts_rel>". methodology_path may be
-     * relative — absolute-ify via realpath so the parent walk works. */
+     * relative: absolute-ify via realpath so the parent walk works. */
     char *abs = realpath(methodology_path, NULL);
     char *p = abs ? strdup(abs) : strdup(methodology_path);
     free(abs);
@@ -754,7 +754,7 @@ int main(int argc, char **argv) {
      * Mirrors codec_demo.matrix_run.load_zstd_dict_files. Anchor lookup
      * on packages/bench/<prompts_rel> so we land on the same repo root
      * as the prompts file. If the server is configured to use a different
-     * dict, the wire/ttft numbers still land — only the decoded-tokens
+     * dict, the wire/ttft numbers still land: only the decoded-tokens
      * count drops to 0 with a "Codec-Zstd-Dict mismatch" error string on
      * the row, which keeps reviewers honest. */
     {
@@ -791,7 +791,7 @@ int main(int argc, char **argv) {
      * the closing brace, append our `client` and `bench_tool` blocks,
      * then close. This is a hack, but the methodology JSON as written by
      * capture_methodology.py is line-organised and has these blocks at
-     * the top level — substituting the entire blocks via printf is
+     * the top level: substituting the entire blocks via printf is
      * unsafe, so we splice into the existing JSON structure.
      *
      * Simpler implementation that mirrors the other ports' "fill in

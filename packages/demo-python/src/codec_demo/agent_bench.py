@@ -6,7 +6,7 @@ Flow:
   1. Send a prompt that needs a tool call.
   2. Stream the model's output.
   3. When sglang surfaces a tool_call on the wire, dispatch it
-     (HTTP call to a registered tool — searxng, mcp, mock, etc.).
+     (HTTP call to a registered tool: searxng, mcp, mock, etc.).
   4. Append the tool result to the chat history as a `tool` message.
   5. Re-send the (extended) history to sglang for the final answer.
   6. Stream the final answer.
@@ -190,7 +190,7 @@ def _get_mcp() -> Optional[_MetaMCPClient]:
 def _make_mcp_tool(remote_name: str) -> ToolFn:
     """Build a ToolFn that routes to a specific MCP tool by name.
     The local name (in REGISTRY / TOOLS_MANIFEST) and remote name can
-    differ — useful when the MetaMCP tool name has a server prefix
+    differ: useful when the MetaMCP tool name has a server prefix
     that confuses small chat-tuned models."""
     async def fn(args: Dict[str, Any]) -> str:
         mcp = _get_mcp()
@@ -397,7 +397,7 @@ async def _stream_jsonsse(client: httpx.AsyncClient, url: str, body: dict
 async def _stream_codec(client: httpx.AsyncClient, url: str, body: dict
                         ) -> tuple[int, float, float, list[int], list[dict]]:
     """Returns (wire_bytes, ttfb_ms, total_ms, ids, tool_calls). Both
-    `ids` and `tool_calls` come straight off the binary wire — no
+    `ids` and `tool_calls` come straight off the binary wire: no
     detokenize."""
     t0 = time.perf_counter()
     ttfb = None
@@ -547,7 +547,7 @@ async def run_codec_loop(client: httpx.AsyncClient, url: str, model: str,
         )
         s.wire_bytes += wire1
         s.ttfb_ms = ttfb1
-        # No client-side detection cost — the tool_calls list is on the wire.
+        # No client-side detection cost: the tool_calls list is on the wire.
         s.detect_ms = 0.0
         s.tool_calls_seen = tool_calls
 
@@ -572,12 +572,12 @@ async def run_codec_loop(client: httpx.AsyncClient, url: str, model: str,
             messages2 = messages + [assistant_msg] + tool_msgs
             body2 = build_chat(
                 model, messages2, stream_format="msgpack",
-                # No watcher needed on turn 2 — final answer is plain text.
+                # No watcher needed on turn 2: final answer is plain text.
                 max_tokens=max_tokens,
             )
             wire2, _, _t2_ms, _ids2, _ = await _stream_codec(client, url, body2)
             s.wire_bytes += wire2
-            # We don't try to render the IDs to text here — that would
+            # We don't try to render the IDs to text here: that would
             # require a tokenizer. The bench only cares about wire bytes,
             # detection latency, and end-to-end timing. A real client
             # would call tokenizer.decode(ids2) to render to the user.

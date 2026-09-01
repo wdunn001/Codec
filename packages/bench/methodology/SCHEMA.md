@@ -5,8 +5,8 @@ conforms to this schema. The methodology block is captured once per
 (engine, run-id) pair by `capture_methodology.py` and merged into
 each per-language result file by that language's demo runner. The
 aggregator validates that all rows in a comparison table share the
-same methodology fingerprint (excluding `client.*` and `bench_tool.*`
-fields, which are expected to differ across language cells).
+same methodology fingerprint, excluding `client.*` and `bench_tool.*`
+fields. Those are expected to differ across language cells.
 
 Files live at:
 
@@ -33,7 +33,7 @@ Multiple runs are kept side-by-side; nothing overwrites.
 }
 ```
 
-## `methodology` block — every field mandatory
+## `methodology` block: every field mandatory
 
 ```jsonc
 {
@@ -87,7 +87,7 @@ Multiple runs are kept side-by-side; nothing overwrites.
     "reps": 2,
     "warmup_reps": 0,
     "aggregation": "median",
-    "ttft_definition":     "wall-clock from request POST to first body byte (canonical) OR first headers byte (legacy cohort) — runner MUST state which",
+    "ttft_definition":     "wall-clock from request POST to first body byte (canonical) OR first headers byte (legacy cohort): runner MUST state which",
     "wire_bytes_definition": "raw socket bytes received before any Content-Encoding decompression",
     "total_ms_definition":   "wall-clock from request POST to last byte (after server emits final frame)"
   },
@@ -157,26 +157,25 @@ The aggregator computes `sha256` of the methodology dict with these
 fields **excluded** from the input (so cells from different languages
 or different bench tools can compare cleanly):
 
-- `client.*` — expected to differ per language
-- `bench_tool.*` — expected to differ per language
-- `captured_at` — wallclock time
-- `notes` — free-text
-- `git.repo_dirty_files` — file list (the boolean `repo_clean` IS in the fingerprint)
-- `modality.decoder.runtime` (v0.3+, latent only) — the whole point of
+- `client.*`: expected to differ per language
+- `bench_tool.*`: expected to differ per language
+- `captured_at`: wallclock time
+- `notes`: free-text
+- `git.repo_dirty_files`: file list (the boolean `repo_clean` IS in the fingerprint)
+- `modality.decoder.runtime` (v0.3+, latent only): the whole point of
   the runtime-drift bench is to compare ONNX-Web vs torch vs ggml vs
-  WGSL on the **same latent bytes**, so the runtime field MUST be
+  WGSL on the **same latent bytes**. The runtime field MUST therefore be
   allowed to vary across cells. The decoder's `weights_sha256` stays
-  in the fingerprint, so two cells with different runtimes but the
-  same weights still compare cleanly.
+  in the fingerprint. Two cells with different runtimes but the
+  same weights still compare cleanly as a result.
 
 Two rows with the same fingerprint belong in the same comparison
-table. Two rows with different fingerprints get **quarantined** —
-shown in their own table with a diff section explaining what
+table. Two rows with different fingerprints get **quarantined**: shown in their own table with a diff section explaining what
 diverged. Quarantine never silently drops data.
 
-## `rows` — one entry per measured cell
+## `rows`: one entry per measured cell
 
-Text modality (v0.2 — unchanged):
+Text modality (v0.2: unchanged):
 
 ```jsonc
 {
@@ -194,20 +193,20 @@ Text modality (v0.2 — unchanged):
 }
 ```
 
-Latent modality (v0.3+ — additive fields). The `format` and `encoding`
+Latent modality (v0.3+: additive fields). The `format` and `encoding`
 columns keep their text-modality meaning (msgpack/protobuf wire mode +
 HTTP Content-Encoding). New fields measure the latent-specific cost +
-quality axes. Fields whose values are `null` mean "not measured this
-run", not "zero":
+quality axes. Fields whose values are `null` mean only "not measured this
+run":
 
 ```jsonc
 {
   "size": "512",                                 // fixture key from latent-fixtures.json (string,
-                                                 //   not int — covers both "512" and "video-1s")
+                                                 //   not int: covers both "512" and "video-1s")
   "format": "msgpack",
   "encoding": "zstd",
   "wire_bytes": 14336,
-  "ttft_ms": null,                               // not meaningful for latents — see ttff_ms below
+  "ttft_ms": null,                               // not meaningful for latents: see ttff_ms below
   "ttff_ms": 23,                                 // time to first frame: wall-clock from POST to
                                                  //   first LatentFrame (after LatentStreamHeader).
                                                  //   Replaces ttft_ms semantically for latents.
@@ -218,22 +217,22 @@ run", not "zero":
   "rep_ttff_ms": [23, 24],
   "rep_total_ms": [380, 384],
 
-  // Decoder cost (only present when the bench runs vae_decode in this cell —
+  // Decoder cost (only present when the bench runs vae_decode in this cell:
   // i.e. this client has a decoder loaded). Cells running the wire only
   // (parse-only, no decode) leave these null.
   "decode_cold_ms":     840,                     // first decode latency, includes weight load
   "decode_steady_ms":   38,                      // steady-state per-frame decode latency
   "decode_peak_mem_mb": 612,
 
-  // Perceptual quality — measured against packages/bench/golden/<latent_space_id>/<size>/
+  // Perceptual quality: measured against packages/bench/golden/<latent_space_id>/<size>/
   // produced by the golden-builder image. Cells without a decoder loaded
   // (parse-only) leave all four null.
   "ssim":  0.9962,                               // higher = better
   "psnr":  41.7,                                 // dB; higher = better
   "lpips": 0.018,                                // lower = better
 
-  // Video-only quality — null for image-latents
-  "vmaf":          null,                         // 0–100, higher = better
+  // Video-only quality: null for image-latents
+  "vmaf":          null,                         // 0 to 100, higher = better
   "temporal_ssim": null,                         // SSIM between adjacent decoded frames; flags flicker
 
   "error": null
@@ -241,7 +240,7 @@ run", not "zero":
 ```
 
 A cell that measures the wire only (no decoder loaded) is still a
-useful cell — `wire_bytes` and `ttff_ms` capture the protocol-level
+useful cell: `wire_bytes` and `ttff_ms` capture the protocol-level
 cost. Cells with a decoder loaded additionally produce the perceptual
 columns; those numbers anchor the rate-distortion plots.
 
@@ -257,7 +256,7 @@ columns; those numbers anchor the rate-distortion plots.
    any Content-Encoding decompression. `tokens_emitted` is decoded
    afterward for sanity.
 5. **MUST** measure `ttft_ms` as wall-clock from request POST to **first
-   body byte** — the first byte of the HTTP response payload, after
+   body byte**: the first byte of the HTTP response payload, after
    the response headers have been received. The bench tool's
    `ttft_definition` field MUST state explicitly which moment was
    captured so reviewers can quarantine cohort-mismatched cells.
@@ -278,8 +277,8 @@ columns; those numbers anchor the rate-distortion plots.
      "headers-byte cohort" column rather than the canonical column.
 
    On non-buffering encodings (identity, gzip, br) headers and first
-   body byte arrive in the same TCP segment in practice, so the
-   cohorts agree. They diverge sharply on buffered encodings (current
+   body byte arrive in the same TCP segment in practice. The
+   cohorts agree as a result. They diverge sharply on buffered encodings (current
    sglang dict-zstd middleware buffers small responses to
    end-of-stream; headers-byte readers see ~35 ms while body-byte
    readers see total-response time). The aggregator's §4 splits the
@@ -294,7 +293,7 @@ columns; those numbers anchor the rate-distortion plots.
    headers-byte cohort.
 
    For HTTP libraries that buffer initial response chunks: use the
-   lowest-level read available — e.g. `aiter_raw` in httpx, raw fetch
+   lowest-level read available: e.g. `aiter_raw` in httpx, raw fetch
    reader in browsers, raw `read()` on a socket in C, `WRITEFUNCTION`
    in libcurl.
 6. **MUST** emit the unified JSON to stdout or `--out <path>`; **MUST NOT**
@@ -321,14 +320,14 @@ When building MATRIX.md from a `results/{run_id}/` tree:
 6. Always emit a "Methodology" section at the top citing the
    canonical methodology block and the fingerprint each table uses.
 
-## Synthetic-stream wire bench (v0.4.1+) — protocol-only headline
+## Synthetic-stream wire bench (v0.4.1+): protocol-only headline
 
 Added after the v0.4.1 post-mortem caught that the engine-output ratios
 were **content-dependent** rather than measuring protocol efficiency in
 isolation. Two engines fed the same prompt at temperature=0 generate
 different token sequences (floating-point non-associativity in CUDA
 reductions + sampler/attention divergence), and those sequences compress
-differently — producing wildly different headline ratios for what should
+differently: producing wildly different headline ratios for what should
 have been a protocol comparison.
 
 The synthetic-stream bench fixes this by **never invoking a model**. It
@@ -350,10 +349,10 @@ Stored at `results/{run_id}/synthetic/wire.json` with `kind:
 
 | Corpus name                       | Distribution                            | Purpose                              |
 |-----------------------------------|------------------------------------------|--------------------------------------|
-| `uniform-random-vocab-152064`     | Uniform random in `[0, 152064)`         | Worst case — no content redundancy   |
+| `uniform-random-vocab-152064`     | Uniform random in `[0, 152064)`         | Worst case: no content redundancy   |
 | `low-entropy-50-unique`           | Uniform from 50 sampled IDs             | Typical mixed-vocab model output     |
 | `comma-dominated-50pct`           | One ID 50% of the time, rest random     | Models the "comma/glue token dominates" pattern |
-| `cyclic-period-10`                | `[0, 1, ..., 9, 0, 1, ...]`             | Best case — pure structural repetition |
+| `cyclic-period-10`                | `[0, 1, ..., 9, 0, 1, ...]`             | Best case: pure structural repetition |
 
 These four cover the realistic compressibility spectrum from "incompressible
 random" through "structurally degenerate." Live model output sits somewhere
@@ -366,11 +365,11 @@ on this spectrum depending on prompt + model.
 disclaimer that those ratios depend on what each engine's model produces.
 
 The synthetic bench is **mandatory** for any release whose §1 numbers
-appear in marketing material — see `docs/RELEASE_CHECKLIST.md` §3.
+appear in marketing material: see `docs/RELEASE_CHECKLIST.md` §3.
 
 ### Implementation
 
-`packages/bench/scripts/synthetic_wire_bench.py` — pure Python, no
+`packages/bench/scripts/synthetic_wire_bench.py`: pure Python, no
 network calls. Uses the same library versions every engine fork uses
 (msgpack, brotli, zstandard with the shipped dict files at
 `dictionaries/`). Encoder versions are recorded in the output JSON for
@@ -382,11 +381,11 @@ For runs whose `modality.kind` is `image-latents` or `video-latents`,
 the aggregator also emits two plot scripts beyond the text-side
 TTFT/total/crossover charts:
 
-- `rate-distortion-{latent_space_id}.png` — wire bytes vs SSIM as the
+- `rate-distortion-{latent_space_id}.png`: wire bytes vs SSIM as the
   pipeline sweeps `raw → int8 → int4 → delta+int8 → delta+int4`. The
   canonical curve every classical video codec publishes; latents
   inherit the visualisation.
-- `runtime-drift-{latent_space_id}.png` — pairwise SSIM heatmap across
+- `runtime-drift-{latent_space_id}.png`: pairwise SSIM heatmap across
   decoder runtimes (torch / ONNX-Web / ggml / WGSL) on identical
   latent bytes. Quantifies how far the perceptual contract bends
   across implementations.
@@ -397,12 +396,11 @@ but still contribute to the wire-cost columns of the main table.
 
 ## Negotiation headers (v0.3+)
 
-Three response headers are part of the wire contract and SHOULD be
+The response headers below are part of the wire contract and SHOULD be
 recorded on every measured cell. They identify the content-addressed
 artifacts that produced the response bytes. A bench cell whose recorded
 header value doesn't match the artifact the client loaded fails closed
-(KV-cache divergence on text, decoder-output divergence on latents) —
-the aggregator quarantines those cells regardless of fingerprint match.
+(KV-cache divergence on text, decoder-output divergence on latents): the aggregator quarantines those cells regardless of fingerprint match.
 
 | Header                  | Modality                | Body                                         | Validation                                                                                                                                       |
 |-------------------------|-------------------------|----------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -431,22 +429,22 @@ The aggregator's quarantine pass adds a fourth case beyond fingerprint
 divergence: header-value divergence within an otherwise-matching fingerprint.
 Cells where `codec_tokenizer_map` (text) or `codec_latent_map` (latent)
 varies across language clients are quarantined with a "header divergence"
-diff — typically the result of a stale cache on one client, occasionally a
+diff: typically the result of a stale cache on one client, occasionally a
 genuine spec violation by the engine.
 
 ## MCP-live methodology (v0.3+)
 
 `src/mcp-live.ts` measures the gateway+downstream-MCP wire cost in
-isolation (no inference engine in the loop). Five variants are
-exercised per JSON-RPC method group; the variants are NORMATIVE for
+isolation (no inference engine in the loop). The variants below are
+exercised per JSON-RPC method group; they are NORMATIVE for
 the MCP-live cell shape and MUST be reproduced verbatim by any
 alternative-language port (none exist yet).
 
 | Variant                  | reqMsgpack | respMsgpack | Accept-Encoding | X-Codec-Map | What it measures                                              |
 |--------------------------|:----------:|:-----------:|:----------------:|:-----------:|---------------------------------------------------------------|
-| `json`                   |     ✗      |      ✗      |      —           |      ✗      | SDK default (the JSON-RPC baseline every other variant beats) |
-| `msgpack-resp`           |     ✗      |      ✓      |      —           |      ✗      | Cheapest opt-in: response only, request stays JSON            |
-| `msgpack-both`           |     ✓      |      ✓      |      —           |      ✗      | Symmetric Codec; the default Codec-aware client shape          |
+| `json`                   |     ✗      |      ✗      |      n/a           |      ✗      | SDK default (the JSON-RPC baseline every other variant beats) |
+| `msgpack-resp`           |     ✗      |      ✓      |      n/a           |      ✗      | Cheapest opt-in: response only, request stays JSON            |
+| `msgpack-both`           |     ✓      |      ✓      |      n/a           |      ✗      | Symmetric Codec; the default Codec-aware client shape          |
 | `msgpack-both+gzip`      |     ✓      |      ✓      |      gzip        |      ✗      | Production-shape lane (compression on top of msgpack)         |
 | `msgpack-both+gzip+map`  |     ✓      |      ✓      |      gzip        |      ✓      | Deep-compression lane: tool-call text → ID arrays via the     |
 |                          |            |             |                  |             | leaf-mode bypass (gateway sees `_codec_meta` and forwards as is). |
@@ -456,10 +454,10 @@ alternative-language port (none exist yet).
 Each variant is exercised against the three JSON-RPC methods every MCP
 session uses:
 
-- `initialize` — handshake; minimal payload
-- `tools/list` — registry enumeration; medium-large response when many
+- `initialize`: handshake; minimal payload
+- `tools/list`: registry enumeration; medium-large response when many
   tools are mounted
-- `tools/call` — actual tool invocation; small request, response
+- `tools/call`: actual tool invocation; small request, response
   varies by tool (file-read tools dominate the wire)
 
 Per-(variant, method) cells produce four numbers:
@@ -484,11 +482,11 @@ Per-(variant, method) cells produce four numbers:
 Variant 5 (`msgpack-both+gzip+map`) is meaningful only when at least one
 downstream MCP server in the active namespace is Codec-aware. The
 canonical workload is `wdunn001/codec-time-leaf:vX.Y.Z` (the reference
-Codec-aware MCP server — `get_current_time` + `convert_time` tools
+Codec-aware MCP server: `get_current_time` + `convert_time` tools
 wrapped via `@codecai/mcp-leaf`'s `wrapToolCall`). Without it, the
 gateway logs `[Codec][shim]` warnings on every result and variant 5's
 numbers regress to variant-4-equivalent (the gateway tokenizes on the
-seam instead of forwarding pre-tokenized IDs).
+seam rather than forwarding pre-tokenized IDs).
 
 ### Result file layout
 
@@ -533,4 +531,4 @@ point-release schema changes.
 Beyond the standard fingerprint-grouped matrix, the aggregator emits a
 `MCP-WIRE.md` showing each variant's wire-bytes ratio against the `json`
 baseline per-method. This is the table the launch What's New entry
-quotes — variant 5 / variant 1 ratio is the headline number.
+quotes: variant 5 / variant 1 ratio is the headline number.

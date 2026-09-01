@@ -1,5 +1,5 @@
 /*
- * codec_version_signaling.c — C client-side for Codec v0.4 version
+ * codec_version_signaling.c: C client-side for Codec v0.4 version
  * negotiation.
  *
  * SPDX-License-Identifier: MIT

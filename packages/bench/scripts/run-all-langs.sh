@@ -20,7 +20,7 @@
 #   - JDK 21 + Maven on PATH
 #   - codec-bench C built at packages/demo-c/build/codec-matrix
 #
-# This script EXITS NON-ZERO if any lang's matrix run fails — the bench is
+# This script EXITS NON-ZERO if any lang's matrix run fails: the bench is
 # only useful when all 6 cells are filled. Re-run individual langs by hand
 # if the bulk script aborts.
 set -euo pipefail
@@ -51,14 +51,14 @@ mkdir -p "$OUTDIR"
 SIZES_ARR=($SIZES)
 
 # Reps default to 2 (sglang + llama.cpp are stable at 2). Override via env
-# for noisier engines — vllm at 2K tokens has ~10–20 % wire-byte variance
+# for noisier engines: vllm at 2K tokens has ~10 to 20 % wire-byte variance
 # from non-deterministic batching/scheduling even at temperature=0; bumping
 # REPS=4 stabilises the median. See packages/bench/results/2026-05-08T01-15-02Z/MATRIX.md §7.
 REPS="${REPS:-2}"
 
 echo "=== run_id=$RUN_ID engine=$ENGINE sizes=$SIZES reps=$REPS ==="
 
-# Engine image acceptance (gate-before-bench) — added after the v0.4.1
+# Engine image acceptance (gate-before-bench): added after the v0.4.1
 # post-mortem caught a stale-Dockerfile regression that shipped broken
 # brotli/zstandard + missing v0.4 safety admin endpoints. See
 # docs/RELEASE_CHECKLIST.md §3 + packages/bench/tests/test_engine_acceptance.py.
@@ -82,7 +82,7 @@ print(d['model']['id'])
     CODEC_ENGINE_NAME="$ENGINE" \
     CODEC_ENGINE_MODEL="$ENGINE_MODEL_ID" \
     .venv/bin/python -m pytest packages/bench/tests/test_engine_acceptance.py -v --tb=short \
-        || { echo "FAIL: engine acceptance gate failed for $ENGINE — bench aborted." >&2; \
+        || { echo "FAIL: engine acceptance gate failed for $ENGINE: bench aborted." >&2; \
              echo "Fix the engine image and retry. To bypass for a known-broken baseline, set SKIP_ACCEPTANCE=1." >&2; \
              exit 3; }
 fi

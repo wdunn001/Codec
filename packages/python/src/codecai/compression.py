@@ -6,7 +6,7 @@ response, the client validates that header against locally-loaded dicts
 before decompressing. See spec/PROTOCOL.md "Codec-Zstd-Dict response
 header" for the full contract.
 
-The actual zstd decompression is intentionally out of scope here —
+The actual zstd decompression is intentionally out of scope here:
 ``httpx`` and ``aiohttp`` both auto-handle gzip/brotli transparently,
 zstd needs the optional ``zstandard`` package, and either way the
 caller usually already has its own HTTP plumbing. This module just
@@ -25,14 +25,14 @@ class CodecZstdDictError(Exception):
     any dict the client has loaded, or is missing on a zstd response.
 
     A wrong-dict decompression would produce garbage bytes that
-    downstream parsers would misinterpret — fail fast instead.
+    downstream parsers would misinterpret: fail fast instead.
     """
 
 
 def hash_zstd_dict(dict_bytes: bytes) -> str:
     """Compute the canonical Codec-Zstd-Dict hash for ``dict_bytes``.
 
-    Returns ``sha256:<lowercase hex>`` — same shape as the server-side
+    Returns ``sha256:<lowercase hex>``: same shape as the server-side
     header value and the ``hash`` field in tokenizer-map
     ``zstd_dictionaries[]`` entries.
     """
@@ -51,7 +51,7 @@ def select_zstd_dict_for_response(
         response. Most HTTP clients (httpx, aiohttp, urllib3) provide
         this directly; for a plain ``dict`` of headers, normalise keys
         to lowercase before passing in.
-      loaded_dicts: ``{sha256_hash: dict_bytes}`` — the dicts the client
+      loaded_dicts: ``{sha256_hash: dict_bytes}``: the dicts the client
         has loaded locally. Hashes follow the same ``sha256:<hex>``
         format the server emits.
 
@@ -66,7 +66,7 @@ def select_zstd_dict_for_response(
       CodecZstdDictError when the response is zstd but:
         - the ``Codec-Zstd-Dict`` header is missing (per spec, the
           server MUST emit it on every zstd response)
-        - the header names a hash we haven't loaded — caller should
+        - the header names a hash we haven't loaded: caller should
           fetch the dict from the tokenizer map's
           ``zstd_dictionaries[]`` entry whose ``hash`` matches, or
           retry the request with ``Accept-Encoding: gzip`` to

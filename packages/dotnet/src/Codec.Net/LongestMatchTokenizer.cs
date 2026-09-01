@@ -5,7 +5,7 @@ namespace Codec;
 /// Vocab-only longest-prefix-match tokenizer. Walks input left-to-right,
 /// emitting the ID of the longest vocab fragment that matches at each
 /// position. Suitable for canonical-IR / synthetic test maps. NOT
-/// BPE-correct for real model vocabs — use <see cref="BPETokenizer"/>
+/// BPE-correct for real model vocabs: use <see cref="BPETokenizer"/>
 /// for those.
 /// </summary>
 public sealed class LongestMatchTokenizer : ITokenizer

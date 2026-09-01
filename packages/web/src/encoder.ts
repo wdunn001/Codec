@@ -1,5 +1,5 @@
 /**
- * Shared encoder utilities — the GPT-2 byte↔unicode mapping table and
+ * Shared encoder utilities: the GPT-2 byte↔unicode mapping table and
  * UTF-8 partial-sequence buffering. Used by both the Detokenizer (to recover
  * bytes from byte-level tokens) and the BPETokenizer (to encode input bytes
  * into the vocab's character space).
@@ -44,7 +44,7 @@ export const CHAR_TO_BYTE: ReadonlyMap<number, number> = TABLES.charToByte;
 /**
  * Decode a byte-level BPE token string (e.g. `"Ġhello"`) to its raw bytes
  * by reversing the GPT-2 byte→unicode table. Characters outside the table
- * are emitted as their UTF-8 bytes (defensive — shouldn't happen for valid
+ * are emitted as their UTF-8 bytes (defensive: shouldn't happen for valid
  * vocab tokens but keeps the decoder total).
  */
 export function decodeByteLevelToken(rawToken: string): Uint8Array {
@@ -64,7 +64,7 @@ export function decodeByteLevelToken(rawToken: string): Uint8Array {
 
 /**
  * Encode raw bytes into a string of GPT-2 byte-encoded characters. Used by
- * the BPE tokenizer — input text is split into pieces, each piece is encoded
+ * the BPE tokenizer: input text is split into pieces, each piece is encoded
  * to UTF-8 bytes, then each byte is mapped through this table to produce a
  * string that matches the keys of the model's vocab.
  */
@@ -77,7 +77,7 @@ export function encodeByteLevelChars(bytes: Uint8Array): string {
 }
 
 /**
- * The metaspace marker — a single character used by SentencePiece-derived
+ * The metaspace marker: a single character used by SentencePiece-derived
  * tokenizers to denote a space prefix. Llama-2, Mistral-v3, Mixtral, Gemma
  * all use this convention.
  */

@@ -1,5 +1,5 @@
 /*
- * codec_compression.c — implementation of the dict-zstd client helpers.
+ * codec_compression.c: implementation of the dict-zstd client helpers.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -95,7 +95,7 @@ int codec_hash_zstd_dict(const uint8_t *bytes, size_t len,
 
 /* ── codec_select_zstd_dict_for_response ───────────────────────────────── */
 
-/* Parse "sha256:<64 hex>" — trimmed, lowercased into `out_norm` (a 72-byte
+/* Parse "sha256:<64 hex>": trimmed, lowercased into `out_norm` (a 72-byte
  * buffer). Returns 1 on success, 0 on shape failure. */
 static int normalise_dict_hash(const char *raw, char out_norm[72]) {
     if (!raw) return 0;
@@ -133,7 +133,7 @@ codec_zstd_dict_result_t codec_select_zstd_dict_for_response(
 
     /* Per RFC 7230, Content-Encoding is a token (no parameters); we
      * trim whitespace and compare case-insensitively. We deliberately
-     * don't try to handle stacked encodings like "br, zstd" — Codec
+     * don't try to handle stacked encodings like "br, zstd": Codec
      * servers don't emit them and a stacked encoding would be a server
      * protocol error anyway. */
     const char *enc_end = NULL;
@@ -146,7 +146,7 @@ codec_zstd_dict_result_t codec_select_zstd_dict_for_response(
     char norm[72];
     if (!normalise_dict_hash(declared, norm)) return CODEC_ZSTD_DICT_MALFORMED_HASH;
 
-    /* Linear scan. n_dicts is small (typically 2 — one per wire format
+    /* Linear scan. n_dicts is small (typically 2: one per wire format
      * per tokenizer); no need for a hash table. */
     for (size_t i = 0; i < n_dicts; i++) {
         const codec_zstd_dict_entry_t *e = &loaded_dicts[i];

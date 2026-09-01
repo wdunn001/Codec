@@ -3,8 +3,8 @@
  *
  * Validates that @codecai/web's pure-JS BPE produces the SAME token IDs as
  * the HuggingFace `tokenizers` Rust library for the same input text and
- * tokenizer map. The HF library is the reference implementation — it's
- * literally what produced our maps in the first place — so this is the
+ * tokenizer map. The HF library is the reference implementation: it's
+ * literally what produced our maps in the first place: so this is the
  * gold standard for "is our BPE correct against the live model."
  *
  * Tokenization is deterministic, so no seed is needed. If our IDs match

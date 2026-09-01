@@ -1,5 +1,5 @@
 /**
- * mcp-live.ts — measure MCP wire cost against a live MetaMCP gateway.
+ * mcp-live.ts: measure MCP wire cost against a live MetaMCP gateway.
  *
  * Phase 1 of the MCP-bench plan: client → metamcp → real mcp-server →
  * metamcp → client. No inference engine in the loop. This isolates
@@ -99,7 +99,7 @@ const VARIANTS: VariantSpec[] = [
 // ── HTTP plumbing (raw socket byte counting) ─────────────────────────────────
 //
 // fetch() hides the headers from us and gives us the decompressed body, which
-// is the wrong measurement — we want the bytes that actually crossed the wire.
+// is the wrong measurement: we want the bytes that actually crossed the wire.
 // So we use Node's http(s) module and tally headers + body ourselves, with
 // decompression deferred until after the count is taken.
 
@@ -110,7 +110,7 @@ import { gunzipSync, brotliDecompressSync } from 'node:zlib';
 
 interface MeasuredResponse {
   status: number;
-  /** Raw bytes received over the socket — headers + body. */
+  /** Raw bytes received over the socket: headers + body. */
   wireBytes: number;
   /** Body bytes only (decompressed if Content-Encoding was set). */
   bodyDecoded: Buffer;
@@ -151,7 +151,7 @@ function send(
         });
         res.on('end', () => {
           const totalMs = performance.now() - t0;
-          // Approximate header bytes by re-serializing what we know — the actual
+          // Approximate header bytes by re-serializing what we know: the actual
           // wire bytes from the server include the status line + headers. Node
           // doesn't expose a raw counter so we reconstruct.
           const statusLine = `HTTP/1.1 ${res.statusCode} ${res.statusMessage ?? ''}\r\n`;
@@ -171,7 +171,7 @@ function send(
             if (enc.includes('gzip')) bodyDecoded = gunzipSync(raw);
             else if (enc.includes('br')) bodyDecoded = brotliDecompressSync(raw);
           } catch (e) {
-            // leave as raw if decode fails — caller will see the issue
+            // leave as raw if decode fails: caller will see the issue
           }
           resolveP({
             status: res.statusCode ?? 0,
@@ -393,13 +393,13 @@ async function openSession(
   }
   // The session id comes back as a header; we exposed it through resp.headers.
   // We need to re-issue the call so we can capture the header. Cleaner: rerun
-  // openSession via send() directly? — but call() already did the work, so we
+  // openSession via send() directly?: but call() already did the work, so we
   // surface the session-id by reading the last raw response. Easiest fix:
   // do the initialize via send() inline so we keep the headers.
   return { sessionId: '', init: r }; // overwritten below
 }
 
-// Inline version that keeps headers around — we need this for the session-id.
+// Inline version that keeps headers around: we need this for the session-id.
 async function initializeSession(
   variant: VariantSpec,
 ): Promise<{ ok: true; sessionId: string; result: CallResult } | { ok: false; error: string }> {
@@ -530,7 +530,7 @@ function reportTable(report: MethodReport, baselineRespBytes: number): string {
   for (const r of report.rows) {
     const reduction = r.ok && baselineRespBytes > 0
       ? ratio(baselineRespBytes, r.respWireBytes)
-      : '—';
+      : 'n/a';
     rows.push([
       r.variant,
       r.ok ? `${r.status}` : `${r.status} ${(r.reason ?? '').slice(0, 40)}`,
@@ -550,7 +550,7 @@ function reportTable(report: MethodReport, baselineRespBytes: number): string {
 function writeReports(reports: MethodReport[], summary: Record<string, unknown>): void {
   mkdirSync(OUT_DIR, { recursive: true });
   const md: string[] = [];
-  md.push(`# MCP wire bench — ${STAMP}`);
+  md.push(`# MCP wire bench: ${STAMP}`);
   md.push('');
   md.push(`Target: \`${MCP_URL}\``);
   md.push(`Vocab map: ${MAP_URL && MAP_HASH ? `\`${MAP_URL}\` (sha256 \`${MAP_HASH.slice(0, 12)}…\`)` : '_not configured (msgpack-both+gzip+map will be skipped)_'}`);
@@ -558,7 +558,7 @@ function writeReports(reports: MethodReport[], summary: Record<string, unknown>)
   for (const r of reports) {
     const baseline = r.rows.find((x) => x.variant === 'json');
     const baseRespBytes = baseline?.ok ? baseline.respWireBytes : 0;
-    md.push(`## ${r.method}${r.toolName ? ` — \`${r.toolName}\`` : ''}`);
+    md.push(`## ${r.method}${r.toolName ? `: \`${r.toolName}\`` : ''}`);
     md.push('');
     md.push(reportTable(r, baseRespBytes));
     md.push('');
@@ -689,7 +689,7 @@ async function main() {
 
   const callReports: MethodReport[] = [];
   for (const tool of tools) {
-    console.log(hr(`tools/call — ${tool.name}`));
+    console.log(hr(`tools/call: ${tool.name}`));
     console.log();
     const args = synthArgs(tool);
     const rows: CallResult[] = [];

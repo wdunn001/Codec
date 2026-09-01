@@ -1,6 +1,6 @@
 # Unicode-Level Smuggling
 
-**Status:** research — v0.6 security workstream. Sibling files: see [README](README.md).
+**Status:** research: v0.6 security workstream. Sibling files: see [README](README.md).
 
 ## TL;DR
 
@@ -16,9 +16,9 @@ For Codec specifically: **anything client-side that round-trips user text throug
 
 ## Vectors
 
-### 1. Unicode Tag block (U+E0000–U+E007F)
+### 1. Unicode Tag block (U+E0000:U+E007F)
 
-**Mechanism.** The Unicode Tag block is a copy of ASCII (U+E0000 + ASCII codepoint = the tag equivalent). These characters render as nothing in every commonly-deployed font. Most BPE tokenizers (GPT, Llama, Claude, Mistral) tokenize them as distinct tokens, not as zero-width whitespace. An attacker can encode an arbitrary ASCII string in tag-block characters and the model will see it as text while a human reviewer sees nothing.
+**Mechanism.** The Unicode Tag block is a copy of ASCII (U+E0000 + ASCII codepoint = the tag equivalent). These characters render as nothing in every commonly-deployed font. Most BPE tokenizers (GPT, Llama, Claude, Mistral) tokenize them as distinct tokens rather than as zero-width whitespace. An attacker can encode an arbitrary ASCII string in tag-block characters and the model will see it as text while a human reviewer sees nothing.
 
 **Public reference:** Riley Goodside's June 2024 demonstration. Joseph Thacker's subsequent writeup. Cataloged at https://embracethered.com under "ASCII Smuggler."
 
@@ -44,7 +44,7 @@ def strip_unicode_smuggling(s: str) -> str:
     )
 ```
 
-For Codec: strip at the encoder boundary AND at the decoder boundary. The double-pass is intentional — an intermediate transformation (compression dictionary, tokenizer-map roundtrip) could theoretically reintroduce these characters from a poisoned dictionary, so the decode-side strip is the catch-net.
+For Codec: strip at the encoder boundary AND at the decoder boundary. The double-pass is intentional: an intermediate transformation (compression dictionary, tokenizer-map roundtrip) could theoretically reintroduce these characters from a poisoned dictionary. The decode-side strip is the catch-net for exactly that case.
 
 Recommend ALSO logging the density of stripped tag-block characters per request. A non-zero count is almost always a smuggling attempt; legitimate use is essentially nonexistent.
 
@@ -60,9 +60,9 @@ The relevant codepoints:
 | U+2060 | Word joiner | nothing |
 | U+FEFF | Zero-width no-break space / BOM | nothing |
 
-**Mechanism.** Insert between every character of a banned phrase to defeat keyword/regex filtering. `ignore previous instructions` becomes `i​g​n​o​r​e​ ​p​r​e​v​i​o​u​s​ ​i​n​s​t​r​u​c​t​i​o​n​s` with U+200B between each char — visually identical, but a regex like `/ignore previous/i` won't match.
+**Mechanism.** Insert between every character of a banned phrase to defeat keyword/regex filtering. `ignore previous instructions` becomes `i​g​n​o​r​e​ ​p​r​e​v​i​o​u​s​ ​i​n​s​t​r​u​c​t​i​o​n​s` with U+200B between each char: visually identical, but a regex like `/ignore previous/i` won't match.
 
-Importantly: **tokenizers handle these inconsistently.** Some tokenizers strip them implicitly (no smuggling effect, just filter bypass); others tokenize them as their own tokens, splitting words into many short tokens — which means the model sees the phrase as fragmented and may still understand the intent.
+Importantly: **tokenizers handle these inconsistently.** Some tokenizers strip them implicitly (no smuggling effect, just filter bypass); others tokenize them as their own tokens, splitting words into many short tokens: which means the model sees the phrase as fragmented and may still understand the intent.
 
 **Public reference:** widely discussed since 2023. See https://embracethered.com and Simon Willison's blog. Used in viral LinkedIn bio prompt injections (May 2026, tmuxvim "Old English").
 
@@ -87,14 +87,14 @@ For Codec: strip at the boundary. For tokenizer-map dictionaries: reject any dic
 
 **Mechanism.** Two ranges:
 
-- **VS-1 through VS-16:** U+FE00–U+FE0F (BMP, single-codepoint).
-- **VS-17 through VS-256:** U+E0100–U+E01EF (supplementary, surrogate-pair encoded).
+- **VS-1 through VS-16:** U+FE00:U+FE0F (BMP, single-codepoint).
+- **VS-17 through VS-256:** U+E0100:U+E01EF (supplementary, surrogate-pair encoded).
 
-These attach to the preceding character and modify its presentation. Originally for CJK font variants and emoji presentation. Recent research demonstrates encoding arbitrary payload data in long sequences of variation selectors after a carrier character — effectively a covert channel of up to 256 bits per carrier character.
+These attach to the preceding character and modify its presentation. Originally for CJK font variants and emoji presentation. Recent research demonstrates encoding arbitrary payload data in long sequences of variation selectors after a carrier character: effectively a covert channel of up to 256 bits per carrier character.
 
 **Public reference:** Paul Butler's "Smuggling arbitrary data through an emoji" (2024); analyzed by Anthropic researchers and added to Claude content filters. https://paulbutler.org/2025/smuggling-arbitrary-data-through-an-emoji/
 
-**Defense.** Same pattern — strip at the boundary. Variation selectors have legitimate use in CJK rendering, so a blanket strip can be hostile to East-Asian users. Recommended policy: strip *consecutive* variation selectors (more than one in a row is non-legitimate), keep single VS-15/VS-16 immediately following an emoji-eligible character.
+**Defense.** Same pattern: strip at the boundary. Variation selectors have legitimate use in CJK rendering. A blanket strip can therefore be hostile to East-Asian users. Recommended policy: strip *consecutive* variation selectors (more than one in a row is non-legitimate), keep single VS-15/VS-16 immediately following an emoji-eligible character.
 
 ```python
 def strip_smuggled_variation_selectors(s: str) -> str:
@@ -112,13 +112,13 @@ def strip_smuggled_variation_selectors(s: str) -> str:
 
 ### 4. Right-to-left override and bidirectional controls
 
-**Codepoints:** U+202A–U+202E (Embedding/Override), U+2066–U+2069 (Isolate).
+**Codepoints:** U+202A:U+202E (Embedding/Override), U+2066:U+2069 (Isolate).
 
 **Mechanism.** Reverses or rearranges display order without reordering the underlying bytes. The "Trojan Source" attacks demonstrated this in source code: comments and string literals that visually read benign while parsing as malicious. The same trick works in prose targeting human review.
 
 **Public reference:** Boucher & Anderson, "Trojan Source: Invisible Vulnerabilities" (2021), CVE-2021-42574.
 
-**Defense.** Strip all of U+202A–U+202E and U+2066–U+2069 from any field that will be reviewed by a human or that influences instruction parsing. For genuinely RTL content (Arabic, Hebrew), the natural directionality of the characters handles rendering — explicit BiDi controls are very rarely needed.
+**Defense.** Strip all of U+202A:U+202E and U+2066:U+2069 from any field that will be reviewed by a human or that influences instruction parsing. For genuinely RTL content (Arabic, Hebrew), the natural directionality of the characters handles rendering: explicit BiDi controls are very rarely needed.
 
 ```python
 BIDI_CONTROL_CHARS = set(chr(cp) for cp in
@@ -130,7 +130,7 @@ def strip_bidi_controls(s: str) -> str:
 
 ### 5. Confusables (homoglyphs)
 
-**Mechanism.** Visually identical characters from different scripts. Cyrillic 'а' (U+0430) for Latin 'a' (U+0061); Greek 'ο' (U+03BF) for Latin 'o' (U+006F); etc. Defeats keyword matching (a regex for `admin` won't match `аdmin` with Cyrillic а), and lets smuggled instructions hide in plain sight.
+**Mechanism.** Visually identical characters from different scripts. Cyrillic 'а' (U+0430) for Latin 'a' (U+0061); Greek 'ο' (U+03BF) for Latin 'o' (U+006F); etc. Defeats keyword matching (a regex for `admin` won't match `аdmin` with Cyrillic а). Smuggled instructions hide in plain sight as a result.
 
 The Unicode Consortium publishes a confusables table: https://www.unicode.org/Public/security/latest/confusables.txt
 
@@ -156,7 +156,7 @@ For Codec: NFKC-normalize BEFORE running any policy check (banned-pattern matchi
 - Mathematical bold italic, script, fraktur, double-struck, sans-serif, sans-serif bold, sans-serif italic, sans-serif bold italic, monospace.
 - Fullwidth Latin (U+FF21+): ＡＢＣ...
 - Enclosed alphanumerics (U+2460+): ⒶⒷⒸ...
-- Mongolian variation selectors (U+180B–U+180D).
+- Mongolian variation selectors (U+180B:U+180D).
 
 Most of these are visually distinct (a careful reader sees them) but defeat substring matching and naive content filters.
 
@@ -174,7 +174,7 @@ Most of these are visually distinct (a careful reader sees them) but defeat subs
 
 Recommended v0.6 additions:
 
-1. **Normative client requirement:** all Codec implementations MUST strip the Unicode Tag block (U+E0000–U+E007F) from inbound user text before encoding. Decoders SHOULD strip on output as a defense-in-depth measure.
+1. **Normative client requirement:** all Codec implementations MUST strip the Unicode Tag block (U+E0000:U+E007F) from inbound user text before encoding. Decoders SHOULD strip on output as a defense-in-depth measure.
 2. **Policy hook in tokenizer-map:** the tokenizer-map handshake (see [02-wire-protocol-attacks.md](02-wire-protocol-attacks.md)) should include a `forbidden_codepoint_ranges` field, defaulting to the union of tag block + bidi controls + invisible-VS-runs.
 3. **Counter telemetry:** clients SHOULD emit a counter for stripped smuggling chars per request. Sustained nonzero values are an indicator of attack-in-progress.
 4. **Reject mixed-script tokens in dictionary uploads:** if v0.6 ships prompt dialects (sibling proposal), dictionary keys MUST be single-script per entry, NFKC-normalized.

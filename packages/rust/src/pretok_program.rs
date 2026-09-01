@@ -29,14 +29,14 @@ use crate::byte_encoder::METASPACE;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum PreTokOp {
-    /// `(?i:p1|p2|...)` — match the longest case-insensitive literal.
+    /// `(?i:p1|p2|...)`: match the longest case-insensitive literal.
     LiteralsCi { patterns: Vec<String> },
-    /// Case-sensitive literal alternatives — like `LiteralsCi` but matches
+    /// Case-sensitive literal alternatives: like `LiteralsCi` but matches
     /// case-exact. Used by older OpenAI tokenizers (p50k_base, r50k_base).
     Literals { patterns: Vec<String> },
     /// `\p{L}+`, `[^\r\n\p{L}\p{N}]?\p{L}+` when `lead_other`, or
     /// ` ?\p{L}+` when `lead_space`. The two lead flags are mutually
-    /// exclusive — `lead_space` is the older-OpenAI shape, `lead_other`
+    /// exclusive: `lead_space` is the older-OpenAI shape, `lead_other`
     /// is the GPT-2 / Qwen / Llama-3 shape.
     Letters {
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -76,26 +76,26 @@ pub enum PreTokOp {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         trailing_ci: Option<Vec<String>>,
     },
-    /// `\s*[\r\n]+` — paragraph break with leading indentation.
+    /// `\s*[\r\n]+`: paragraph break with leading indentation.
     NewlineBlock {},
-    /// `\s+(?!\S)` — whitespace at end of input (or with only more ws after).
+    /// `\s+(?!\S)`: whitespace at end of input (or with only more ws after).
     TrailingWs {},
-    /// `\s+` — generic whitespace catchall (always last in GPT-2 programs).
+    /// `\s+`: generic whitespace catchall (always last in GPT-2 programs).
     WsRun {},
-    /// SentencePiece-style splitter — single-op programs only.
+    /// SentencePiece-style splitter: single-op programs only.
     MetaspaceSplit {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         prefix_first: Option<bool>,
     },
 }
 
-/// "Title" or "upper" cased-letter shape — see [`PreTokOp::LettersCased`].
+/// "Title" or "upper" cased-letter shape: see [`PreTokOp::LettersCased`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CasedKind {
-    /// `[Lu Lt Lm Lo M]* [Ll Lm Lo M]+` — zero-or-more upper, then 1+ lower.
+    /// `[Lu Lt Lm Lo M]* [Ll Lm Lo M]+`: zero-or-more upper, then 1+ lower.
     Title,
-    /// `[Lu Lt Lm Lo M]+ [Ll Lm Lo M]*` — one-or-more upper, then 0+ lower.
+    /// `[Lu Lt Lm Lo M]+ [Ll Lm Lo M]*`: one-or-more upper, then 0+ lower.
     Upper,
 }
 
@@ -193,7 +193,7 @@ fn match_literals(patterns: &[String], text: &str, i: usize) -> usize {
         if p.len() <= best || rest.len() < p.len() {
             continue;
         }
-        // Byte-wise compare avoids slicing rest at a non-char-boundary —
+        // Byte-wise compare avoids slicing rest at a non-char-boundary:
         // the patterns are ASCII so it's safe even when `rest` starts with
         // a multibyte codepoint like a CJK char. Without this, `&rest[..p.len()]`
         // panics when `p.len()` falls inside a multibyte codepoint.
@@ -209,7 +209,7 @@ fn match_letters(lead_other: bool, lead_space: bool, text: &str, i: usize) -> us
     let mut chars = rest.char_indices().peekable();
     let mut p = 0usize;
     if lead_other {
-        // `[^\r\n\p{L}\p{N}]?` — at most one char that is none of those.
+        // `[^\r\n\p{L}\p{N}]?`: at most one char that is none of those.
         if let Some(&(_off, c)) = chars.peek() {
             if c != '\r' && c != '\n' && !is_letter(c) && !is_number(c) {
                 p = c.len_utf8();
@@ -217,7 +217,7 @@ fn match_letters(lead_other: bool, lead_space: bool, text: &str, i: usize) -> us
             }
         }
     } else if lead_space {
-        // ` ?` — at most one literal space.
+        // ` ?`: at most one literal space.
         if let Some(&(_off, c)) = chars.peek() {
             if c == ' ' {
                 p = c.len_utf8();
@@ -391,7 +391,7 @@ fn match_letters_cased(
 }
 
 fn match_newline_block(text: &str, i: usize) -> usize {
-    // `\s*[\r\n]+` — greedy `\s*`, then back off until the trailing run is
+    // `\s*[\r\n]+`: greedy `\s*`, then back off until the trailing run is
     // contiguous newlines.
     let mut p = 0usize;
     for c in text[i..].chars() {

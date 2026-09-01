@@ -1,12 +1,12 @@
 """
-FastAPI app — wire surface for the diffusers codec_server.
+FastAPI app: wire surface for the diffusers codec_server.
 
 Implements the v0.3 latent-modality endpoints from spec/PROTOCOL.md.
 Stays thin: route handlers parse the request, call into
 LatentPipelineRunner for the actual generation, then run the resulting
 latents through LatentStreamEncoder and return a StreamingResponse.
 
-All pipeline math lives in the vendored latent_frame.py — this file
+All pipeline math lives in the vendored latent_frame.py: this file
 NEVER computes scales, packs ints, or otherwise touches latent bytes
 directly. The contract is "ask the encoder, write the bytes."
 """
@@ -48,7 +48,7 @@ def _resolve_stream_format(body: dict, accept_header: str) -> str:
         return "protobuf"
     if "x-msgpack" in accept_header:
         return "msgpack"
-    # Default per spec: msgpack — broadest client support.
+    # Default per spec: msgpack: broadest client support.
     return "msgpack"
 
 

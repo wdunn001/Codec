@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Shared encoder utilities — the GPT-2 byte&#x2194;unicode mapping table and
+ * Shared encoder utilities: the GPT-2 byte&#x2194;unicode mapping table and
  * helpers used by both {@link Detokenizer} and {@link BPETokenizer}.
  */
 public final class ByteEncoder {
@@ -45,7 +45,7 @@ public final class ByteEncoder {
 
     private ByteEncoder() {}
 
-    /** Maps a byte (0–255) to its GPT-2-encoded codepoint. */
+    /** Maps a byte (0 to 255) to its GPT-2-encoded codepoint. */
     public static int byteToCodepoint(int b) {
         return BYTE_TO_CHAR_MAP.get(b);
     }
@@ -59,7 +59,7 @@ public final class ByteEncoder {
     /**
      * Decode a byte-level BPE token (e.g. "Ġhello") to its raw bytes by
      * reversing the GPT-2 byte→unicode table. Characters outside the
-     * table fall back to UTF-8 bytes (defensive — shouldn't happen for
+     * table fall back to UTF-8 bytes (defensive: shouldn't happen for
      * valid vocab entries).
      */
     public static byte[] decodeByteLevelToken(String rawToken) {
@@ -81,7 +81,7 @@ public final class ByteEncoder {
             if (b >= 0) {
                 buf.write(b);
             } else {
-                // Unknown char — emit as UTF-8 bytes.
+                // Unknown char: emit as UTF-8 bytes.
                 String s = new String(Character.toChars(cp));
                 byte[] enc = s.getBytes(StandardCharsets.UTF_8);
                 try {

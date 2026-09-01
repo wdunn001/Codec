@@ -1,4 +1,4 @@
-# 02 — Wire/Protocol Attack Fixtures
+# 02: Wire/Protocol Attack Fixtures
 
 Maps to [`spec/proposals/v0.6-security/02-wire-protocol-attacks.md`](../../../../../spec/proposals/v0.6-security/02-wire-protocol-attacks.md).
 
@@ -6,7 +6,7 @@ Maps to [`spec/proposals/v0.6-security/02-wire-protocol-attacks.md`](../../../..
 
 | File | Vector | Status |
 |---|---|---|
-| `decompression-bomb.zst` | zstd bomb | Generator script TODO — `generate_decompression_bomb.py` |
+| `decompression-bomb.zst` | zstd bomb | Generator script TODO: `generate_decompression_bomb.py` |
 | `decompression-bomb.br` | brotli bomb | Generator script TODO |
 | `decompression-bomb.dict-zstd` | dict-zstd bomb | Generator script TODO |
 | `length-confusion.bin` | bad framing | Hand-crafted binary; TODO |
@@ -15,7 +15,7 @@ Maps to [`spec/proposals/v0.6-security/02-wire-protocol-attacks.md`](../../../..
 | `tokenizer-map-unsigned.json` | unsigned tokenizer map | TODO |
 | `identity-fallthrough-handshake.bin` | downgrade attack handshake | TODO |
 
-Most of these need either a generator script (for compression bombs — a small input that decodes to a huge output) or a captured live transcript (for replay). Both classes are deferred to a follow-up commit once the reference implementations expose the needed test hooks.
+Most of these need either a generator script (for compression bombs: a small input that decodes to a huge output) or a captured live transcript (for replay). Both classes are deferred to a follow-up commit once the reference implementations expose the needed test hooks.
 
 ## What a working bomb generator looks like
 

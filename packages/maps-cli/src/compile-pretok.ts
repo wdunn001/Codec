@@ -9,7 +9,7 @@
  * The compiler is intentionally conservative: it pattern-matches a
  * known set of regexes (canonicalized whitespace), and returns
  * `null` for anything else. Maps for unrecognised tokenizers keep
- * `pre_tokenizer_pattern` only — old behavior preserved.
+ * `pre_tokenizer_pattern` only: old behavior preserved.
  *
  * The tradeoff: a hand-rolled regex parser would let us handle
  * arbitrary tokenizer regexes, but the regex flavour is ad-hoc per
@@ -76,17 +76,17 @@ export function compilePreTokenizerRegex(regex: string): PreTokProgram | null {
 
   const ops: PreTokOp[] = [];
 
-  // 1. (?i:'s|'t|'re|'ve|'m|'ll|'d) — contractions
+  // 1. (?i:'s|'t|'re|'ve|'m|'ll|'d): contractions
   const contractions = parseContractionsGroup(parts[0]!);
   if (!contractions) return null;
   ops.push({ op: 'literals_ci', patterns: contractions });
 
-  // 2. [^\r\n\p{L}\p{N}]?\p{L}+ — letters with optional non-letter lead
+  // 2. [^\r\n\p{L}\p{N}]?\p{L}+: letters with optional non-letter lead
   if (!matchEq(parts[1]!, ['[^\\r\\n\\p{L}\\p{N}]?\\p{L}+'])) return null;
   ops.push({ op: 'letters', lead_other: true });
 
   // 3. \p{N} (single-digit, Qwen-style) or \p{N}{1,K} (Llama-3) or \p{N}+ (unbounded)
-  //    `\p{N}` with no quantifier matches ONE digit per regex iteration —
+  //    `\p{N}` with no quantifier matches ONE digit per regex iteration:
   //    the engine then re-enters the alternation, so digit runs come out
   //    one digit at a time. We model that as max_run=1.
   const nMatch = parts[2]!.match(/^\\p\{N\}(?:(\+)|\{1,(\d+)\}\??)?$/);
@@ -97,7 +97,7 @@ export function compilePreTokenizerRegex(regex: string): PreTokProgram | null {
   else maxRun = 1;                                // bare \p{N} → one digit
   ops.push(maxRun > 0 ? { op: 'numbers', max_run: maxRun } : { op: 'numbers' });
 
-  // 4.  ?[^\s\p{L}\p{N}]+[\r\n]* — punct run with leading space + trailing newlines
+  // 4.  ?[^\s\p{L}\p{N}]+[\r\n]*: punct run with leading space + trailing newlines
   if (!matchEq(parts[3]!, [' ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*'])) return null;
   ops.push({ op: 'punct_run', lead_space: true, trailing_newlines: true });
 
@@ -200,7 +200,7 @@ function matchEq(actual: string, candidates: string[]): boolean {
 
 /**
  * Recognise the older OpenAI shape used by `p50k_base`, `p50k_edit`, and
- * `r50k_base` — the pre-tokenizer that `ByteLevel.use_regex: true` invokes
+ * `r50k_base`: the pre-tokenizer that `ByteLevel.use_regex: true` invokes
  * internally before the (?i:) inline-flag group was added in cl100k_base.
  *
  *   's|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+

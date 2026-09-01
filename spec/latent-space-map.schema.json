@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://codec.ai/schemas/latent-space-map/v1",
   "title": "Codec Latent-Space Map",
-  "description": "A per-latent-space dialect for the Codec v0.3 latent modality. Carries the data needed to negotiate latent transport (shape, dtype, vae_scale_factor, accepted pipelines), to identify a paired VAE decoder, and to compress latent streams (per-pipeline zstd dictionaries). Latent-space maps are content-addressed and immutable — a new VAE version publishes a new map at a new URL with a new sha256 hash. Symmetric to spec/tokenizer-map.schema.json for the v0.2 text modality.",
+  "description": "A per-latent-space dialect for the Codec v0.3 latent modality. Carries the data needed to negotiate latent transport (shape, dtype, vae_scale_factor, accepted pipelines), to identify a paired VAE decoder, and to compress latent streams (per-pipeline zstd dictionaries). Latent-space maps are content-addressed and immutable: a new VAE version publishes a new map at a new URL with a new sha256 hash. Symmetric to spec/tokenizer-map.schema.json for the v0.2 text modality.",
   "type": "object",
   "required": ["id", "version", "shape", "dtype", "pipelines"],
   "additionalProperties": false,
@@ -24,7 +24,7 @@
     "dtype": {
       "type": "string",
       "enum": ["fp16", "bf16", "fp32", "int8", "int4"],
-      "description": "Native dtype of latents emitted by the canonical decoder pre-pipeline. The `raw` pipeline ships these bytes verbatim; quantizing pipelines (`int8`, `int4`, etc.) accept fp16/bf16/fp32 inputs and emit int8/int4 on the wire — the wire dtype is then implied by the `pipeline` field on `LatentStreamHeader`, not by this `dtype`. Servers MUST cast inbound latents to this dtype before any pipeline runs."
+      "description": "Native dtype of latents emitted by the canonical decoder pre-pipeline. The `raw` pipeline ships these bytes verbatim; quantizing pipelines (`int8`, `int4`, etc.) accept fp16/bf16/fp32 inputs and emit int8/int4 on the wire: the wire dtype is then implied by the `pipeline` field on `LatentStreamHeader`, not by this `dtype`. Servers MUST cast inbound latents to this dtype before any pipeline runs."
     },
     "vae_scale_factor": {
       "type": "number",
@@ -32,7 +32,7 @@
     },
     "pipelines": {
       "type": "array",
-      "description": "Closed list of byte-level transport pipelines the server is willing to emit for this latent space. The pipeline name appears verbatim in `LatentStreamHeader.pipeline` and MUST be one of the registered names below. A client requesting a pipeline absent from this list MUST receive a 4xx response — servers MUST NOT silently downgrade. Adding a pipeline is a v0.3+ point release; per-deployment extension is not supported. Each entry's quality_thresholds[] is the contract pixels-after-decode must meet (LPIPS / SSIM / PSNR vs the frozen reference).",
+      "description": "Closed list of byte-level transport pipelines the server is willing to emit for this latent space. The pipeline name appears verbatim in `LatentStreamHeader.pipeline` and MUST be one of the registered names below. A client requesting a pipeline absent from this list MUST receive a 4xx response: servers MUST NOT silently downgrade. Adding a pipeline is a v0.3+ point release; per-deployment extension is not supported. Each entry's quality_thresholds[] is the contract pixels-after-decode must meet (LPIPS / SSIM / PSNR vs the frozen reference).",
       "minItems": 1,
       "items": {
         "type": "object",
@@ -42,11 +42,11 @@
           "name": {
             "type": "string",
             "enum": ["raw", "int8", "int4", "int8-adaptive", "int4-adaptive", "delta+int8", "delta+int4"],
-            "description": "Pipeline identifier. See spec/PIPELINES.md for the full forward/inverse math per name. `raw` is bit-exact and is the only pipeline mandatory for every latent-space map. Quantizing pipelines (`int8`, `int4`) require `static_scales` (per-channel fp16 array — see `static_scales` below). Adaptive variants compute scales per keyframe and prepend them to the frame. Delta variants are video-only and require keyframe cadence."
+            "description": "Pipeline identifier. See spec/PIPELINES.md for the full forward/inverse math per name. `raw` is bit-exact and is the only pipeline mandatory for every latent-space map. Quantizing pipelines (`int8`, `int4`) require `static_scales` (per-channel fp16 array: see `static_scales` below). Adaptive variants compute scales per keyframe and prepend them to the frame. Delta variants are video-only and require keyframe cadence."
           },
           "static_scales": {
             "type": "object",
-            "description": "Required for pipelines `int8` and `int4` (the static-scale variants). Carries the per-channel symmetric quantization scales the server uses every frame. Same scales used by every client that decodes against this map — the encoder/decoder agreement is what makes the round-trip bit-exact at the latent-byte boundary.",
+            "description": "Required for pipelines `int8` and `int4` (the static-scale variants). Carries the per-channel symmetric quantization scales the server uses every frame. Same scales used by every client that decodes against this map: the encoder/decoder agreement is what makes the round-trip bit-exact at the latent-byte boundary.",
             "additionalProperties": false,
             "required": ["url", "hash"],
             "properties": {
@@ -74,7 +74,7 @@
           },
           "quality_thresholds": {
             "type": "object",
-            "description": "Perceptual quality bounds the pipeline guarantees against the frozen reference decoder for this latent space (typically pinned-torch + diffusers in a content-addressed Docker image — see decoder.canonical_image). Reported by `latents validate` and gated by `@codecai/maps-cli` before a map can ship. Absent on `raw` (which is bit-exact pre-decoder; only the decoder's own non-determinism applies).",
+            "description": "Perceptual quality bounds the pipeline guarantees against the frozen reference decoder for this latent space (typically pinned-torch + diffusers in a content-addressed Docker image: see decoder.canonical_image). Reported by `latents validate` and gated by `@codecai/maps-cli` before a map can ship. Absent on `raw` (which is bit-exact pre-decoder; only the decoder's own non-determinism applies).",
             "additionalProperties": false,
             "properties": {
               "ssim_min":  { "type": "number", "minimum": 0, "maximum": 1, "description": "Minimum SSIM vs reference decoded pixels, averaged over the fixture suite." },
@@ -88,14 +88,14 @@
     },
     "decoder": {
       "type": "object",
-      "description": "Optional canonical decoder reference. A Codec-aware client that wants to render pixels (rather than only ferry latents to a downstream model) uses this block to load a paired VAE. The wire is fully decoder-free without it — gateways and inference engines never need this field.",
+      "description": "Optional canonical decoder reference. A Codec-aware client that wants to render pixels (rather than only ferry latents to a downstream model) uses this block to load a paired VAE. The wire is fully decoder-free without it: gateways and inference engines never need this field.",
       "additionalProperties": false,
       "required": ["family", "model_class"],
       "properties": {
         "family": {
           "type": "string",
           "enum": ["torch", "onnx", "ggml", "wgsl"],
-          "description": "Decoder runtime family. `torch` is the canonical reference; `onnx` / `ggml` / `wgsl` are alternative runtimes that meet the same `quality_thresholds`. Multiple families MAY be advertised by repeating this block under per-family URLs in client-side config — the schema captures one canonical entry."
+          "description": "Decoder runtime family. `torch` is the canonical reference; `onnx` / `ggml` / `wgsl` are alternative runtimes that meet the same `quality_thresholds`. Multiple families MAY be advertised by repeating this block under per-family URLs in client-side config: the schema captures one canonical entry."
         },
         "model_class": {
           "type": "string",
@@ -119,7 +119,7 @@
     },
     "zstd_dictionaries": {
       "type": "array",
-      "description": "Optional pre-trained ZSTD dictionaries for compressing latent streams. UNLIKE the v0.2 text-side dicts (keyed only by wire format), latent dicts are keyed by `(format, pipeline)` — the byte distribution of int8 latents is wildly different from raw fp16 or delta+int4 residuals, so a dict trained against one pipeline is meaningless against another. A server MUST NOT respond with `Content-Encoding: zstd` unless it has loaded a dict whose `(format, pipeline)` matches the response. The active dict's sha256 travels in the `Codec-Zstd-Dict` response header. See PROTOCOL.md §'Compression and dictionaries' (Latent Modality section).",
+      "description": "Optional pre-trained ZSTD dictionaries for compressing latent streams. UNLIKE the v0.2 text-side dicts (keyed only by wire format), latent dicts are keyed by `(format, pipeline)`: the byte distribution of int8 latents is wildly different from raw fp16 or delta+int4 residuals. A dict trained against one pipeline is meaningless against another as a result. A server MUST NOT respond with `Content-Encoding: zstd` unless it has loaded a dict whose `(format, pipeline)` matches the response. The active dict's sha256 travels in the `Codec-Zstd-Dict` response header. See PROTOCOL.md §'Compression and dictionaries' (Latent Modality section).",
       "items": {
         "type": "object",
         "required": ["format", "pipeline", "url", "hash"],
@@ -166,7 +166,7 @@
     "published_at": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 timestamp when this map was published. Informational only — content addressing is via sha256 hash."
+      "description": "ISO 8601 timestamp when this map was published. Informational only: content addressing is via sha256 hash."
     }
   },
   "examples": [

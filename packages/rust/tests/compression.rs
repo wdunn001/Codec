@@ -4,10 +4,10 @@
 //! Drives the shared cross-client interop fixture at
 //! `packages/bench/fixtures/dict-zstd-interop/`:
 //!
-//!   - `dict.bin`         — the trained ZSTD dictionary (16 KB)
-//!   - `compressed.bin`   — server-emitted Codec response body (zstd-dict)
-//!   - `decompressed.bin` — what we MUST recover byte-identically
-//!   - `manifest.json`    — declared sha256, first-10 token IDs, etc.
+//!   - `dict.bin`: the trained ZSTD dictionary (16 KB)
+//!   - `compressed.bin`: server-emitted Codec response body (zstd-dict)
+//!   - `decompressed.bin`: what we MUST recover byte-identically
+//!   - `manifest.json`: declared sha256, first-10 token IDs, etc.
 //!
 //! Every Codec client (TS, Python, .NET, Java, C, Rust) drives the
 //! same fixture; matching bytes here = the Rust client is on-spec.
@@ -80,7 +80,7 @@ fn select_returns_dict_on_zstd_with_matching_header() {
 
 #[test]
 fn select_is_case_insensitive_on_header_names() {
-    // Server might (legally) emit camelcase / titlecase — HTTP names
+    // Server might (legally) emit camelcase / titlecase: HTTP names
     // are case-insensitive. The helper MUST handle that.
     let mut headers = HashMap::new();
     headers.insert("Content-Encoding".into(), "zstd".into());

@@ -1,17 +1,17 @@
 /*
- * codec_safety_policy.c — implementation of the safety-policy descriptor
+ * codec_safety_policy.c: implementation of the safety-policy descriptor
  * parser, accessors, URL builders, and hash verifier.
  *
  * SPDX-License-Identifier: MIT
  *
- * Lean C port. No descriptor *publishing* (canonical-bytes emit) here —
+ * Lean C port. No descriptor *publishing* (canonical-bytes emit) here:
  * embedded / FFI consumers receive descriptors and verify by hash; the
  * publish step happens upstream in TS / Python / Rust / .NET / Java.
  */
 
 #include "codec/codec_safety_policy.h"
 
-/* Use the headers-only form of jsmn — map.c already pulls in the
+/* Use the headers-only form of jsmn: map.c already pulls in the
  * implementation; defining JSMN_HEADER here keeps us at declarations
  * only so the linker doesn't see two copies of jsmn_parse / jsmn_init. */
 #define JSMN_HEADER
@@ -338,7 +338,7 @@ codec_status_t codec_safety_policy_from_json(const char *json, size_t len,
             i = v + skip_subtree(toks, v);
         } else {
             /* Skip unknown / additional fields (rules_summary, client_hooks,
-             * publisher) — readers only surface the fields C consumers need;
+             * publisher): readers only surface the fields C consumers need;
              * full parity lives in the higher-level clients. */
             i = v + skip_subtree(toks, v);
         }

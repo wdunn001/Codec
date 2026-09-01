@@ -1,5 +1,5 @@
 /**
- * Server-policy discovery — pre-flight wrapper over
+ * Server-policy discovery: pre-flight wrapper over
  * `discoverVersionPolicy` from `@codecai/web` that surfaces a friendly
  * tagged-union for safety-aware client code.
  *
@@ -41,7 +41,7 @@ export interface MandatedServerPolicy {
   readonly requiredFeatures: readonly string[];
   readonly deploymentId?: string;
   readonly docsUrl?: string;
-  /** Convenience flag — true iff `safety-policy-enforcement` is in
+  /** Convenience flag: true iff `safety-policy-enforcement` is in
    *  `requiredFeatures`. Saves callers an `.includes()` check. */
   readonly enforcesSafetyPolicy: boolean;
 }
@@ -55,7 +55,7 @@ export type DiscoverServerPolicyOptions = DiscoverVersionPolicyOptions;
 /**
  * One-call pre-flight for a v0.4-aware safety client.
  *
- * Always returns a state — the unrestricted-deployment path is the
+ * Always returns a state: the unrestricted-deployment path is the
  * common case and not an error. 5xx / malformed well-known documents
  * bubble up from `discoverVersionPolicy` as exceptions.
  */

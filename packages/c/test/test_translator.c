@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  *
- * Translator tests — mirror packages/web/test/translate.test.ts and
+ * Translator tests: mirror packages/web/test/translate.test.ts and
  * packages/python/tests/test_translate.py.
  *
  * Two layers:
@@ -69,7 +69,7 @@ static void test_synthetic_identity_round_trip(void) {
      * resulting IDs through Translator(synth -> synth). The output IDs
      * must equal the input IDs (identity translation), modulo the fact
      * that BPE re-encoding of the detokenized text might shift slightly
-     * for partial words — which doesn't apply here because there's no
+     * for partial words: which doesn't apply here because there's no
      * partial flag. */
     codec_tokenizer_map_t *m = load_synth();
 
@@ -98,7 +98,7 @@ static void test_synthetic_identity_round_trip(void) {
 static void test_streaming_chunks_drain_to_same_text(void) {
     /* Feed source IDs in chunks with partial=1, then finish().
      * The IDs from streaming may differ from one-shot translation
-     * because chunk boundaries shift BPE pieces — but the text the
+     * because chunk boundaries shift BPE pieces: but the text the
      * concatenated IDs detokenize back to MUST equal the original
      * text. This mirrors the Python test's assertion. */
     codec_tokenizer_map_t *m = load_synth();
@@ -198,12 +198,12 @@ static void test_reset_clears_buffer(void) {
 static void test_real_qwen2_identity_round_trip(void) {
     const char *path = getenv("CODEC_MAPS_QWEN");
     if (!path || !*path) {
-        fprintf(stdout, "  (skipped — set CODEC_MAPS_QWEN to enable)\n");
+        fprintf(stdout, "  (skipped: set CODEC_MAPS_QWEN to enable)\n");
         return;
     }
     FILE *f = fopen(path, "rb");
     if (!f) {
-        fprintf(stdout, "  (skipped — could not open %s)\n", path);
+        fprintf(stdout, "  (skipped: could not open %s)\n", path);
         return;
     }
     fseek(f, 0, SEEK_END);
@@ -219,7 +219,7 @@ static void test_real_qwen2_identity_round_trip(void) {
     CT_EQ_INT(codec_map_from_json(json, (size_t)sz, &m), CODEC_OK);
     free(json);
 
-    /* Translator(qwen -> qwen) — identity. The IDs in must produce text
+    /* Translator(qwen -> qwen): identity. The IDs in must produce text
      * that, when re-encoded, gives back the same IDs. We don't assert
      * ID equality directly because BPE under the same vocab on the same
      * text is bit-identical, but only if pretokenization splits the
@@ -227,7 +227,7 @@ static void test_real_qwen2_identity_round_trip(void) {
     codec_bpe_encoder_t *enc = NULL;
     codec_status_t st = codec_bpe_encoder_new(m, &enc);
     if (st == CODEC_ERR_VALIDATION) {
-        fprintf(stdout, "  (skipped — qwen2 map lacks pre_tokenizer_program; "
+        fprintf(stdout, "  (skipped: qwen2 map lacks pre_tokenizer_program; "
                         "regenerate with maps-cli >= 0.3.0)\n");
         codec_map_free(m);
         return;

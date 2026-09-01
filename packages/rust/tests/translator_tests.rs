@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! Translator tests — mirrors `TranslatorTests.cs`.
+//! Translator tests: mirrors `TranslatorTests.cs`.
 
 mod common;
 
@@ -30,11 +30,11 @@ fn streaming_chunks_with_word_boundary_buffer() {
     let m = tiny_map();
     let mut tr = Translator::new(&m, &m);
 
-    // Chunk 1: "hello " — has trailing whitespace, so should flush
+    // Chunk 1: "hello ": has trailing whitespace, so should flush
     // through to target encoding. Map is longest-match: "hello"=3,
     // " "=4.
     let part_a = tr.translate(&[3u32, 4], true);
-    // Chunk 2: "world" — no trailing whitespace, must buffer.
+    // Chunk 2: "world": no trailing whitespace, must buffer.
     let part_b = tr.translate(&[5u32], true);
     // Drain.
     let drain = tr.finish();

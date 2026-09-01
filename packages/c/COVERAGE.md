@@ -1,4 +1,4 @@
-# libcodec — coverage
+# libcodec: coverage
 
 Last measured: 2026-05-11 (v0.4 release-cut)
 
@@ -48,14 +48,14 @@ branches:  57.6%  (1437 / 2495 covered)
   encode-path are v0.5+ work pending Unicode-property tables and a
   port of the pre_tokenizer_program runtime (already ported to TS
   / Rust this session, libcodec follows).
-- Examples are excluded from coverage (they're documentation, not
+- Examples are excluded from coverage (they're documentation, distinct from
   library code).
-- `MapLoader` / well-known fetch is not in libcodec — discovery is
+- `MapLoader` / well-known fetch is not in libcodec: discovery is
   a higher-level concern handled by callers.
 
 ## v0.5 follow-up
 
-- The 57.6% branch coverage is the main gap — many functions cover
+- The 57.6% branch coverage is the main gap: many functions cover
   every line but not every error / fallback branch. Target: 80%+
   branch coverage by v0.5.
 - Wire CI to compute % per file + fail on regression vs the 83.8%

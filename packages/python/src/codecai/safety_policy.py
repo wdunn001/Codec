@@ -1,14 +1,14 @@
 """Safety-policy descriptor loading, validation, and discovery.
 
 Python twin of ``@codecai/web``'s ``safety-policy.ts`` (slice 1). Same
-shapes, same errors, same canonical JSON form for hashing — a
+shapes, same errors, same canonical JSON form for hashing: a
 descriptor that hashes to ``sha256:abc…`` in the TS client hashes to
 the identical digest here.
 
 Used by clients that received ``safety_policy_id`` + ``safety_policy_hash``
 in ``READY`` and want to fetch and surface what the server is enforcing.
-The descriptor is the *sanitized*, publishable shape — categories,
-actions, classifier family, summary stats — never the operator's
+The descriptor is the *sanitized*, publishable shape: categories,
+actions, classifier family, summary stats: never the operator's
 internal banned token IDs / classifier thresholds / regex patterns.
 
 Discovery follows the existing tokenizer-map convention:
@@ -17,7 +17,7 @@ Discovery follows the existing tokenizer-map convention:
   * ``<origin>/.well-known/codec/policies/sha256/<hex>.json`` (immutable)
 
 A client that received a hash in ``READY`` SHOULD prefer the
-content-addressed sibling — it's provably immutable and skips the
+content-addressed sibling: it's provably immutable and skips the
 mutable indirection.
 """
 from __future__ import annotations
@@ -64,7 +64,7 @@ class ClassifierBlock:
 
     ``family`` is a free-form lowercase identifier (e.g. ``llama-guard-3-1b``,
     ``shield-gemma-2b``, ``embedding-space-v1``, ``none``). New families
-    don't require a schema bump — this is descriptive metadata, not a
+    don't require a schema bump: this is descriptive metadata, not a
     closed enum.
     """
 
@@ -100,7 +100,7 @@ class ClientHooksBlock:
 class PublisherBlock:
     """Optional human-readable publisher metadata.
 
-    Non-load-bearing — the trust anchor is the origin's TLS cert plus
+    Non-load-bearing: the trust anchor is the origin's TLS cert plus
     the descriptor's content hash, not this field.
     """
 
@@ -208,7 +208,7 @@ def validate_safety_policy(value: Any) -> None:
     """Raise :class:`SafetyPolicyValidationError` if ``value`` doesn't
     match the descriptor schema. Returns ``None`` on success.
 
-    Mirrors the TS validator exactly — same checks, same messages.
+    Mirrors the TS validator exactly: same checks, same messages.
     """
     if not isinstance(value, dict):
         raise SafetyPolicyValidationError("not an object")

@@ -4,7 +4,7 @@
  * Mirrors the tokenizer-map (`map.ts` / `discover.ts`) shape: validate, hash,
  * fetch, cache, well-known. A `SafetyPolicyDescriptor` is the *sanitized,
  * publishable* document an operator publishes at
- * `.well-known/codec/policies/<id>.json` (or `<hash>.json`) — never the
+ * `.well-known/codec/policies/<id>.json` (or `<hash>.json`): never the
  * full operator-internal config. See `spec/safety-policy.schema.json`.
  *
  * Used by clients that received `safety_policy_id` + `safety_policy_hash`
@@ -439,7 +439,7 @@ export interface DiscoverSafetyPolicyOptions {
   /** Codec policy id (e.g. `acme/strict-v3`). */
   id: string;
   /**
-   * Optional content hash — if provided, the loader prefers the
+   * Optional content hash: if provided, the loader prefers the
    * content-addressed `.well-known/codec/policies/sha256/<hex>.json`
    * sibling and verifies the bytes match.
    */
@@ -474,7 +474,7 @@ export async function discoverSafetyPolicy(
   }
 
   // Hash present: prefer the immutable sibling. The bytes are the inline
-  // descriptor (or a pointer that hashes to its filename's hex — but the
+  // descriptor (or a pointer that hashes to its filename's hex: but the
   // recommended layout is inline at the content-addressed path).
   if (opts.hash) {
     const hashHex = parseHash(opts.hash);

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT
  *
- * Per-language tokenize/detokenize micro-benchmark — C99.
+ * Per-language tokenize/detokenize micro-benchmark: C99.
  * Cross-language companion of codec_demo.token_bench (Python), demo/src/
  * token_bench.ts, demo-rust/src/token_bench.rs, demo-dotnet/TokenBench.cs,
  * demo-java/.../TokenBench.java.
@@ -68,7 +68,7 @@ static double percentile(double *sorted, size_t n, double pct) {
     return sorted[idx];
 }
 
-/* Tiny ad-hoc JSON walker. We don't need a full parser — only need to
+/* Tiny ad-hoc JSON walker. We don't need a full parser: only need to
  * pull `samples[].ids[]` and `samples[].text` from a known-shape file. */
 static const char *find_field(const char *s, const char *key) {
     size_t klen = strlen(key);
@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    /* Parse samples — array of {text, ids}. */
+    /* Parse samples: array of {text, ids}. */
     size_t cap = 64, sample_count = 0;
     char **texts = malloc(cap * sizeof(char *));
     uint32_t **ids_array = malloc(cap * sizeof(uint32_t *));
@@ -267,7 +267,7 @@ int main(int argc, char **argv) {
         codec_detokenizer_reset(detok);
     }
 
-    /* Measured reps — decode only (no BPE encoder shipped in libcodec yet). */
+    /* Measured reps: decode only (no BPE encoder shipped in libcodec yet). */
     double *decode_ms = malloc((size_t)reps * sizeof(double));
     for (int r = 0; r < reps; r++) {
         double t0 = now_ms();
@@ -360,7 +360,7 @@ int main(int argc, char **argv) {
     fclose(out);
 
     fprintf(stderr,
-        "  c       encode=  -    (n/a — no BPE encoder)  decode=%6.2f ms (%10.0f tok/s)  → %s\n",
+        "  c       encode=  -    (n/a: no BPE encoder)  decode=%6.2f ms (%10.0f tok/s)  → %s\n",
         dec_med, dec_tps, out_path);
 
     /* Cleanup */

@@ -7,7 +7,7 @@
  *
  *   - A synthetic byte_level map (deterministic, no network).
  *   - A synthetic metaspace map.
- *   - The real Qwen-2 map (if available locally) — covers a 152K-vocab
+ *   - The real Qwen-2 map (if available locally): covers a 152K-vocab
  *     production tokenizer with all the GPT-2 byte-encoding subtleties.
  *
  * For the synthetic maps we also assert exact ID sequences for known inputs
@@ -310,7 +310,7 @@ test(
     // Reference IDs from running HuggingFace tokenizers 0.23.1 against
     // Xenova/text-davinci-002 (p50k_base mirror). The map carries the new
     // older-OpenAI-form pre_tokenizer_program emitted by the maps-cli's
-    // `tryCompileOldOpenAi` path — `letters` and `numbers` ops with
+    // `tryCompileOldOpenAi` path: `letters` and `numbers` ops with
     // `lead_space: true`, `literals` (case-sensitive) for contractions.
     const map = JSON.parse(fs.readFileSync(P50K_MAP_PATH!, 'utf-8')) as TokenizerMap;
     const tok = new BPETokenizer(map);
@@ -340,7 +340,7 @@ test(
     assert.deepEqual(tok.encode("isn't"), [276, 3023]);
     assert.deepEqual(tok.encode('1234567'), [7633, 19354, 22]);
     assert.deepEqual(tok.encode('XMLHttpRequest'), [13836, 4682, 2303]);
-    // Hello + Hello, world! — regression guard for the convert-tiktoken
+    // Hello + Hello, world!: regression guard for the convert-tiktoken
     // merge-derivation fix. Previously codec-maps' merge file used the
     // "max-rank" split heuristic which picked unreachable splits like
     // "Hel lo" for "Hello"; greedy BPE stopped at ["H","ello"] and

@@ -1,5 +1,5 @@
 /**
- * Layer 1 — client-side prefilter for the Codec safety architecture.
+ * Layer 1: client-side prefilter for the Codec safety architecture.
  *
  * Catches secrets, API keys, PII, and obvious abuse patterns in the user's
  * input *before* it gets tokenized and sent over the wire. Doomed prompts
@@ -7,7 +7,7 @@
  * side moderation.
  *
  * Pure regex + Shannon-entropy detection. Zero deps beyond the JS stdlib;
- * runs in browsers, Node, edge runtimes. ~200 LOC of explicit rules — no
+ * runs in browsers, Node, edge runtimes. ~200 LOC of explicit rules: no
  * JS port of trufflehog/gitleaks exists today and a focused detector is
  * easier to audit than a kitchen-sink import.
  *
@@ -19,13 +19,13 @@
  * thresholds, multi-token patterns) is NEVER published. The published
  * descriptor at `.well-known/codec/policies/<id>.json` carries only
  * categories + actions + classifier family + summary counts. That
- * disclosure boundary protects against enumeration attacks — a
+ * disclosure boundary protects against enumeration attacks: a
  * client that can fetch the published descriptor learns the *shape*
  * of enforcement but not its contents.
  *
  * This file's rules are NOT part of that disclosure boundary. They're
  * client-side text-regex that runs against the user's prompt BEFORE
- * any wire transmission. By design they're public — they ship in the
+ * any wire transmission. By design they're public: they ship in the
  * `@codecai/web-safety` npm package source, visible to anyone who
  * runs `npm install`. The vendor-anchored secret patterns are public
  * anyway (AWS publishes the `AKIA` prefix; GitHub publishes the
@@ -38,11 +38,11 @@
  *     (banned_token_ids[], multi_token_patterns[], classifier
  *     thresholds). Lives in `policies_dir/`. NEVER serialized to
  *     the wire.
- *   - **Server-side, public**: the sanitized descriptor —
+ *   - **Server-side, public**: the sanitized descriptor:
  *     `safety-policy.schema.json` shape. Published.
  *   - **Client-side, public**: this prefilter's rules. Run in the
  *     browser, against the prompt the user typed, before tokenize +
- *     encode. Never serialized to the wire either — the *output* of
+ *     encode. Never serialized to the wire either: the *output* of
  *     the prefilter (gate-redacted text, or "user cancelled") is
  *     what reaches the wire, not the rule list.
  *
@@ -78,7 +78,7 @@ export interface PrefilterMatch {
    * label *why* something tripped.
    */
   readonly rule: string;
-  /** UTF-16 code-unit offsets — the same the host's <input> uses. */
+  /** UTF-16 code-unit offsets: the same the host's <input> uses. */
   readonly start: number;
   readonly end: number;
   /** The literal substring that matched, for display. */
@@ -213,7 +213,7 @@ const REGEX_RULES: readonly RegexRule[] = [
   {
     category: 'pii',
     rule: 'email',
-    // Conservative — won't catch every RFC-5322 case, but rare in non-PII text.
+    // Conservative: won't catch every RFC-5322 case, but rare in non-PII text.
     pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
     confidence: 0.8,
   },
@@ -239,13 +239,13 @@ const REGEX_RULES: readonly RegexRule[] = [
     confidence: 0.6,
   },
 
-  // ── Dangerous actions (deliberately conservative — catches OBVIOUS
+  // ── Dangerous actions (deliberately conservative: catches OBVIOUS
   //    intents only; semantic classifiers in classifiers/ catch the
   //    nuanced cases). The point of having these here is to stop
   //    cleanly-stated bad asks in the prefilter, before they consume
   //    wire, server inference budget, or classifier-tier compute. ────
 
-  // Jailbreak / prompt-injection templates (the common shapes —
+  // Jailbreak / prompt-injection templates (the common shapes:
   // "DAN", "ignore previous instructions", role-play "evil twin").
   {
     category: 'dangerous_action',
@@ -317,7 +317,7 @@ const REGEX_RULES: readonly RegexRule[] = [
   {
     category: 'dangerous_action',
     rule: 'destructive_dd',
-    // dd if=/dev/zero of=/dev/sda — the classic disk-wipe lede.
+    // dd if=/dev/zero of=/dev/sda: the classic disk-wipe lede.
     pattern: /\bdd\s+if=\/dev\/(?:zero|urandom|random)\s+of=\/dev\/(?:sd[a-z]|nvme|disk|hd)/gi,
     confidence: 0.95,
   },
@@ -325,7 +325,7 @@ const REGEX_RULES: readonly RegexRule[] = [
     category: 'dangerous_action',
     rule: 'destructive_drop_table',
     pattern: /\bDROP\s+(?:TABLE|DATABASE|SCHEMA)\b(?:\s+IF\s+EXISTS)?\s+(?!_test|_dev|_staging)/gi,
-    confidence: 0.7,  // ambiguous — SQL examples in chat are common
+    confidence: 0.7,  // ambiguous: SQL examples in chat are common
   },
 ];
 
@@ -426,7 +426,7 @@ export function scanText(text: string, opts: PrefilterOptions = {}): PrefilterMa
     }
   }
 
-  // Host-supplied blocked_action patterns — deployment-specific gates
+  // Host-supplied blocked_action patterns: deployment-specific gates
   // for things like internal hostnames, --privileged, "rm -rf prod",
   // etc. that the built-in rules can't anticipate.
   if (enabled.has('blocked_action') && opts.blockedActionPatterns) {
@@ -454,7 +454,7 @@ export function scanText(text: string, opts: PrefilterOptions = {}): PrefilterMa
     }
   }
 
-  // Entropy rules — only run if `high_entropy` is enabled.
+  // Entropy rules: only run if `high_entropy` is enabled.
   if (enabled.has('high_entropy')) {
     for (const re of [BASE64_RUN, HEX_RUN]) {
       re.lastIndex = 0;
@@ -513,7 +513,7 @@ export function scanText(text: string, opts: PrefilterOptions = {}): PrefilterMa
 /**
  * Apply a redaction to the input, replacing each matched span with a
  * `[REDACTED:<rule>]` placeholder. Returns the new string and the count
- * of replacements made — useful so the host can show "redacted N items"
+ * of replacements made: useful so the host can show "redacted N items"
  * in its UI.
  */
 export function redactMatches(

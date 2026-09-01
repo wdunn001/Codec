@@ -10,7 +10,7 @@
  *   protobuf   length-prefixed CodecFrame protobuf bytes.
  *              The Codec Protobuf mode (Mode B). Hand-rolled to match the
  *              server-side encoder in vllm/entrypoints/codec_frame.py.
- *   raw        4 bytes per token, no framing. The theoretical wire floor —
+ *   raw        4 bytes per token, no framing. The theoretical wire floor:
  *              not a real protocol, just the absolute lower bound.
  */
 import { encode as msgpackEncode, decode as msgpackDecode } from '@msgpack/msgpack';
@@ -35,7 +35,7 @@ const TEXT_DEC = new TextDecoder();
 const SAMPLE_TEXT_PER_TOKEN = 'word'; // 4-char placeholder ≈ avg English token width
 
 export function encodeJsonSse(chunk: Chunk): Uint8Array {
-  // Mirror the shape of an OpenAI chat-completion delta — the most common
+  // Mirror the shape of an OpenAI chat-completion delta: the most common
   // form on the wire today.
   const obj = {
     id: 'cmpl-bench',
@@ -181,7 +181,7 @@ export function decodeProtobuf(buf: Uint8Array): Chunk {
 // ── Raw uint32 (theoretical floor) ────────────────────────────────────────────
 
 export function encodeRaw(chunk: Chunk): Uint8Array {
-  // 4 bytes per token, no framing whatsoever. Not a real protocol — just the
+  // 4 bytes per token, no framing whatsoever. Not a real protocol: just the
   // absolute lower bound so we can see how close the framed formats get.
   const buf = new Uint8Array(chunk.ids.length * 4);
   const view = new DataView(buf.buffer);

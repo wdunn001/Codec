@@ -1,6 +1,6 @@
 # codec-tool-kit
 
-Build Codec-native tools as **bolt-ons** — independently versioned, deployed, and authored, hosted in their own repos. Tools speak token IDs natively when the model is one they've pre-built a cache for, and gracefully fall back to text when it isn't.
+Build Codec-native tools as **bolt-ons**: independently versioned, deployed, and authored, hosted in their own repos. Tools speak token IDs natively when the model is one they've pre-built a cache for, and gracefully fall back to text when it isn't.
 
 The architectural premise: **the gateway should stay a pure token router**. Today, every agent platform pays detokenize → JSON → tool → JSON → tokenize on every tool call. Most of that work is repeated thousands of times for the same response fragments ("It is currently ", " UTC.", "°F", common error messages). This SDK lets a tool author tokenize those fragments **once at build time**, ship the cached IDs, and pay nothing on the hot path.
 
@@ -28,15 +28,15 @@ An earlier sketch of this architecture had the gateway dispatch tools in-process
 
 1. **Modularity.** Tools want their own release cadence, security review, dependencies, and deploy surface. Locking them into the inference server forces every tool change into a server release.
 2. **Independent hosting.** A team that builds a Codec-native search tool wants to host it in their own repo, on their own infra, with their own SLOs. The gateway only needs the manifest URL.
-3. **Pre-cached tokenization belongs at the tool, not the gateway.** Every tool knows its own response shape better than any gateway can. Putting the cache in the tool means each tool ships *exactly the fragments it emits* — no central dictionary to maintain, no cross-tool coupling.
+3. **Pre-cached tokenization belongs at the tool rather than the gateway.** Every tool knows its own response shape better than any gateway can. Putting the cache in the tool means each tool ships *exactly the fragments it emits*: no central dictionary to maintain, no cross-tool coupling.
 
-The wire savings are the same as in-process dispatch. The latency win is one extra hop (tool ↔ gateway, typically a unix socket or LAN RTT — single-digit ms) — worth it for the operational decoupling.
+The wire savings are the same as in-process dispatch. The latency win is one extra hop (tool ↔ gateway, typically a unix socket or LAN RTT: single-digit ms): worth it for the operational decoupling.
 
 ## Quick start: a date/time tool
 
-The full example would normally live in `packages/codec-tool-time/` — here's the shape compressed into one file. Three pieces:
+The full example would normally live in `packages/codec-tool-time/`: here's the shape compressed into one file. Three pieces:
 
-### 1. `manifest.json` — the contract
+### 1. `manifest.json`: the contract
 
 ```json
 {
@@ -66,7 +66,7 @@ The full example would normally live in `packages/codec-tool-time/` — here's t
 }
 ```
 
-### 2. `build-cache.ts` — pre-cache at build time
+### 2. `build-cache.ts`: pre-cache at build time
 
 ```ts
 import { precache } from 'codec-tool-kit/precache';
@@ -91,7 +91,7 @@ writeFileSync('cache/qwen25-0.5b.json', JSON.stringify(cache));
 
 Run this at `npm run build`. Ship the resulting `cache/*.json` files in the published package.
 
-### 3. `index.ts` — the runtime
+### 3. `index.ts`: the runtime
 
 ```ts
 import {
@@ -123,7 +123,7 @@ export const tool: CodecTool = {
 
     const binding = findBinding(manifest, call.modelId);
     if (!binding) {
-      // No cache for this model — fall back to text mode.
+      // No cache for this model: fall back to text mode.
       return textResult(call.callId,
         `The current time is ${now.toISOString()} UTC.`);
     }
@@ -182,7 +182,7 @@ export const tool: CodecTool = {
 
 | Export | Purpose |
 |---|---|
-| `Tokenizer` | Minimal interface — bring your own (HF, tiktoken, sentencepiece, codecai BPE). |
+| `Tokenizer` | Minimal interface: bring your own (HF, tiktoken, sentencepiece, codecai BPE). |
 | `Fragment` | Either `static` (literal text) or `template` (with `{slot}` markers). |
 | `precache({ fragments, tokenizer })` | Compile fragment list to a per-model cache. |
 | `renderTemplate(entry, slots, tokenizer)` | Runtime fill of a template; only slot values are tokenized. |
@@ -193,7 +193,7 @@ export const tool: CodecTool = {
 A Codec-aware gateway (codec-sglang, codec-vllm, codec-llamacpp, codec-metamcp) registers a tool by reading its manifest. The gateway:
 
 1. **Advertises the tool's `argumentsSchema`** to the model in whatever way it normally does (system prompt, tool catalog, etc.).
-2. **Detects tool calls** with the in-stream ToolWatcher (uint32 compare on token IDs — see [tool-calling docs](https://codecai.net/docs/tool-calling/)).
+2. **Detects tool calls** with the in-stream ToolWatcher (uint32 compare on token IDs: see [tool-calling docs](https://codecai.net/docs/tool-calling/)).
 3. **Routes the raw argument token IDs** to the tool over MCP-style HTTP/IPC, with the active `modelId` in the call envelope.
 4. **Reinjects the response token IDs** into the generation context. If the tool returned `text` instead, the gateway tokenizes it itself first.
 
@@ -203,7 +203,7 @@ The gateway never needs to know what fragments a tool emits. The tool never need
 
 Real-world tools have heavy template repetition. A typical date/time tool's response is 95% literal ("The current time is ", " UTC.", " on ") and 5% dynamic (digits, day name). A search tool's response is heavy on punctuation, URL prefixes, and category labels. A weather tool emits the same units strings on every call.
 
-Build-time tokenization moves all of that off the hot path. At runtime the tool tokenizes only the truly dynamic parts — usually just digits or single short words — and concatenates with the cached IDs. CPU per call drops from "BPE on N hundred bytes" to "memcpy of N hundred bytes."
+Build-time tokenization moves all of that off the hot path. At runtime the tool tokenizes only the truly dynamic parts: usually just digits or single short words: and concatenates with the cached IDs. CPU per call drops from "BPE on N hundred bytes" to "memcpy of N hundred bytes."
 
 The architectural payoff: at gateway scale (thousands of concurrent agent sessions), this is what makes the difference between needing a tokenization sidecar and not.
 

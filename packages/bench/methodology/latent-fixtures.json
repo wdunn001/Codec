@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "description": "Canonical per-size latent fixtures for the cross-stack bench matrix (Codec v0.3+). Each (engine, lang) cell measuring image-/video-latents MUST resolve fixtures from this file so cells stay comparable across runs. Sibling of prompts.json — exactly one of the two is referenced from a methodology block (matched to modality.kind).\n\nFixture keys mirror the prompts.json pattern: short string identifiers that double as size/duration labels. Image keys are the resolution in pixels; video keys carry the duration in seconds at the configured fps.\n\nEvery fixture pins a deterministic seed so the same latent tensor is produced run-to-run, which lets the perceptual reference (golden/) be computed once per (latent_space_id, fixture) pair and shared across every measurement that follows.",
+  "description": "Canonical per-size latent fixtures for the cross-stack bench matrix (Codec v0.3+). Each (engine, lang) cell measuring image-/video-latents MUST resolve fixtures from this file so cells stay comparable across runs. Sibling of prompts.json: exactly one of the two is referenced from a methodology block (matched to modality.kind).\n\nFixture keys mirror the prompts.json pattern: short string identifiers that double as size/duration labels. Image keys are the resolution in pixels; video keys carry the duration in seconds at the configured fps.\n\nEvery fixture pins a deterministic seed so the same latent tensor is produced run-to-run. That lets the perceptual reference (golden/) be computed once per (latent_space_id, fixture) pair and shared across every measurement that follows.",
   "fixtures": {
     "256": {
       "kind":         "image",
@@ -59,7 +59,7 @@
   },
   "notes": [
     "latent_shape is the model's per-frame shape EXCLUDING the batch dim, matching LatentSpaceMap.shape. SD-1 / SD-2 VAE: [4, H/8, W/8]. SDXL VAE: [4, H/8, W/8] but at higher base resolutions. Override per-engine if the engine's default resolution differs.",
-    "Same prompt across image sizes by design — controlling for prompt content lets resolution be the only varying axis when comparing wire cost vs decoded quality.",
+    "Same prompt across image sizes by design: controlling for prompt content lets resolution be the only varying axis when comparing wire cost vs decoded quality.",
     "Video prompts use the same content as image to give a degenerate baseline (single keyframe = image). The temporal-redundancy benefit shows up in the delta+int8 / delta+int4 cells against the int8-adaptive / int4-adaptive cells on the same fixture.",
     "Steps are model-specific guidance; bench runners may override via methodology.workload.steps_override if the engine doesn't tolerate the default."
   ]

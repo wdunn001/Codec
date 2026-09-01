@@ -1,28 +1,28 @@
-# Codec — measured results
+# Codec: measured results
 
 End-to-end measurements collected on the Codec stack as of this session.
 Hardware: NVIDIA RTX 3090 (Ampere SM86, 24 GB), driver 580.142, Ubuntu
 24.04, sglang nightly `nightly-dev-cu12-20260506-22cf7d2b`, model
 Qwen/Qwen2.5-0.5B-Instruct, temperature 0.0 (deterministic).
 
-All numbers are real, captured this session — no projections, no
+All numbers are real, captured this session: no projections, no
 "theoretical" cells.
 
 ---
 
-## v0.5 cohort — 2026-05-17T23-06-45Z lab run
+## v0.5 cohort: 2026-05-17T23-06-45Z lab run
 
 **Cross-stack matrix** at [`results/2026-05-17T23-06-45Z/MATRIX.md`](results/2026-05-17T23-06-45Z/MATRIX.md). **72 / 72 cells wire-unanimous AND 72 / 72 cells decode-unanimous across all 6 client languages on every engine** (sglang, vllm, llama.cpp).
 
-v0.5's headline §1 + §1b numbers are **byte-identical to v0.4.1 below** — confirms the v0.5 wire-additive invariant (delta-varint, discoverable zstd dicts, content-aware picker rewrite, bolt-on tool dispatcher are all reached only via opt-in axes; the v0.4 happy-path wire is unchanged). The root [`RESULTS.md`](../../RESULTS.md) headline table reflects the v0.5 cohort.
+v0.5's headline §1 + §1b numbers are **byte-identical to v0.4.1 below**: confirms the v0.5 wire-additive invariant (delta-varint, discoverable zstd dicts, content-aware picker rewrite, bolt-on tool dispatcher are all reached only via opt-in axes; the v0.4 happy-path wire is unchanged). The root [`RESULTS.md`](../../RESULTS.md) headline table reflects the v0.5 cohort.
 
-Operational note for vllm: required `REPS=4` to median-out the documented `~10–20 %` scheduler variance at T=0; ran clean on the second pass.
+Operational note for vllm: required `REPS=4` to median-out the documented `~10 to 20 %` scheduler variance at T=0; ran clean on the second pass.
 
-**Auxiliary benches** (per-language token bench, cross-vocab translator, agent-loop end-to-end, MCP leaf-mode) were **not re-run** for v0.5 — those benches measure layers that are not wire-format-sensitive (tokenize/detokenize per-language perf, agent round-trip latency dominated by tool execution). The v0.4.1 numbers below remain authoritative.
+**Auxiliary benches** (per-language token bench, cross-vocab translator, agent-loop end-to-end, MCP leaf-mode) were **not re-run** for v0.5: those benches measure layers that are not wire-format-sensitive (tokenize/detokenize per-language perf, agent round-trip latency dominated by tool execution). The v0.4.1 numbers below remain authoritative.
 
 ---
 
-## v0.4.1 release headline — 2026-05-15T20-00-00Z lab run
+## v0.4.1 release headline: 2026-05-15T20-00-00Z lab run
 
 Full cross-stack matrix in
 [`results/2026-05-15T20-00-00Z/MATRIX.md`](results/2026-05-15T20-00-00Z/MATRIX.md).
@@ -31,13 +31,13 @@ all 6 client languages on every engine** (sglang, vllm, llama.cpp).
 
 v0.4.1's bench surfaces the headline at two layers:
 
-- **§1 — protocol-only** (synthetic streams, no model): the honest
+- **§1: protocol-only** (synthetic streams, no model): the honest
   measurement of Codec's wire+compression efficiency, decoupled from
   any specific model's token-generation behaviour.
-- **§1b — engine-output** (real model running): what users actually see
+- **§1b: engine-output** (real model running): what users actually see
   in production, content-dependent on what their model produces.
 
-### §1. Wire reduction — synthetic streams (protocol only)
+### §1. Wire reduction: synthetic streams (protocol only)
 
 Pure-library measurement: known token-ID sequences run through Codec
 encoder + compression libraries locally, no inference engine, no model.
@@ -51,8 +51,8 @@ encoder + compression libraries locally, no inference engine, no model.
 | **Cyclic period 10** (best case) | 26.0 KB | 211 b | 73 b | **68 b** | **391.9×** |
 
 Honest framing: Codec wire+compression delivers **~4-17× over identity**
-on arbitrary-to-typical streams, and **100-400× on structurally-repetitive**
-ones. The lower bound is the floor (incompressible content — wins come
+on arbitrary-to-typical streams. It reaches **100-400× on structurally-repetitive**
+ones. The lower bound is the floor (incompressible content: wins come
 from framing alone); the upper bound is what dict-zstd reaches when the
 content cooperates. Live model output sits somewhere in this range.
 
@@ -74,46 +74,46 @@ differences). For protocol-only efficiency see §1 above.
 | **vllm** (Qwen2.5-0.5B-Instruct) | 517.8 KB | 3,874 b (137×) | 3,925 b (135×) | 3,985 b (133×) | 4,476 b (119×) |
 
 The three engines all run the same model family at the same temperature,
-yet produce ratios spanning 135× to 3,868×. The difference is **what the
-model generates**, not how Codec frames it. sglang falls into a low-entropy
+yet produce ratios spanning 135× to 3,868×. The difference is purely **what the
+model generates**. sglang falls into a low-entropy
 output pattern (matches §1 row 3); llama.cpp F16 hits even further into
 the structurally-repetitive zone; vllm's output is more diverse and
 compresses closer to the "uniform-random" floor.
 
-This split — synthetic + engine-output — was added in v0.4.1 after the
+This split: synthetic + engine-output: was added in v0.4.1 after the
 single-headline format was revealed to be conflating protocol efficiency
 with model output behaviour. See `packages/bench/methodology/SCHEMA.md`
 § Synthetic-stream wire bench for the methodology.
 
 ### What's new in v0.4.1
 
-- **Cross-client dict-zstd interop** — all 6 client packages (TS/web,
+- **Cross-client dict-zstd interop**: all 6 client packages (TS/web,
   Python, Rust, Java, .NET, C) now decode dict-zstd-compressed responses
   correctly. Previously only Python knew how to load the dict; the others
   silently produced garbage or errored. Caught by the v0.4.1 bench
   gate when decode-unanimity was added.
-- **llama.cpp gains brotli + zstd** — was identity+gzip only; now matches
+- **llama.cpp gains brotli + zstd**: was identity+gzip only; now matches
   sglang + vllm with all four encodings. The C++ implementation mirrors
-  the Python reference (no per-chunk flush — same bug that bit sglang's
+  the Python reference (no per-chunk flush: same bug that bit sglang's
   brotli got fixed in lock-step).
-- **Synthetic-stream bench** — new §1 headline measures Codec protocol
+- **Synthetic-stream bench**: new §1 headline measures Codec protocol
   efficiency independent of model output. Pure library calls, no engine,
   no model. See methodology/SCHEMA.md.
-- **Bench gate hardening** — `aggregate.py` now exits non-zero on any
+- **Bench gate hardening**: `aggregate.py` now exits non-zero on any
   errored cell, reports both wire-unanimous AND decode-unanimous counts
   (previously only wire was checked; cells where 3/6 clients errored on
   decode could be reported as "unanimous" if their wire bytes happened
   to match).
-- **Engine-image acceptance gate** — `packages/bench/tests/test_engine_acceptance.py`
+- **Engine-image acceptance gate**: `packages/bench/tests/test_engine_acceptance.py`
   runs 9 protocol probes against any candidate engine image before the
   cross-stack bench. Catches "image was built from a stale Dockerfile"
   regressions (compression module missing, dicts missing, /codec/schema
-  404, etc.) in ~15s instead of via the bench's headline aggregator.
-- **Server-side fixes** — sglang + vllm brotli encoder's per-chunk
+  404, etc.) in ~15s, well before the bench's headline aggregator would surface them.
+- **Server-side fixes**: sglang + vllm brotli encoder's per-chunk
   `flush()` was inflating small streams (64-token msgpack: 1,159 B vs
   975 B identity); removed. codec-supervisor warns at startup if
   brotli/zstandard import fails.
-- **Spec endpoint surface** — llama.cpp now serves `GET /codec/schema`
+- **Spec endpoint surface**: llama.cpp now serves `GET /codec/schema`
   (was missing from the C++ port).
 
 ### Known content-dependence
@@ -128,7 +128,7 @@ output's unit convention.)
 ### Per-language tokenize / detokenize throughput
 
 Rerun at v0.4.1 against the [`golden/qwen2.json`](golden/qwen2.json) corpus
-(35 samples, 287 tokens, 200 measured reps + 20 warmup) — see
+(35 samples, 287 tokens, 200 measured reps + 20 warmup): see
 [`results/2026-05-15T20-00-00Z/token/`](results/2026-05-15T20-00-00Z/token/).
 Wire bench measures bytes on the network; this measures CPU time inside
 each language's client lib.
@@ -148,8 +148,7 @@ Per-cell median ms + p99 in the result JSONs. Drivers under
 
 ### Cross-vocab translator microbench (v0.4.1 rerun)
 
-[`packages/bench/scripts/translator_bench.py`](scripts/translator_bench.py) —
-Llama-3 → Qwen-2 round-trip; the two paths produce byte-identical Qwen-2
+[`packages/bench/scripts/translator_bench.py`](scripts/translator_bench.py): Llama-3 → Qwen-2 round-trip; the two paths produce byte-identical Qwen-2
 IDs by construction. Bench reports wire + bridge CPU on each. Captured at
 [`results/2026-05-15T20-00-00Z/translator/python.json`](results/2026-05-15T20-00-00Z/translator/python.json):
 
@@ -166,7 +165,7 @@ IDs by construction. Bench reports wire + bridge CPU on each. Captured at
 ~20% either path (tokenize work dominates, wire framing is essentially
 free at typical bridge sizes).
 
-### Agent-loop benches — full two-turn round-trip (v0.4.1 rerun)
+### Agent-loop benches: full two-turn round-trip (v0.4.1 rerun)
 
 [`packages/demo-python/src/codec_demo/agent_bench.py`](../demo-python/src/codec_demo/agent_bench.py)
 captures the complete tool-calling loop (prompt → model emits tool call →
@@ -181,16 +180,16 @@ at [`results/2026-05-15T20-00-00Z/agent-loop/`](results/2026-05-15T20-00-00Z/age
 | MetaMCP (Time MCP)      | 18,072 B      | 1,061 B    | **17.0×** |    210 ms  |   216 ms    | ~neutral |
 
 Wire-reduction ratios are stable across cuts. Total-time speedups depend
-heavily on the tool's dispatch latency — when the tool itself is fast
+heavily on the tool's dispatch latency: when the tool itself is fast
 (get_weather mock, MetaMCP Time), the wire savings dominate; when the
 tool is slow (SearXNG live web), tool latency dominates.
 
-### MCP leaf-mode — tool-result-side axis (v0.4.1)
+### MCP leaf-mode: tool-result-side axis (v0.4.1)
 
 Complementary to the three model-emission-side rows above. `@codecai/mcp-leaf`
 lets a tool author attach pre-tokenized IDs to its `CallToolResult` via
-`_meta['ai.codec/leaf-tokenization']`, so a Codec-aware consumer skips
-the re-tokenize hop. Measured via [`results/2026-05-15T20-00-00Z/agent-loop/leaf.txt`](results/2026-05-15T20-00-00Z/agent-loop/leaf.txt)
+`_meta['ai.codec/leaf-tokenization']`. A Codec-aware consumer skips
+the re-tokenize hop as a result. Measured via [`results/2026-05-15T20-00-00Z/agent-loop/leaf.txt`](results/2026-05-15T20-00-00Z/agent-loop/leaf.txt)
 (driver: [`packages/bench/src/leaf-live.ts`](src/leaf-live.ts), N=20 warm
 calls of `get_current_time` against `codec-time-leaf` over MCP stdio,
 qwen/qwen2 map sha256:62c2f94f…):
@@ -204,20 +203,20 @@ overhead that **outweighs** the savings on tiny results:
 |------------------------------------------|-------------:|------------------:|-------:|--------:|
 | plain MCP (consumer re-tokenizes text)   |          105 |          0.052 ms | 0.4 ms | 0.5 ms  |
 | mcp-leaf (consumer reads ids from _meta) |          316 |          0.004 ms | 0.4 ms | 0.4 ms  |
-| **delta**                                | **+211 bytes (leaf 3× larger on wire)** | **12.4× faster on consumer CPU** | — | — |
+| **delta**                                | **+211 bytes (leaf 3× larger on wire)** | **12.4× faster on consumer CPU** | n/a | |
 
 Integrity: 20/20 leaf samples have `ids == tokenizer.encode(text)` under
-the declared `map_id`. Wire cost is fixed per text block (~80–150 bytes
+the declared `map_id`. Wire cost is fixed per text block (~80 to 150 bytes
 for the `_meta` envelope); consumer-CPU savings scale linearly with
 text length. For a ~30-char timestamp, leaf is wire-negative but
 consumer-CPU-positive (the BPE encode disappears). **The crossover where
-leaf wire ≤ plain wire sits at ~300+ chars per text block** — so tiny
+leaf wire ≤ plain wire sits at ~300+ chars per text block**: so tiny
 results pay a wire tax for the CPU win, while paginated docs / search
 results / large MCP outputs win both axes.
 
 ### ToolWatcher CPU microbench (v0.4.1 rerun)
 
-`packages/c/examples/bench_watcher` — libcodec C99 measurement of
+`packages/c/examples/bench_watcher`: libcodec C99 measurement of
 `codec_tool_watcher_feed` vs `codec_detokenizer_render` on a 1M
 synthetic-token stream with 5% region density:
 
@@ -232,7 +231,7 @@ Captured on the lab's AMD EPYC 8124P + gcc:13. Earlier README claim
 combination not documented in that capture; current numbers are
 reproducible from `packages/bench/results/2026-05-15T20-00-00Z/microbench/toolwatcher.txt`.
 
-The **speedup ratio (26.7×)** is the marketing-relevant number — ToolWatcher
+The **speedup ratio (26.7×)** is the marketing-relevant number: ToolWatcher
 remains an order of magnitude faster than detokenize-then-scan regardless
 of the absolute throughput on a given machine.
 
@@ -254,7 +253,7 @@ frame-type re-assignments, no closed-enum tightening. Diff audit in
 
 ---
 
-## 1. Wire format A/B — sglang main vs PR #24483
+## 1. Wire format A/B: sglang main vs PR #24483
 
 Same prompt, same model, 3 wire formats × 4 compression encodings.
 Ran against two containers side-by-side: vanilla sglang main and the
@@ -268,12 +267,12 @@ prompt: "Explain entropy in one sentence:"  max_tokens: 64
 
 | | identity | gzip | br | zstd |
 |---|---:|---:|---:|---:|
-| **JSON-SSE — vanilla main** | 15.2 KB | 15.2 KB | 15.2 KB | 15.2 KB |
-| **JSON-SSE — PR #24483** | 15.2 KB | 15.2 KB | 15.2 KB | 15.2 KB |
-| **Codec msgpack — vanilla** | N/A | N/A | N/A | N/A |
-| **Codec msgpack — PR #24483** | 975 B | 226 B | 1.1 KB | 253 B |
-| **Codec protobuf — vanilla** | N/A | N/A | N/A | N/A |
-| **Codec protobuf — PR #24483** | 652 B | 224 B | 924 B | 271 B |
+| **JSON-SSE: vanilla main** | 15.2 KB | 15.2 KB | 15.2 KB | 15.2 KB |
+| **JSON-SSE: PR #24483** | 15.2 KB | 15.2 KB | 15.2 KB | 15.2 KB |
+| **Codec msgpack: vanilla** | N/A | N/A | N/A | N/A |
+| **Codec msgpack: PR #24483** | 975 B | 226 B | 1.1 KB | 253 B |
+| **Codec protobuf: vanilla** | N/A | N/A | N/A | N/A |
+| **Codec protobuf: PR #24483** | 652 B | 224 B | 924 B | 271 B |
 
 ### Reduction vs JSON-SSE / identity baseline
 
@@ -286,22 +285,22 @@ prompt: "Explain entropy in one sentence:"  max_tokens: 64
 
 Notes:
 - `N/A` cells: vanilla sglang silently ignores `stream_format` and falls
-  back to JSON-SSE; the response is text, not the requested binary
+  back to JSON-SSE; the response is plain text rather than the requested binary
   format. Auto-detected and excluded.
 - `br` is *bigger than identity* on these small payloads (sub-KB binary)
   because brotli's per-frame overhead exceeds its savings on dense
-  msgpack. Real artifact, not a bug.
+  msgpack. This is a real artifact rather than a bug.
 - JSON-SSE doesn't compress on either server even with `Accept-Encoding`
-  set — the text path doesn't honor the header. The Codec path's
+  set: the text path doesn't honor the header. The Codec path's
   `codec_compression.py` is what actually does compression.
 
 ---
 
-## 1b. Wire format scaling — small / medium / large sweep
+## 1b. Wire format scaling: small / medium / large sweep
 
 The 64-token sample above is small. Compression overhead amortizes over
-larger payloads, so we ran the full grid against the PR branch at three
-sizes (max_tokens = 64 / 512 / 2048) on the same prompt.
+larger payloads. We ran the full grid against the PR branch at three
+sizes (max_tokens = 64 / 512 / 2048) on the same prompt as a result.
 
 ```
 prompt: long-form essay request (forces ~80 / 630 / 2078 emitted tokens)
@@ -339,8 +338,8 @@ prompt: long-form essay request (forces ~80 / 630 / 2078 emitted tokens)
 
 ### What this shows
 
-- **Identity ratio is roughly flat across size** (16-25×) — Codec's wire
-  is constant-bytes-per-token, JSON-SSE is too, so the ratio is just the
+- **Identity ratio is roughly flat across size** (16-25×): Codec's wire
+  is constant-bytes-per-token, and JSON-SSE is too. The ratio is therefore just the
   bytes-per-token ratio. This is the floor.
 - **Compressed Codec ratio grows dramatically with size**: msgpack+zstd
   goes from 59× at 80 tokens to **562× at 2,078 tokens**. The compressor
@@ -369,9 +368,9 @@ way:
 
 Synthetic random IDs are pessimistic for Codec (random uint32s have
 ~17 bits of entropy each) but optimistic for JSON-SSE (every event is
-nearly identical except the digits — br nukes that). Real model output
-is the opposite — the ID distribution is heavily skewed by BPE
-frequency, so Codec frames compress much better in practice (see live
+nearly identical except the digits: br nukes that). Real model output
+is the opposite: the ID distribution is heavily skewed by BPE
+frequency. Codec frames compress much better in practice as a result (see live
 table above).
 
 Run yourself:
@@ -384,7 +383,7 @@ codec-bench --sweep                     # demo-python, full grid × 3 sizes
 
 ---
 
-## 1c. Compression crossover study — when does each algorithm win?
+## 1c. Compression crossover study: when does each algorithm win?
 
 Fine-grained sweep at 8 sizes (16 / 32 / 64 / 128 / 256 / 512 / 1024 /
 2048 tokens) with the long-form prompt. Same lab box, same model, same
@@ -439,10 +438,10 @@ it's noisier because of one-byte differences in the small range, but
 zstd dominates the moment payloads exceed ~150 tokens.
 
 **Brotli underperforms at every size we measured** for Codec streams.
-Each CodecFrame is small (~10-25 B), so brotli's per-block overhead
-never amortizes. *But brotli is not useless* — it has wider client
+Each CodecFrame is small (~10-25 B). Brotli's per-block overhead
+never amortizes as a result. *But brotli is not useless*: it has wider client
 coverage than zstd (Safari, iOS, older Firefox all ship br but not
-zstd), so it remains a critical fallback when zstd isn't available.
+zstd). It remains a critical fallback when zstd isn't available.
 The picker (`packages/wire-compress`) treats br as a fallback tier:
 chosen only when neither gzip nor zstd is supported by the client.
 
@@ -468,9 +467,9 @@ The reference implementations should:
    per CodecFrame; the wire savings are 2-50×.
 
 A simpler one-rule policy that gets ~95% of the win and is easier to
-implement: **always zstd, regardless of size** — at worst it costs
+implement: **always zstd, regardless of size**: at worst it costs
 ~30% more bytes than gzip on the smallest payloads (107 B vs 98 B at
-16 tokens for protobuf), and it wins by 1.6× on large payloads. The
+16 tokens for protobuf). It wins by 1.6× on large payloads. The
 extra bytes on small responses are noise; the savings on large ones
 are real.
 
@@ -480,18 +479,18 @@ The decision logic is shipped as a standalone, framework-agnostic
 package: [`packages/wire-compress`](../wire-compress/). It exposes
 `pick({ acceptEncoding, estimatedSize, interactive, zstdEnabled })`
 and an Accept-Encoding parser/builder. Drop it in any HTTP server
-that streams responses — the rule generalises beyond Codec to any
+that streams responses: the rule generalises beyond Codec to any
 bursty-small-frame workload.
 
 **zstd is off by default in the picker.** The TTFT cliff measured
 on every shipped middleware (sglang, the vLLM/llama.cpp PR equivs
 where they exist) makes zstd a dead end for streaming workloads
 including agent-to-agent. Even a 4-second TTFT in a model→model
-hop compounds disastrously across multi-hop chains, and zstd's ~30%
+hop compounds disastrously across multi-hop chains. zstd's ~30%
 extra wire savings over gzip don't pay for that latency. Callers
-must explicitly set `zstdEnabled: true` to opt in, and only after
+must explicitly set `zstdEnabled: true` to opt in, and even then only after
 confirming the gateway uses *streaming-zstd with periodic flushes*
-(not the default buffered-finalisation path).
+rather than the default buffered-finalisation path.
 
 Run yourself:
 
@@ -502,23 +501,23 @@ codec-bench-crossover --url http://your-server \
 
 ---
 
-## 1d. Time impact across e2e scenarios — TTFT, total time, CPU
+## 1d. Time impact across e2e scenarios: TTFT, total time, CPU
 
 Wire bytes are half the story. The other half is *time*: time-to-first-
 token (TTFT, what humans feel), total wall-clock time, and CPU time
 spent in serialization on both endpoints. Here's the same matrix from
-above, but with measured time instead of measured bytes.
+above, with measured time in place of measured bytes.
 
 ### Two findings: zstd buffers, brotli barely compresses
 
 All numbers below come from a single timed sweep, fixed prompt, all
 12 cells (3 paths × 4 encodings) at 3 sizes, median of 2 reps. Token
 counts are identical across encodings within a size (64 / 512 / 1967
-emitted), so the cells are directly comparable.
+emitted). The cells are directly comparable as a result.
 
 ![TTFT vs response size](docs/ttft-vs-size.png)
 
-#### TTFT — only zstd buffers
+#### TTFT: only zstd buffers
 
 | path · encoding | TTFT @ 64 tok | TTFT @ 512 tok | TTFT @ 2048 tok | streams? |
 |---|---:|---:|---:|:---:|
@@ -532,14 +531,14 @@ emitted), so the cells are directly comparable.
 | protobuf · br | `11 ms` | `11 ms` | `11 ms` | ✓ |
 | **protobuf · zstd** | **119 ms** | **910 ms** | **3,684 ms** | ✗ |
 
-**zstd's TTFT regresses 334× at 2K tokens** (11 ms → 3,684 ms) — first
+**zstd's TTFT regresses 334× at 2K tokens** (11 ms → 3,684 ms): first
 byte arrives only when the model finishes generating. gzip, brotli,
 and identity all stream chunk-by-chunk and preserve TTFT.
 
-#### Wire bytes (same run) — brotli is barely doing anything
+#### Wire bytes (same run): brotli is barely doing anything
 
 The TTFT chart suggests br is a viable fallback. The wire-bytes table
-from the same run says otherwise — sglang's brotli middleware on
+from the same run says otherwise: sglang's brotli middleware on
 Codec streams is delivering near-zero compression, sometimes
 *expanding* the output relative to identity:
 
@@ -555,16 +554,15 @@ Codec streams is delivering near-zero compression, sometimes
 | protobuf · br | 838 B | 5.4 KB | **20.2 KB** ← bigger than identity |
 | protobuf · zstd | `179 B` | `293 B` | `467 B` |
 
-**Look at protobuf · br at 2K**: 20.2 KB compressed vs 18.9 KB raw —
-br is making the output 7% *larger*. For msgpack · br at 2K it
+**Look at protobuf · br at 2K**: 20.2 KB compressed vs 18.9 KB raw: br is making the output 7% *larger*. For msgpack · br at 2K it
 saves 27% over identity (20.6 KB vs 28.1 KB), but gzip in the same
-slot is 660 B — a **42×** smaller payload than br.
+slot is 660 B: a **42×** smaller payload than br.
 
-This is a configuration problem in sglang's brotli middleware (likely
+This is purely a configuration problem in sglang's brotli middleware (likely
 per-frame compression with a quality setting that doesn't fit a
-small-frame workload), not a fundamental br limitation. But it means
+small-frame workload). But it means
 the right description of br on this stack today is "preserves TTFT,
-preserves wire bytes" — gzip preserves both *and* gives 30-40× more
+preserves wire bytes": gzip preserves both *and* gives 30-40× more
 compression.
 
 #### The reduction-vs-baseline summary
@@ -582,7 +580,7 @@ vs JSON-SSE identity (the incumbent), at 2K tokens:
 
 A wire-bytes ranking puts zstd on top. A TTFT ranking puts gzip on
 top. To rank encodings holistically, multiply them: **wire bytes × TTFT**
-(byte-milliseconds — the "cost of holding this response in flight
+(byte-milliseconds: the "cost of holding this response in flight
 until the user sees something"). Then normalise to JSON-SSE identity
 at each size so each cell reads "X times more efficient than the
 incumbent." Lower byte-ms = higher ratio = better.
@@ -590,7 +588,7 @@ incumbent." Lower byte-ms = higher ratio = better.
 This is the right metric for **interactive workloads** (humans
 reading the stream as it arrives). For **batch / agent-to-agent**
 where TTFT doesn't matter, score is just bytes. The two metrics
-disagree about who wins — that's the picker's whole job.
+disagree about who wins: that's the picker's whole job.
 
 ![Interactive efficiency chart](docs/composite-interactive.png)
 
@@ -609,14 +607,14 @@ disagree about who wins — that's the picker's whole job.
 | protobuf · zstd | 23× ↓ | 6× ↓ | 3× ↓ |
 
 The arrows mark cells where **zstd scores worse than uncompressed
-identity Codec on the composite metric** — i.e., the TTFT cliff has
-fully cancelled the wire savings, and you'd be better off shipping
+identity Codec on the composite metric**: i.e., the TTFT cliff has
+fully cancelled the wire savings. You'd be better off shipping
 raw msgpack/protobuf frames. At 2K tokens the picture is brutal: zstd
-scores 3×, gzip scores 722-855× — gzip is **240× better than zstd**
+scores 3×, gzip scores 722-855×: gzip is **240× better than zstd**
 on what users actually feel.
 
 br tracks identity Codec almost exactly across every size (45-52× at
-64, ~21-25× at 512+, ~25× at 2K) — same TTFT as identity, near-zero
+64, ~21-25× at 512+, ~25× at 2K): same TTFT as identity, near-zero
 extra wire compression. Confirms that on this server br is doing
 essentially nothing.
 
@@ -636,24 +634,24 @@ essentially nothing.
 | protobuf · br | 19× | 22× | 23× |
 | protobuf · zstd | 87× | `424×` | `1021×` |
 
-In batch mode TTFT vanishes, so the ranking flips. **At 64 tokens,
-gzip beats zstd** (92× vs 86× msgpack; 99× vs 87× protobuf — gzip
+In batch mode TTFT vanishes. The ranking flips as a result. **At 64 tokens,
+gzip beats zstd** (92× vs 86× msgpack; 99× vs 87× protobuf: gzip
 wins the small-payload bracket because zstd's frame header is
 relatively heavier). **At 512 and 2K tokens, zstd wins** (437× vs
-373× at 512, 1014× vs 722× at 2K — zstd's dictionary amortises and
+373× at 512, 1014× vs 722× at 2K: zstd's dictionary amortises and
 takes the lead). br stays identity-equivalent throughout.
 
 This matches the size-threshold rule from §1c exactly: gzip below
-~128 tokens, zstd above ~256 tokens — the byte-ms metric and the
+~128 tokens, zstd above ~256 tokens: the byte-ms metric and the
 bytes-only metric agree on the threshold.
 
 ##### What this proves about the picker
 
-- **Interactive workloads — composite metric ranks `gzip > br ≈ identity > zstd`.**
+- **Interactive workloads: composite metric ranks `gzip > br ≈ identity > zstd`.**
   At every measured size for human-facing streams, gzip wins. zstd is
   worse than uncompressed at small/medium sizes once you account for
   TTFT.
-- **Batch / agent-to-agent — bytes-only ranks `zstd > gzip > identity ≈ br`.**
+- **Batch / agent-to-agent: bytes-only ranks `zstd > gzip > identity ≈ br`.**
   zstd wins. gzip is the close fallback.
 - **The Pareto front for both metrics is `{gzip, zstd}`.** br and
   identity are dominated. The `wire-compress` picker has exactly one
@@ -662,10 +660,10 @@ bytes-only metric agree on the threshold.
 
 #### What the picker does
 
-- **Default policy (interactive *or* agent/batch)** — pick `gzip`.
+- **Default policy (interactive *or* agent/batch)**: pick `gzip`.
   Fall back to `br` if the client refuses gzip. Use `identity` only
   if the client refuses everything compressible.
-- **`zstdEnabled: true`** — the picker still prefers gzip below the
+- **`zstdEnabled: true`**: the picker still prefers gzip below the
   size threshold, then unlocks zstd at sizes ≥ 256 tokens. Only set
   this after confirming the gateway uses *streaming-zstd with
   periodic flushes* (not the default buffered-finalisation path
@@ -674,7 +672,7 @@ bytes-only metric agree on the threshold.
 The earlier "zstd at scale for agent traffic" recommendation didn't
 survive the timing data. **zstd-as-shipped is a dead end for
 streaming workloads, including agent-to-agent.** Even agent loops
-care about TTFT — a 4-second wait between hops compounds
+care about TTFT: a 4-second wait between hops compounds
 catastrophically across multi-hop chains, and zstd's ~30% extra
 wire savings over gzip don't pay for that latency. The picker
 treats zstd as opt-in until streaming-zstd middleware exists.
@@ -686,10 +684,10 @@ configuration patch, br's role can be reconsidered. For now the data
 says: **gzip is the universal default. Don't use zstd. br is a
 fallback. identity is last resort.**
 
-### Total wall-clock — Codec adds <1% overhead
+### Total wall-clock: Codec adds <1% overhead
 
 Total time from request to last byte. Model-bound on a single
-connection, so this is essentially the model's decode rate (~545
+connection: this is essentially the model's decode rate (~545
 tok/s on the 0.5B on RTX 3090):
 
 ![Total time vs response size](docs/total-vs-size.png)
@@ -708,7 +706,7 @@ in time. (json-sse identity is *faster* at 64 tokens because the
 small-payload SSE happens to flush in one MTU; the difference is noise
 above 256 tokens.)
 
-### Model→model handoff — pure CPU, no network
+### Model→model handoff: pure CPU, no network
 
 Pure encode/decode CPU time for an agent-to-agent round trip
 (detokenize → wire → tokenize on the receiving side, modeling the
@@ -721,13 +719,13 @@ text-path; or token-IDs → wire → token-IDs on the Codec path). Source:
 | codec (msgpack) | 2.1 ms | 0.7 ms | 2.8 ms | **2.6×** |
 | codec (protobuf) | 0.8 ms | 0.3 ms | 1.1 ms | **6.9×** |
 
-This bench models tokenize/detokenize as a hashtable lookup — a
+This bench models tokenize/detokenize as a hashtable lookup: a
 *lower bound* on real BPE cost (real BPE is 5-50× more expensive). In
 production agent loops, the gap widens substantially. The reason: the
 text path has to stringify token IDs into UTF-8 and re-parse them back
 into IDs on every handoff. Codec just moves the IDs as IDs.
 
-### Tool-call dispatch — server-side ToolWatcher (PR #24557)
+### Tool-call dispatch: server-side ToolWatcher (PR #24557)
 
 Dispatching a tool call requires detecting the `<tool_call>...</tool_call>`
 region in the model's output. Two paths:
@@ -739,7 +737,7 @@ region in the model's output. Two paths:
 
 The regex path is hard to time precisely because it's mixed in with
 the JSON-SSE serialization, but the server-side ToolWatcher's marginal
-cost is essentially zero — it's a uint32 comparison per token in the
+cost is essentially zero: it's a uint32 comparison per token in the
 existing decode loop. Detection latency is one chunk vs many chunks
 (client must accumulate text until regex matches). On a 256-token
 tool-call payload at ~545 tok/s, that's ~470 ms of detection latency
@@ -759,14 +757,14 @@ generation). Backends:
 
 The wire-only win (no measurable wall-clock difference in the
 SearXNG/MetaMCP cases) reflects the truth: **Codec wins on bytes and
-detection latency, not on the time the tool itself takes.** The big
-time win is the *omitted* round-trip — at every agent hop, the text
+detection latency alone; the time the tool itself takes is unaffected.** The big
+time win is the *omitted* round-trip: at every agent hop, the text
 path pays detokenize+tokenize for both directions; Codec pays neither.
 
 ### Bidirectional duplex model↔model
 
-Not measured in this session — our setup has a single 0.5B server, not
-two. The handoff bench above gives the per-direction CPU cost; a
+Not measured in this session: our setup has only a single 0.5B server.
+The handoff bench above gives the per-direction CPU cost; a
 bidirectional duplex would pay it on both directions, doubling the
 gap. Future work.
 
@@ -789,7 +787,7 @@ difference between needing 1 CPU and needing 16.
 ## 1e. Bolt-on tool architecture: tools-as-tokens, tokenized at build time
 
 PR #24557 lands server-side ToolWatcher detection in sglang. The next
-step isn't "in-process MCP dispatcher inside sglang" — that path locks
+step isn't "in-process MCP dispatcher inside sglang": that path locks
 tools into the inference server and makes every tool change a server
 release. The right architecture is **bolt-on tools with build-time
 tokenization**, hosted in their own repos, hot-swappable per gateway.
@@ -845,29 +843,29 @@ decode_args(call.argumentIds) →
 
 Tokenization cost on the hot path: just the digits in the timestamp.
 Everything else is memcpy. CPU per call drops from "BPE on N hundred
-bytes" to "memcpy of N hundred bytes" — typically a 50-100× CPU
+bytes" to "memcpy of N hundred bytes": typically a 50-100× CPU
 reduction at the tool layer, and zero CPU at the gateway.
 
 ### What ships today
 
-- **`packages/codec-tool-kit`** — the standalone TS SDK for authoring
+- **`packages/codec-tool-kit`**: the standalone TS SDK for authoring
   bolt-on tools. Defines the manifest spec, the `CodecTool` interface,
   the `CodecToolCall` / `CodecToolResult` wire shapes, and the
   `precache()` build helper. Zero runtime dependencies, ~6 KB. Lives
   at [`packages/codec-tool-kit/`](../codec-tool-kit/).
-- **Manifest schema** — JSON manifest declaring the tool's name,
+- **Manifest schema**: JSON manifest declaring the tool's name,
   arguments JSON-Schema, and per-model bindings (HF model id +
   tokenizer SHA-256 + cache file path). The gateway reads this once
   at registration; after that only token IDs cross the wire.
-- **`precache()` build helper** — takes a fragment list (`static` or
+- **`precache()` build helper**: takes a fragment list (`static` or
   `template`) and a tokenizer, emits a `ToolCache` JSON file. Tool
   authors run this in their CI; the resulting caches ship inside
   the published package.
-- **`renderTemplate()` runtime helper** — concatenates cached parts
+- **`renderTemplate()` runtime helper**: concatenates cached parts
   with freshly-tokenized slot values. The slot values are usually
-  short (digits, single words), so even runtime tokenization is
-  effectively free.
-- **Stale-cache detection** — `verifyCache()` checks the cache's
+  short (digits, single words). Even runtime tokenization is
+  effectively free as a result.
+- **Stale-cache detection**: `verifyCache()` checks the cache's
   tokenizer hash against what the gateway is currently serving. If
   the gateway swapped models or upgraded the tokenizer, the tool
   falls back to text-mode and the gateway tokenizes at the boundary.
@@ -882,11 +880,11 @@ A `get_current_time` bolt-on:
 | `manifest.json` | ~600 B | name, schema, model bindings (Qwen2.5, Llama-3) |
 | `cache/qwen25-0.5b.json` | ~400 B | pre-tokenized prefixes + suffixes + template parts |
 | `cache/llama-3.2-3b.json` | ~400 B | same fragments, Llama tokenizer |
-| `index.ts` | ~80 LOC | `tool.handle(call)` — decode args, lookup cache, return token IDs |
+| `index.ts` | ~80 LOC | `tool.handle(call)`: decode args, lookup cache, return token IDs |
 | `build-cache.ts` | ~30 LOC | runs `precache()` for each model in CI |
 
 That's the entire tool. The repo is independent, the npm package is
-versioned independently, and the gateway only needs to point at the
+versioned independently. The gateway only needs to point at the
 manifest URL to start using it.
 
 ### What's still needed in the gateway (sglang, vLLM, etc.)
@@ -898,8 +896,8 @@ small add-on:
    `tokenizerHash` against the active model's tokenizer.
 2. **MCP-style HTTP/IPC client** that posts `CodecToolCall` to the
    tool's endpoint and receives `CodecToolResult`. We're proposing
-   the same wire shape MetaMCP already uses, so existing MCP servers
-   can be wrapped with a thin adapter.
+   the same wire shape MetaMCP already uses. Existing MCP servers
+   can be wrapped with a thin adapter as a result.
 3. **Reinjection path** that takes `responseIds` and feeds them back
    into the generation context at the position where `<tool_call>`
    was detected. The text fallback path tokenizes via the gateway's
@@ -917,7 +915,7 @@ gateway-side tool registry, the args never leave the gateway's
 trusted boundary unmodified. The gateway operator controls the tool
 surface; the client only sees the final stream.
 
-This is the same property as the in-process design — and bolt-on
+This is the same property as the in-process design: and bolt-on
 tools get it without sacrificing modularity. The MCP hop from gateway
 to tool can be auth'd with mTLS or a static token; the gateway never
 trusts the client to nominate which tool gets called.
@@ -925,7 +923,7 @@ trusts the client to nominate which tool gets called.
 ### Edge tool reading tool calls as tokens
 
 Your phrasing: this *is* what bolt-on tools do. The "reader" of the
-tool call is the bolt-on, and what it reads are token IDs — not text.
+tool call is the bolt-on. What it reads is token IDs, never text.
 The gateway routes IDs; the tool processes IDs; the response is IDs.
 The only place text appears is when the gateway tokenizes a
 text-fallback result for an unsupported model, or when the final
@@ -937,17 +935,16 @@ human.
 
 ---
 
-## 1f. Cross-stack ratios — comparing compression solutions across gateways
+## 1f. Cross-stack ratios: comparing compression solutions across gateways
 
-The numbers in §1a–§1e are sglang-specific. Different inference
+The numbers in §1a:§1e are sglang-specific. Different inference
 servers (vLLM, llama.cpp/llama-server, TGI) have different wire
 encoders, different SSE flushing semantics, and different
 compression-middleware implementations. The brotli-barely-compresses
-finding from §1d is one example: that's an sglang-side configuration
-issue, not a Codec issue, and a different stack might do better.
+finding from §1d is one example: that's purely an sglang-side configuration
+issue. A different stack might do better.
 
-To compare across stacks we need ratios that are stack-portable —
-each computed from a stack's *own* baseline, so we can hold them up
+To compare across stacks we need ratios that are stack-portable: each computed from a stack's *own* baseline. That lets us hold them up
 side by side.
 
 ### The three ratios
@@ -959,9 +956,9 @@ side by side.
 | **Composite efficiency** | one-number ranking incl. both | `(baseline_bytes × baseline_TTFT) / (cell_bytes × cell_TTFT)` where baseline = stack's JSON-SSE identity | higher = better |
 
 The first two are pure characterisations of the stack's compression
-implementation — they don't reference any baseline outside the stack
-itself, so they compare directly. The third uses each stack's own
-JSON-SSE identity as the 1.0× baseline, which makes it fair across
+implementation: they don't reference any baseline outside the stack
+itself. They compare directly as a result. The third uses each stack's own
+JSON-SSE identity as the 1.0× baseline. That makes it fair across
 stacks even if their JSON-SSE absolute byte counts differ.
 
 ### What "good" looks like
@@ -979,10 +976,10 @@ should hit roughly:
 | br TTFT ratio | 1.0 | ≤ 1.5 | > 2.0 |
 
 Stacks that fall into the "bad" column for any of these have a
-fixable middleware issue, not a fundamental encoder problem. Patch
+fixable middleware issue rather than a fundamental encoder problem. Patch
 the middleware, the ratio improves.
 
-### sglang — measured
+### sglang: measured
 
 Numbers from §1d (codec-bench-timed run, 2 reps median, 2K-token
 response). Wire coefficients are vs identity Codec for the same path.
@@ -999,16 +996,16 @@ response). Wire coefficients are vs identity Codec for the same path.
 The pattern is clear: gzip is the only encoding sglang ships
 correctly today. zstd buffers (TTFT cliff). br is misconfigured (per-
 frame compression, sometimes expands the payload). All three are
-sglang middleware issues, not Codec issues — gzip works because
+purely sglang middleware issues: gzip works because
 sglang has good streaming gzip; the other two need patches.
 
-### vLLM — install attempted, blocked on torch/xformers compatibility
+### vLLM: install attempted, blocked on torch/xformers compatibility
 
 We attempted to deploy PR #41765 on the lab box using
 `vllm/vllm-openai:latest` as a base + `pip install -e .
 --no-build-isolation` with `VLLM_USE_PRECOMPILED=1` to overlay the
 PR's Python changes on the precompiled CUDA kernels. The install
-completed but pulled `torch==2.11.0`, which conflicts with the
+completed but pulled `torch==2.11.0`. That conflicts with the
 precompiled `xformers==0.0.31` (requires `torch==2.7.1`). The
 api_server then failed to start cleanly inside the container.
 
@@ -1029,11 +1026,11 @@ numbers in as soon as a deploy lands.
 | vllm · protobuf · br | TBD | TBD | TBD | TBD | TBD |
 | vllm · protobuf · zstd | TBD | TBD | TBD | TBD | TBD |
 
-### llama.cpp — measured (PR #22757)
+### llama.cpp: measured (PR #22757)
 
 Built llama-server from PR #22757 with CUDA, ran against the same Qwen2.5-0.5B GGUF (Q4_K_M). Timed sweep at 64/512/2048, 2 reps, identical token counts across encodings (64/512/2048 emitted).
 
-**Headline finding: llama.cpp's PR ships Codec wire formats but no compression middleware.** All four `Accept-Encoding` values return identical bytes — the server passthrough doesn't honor the header. That's a strictly cleaner baseline than sglang (no broken middleware to worry about) but you only get the format ratio, not the compression bonus.
+**Headline finding: llama.cpp's PR ships Codec wire formats but no compression middleware.** All four `Accept-Encoding` values return identical bytes: the server passthrough doesn't honor the header. That's a strictly cleaner baseline than sglang (no broken middleware to worry about), though you only get the format ratio without the compression bonus.
 
 Wire bytes at 2K tokens:
 
@@ -1042,7 +1039,7 @@ Wire bytes at 2K tokens:
 | Codec msgpack | 28.4 KB | 28.4 KB | 28.4 KB | 28.4 KB |
 | Codec protobuf | 19.5 KB | 19.5 KB | 19.5 KB | 19.5 KB |
 
-TTFT is consistently 5-7 ms across every encoding (better than sglang's 11 ms — llama.cpp's HTTP layer flushes faster).
+TTFT is consistently 5-7 ms across every encoding (better than sglang's 11 ms: llama.cpp's HTTP layer flushes faster).
 
 | stack · path · encoding | wire coeff | TTFT ratio | composite (interactive) | composite (batch) | verdict |
 |---|---:|---:|---:|---:|---|
@@ -1053,14 +1050,14 @@ TTFT is consistently 5-7 ms across every encoding (better than sglang's 11 ms �
 | llama.cpp · protobuf · br | 1.000 = | 1.00 ✓ | 52× | 25× | passthrough |
 | llama.cpp · protobuf · zstd | 1.000 = | 1.00 ✓ | 60× | 25× | passthrough |
 
-`= 1.000` means "no compression applied" — the wire-coefficient is
+`= 1.000` means "no compression applied": the wire-coefficient is
 exactly 1.0 because llama.cpp returns the raw codec bytes regardless
 of `Accept-Encoding`. The composite scores are still >1× because
 Codec frames are intrinsically 17-25× smaller than JSON-SSE *without*
 any compression layer.
 
 **Stack-comparison takeaway:** llama.cpp PR #22757 today is at parity
-with `sglang · *codec* · identity` — wire-format wins delivered, no
+with `sglang · *codec* · identity`: wire-format wins delivered, no
 compression layer. Adding a streaming-aware gzip middleware (e.g.
 hooking into mongoose's existing gzip support, or wrapping the SSE
 writer with a `boost::iostreams::gzip_compressor`) would lift it from
@@ -1069,8 +1066,7 @@ writer with a `boost::iostreams::gzip_compressor`) would lift it from
 #### Scaling holds across the full crossover sweep
 
 8-size crossover sweep (16/32/64/128/256/512/1024/2048 tokens) on the
-same llama-server confirms the passthrough behaviour at every size —
-gzip/br/zstd cells are bit-identical to identity for both Codec
+same llama-server confirms the passthrough behaviour at every size: gzip/br/zstd cells are bit-identical to identity for both Codec
 formats:
 
 | path · encoding | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 |
@@ -1081,7 +1077,7 @@ formats:
 Reading the table: each row's four encodings produce *literally
 identical* bytes at every size. The crossover study's
 recommendation-derivation prints `identity wins at every size,
-gzip/br/zstd never win and are always within 20% of best` — i.e.
+gzip/br/zstd never win and are always within 20% of best`: i.e.
 "compression is a no-op here, pick whichever you like."
 
 Per-token cost is constant: msgpack ~14 B/tok, protobuf ~9.5 B/tok at
@@ -1093,13 +1089,13 @@ in §1c predicted; only the compression layer is missing.
 Wire format is stack-independent: the msgpack/protobuf bytes coming
 out of llama.cpp parse cleanly with the same Python/.NET/C/Web
 clients used for sglang. Polyglot interop (§2) holds without
-modification — the only thing that differs across stacks is whether
+modification: the only thing that differs across stacks is whether
 the response went through a compressor.
 
 A polyglot client speaking to llama.cpp gets:
 - ✅ Codec wire (binary frames, real token IDs)
 - ✅ Same parsing path (no per-stack codec branch)
-- ❌ No compression — payload is identity-sized
+- ❌ No compression: payload is identity-sized
 
 …vs the same client against sglang gzip:
 - ✅ Codec wire
@@ -1125,8 +1121,7 @@ Reduction-vs-baseline at 64 tokens:
 | Codec msgpack (any encoding) | **16.4×** |
 | Codec protobuf (any encoding) | **24.7×** |
 
-These match sglang's identity row (16.0× / 23.9×) within noise —
-**Codec wire format itself is stack-agnostic**, the only stack
+These match sglang's identity row (16.0× / 23.9×) within noise: **Codec wire format itself is stack-agnostic**, the only stack
 difference is whether the response then went through a compressor.
 sglang gzip pushes msgpack from 16× to 705× at scale; llama.cpp's
 passthrough keeps it at the format-only 16-25× across every size we
@@ -1142,7 +1137,7 @@ TTFT / total wall-clock at 64 tokens:
 
 Codec lowers wall-clock by ~30% vs JSON-SSE identity at the small-
 payload size (shorter response → less time spent in JSON
-serialisation), and TTFT is preserved across all encodings since
+serialisation). TTFT is preserved across all encodings, too, since
 nothing buffers.
 
 #### Bench suite coverage on llama.cpp
@@ -1160,9 +1155,8 @@ The full bench suite ran clean on this PR:
 ### Why this matters for the picker
 
 The `wire-compress` package's defaults are calibrated against the
-sglang ratios. If a stack has materially different ratios — e.g. a
-stack where br is well-configured and matches gzip on wire-coeff —
-then the picker's `interactive` mode could promote br above its
+sglang ratios. If a stack has materially different ratios: e.g. a
+stack where br is well-configured and matches gzip on wire-coeff: then the picker's `interactive` mode could promote br above its
 current "fallback only" tier on that specific stack.
 
 The point of the cross-stack matrix is to make those calibration
@@ -1179,13 +1173,13 @@ codec-bench-timed --url http://your-stack:port \
                    --sizes 64 512 2048 --reps 2
 
 # The output includes wire bytes, TTFT, total, interactive efficiency,
-# and batch efficiency — everything needed to fill in a row in the
+# and batch efficiency: everything needed to fill in a row in the
 # matrix above.
 ```
 
 ---
 
-## 1g. Pre-trained ZSTD dictionaries — measured gain
+## 1g. Pre-trained ZSTD dictionaries: measured gain
 
 `spec/PROTOCOL.md` "Pre-trained ZSTD dictionaries" estimated ~30% byte
 reduction beyond raw zstd as the v0.2 win. We've now trained, shipped,
@@ -1198,7 +1192,7 @@ The numbers below come from the **synthetic corpus** (256 streams per
 format, generated deterministically from `bench/golden/qwen2.json` plus
 RNG-shaped framing). Synthetic dicts are weaker than live-trained dicts
 because they only see the model's tokenizer test corpus rather than the
-model's actual generation distribution — replace with the live numbers
+model's actual generation distribution: replace with the live numbers
 once `bench/scripts/capture-codec-samples.py` has been run against
 sglang and `dict:train` re-emits a `qwen2.5-msgpack-v1.dict` (no
 `-synth-` infix).
@@ -1210,7 +1204,7 @@ Each cell below is a 256-sample mean. Encode-latency rows are the median of
 stratified samples. Round-trip (compress → decompress) is verified per
 sample; a mismatch aborts the run.
 
-#### msgpack — dict `qwen2.5-synth-msgpack-v1` (16 KB)
+#### msgpack: dict `qwen2.5-synth-msgpack-v1` (16 KB)
 
 **Bytes:**
 
@@ -1221,7 +1215,7 @@ sample; a mismatch aborts the run.
 | large (> 2.5 KB)      | 162 | 11.0 KB | 2.2 KB | 2.3 KB | **1.9 KB** | 14.5% |
 | **all**               | 256 | 7.4 KB | 1.5 KB | 1.6 KB | **1.3 KB** | **16.4%** |
 
-**Encode latency (sync TTFB)** — wall-clock to compress one whole sample:
+**Encode latency (sync TTFB)**: wall-clock to compress one whole sample:
 
 | bucket | n | gzip | no-dict zstd | with-dict zstd | dict overhead |
 |---|---:|---:|---:|---:|---:|
@@ -1230,7 +1224,7 @@ sample; a mismatch aborts the run.
 | large (> 2.5 KB)      | 162 | 0.18 ms | 0.15 ms | 0.41 ms | +0.26 ms |
 | **all**               | 256 | 0.13 ms | 0.10 ms | 0.35 ms | **+0.25 ms** |
 
-**Streaming TTFB** — first input chunk → first compressed byte
+**Streaming TTFB**: first input chunk → first compressed byte
 (256 B chunks, flush after first chunk; models a streaming-zstd middleware):
 
 | pipeline | mean TTFB | overhead |
@@ -1238,7 +1232,7 @@ sample; a mismatch aborts the run.
 | no-dict zstd (streaming) | 0.21 ms | (baseline) |
 | with-dict zstd (streaming) | 0.34 ms | **+0.12 ms** |
 
-#### protobuf — dict `qwen2.5-synth-protobuf-v1` (16 KB)
+#### protobuf: dict `qwen2.5-synth-protobuf-v1` (16 KB)
 
 **Bytes:**
 
@@ -1271,8 +1265,8 @@ sample; a mismatch aborts the run.
 
 - **Small streams gain the most.** A 200-byte msgpack frame compressed
   with no-dict zstd has no time to learn the model's bigram structure
-  before the stream ends — the dict pre-loads ~16 KB of typical
-  CodecFrame patterns. Result: **37–38% extra reduction** at small
+  before the stream ends: the dict pre-loads ~16 KB of typical
+  CodecFrame patterns. Result: **37 to 38% extra reduction** at small
   sizes for both formats. This is exactly the "first-byte" cost the
   spec section called out, now measured.
 - **Large streams gain less.** At ≥ 2.5 KB, no-dict zstd has built up
@@ -1286,29 +1280,28 @@ sample; a mismatch aborts the run.
   (protobuf) on its 20% holdout set during training; the
   per-bucket bench above re-measures over the full 256-sample corpus
   including the train slice and gets very close numbers (16.4% / 17.6%
-  overall) — the dict isn't overfitting the train set.
+  overall): the dict isn't overfitting the train set.
 
 **Timing:**
 
 - **Sync encode latency** (whole-sample compress) goes from ~0.10 ms
   (no-dict zstd) to ~0.35 ms (with-dict zstd). The +0.24 ms overhead is
   dict-load + setup, paid once per response. For comparison, the
-  baseline TTFB measured against sglang in §1d is ~11 ms — the dict's
+  baseline TTFB measured against sglang in §1d is ~11 ms: the dict's
   extra cost is **~2% of one TTFB tick**, deep in the noise floor.
   Compared to the byte savings (kilobytes off most responses), the CPU
   trade is overwhelmingly favourable.
 - **Streaming TTFB** is the more honest number for a streaming-zstd
   middleware: feed the response in 256 B chunks, flush after the first
   chunk, time from first input byte to first output byte. With-dict
-  costs **+0.12–0.13 ms over no-dict** — nearly free, because the dict
-  is loaded once at stream construction and the first compressed
+  costs **+0.12 to 0.13 ms over no-dict**, nearly free: the dict
+  is loaded once at stream construction. The first compressed
   output byte still emerges within a millisecond. This rules out the
-  worry that pre-training adds anything like §1d's TTFT cliff (which
-  is a property of buffered finalisation, not of compression itself).
+  worry that pre-training adds anything like §1d's TTFT cliff. That cliff
+  is a property of buffered finalisation alone, unrelated to compression itself.
 - **gzip is faster but coarser.** Gzip encode-latency on small samples
   is 0.02 ms vs zstd's 0.02 ms (same wall-clock at this size; both are
-  doing little work). The dict only changes the picture for zstd —
-  gzip has its own static dictionaries baked in and isn't tuned per-
+  doing little work). The dict only changes the picture for zstd: gzip has its own static dictionaries baked in and isn't tuned per-
   model. The picker rule (`packages/wire-compress`) doesn't change:
   gzip still wins on streaming where TTFT cliffs matter, zstd-with-
   dict wins on bytes when the gateway uses streaming-zstd-with-flush.
@@ -1329,16 +1322,16 @@ formats this came out to **16 KB**:
 | **16 KB** | **+15.7%** | **+16.7%** |
 | 64 KB | +14.6% | +17.3% |
 
-64 KB beats 16 KB on protobuf by 0.6 pp — within the picker's 1pp
-tolerance, so the smaller dict ships. 16 KB is also small enough to
+64 KB beats 16 KB on protobuf by 0.6 pp: within the picker's 1pp
+tolerance. The smaller dict ships as a result. 16 KB is also small enough to
 inline into the tokenizer map JSON later if we ever want to skip the
 extra fetch.
 
 ### Caveats
 
-- **Synthetic corpus only (still the current state).** These numbers prove the pipeline against a synthesised corpus; a **live-trained dict against real sglang traffic** is the next bench (tracked as v0.5 task #49) — predicted to score higher on small streams (closer to the ~30% spec estimate *over no-dict zstd at typical sizes*) and similar on large.
-- **~~Server-side enablement is the next step.~~ Resolved at v0.4.1.** sglang's `codec_compression.py` now loads the `zstd_dictionaries[]` field at startup; vllm + llama.cpp forks were brought into parity at the v0.4.1 cohort (llama.cpp specifically gained `codec_brotli_streamer` + `codec_zstd_streamer` + `codec_zstd_dict_registry` in v0.4.1). `Content-Encoding: zstd` responses with the `Codec-Zstd-Dict: sha256:…` header now ship in production across all three engines. Cross-client dict-zstd decode interop landed across all 6 clients (TS/Web, Python, .NET, Rust, Java, C) at v0.4.1 — verified by the 24/24 decode-unanimous cells in the cross-stack matrix.
-- **The dict is the precondition for zstd, not an optimization on
+- **Synthetic corpus only (still the current state).** These numbers prove the pipeline against a synthesised corpus; a **live-trained dict against real sglang traffic** is the next bench (tracked as v0.5 task #49): predicted to score higher on small streams (closer to the ~30% spec estimate *over no-dict zstd at typical sizes*) and similar on large.
+- **~~Server-side enablement is the next step.~~ Resolved at v0.4.1.** sglang's `codec_compression.py` now loads the `zstd_dictionaries[]` field at startup; vllm + llama.cpp forks were brought into parity at the v0.4.1 cohort (llama.cpp specifically gained `codec_brotli_streamer` + `codec_zstd_streamer` + `codec_zstd_dict_registry` in v0.4.1). `Content-Encoding: zstd` responses with the `Codec-Zstd-Dict: sha256:…` header now ship in production across all three engines. Cross-client dict-zstd decode interop landed across all 6 clients (TS/Web, Python, .NET, Rust, Java, C) at v0.4.1: verified by the 24/24 decode-unanimous cells in the cross-stack matrix.
+- **The dict is the precondition for zstd, ahead of any optimization on
   top.** RESULTS.md §1f showed gzip and no-dict zstd are within noise
   of each other on Codec streams (~3.4 B/token both); RESULTS.md §1d
   showed shipped zstd middleware buffers the whole response (334×
@@ -1347,11 +1340,11 @@ extra fetch.
   set when the loaded tokenizer map has a matching
   `zstd_dictionaries[]` entry) AND `zstdEnabled` (operator's
   attestation that the middleware streams) are true. The fallback
-  chain is `zstd-with-dict > gzip > br > identity` — there is no
+  chain is `zstd-with-dict > gzip > br > identity`: there is no
   zstd-no-dict step. So when a server doesn't have a dict for a given
   tokenizer, requests for that tokenizer land on gzip, with the
   baseline 76% reduction over identity but losing the dict's extra
-  16–38%.
+  16 to 38%.
 - **TTFT cliff is unchanged for buffered middleware.** A pre-trained
   dict reduces *bytes*; it does not change zstd's buffered-finalisation
   behaviour. So even with a dict loaded, an operator running
@@ -1389,7 +1382,7 @@ adjust `--corpus` / `--tag` accordingly.
 
 ---
 
-## 2. Polyglot interop — 4 client implementations
+## 2. Polyglot interop: 4 client implementations
 
 Same Codec wire, four language clients. Wire bytes match exactly.
 
@@ -1409,7 +1402,7 @@ decompressor. Wire bytes still match exactly across all four clients.
 
 ---
 
-## 3. Server-side ToolWatcher — single turn (PR #24557)
+## 3. Server-side ToolWatcher: single turn (PR #24557)
 
 ```
 prompt: "What's the weather in Tokyo?" via /v1/chat/completions
@@ -1426,7 +1419,7 @@ prompt: "What's the weather in Tokyo?" via /v1/chat/completions
 before the call (1 here). The marker tokens AND the body IDs were
 consumed server-side; the parsed tool call rides on the frame as
 structured data. The orchestrator does **zero detokenize** to know a
-tool call happened — `frame.tool_calls` is on the wire.
+tool call happened: `frame.tool_calls` is on the wire.
 
 All three paths captured the same payload:
 
@@ -1436,7 +1429,7 @@ All three paths captured the same payload:
 
 ---
 
-## 4. Agent loop — mock tool
+## 4. Agent loop: mock tool
 
 Two-turn round-trip: prompt → model emits tool_call → dispatch → model
 sees result → final answer.
@@ -1450,7 +1443,7 @@ sees result → final answer.
 
 ---
 
-## 5. Agent loop — real SearXNG
+## 5. Agent loop: real SearXNG
 
 Same flow, dispatch hits a SearXNG container (lab box port 8888 →
 DuckDuckGo + Wikipedia engines).
@@ -1470,7 +1463,7 @@ Codec path is faster because the smaller wire shaves both turns.
 
 ---
 
-## 6. Agent loop — real MetaMCP
+## 6. Agent loop: real MetaMCP
 
 Same flow, dispatch hits MetaMCP gateway → Time MCP server (STDIO
 subprocess for `Time__get_current_time`).
@@ -1496,7 +1489,7 @@ Tool registry exposed via the bench:
 | `convert_time` | MetaMCP → Time MCP server |
 | `youtube_transcript` | MetaMCP → YouTube-Transcripts MCP server |
 
-(MetaMCP also fronts Sequential-Thinking, Calculator, Playwright — adding to the manifest is one-line each.)
+(MetaMCP also fronts Sequential-Thinking, Calculator, Playwright: adding to the manifest is one-line each.)
 
 ---
 
@@ -1504,7 +1497,7 @@ Tool registry exposed via the bench:
 
 Synthetic 1M-token stream, 5% of tokens inside `<tool_call>` regions,
 1024-token chunks. Single core, MSVC Release, RTX 2080 Ti host (CPU
-benchmark — GPU not used).
+benchmark: GPU not used).
 
 | Path | ns/token | Mtok/s | 1M tokens |
 |---|---:|---:|---:|
@@ -1520,7 +1513,7 @@ nothing.
 
 ---
 
-## 8. Pretok program v1 — equivalence with regex
+## 8. Pretok program v1: equivalence with regex
 
 `pre_tokenizer_program` (PR #7) lowers the GPT-2-family Unicode regex
 into an op list that runtimes execute without a Unicode regex engine.
@@ -1532,7 +1525,7 @@ Unicode numerals / paragraph breaks.
 | Family | Stress equivalence | Real-map equivalence |
 |---|---|---|
 | Qwen-2 (`\p{N}`) | bit-identical, 23/23 | ✅ on published `qwen2.json` regex, 23/23 |
-| Llama-3 (`\p{N}{1,3}`) | bit-identical, 23/23 | (regex match only — no real map yet) |
+| Llama-3 (`\p{N}{1,3}`) | bit-identical, 23/23 | (regex match only: no real map yet) |
 
 Compiled programs travel with the map. Old maps keep `pre_tokenizer_pattern`;
 new maps emit both. Adding the runtime to a client takes ~250 LOC
@@ -1547,7 +1540,7 @@ new maps emit both. Adding the runtime to a client takes ~250 LOC
 | `@codecai/web` (TypeScript) | 49 | 48 ✅ + 1 skip |
 | `codecai` (Python) | 32 | 27 ✅ + 5 skip (real-map gated) |
 | `Codec.Net` (.NET) | 30 | 30 ✅ with real maps |
-| `libcodec` (C99) — CTest suites | 7 | 7 ✅ with regenerated map |
+| `libcodec` (C99): CTest suites | 7 | 7 ✅ with regenerated map |
 | Pretok program (TS) | 15 | 15 ✅ |
 | sglang `codec_agent` (Python) | 14 | 14 ✅ |
 | sglang `smoke_codec.py` | 9 | 9 ✅ (msgpack + protobuf + tool_calls round-trip) |
@@ -1561,14 +1554,14 @@ Refreshed against the v0.4.1 cohort (2026-05-15T20-00-00Z). Wire ratios are prot
 | Claim | Measured | Where |
 |---|---|---|
 | Wire reduction §1b @ 2K msgpack+dict-zstd | sglang **1,707×** · vllm **137×** · llama.cpp fp16 **3,868×** | §1b |
-| Wire reduction §1 protocol-only synthetic | **4.8×–392×** depending on content (uniform-random → cyclic-period-10) | §1 |
+| Wire reduction §1 protocol-only synthetic | **4.8× to 392×** depending on content (uniform-random → cyclic-period-10) | §1 |
 | Per-token cost reduction (sglang dict-zstd, 2K) | **237 B/tok → 0.14 B/tok** (synthetic low-entropy: **12.8 B/tok → 0.78 B/tok**) | §1, §1b |
-| Polyglot interop — 6 clients | **24/24 wire AND 24/24 decode unanimous on every engine** (v0.4.1 added the decode side; was only wire before) | §2 |
-| Tool-call detection — ToolWatcher CPU microbench (libcodec C99, EPYC 8124P / gcc:13) | **26.7× faster** (2.08 ns/token vs 55.42 ns/token); prior README claim ~100× was undocumented CPU/compiler combo | §7 |
-| Agent loop — mock `get_weather` (in-process, wire-dominant) | **16.9× wire · 8.8× total wall-clock** (1,662 ms → 189 ms) | §4 |
-| Agent loop — SearXNG (live web tool, tool-latency-mixed) | **18.0× wire · 1.65× total wall-clock** (2,078 ms → 1,257 ms = ~40% faster) | §5 |
-| Agent loop — MetaMCP gateway (Time MCP, tool-latency-dominant) | **17.0× wire · ~neutral total** (210 ms → 216 ms — wire savings present but tool latency dominates wall-clock) | §6 |
-| MCP leaf-mode (tool-result-side, ~30-char timestamp) | **+211 bytes wire** (leaf 3× larger on tiny — fixed `_meta` envelope) · **12.4× consumer-CPU speedup** (0.052 ms → 0.004 ms). Wire crossover where leaf ≤ plain sits at ~300+ chars/text-block. | §6.5 |
+| Polyglot interop: 6 clients | **24/24 wire AND 24/24 decode unanimous on every engine** (v0.4.1 added the decode side; was only wire before) | §2 |
+| Tool-call detection: ToolWatcher CPU microbench (libcodec C99, EPYC 8124P / gcc:13) | **26.7× faster** (2.08 ns/token vs 55.42 ns/token); prior README claim ~100× was undocumented CPU/compiler combo | §7 |
+| Agent loop: mock `get_weather` (in-process, wire-dominant) | **16.9× wire · 8.8× total wall-clock** (1,662 ms → 189 ms) | §4 |
+| Agent loop: SearXNG (live web tool, tool-latency-mixed) | **18.0× wire · 1.65× total wall-clock** (2,078 ms → 1,257 ms = ~40% faster) | §5 |
+| Agent loop: MetaMCP gateway (Time MCP, tool-latency-dominant) | **17.0× wire · ~neutral total** (210 ms → 216 ms: wire savings present but tool latency dominates wall-clock) | §6 |
+| MCP leaf-mode (tool-result-side, ~30-char timestamp) | **+211 bytes wire** (leaf 3× larger on tiny: fixed `_meta` envelope) · **12.4× consumer-CPU speedup** (0.052 ms → 0.004 ms). Wire crossover where leaf ≤ plain sits at ~300+ chars/text-block. | §6.5 |
 | Cross-vocab translator (Llama-3 → Qwen-2, 2K msgpack+gzip) | **15.1× wire · bridge CPU within noise** of JSON-SSE+retokenize path; byte-identical Qwen-2 output asserted | §1d |
 | Pretok program ≡ regex output | **bit-identical on 23 stress + real Qwen-2** | §8 |
 
@@ -1612,9 +1605,9 @@ METAMCP_API_KEY=<your_key> py -3.13 -X utf8 \
 The Codec stack delivers what the protocol claimed:
 
 1. **Wire**: 14× reduction over JSON-SSE from the framing alone, 70× with the compression overlay.
-2. **Per-frame detection**: server-side ToolWatcher makes tool-call detection a uint32 compare instead of detokenize + regex, with ~100× CPU speedup at the watcher level.
+2. **Per-frame detection**: server-side ToolWatcher makes tool-call detection a uint32 compare in place of detokenize + regex, with ~100× CPU speedup at the watcher level.
 3. **End-to-end agent**: full two-turn round-trip with a real tool dispatch is ~18× smaller on the wire and ~20% faster, no caveats.
-4. **Polyglot**: same wire works bit-for-bit across TypeScript, Python, .NET, and C — no implementation drift.
+4. **Polyglot**: same wire works bit-for-bit across TypeScript, Python, .NET, and C: no implementation drift.
 5. **Live with both SearXNG and MetaMCP** running side-by-side on the same lab box, using the same orchestration loop, picking which tool to dispatch based on the model's parsed call.
 
-The two open sglang PRs — [#24483](https://github.com/sgl-project/sglang/pull/24483) (wire) and [#24557](https://github.com/sgl-project/sglang/pull/24557) (ToolWatcher) — encode the server-side half of this. Same surface to come for vLLM (#41765) and llama.cpp (#22757).
+The two open sglang PRs: [#24483](https://github.com/sgl-project/sglang/pull/24483) (wire) and [#24557](https://github.com/sgl-project/sglang/pull/24557) (ToolWatcher): encode the server-side half of this. Same surface to come for vLLM (#41765) and llama.cpp (#22757).

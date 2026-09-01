@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-//! Detokenizer integration tests — mirrors `DetokenizerTests.cs`.
+//! Detokenizer integration tests: mirrors `DetokenizerTests.cs`.
 
 mod common;
 
@@ -57,13 +57,13 @@ fn byte_fallback_four_byte_emoji() {
 fn partial_multi_byte_sequence_buffered_across_frames_three_byte() {
     let map = tiny_map();
     let mut d = Detokenizer::new(&map);
-    // Frame 1: first 2 bytes of € — incomplete, must not emit anything.
+    // Frame 1: first 2 bytes of €: incomplete, must not emit anything.
     let out1 = d.render(
         &[byte_id(0xE2), byte_id(0x82)],
         DetokenizeOptions { partial: true, render_special: false },
     );
     assert_eq!(out1, "");
-    // Frame 2: final byte — flushes.
+    // Frame 2: final byte: flushes.
     let out2 = d.render(
         &[byte_id(0xAC)],
         DetokenizeOptions { partial: false, render_special: false },
@@ -174,7 +174,7 @@ fn metaspace_map() -> TokenizerMap {
     for b in 0u32..=255 {
         vocab.insert(format!("<0x{b:02X}>"), 3 + b);
     }
-    // "▁hello", "▁world", "!" — metaspace replaces ▁ with space
+    // "▁hello", "▁world", "!": metaspace replaces ▁ with space
     vocab.insert("\u{2581}hello".into(), 300);
     vocab.insert("\u{2581}world".into(), 301);
     vocab.insert("!".into(), 302);

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * codec-time-tool — reference Codec-native bolt-on tool.
+ * codec-time-tool: reference Codec-native bolt-on tool.
  *
  * Demonstrates the @codecai/tool-kit pattern end-to-end:
  *   1. Load the precompiled cache (built by scripts/build-cache.ts)
  *   2. Verify the cache's tokenizer hash matches the gateway's active model
  *   3. On each call, look up the relevant fragment(s) by id
- *   4. Return response token IDs — no tokenize on the hot path
+ *   4. Return response token IDs: no tokenize on the hot path
  *
  * The whole tool is a hashtable lookup. Even the template-rendered
  * "It is currently 14:23:55 UTC." response tokenizes only the digit
@@ -18,7 +18,7 @@
  *   - As a library: import { handleCall } and wire it into your own dispatcher
  *
  * Production deployments would also implement the bolt-on wire format
- * (gateway ↔ tool, msgpack/protobuf framed) — that contract lives in
+ * (gateway ↔ tool, msgpack/protobuf framed): that contract lives in
  * spec/PROTOCOL.md § Tool-call calling conventions and is unchanged
  * from the in-process MCP path; only the transport switches to a
  * tool-author-hosted HTTP/unix-socket endpoint.
@@ -39,10 +39,10 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = dirname(__dirname); // examples/time-tool
 
-// Stub slot tokenizer — same shape as the build-time one. Production
+// Stub slot tokenizer: same shape as the build-time one. Production
 // would load the real tokenizer here. This is the only place the tool
 // pays runtime tokenization, and it only sees slot values (digits,
-// dates) — typically <20 chars total per call.
+// dates): typically <20 chars total per call.
 function stubTokenizer(modelId: string): Tokenizer {
   const encode = (text: string): number[] => {
     const ids: number[] = [];
@@ -70,14 +70,14 @@ validateManifest(manifest);
 const activeModelId = process.env.CODEC_MODEL_ID ?? 'Qwen/Qwen2.5-0.5B-Instruct';
 const binding = findBinding(manifest, activeModelId);
 if (!binding) {
-  console.error(`[codec-time-tool] no cache for model ${activeModelId} — would fall back to text mode`);
+  console.error(`[codec-time-tool] no cache for model ${activeModelId}: would fall back to text mode`);
   process.exit(1);
 }
 
 const cache: ToolCache = JSON.parse(readFileSync(join(ROOT, binding.cacheFile), 'utf8'));
 const tokenizer = stubTokenizer(activeModelId);
 if (!verifyCache(cache, tokenizer.hash())) {
-  console.error('[codec-time-tool] cache tokenizer hash mismatch — refusing to start');
+  console.error('[codec-time-tool] cache tokenizer hash mismatch: refusing to start');
   process.exit(2);
 }
 
@@ -118,7 +118,7 @@ export function handleCall(args: TimeArgs): number[] {
 }
 
 // ── CLI demo ─────────────────────────────────────────────────────
-// Runs whenever this file is executed (always — it's the `bin` entry).
+// Runs whenever this file is executed (always: it's the `bin` entry).
 // To use as a library, import { handleCall } from the package instead
 // of running the bin.
 const cliFormat = (process.argv[2] as 'iso' | 'human' | undefined) ?? 'iso';
@@ -126,4 +126,4 @@ const cliIds = handleCall({ format: cliFormat });
 console.log(`model:       ${activeModelId}`);
 console.log(`format:      ${cliFormat}`);
 console.log(`response IDs (${cliIds.length}): [${cliIds.slice(0, 16).join(',')}${cliIds.length > 16 ? ', …' : ''}]`);
-console.log(`(would be memcpy'd into the model's generation context — no detokenize, no JSON envelope)`);
+console.log(`(would be memcpy'd into the model's generation context: no detokenize, no JSON envelope)`);

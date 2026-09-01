@@ -91,7 +91,7 @@ static void test_watcher_region_split_across_feeds(void) {
     codec_tool_watcher_t *w = NULL;
     CT_EQ_INT(codec_tool_watcher_new(m, "<tool_call>", "</tool_call>", &w), CODEC_OK);
 
-    /* Feed 1: "hello <tool_call> foo" — region opens but doesn't close. */
+    /* Feed 1: "hello <tool_call> foo": region opens but doesn't close. */
     uint32_t feed1[] = { 0, START_ID, 3 };
     codec_watcher_event_t *evs;
     size_t n;
@@ -103,7 +103,7 @@ static void test_watcher_region_split_across_feeds(void) {
     CT_EQ_INT(evs[0].ids[0], 0);
     CT_TRUE(codec_tool_watcher_inside(w));
 
-    /* Feed 2: "bar </tool_call> world" — closes region, then more text. */
+    /* Feed 2: "bar </tool_call> world": closes region, then more text. */
     uint32_t feed2[] = { 4, END_ID, 1 };
     CT_EQ_INT(codec_tool_watcher_feed(w, feed2, 3, &evs, &n), CODEC_OK);
     CT_EQ_SZ(n, 2);
@@ -162,7 +162,7 @@ static void test_watcher_stray_end_passes_through(void) {
     codec_tool_watcher_t *w = NULL;
     CT_EQ_INT(codec_tool_watcher_new(m, "<tool_call>", "</tool_call>", &w), CODEC_OK);
 
-    /* end_id with no preceding start_id — should be treated as ordinary text. */
+    /* end_id with no preceding start_id: should be treated as ordinary text. */
     uint32_t ids[] = { 0, END_ID, 1 };
     codec_watcher_event_t *evs;
     size_t n;
@@ -187,11 +187,11 @@ static void test_watcher_missing_name_is_not_found(void) {
     codec_map_free(m);
 }
 
-/* ── Watcher operates on raw IDs only — never decodes ─────────────────── */
+/* ── Watcher operates on raw IDs only: never decodes ─────────────────── */
 /*
  * This test exists to lock in the contract that codec_tool_watcher does
  * NOT route token IDs through the detokenizer. The watcher is meant to be
- * usable on a map that contains ONLY the start/end specials — no vocab,
+ * usable on a map that contains ONLY the start/end specials: no vocab,
  * no merges, no decoder config. If the watcher ever grew an accidental
  * dependency on the vocab (e.g. via codec_map_is_special falling back to
  * a vocab lookup), this test would fail.
@@ -199,7 +199,7 @@ static void test_watcher_missing_name_is_not_found(void) {
  * We construct a map whose `vocab` is empty and whose `vocab_size` is a
  * deliberately small number, then feed the watcher token IDs that are
  * BOTH outside the vocab and above the declared vocab_size. The watcher
- * must still emit the events verbatim — including those bogus IDs — and
+ * must still emit the events verbatim: including those bogus IDs: and
  * the captured region body must contain the exact uint32 values we fed,
  * not anything derived from a string round-trip.
  */
@@ -231,19 +231,19 @@ static void test_watcher_does_not_decode_tokens(void) {
      *  - including UINT32_MAX-adjacent values to catch any accidental
      *    integer-narrowing via a string-decode round-trip
      * If the watcher were decoding, codec_map_id_to_text on these would
-     * either fail or return empty — either way, the body verification
+     * either fail or return empty: either way, the body verification
      * below would not match. */
     const uint32_t BIG_A = 0xFFFFFF00u;
     const uint32_t BIG_B = 0xDEADBEEFu;
     const uint32_t BIG_C = 0xCAFEBABEu;
     uint32_t ids[] = {
-        12345u,                /* passthrough — way out of vocab */
-        BIG_A,                 /* passthrough — near uint32 max */
+        12345u,                /* passthrough: way out of vocab */
+        BIG_A,                 /* passthrough: near uint32 max */
         START_ID,              /* opens region */
-        BIG_B,                 /* region body — bogus ID */
-        BIG_C,                 /* region body — bogus ID */
+        BIG_B,                 /* region body: bogus ID */
+        BIG_C,                 /* region body: bogus ID */
         END_ID,                /* closes region */
-        99999u,                /* passthrough — out of vocab */
+        99999u,                /* passthrough: out of vocab */
     };
 
     codec_watcher_event_t *evs;
@@ -252,7 +252,7 @@ static void test_watcher_does_not_decode_tokens(void) {
                                       &evs, &n), CODEC_OK);
     CT_EQ_SZ(n, 3);
 
-    /* PASSTHROUGH: verbatim copy of the input slice — same uint32 values,
+    /* PASSTHROUGH: verbatim copy of the input slice: same uint32 values,
      * no string round-trip, no narrowing. */
     CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_PASSTHROUGH);
     CT_EQ_SZ(evs[0].ids_len, 2);
@@ -260,7 +260,7 @@ static void test_watcher_does_not_decode_tokens(void) {
     CT_EQ_INT(evs[0].ids[1], BIG_A);
 
     /* REGION_END: body IDs preserved bit-for-bit, markers excluded. The
-     * fact that BIG_B/BIG_C have no vocab entry is irrelevant — the
+     * fact that BIG_B/BIG_C have no vocab entry is irrelevant: the
      * watcher never asks. */
     CT_EQ_INT((int)evs[1].kind, (int)CODEC_WATCH_REGION_END);
     CT_EQ_SZ(evs[1].ids_len, 2);
@@ -286,12 +286,12 @@ static void test_watcher_does_not_decode_tokens(void) {
 static void test_watcher_real_qwen2(void) {
     const char *path = getenv("CODEC_MAPS_QWEN");
     if (!path || !*path) {
-        fprintf(stdout, "  (skipped — set CODEC_MAPS_QWEN to enable)\n");
+        fprintf(stdout, "  (skipped: set CODEC_MAPS_QWEN to enable)\n");
         return;
     }
     FILE *f = fopen(path, "rb");
     if (!f) {
-        fprintf(stdout, "  (skipped — could not open %s)\n", path);
+        fprintf(stdout, "  (skipped: could not open %s)\n", path);
         return;
     }
     fseek(f, 0, SEEK_END);

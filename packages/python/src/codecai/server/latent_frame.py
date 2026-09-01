@@ -9,18 +9,18 @@ transforms specified in `spec/PIPELINES.md`.
 
 Latent-aware engine forks (ComfyUI, diffusers reference, future ones)
 vendor this file rather than depending on `codecai[server]` at import
-time — keeps the inference container's dependency surface tight.
+time: keeps the inference container's dependency surface tight.
 
 Wire format
 -----------
 MessagePack  (Content-Type: application/x-msgpack)
-  Header — first frame in the response body:
+  Header: first frame in the response body:
     {"type": "header",
      "latent_space_id": str, "shape": [u32...], "dtype": str,
      "pipeline": str, "scales": bytes | None,
      "fps": u32 | None, "total_frames": u32 | None,
      "vae_scale_factor": f32 | None}
-  Frame  — every subsequent frame:
+  Frame: every subsequent frame:
     {"data": bytes, "seq": u32, "keyframe": bool, "done": bool,
      "finish_reason": str | None}
 
@@ -42,7 +42,7 @@ from typing import Any, Optional, Tuple
 import msgspec.msgpack
 import numpy as np
 
-# Optional torch — only loaded when the caller actually opts into the v0.5
+# Optional torch: only loaded when the caller actually opts into the v0.5
 # gpu_quantize fast path. Importing torch is expensive (~hundreds of ms +
 # pulls in CUDA libs), so we keep it lazy.
 try:
@@ -99,7 +99,7 @@ _INT4_PIPELINES = frozenset({"int4", "int4-adaptive", "delta+int4"})
 PROTO_SCHEMA = """\
 syntax = "proto3";
 
-// First message in any latent stream — sets the per-stream contract.
+// First message in any latent stream: sets the per-stream contract.
 message LatentStreamHeader {
   string          latent_space_id  = 1;
   repeated uint32 shape            = 2;
@@ -111,7 +111,7 @@ message LatentStreamHeader {
   optional float  vae_scale_factor = 8;
 }
 
-// Each subsequent message — one latent frame's payload bytes.
+// Each subsequent message: one latent frame's payload bytes.
 message LatentFrame {
   bytes  data            = 1;
   uint32 seq             = 2;
@@ -138,7 +138,7 @@ def _np_dtype_for(dtype: str) -> np.dtype:
         "fp16": np.dtype("<f2"),
         "bf16": np.dtype("<f2"),  # bf16 has no native numpy dtype; servers handle separately
         "int8": np.dtype("<i1"),
-        "int4": np.dtype("<i1"),  # placeholder — int4 is bit-packed downstream
+        "int4": np.dtype("<i1"),  # placeholder: int4 is bit-packed downstream
     }
     if dtype not in mapping:
         raise ValueError(f"unknown latent dtype {dtype!r}; must be one of {list(mapping)}")
@@ -273,7 +273,7 @@ def _quantize_int8_gpu(latent: Any, scales: np.ndarray) -> np.ndarray:
     sc = _torch.from_numpy(scales.astype(np.float32)).to(lat32.device)
     sc_b = sc.reshape((sc.shape[0],) + (1,) * (lat32.ndim - 1))
 
-    # Avoid division-by-zero for channels with scale=0 — output is all-zero
+    # Avoid division-by-zero for channels with scale=0: output is all-zero
     # for those channels per the numpy spec.
     safe = sc_b.clone()
     safe[safe == 0] = 1.0  # placeholder; we zero those channels post-quantize
@@ -310,7 +310,7 @@ def _compute_scales_gpu(latent: Any) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# Stateful encoder — holds keyframe state for delta pipelines, dispatches
+# Stateful encoder: holds keyframe state for delta pipelines, dispatches
 # to the right pipeline math, emits header + frame bytes.
 # ---------------------------------------------------------------------------
 
@@ -322,7 +322,7 @@ class LatentStreamEncoder:
     `header()` once and `frame(latent, ...)` per produced latent.
 
     Static-scale pipelines (`int8`, `int4`) require all per-channel scales
-    upfront — pass `static_scales` to the constructor. Adaptive-scale
+    upfront: pass `static_scales` to the constructor. Adaptive-scale
     pipelines (`int8-adaptive`, `int4-adaptive`) recompute scales each
     keyframe and prepend them to the frame data. Delta pipelines maintain
     the most recent keyframe's quantized values and scales internally.
@@ -354,7 +354,7 @@ class LatentStreamEncoder:
             )
         if pipeline not in _STATIC_SCALE_PIPELINES and static_scales is not None:
             raise ValueError(
-                f"pipeline {pipeline!r} doesn't accept static_scales — scales travel per-keyframe"
+                f"pipeline {pipeline!r} doesn't accept static_scales: scales travel per-keyframe"
             )
 
         self.latent_space_id = latent_space_id
@@ -366,7 +366,7 @@ class LatentStreamEncoder:
         self.total_frames = total_frames
         self.vae_scale_factor = vae_scale_factor
         # v0.5: opt-in torch-on-device quantize fast path. No-op for non-CUDA
-        # inputs even when True — the numpy path stays the cross-runtime
+        # inputs even when True: the numpy path stays the cross-runtime
         # default. See spec/PIPELINES.md § "Encoder fast paths (v0.5+)".
         self.gpu_quantize = gpu_quantize
 
@@ -435,7 +435,7 @@ class LatentStreamEncoder:
             )
         # GPU fast path only kicks in when gpu_quantize was opted in AND the
         # input is a CUDA tensor. Non-CUDA torch tensors and numpy arrays
-        # always take the numpy path, even with gpu_quantize=True — the flag
+        # always take the numpy path, even with gpu_quantize=True: the flag
         # is advisory; the runtime decides per frame.
         if not (self.gpu_quantize and _is_cuda_tensor(latent)):
             latent = _to_numpy_for_quantize(latent)

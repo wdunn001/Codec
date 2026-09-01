@@ -1,4 +1,4 @@
-# @codecai/web — coverage
+# @codecai/web: coverage
 
 Last measured: 2026-05-11 (v0.4 release-cut)
 
@@ -33,7 +33,7 @@ Lines       : 90.24% (3375/3740)
 | `stream.ts`        |  89% |                                                                  |
 | `latent-frame.ts`  |  89% |                                                                  |
 | `map.ts`           |  85% |                                                                  |
-| `safety-policy.ts` |  78% | new in v0.4 — hash, load, discover all covered; pointer-mode edge cases need more |
+| `safety-policy.ts` |  78% | new in v0.4: hash, load, discover all covered; pointer-mode edge cases need more |
 
 ## Intentionally uncovered
 

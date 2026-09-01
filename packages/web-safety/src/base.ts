@@ -1,5 +1,5 @@
 /**
- * SafetyClassifier interface — the modular contract slices 3, 4 (and
+ * SafetyClassifier interface: the modular contract slices 3, 4 (and
  * future implementations) implement.
  *
  * Mirrors the backend `codec-supervisor/codec_supervisor/safety/base.py`
@@ -9,21 +9,21 @@
  * matching this interface, and the gate runs it.
  *
  * Concrete browser implementations live alongside this file (slices 3-4):
- *   - `prompt-guard-86m`  — tier 1, Transformers.js, ~80 MB, CPU-only
- *   - `llama-guard-3-1b`  — tier 2, codec-web-llm, WebGPU, ~1 GB
+ *   - `prompt-guard-86m`: tier 1, Transformers.js, ~80 MB, CPU-only
+ *   - `llama-guard-3-1b`: tier 2, codec-web-llm, WebGPU, ~1 GB
  */
 
 /**
  * What input form a classifier expects. Matches the backend Protocol so
  * a policy can declare its requirements once and both sides agree.
  *
- *   - `text`        — the classifier consumes detokenized text. The host
+ *   - `text`: the classifier consumes detokenized text. The host
  *                      is responsible for passing through a private detok
  *                      buffer (text NEVER goes back on the Codec wire).
- *   - `embeddings`  — token-embedding sequences from the engine; no detok
+ *   - `embeddings`: token-embedding sequences from the engine; no detok
  *                      anywhere in the pipeline. (Server-only in v1; no
  *                      browser engine currently exposes hidden states.)
- *   - `logits`      — sampler-time logit tensors; pure token-space.
+ *   - `logits`: sampler-time logit tensors; pure token-space.
  *                      Server-only in v1.
  */
 export type ClassifierInputForm = 'text' | 'embeddings' | 'logits';
@@ -45,7 +45,7 @@ export interface ClassificationResult {
   readonly scores: Readonly<Record<ClassifierCategory, number>>;
   /**
    * Optional raw model output (for debug / telemetry). Implementations
-   * MAY include the underlying logits, label, or rationale — but hosts
+   * MAY include the underlying logits, label, or rationale: but hosts
    * MUST NOT depend on the shape, since it varies per implementation.
    */
   readonly raw?: unknown;
@@ -100,13 +100,13 @@ export interface SafetyClassifier {
   score(input: ClassificationInput): Promise<ClassificationResult>;
 
   /**
-   * Idempotent setup hook — load weights, warm the GPU, etc. Called by
+   * Idempotent setup hook: load weights, warm the GPU, etc. Called by
    * the registry the first time the classifier is selected. Hosts MAY
    * call directly to pre-warm.
    */
   load?(opts?: { signal?: AbortSignal }): Promise<void>;
 
-  /** Optional teardown — release GPU memory, close workers. */
+  /** Optional teardown: release GPU memory, close workers. */
   unload?(): Promise<void>;
 
   /**

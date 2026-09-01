@@ -1,20 +1,20 @@
 /**
- * Tokenizer — text → IDs. The edge-side encoder.
+ * Tokenizer: text → IDs. The edge-side encoder.
  *
  * Two implementations ship in this package:
  *
- *   - `BPETokenizer` (in `./bpe.ts`) — exact BPE encoding for byte_level and
+ *   - `BPETokenizer` (in `./bpe.ts`): exact BPE encoding for byte_level and
  *     metaspace maps. Use this with any v2 map that has `merges` (every map
  *     fetched from `codec-maps` for a real model).
  *
- *   - `LongestMatchTokenizer` (this file) — vocab-only longest-prefix-match.
+ *   - `LongestMatchTokenizer` (this file): vocab-only longest-prefix-match.
  *     Correct for canonical-IR / synthetic maps without merges (test
  *     fixtures, simple/closed vocabs).
  *
  * Both implement the `Tokenizer` interface so users can swap freely.
  *
  * The `tokenize()` convenience function picks the right implementation based
- * on the map's contents — if `merges` is present, BPE; otherwise longest match.
+ * on the map's contents: if `merges` is present, BPE; otherwise longest match.
  */
 import { BPETokenizer } from './bpe.js';
 import type { Tokenizer, TokenizerMap } from './types.js';
@@ -24,7 +24,7 @@ import type { Tokenizer, TokenizerMap } from './types.js';
  * position emitting the ID of the longest vocab fragment that matches.
  *
  * Suitable for canonical-IR maps and test fixtures. Not BPE-correct for
- * real model vocabs — use `BPETokenizer` for those.
+ * real model vocabs: use `BPETokenizer` for those.
  */
 export class LongestMatchTokenizer implements Tokenizer {
   readonly id: string;

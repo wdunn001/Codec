@@ -8,14 +8,14 @@
  *
  * The runtime in src/index.ts then loads the cache, verifies the
  * tokenizer hash against the gateway's active model, and emits
- * response token IDs by memcpy — never tokenizing on the hot path.
+ * response token IDs by memcpy: never tokenizing on the hot path.
  *
  * Real deployments would plug in @huggingface/tokenizers, tiktoken,
  * sentencepiece, or whatever the model's native tokenizer is. This
  * reference script ships with a stub tokenizer (deterministic
  * char-bucket hash) so the cache file builds without pulling in a
  * heavy ML dependency just for a demo. Replace the `stubTokenizer`
- * with your real one — the rest of the pattern is unchanged.
+ * with your real one: the rest of the pattern is unchanged.
  */
 import { precache, type Fragment, type Tokenizer } from '@codecai/tool-kit/precache';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
@@ -26,7 +26,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = dirname(__dirname);
 
 // ── Stub tokenizer ────────────────────────────────────────────────
-// Deterministic but fake — assigns a stable uint32 per character chunk.
+// Deterministic but fake: assigns a stable uint32 per character chunk.
 // Replace with a real BPE tokenizer in production. The cache file
 // shape is identical; only the actual ID values change.
 function stubTokenizer(modelId: string): Tokenizer {
@@ -77,7 +77,7 @@ for (const model of manifest.models) {
 
   // Patch the manifest's recorded hash to match the (stub) tokenizer's
   // actual hash. In production you'd refuse to write if these diverge
-  // — the manifest's hash is the trust anchor that the gateway checks.
+  //: the manifest's hash is the trust anchor that the gateway checks.
   const manifestPath = join(ROOT, 'manifest.json');
   model.tokenizerHash = cache.tokenizerHash;
 

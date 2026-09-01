@@ -2,7 +2,7 @@
 
 **C99 implementation of the [Codec](https://github.com/wdunn001/Codec) binary transport protocol.**
 
-Decodes streaming token IDs from Codec-compliant servers (vLLM, SGLang, llama.cpp) and provides the wire-format primitives for embedding Codec into any C/C++/Rust/Go/Swift project. Pure C99, no external runtime dependencies — vendored SHA-256 (public domain) and jsmn JSON tokenizer (MIT) live alongside the source.
+Decodes streaming token IDs from Codec-compliant servers (vLLM, SGLang, llama.cpp) and provides the wire-format primitives for embedding Codec into any C/C++/Rust/Go/Swift project. Pure C99, no external runtime dependencies: vendored SHA-256 (public domain) and jsmn JSON tokenizer (MIT) live alongside the source.
 
 The C twin of [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) (browser/Node), [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) (.NET), and [`codecai`](https://pypi.org/project/codecai/) (Python). Same tokenizer dialect maps work everywhere.
 
@@ -17,7 +17,7 @@ Real measurements from [`Codec/packages/bench`](https://github.com/wdunn001/Code
 | Codec protobuf                             |    10.9 |   **14.2×** |
 | Codec msgpack + `Content-Encoding: br`     |    2.79 |   **55.2×** |
 
-End-to-end agent-to-agent handoff: **3.6× faster** at 1024 tokens, because both the wire shrinks and the detokenize → JSON → re-tokenize round-trip is eliminated.
+End-to-end agent-to-agent handoff: **3.6× faster** at 1024 tokens. Both the wire shrinks and the detokenize → JSON → re-tokenize round-trip is eliminated.
 
 For C/C++ servers (llama.cpp, custom inference engines), libcodec is what you link in to ship Codec frames. For C/C++ clients (mobile apps, embedded inference, native UIs), it's what you link in to decode them.
 
@@ -117,7 +117,7 @@ See [`examples/stream_decode.c`](examples/stream_decode.c) for the working end-t
 
 ## Forwarding IDs to another model (agent-to-agent, same vocab)
 
-When the next consumer of this stream is another model on the same vocab — agent → agent, orchestrator → planner, model → tool that re-feeds the model — you do NOT need a `codec_detokenizer_t` at all. Forward `frame.ids` directly:
+When the next consumer of this stream is another model on the same vocab: agent → agent, orchestrator → planner, model → tool that re-feeds the model: you do NOT need a `codec_detokenizer_t` at all. Forward `frame.ids` directly:
 
 ```c
 /* No detokenizer constructed: zero UTF-8 reassembly, zero BPE-merge work. */
@@ -135,12 +135,11 @@ while (codec_msgpack_stream_next(stream, &frame) == CODEC_OK) {
 codec_msgpack_stream_free(stream);
 ```
 
-This is the **hot-loop fast path** for agent mesh code. Skipping `codec_detokenizer_render(...)` saves significant CPU on heavy reply streams (no string allocation, no partial-UTF-8 buffering, no metaspace decode). And on `libcodec` builds with `CODEC_WITH_BPE_ENCODER=OFF` the agent-to-agent path is the **only** path that works — `codec_bpe_encoder_new` / `codec_translator_new` return `CODEC_ERR_NOT_BUILT` in that configuration, but the decode/forward loop above does not depend on either.
+This is the **hot-loop fast path** for agent mesh code. Skipping `codec_detokenizer_render(...)` saves significant CPU on heavy reply streams (no string allocation, no partial-UTF-8 buffering, no metaspace decode). And on `libcodec` builds with `CODEC_WITH_BPE_ENCODER=OFF` the agent-to-agent path is the **only** path that works: `codec_bpe_encoder_new` / `codec_translator_new` return `CODEC_ERR_NOT_BUILT` in that configuration, but the decode/forward loop above does not depend on either.
 
 ## Detect tool calls without decoding
 
-Most current chat-tuned models delimit tool calls with **special tokens** —
-single token IDs that mark the start and end of a structured region:
+Most current chat-tuned models delimit tool calls with **special tokens**: single token IDs that mark the start and end of a structured region:
 
 | Model           | Markers (start / end)                        |
 |-----------------|----------------------------------------------|
@@ -151,7 +150,7 @@ single token IDs that mark the start and end of a structured region:
 | DeepSeek-V3     | `<｜tool▁calls▁begin｜>` / `<｜tool▁calls▁end｜>` |
 
 Detecting *that* a tool call happened is therefore a uint32 compare in the
-hot loop — no detokenization, no string allocation. `codec_tool_watcher`
+hot loop: no detokenization, no string allocation. `codec_tool_watcher`
 maintains the state machine for you and emits two kinds of events: the
 captured region's IDs (when start..end completes) and passthrough runs
 (everything outside any region). An orchestrator can forward passthrough
@@ -174,7 +173,7 @@ for (size_t i = 0; i < n_events; i++) {
         forward_codec_frame(next_agent, events[i].ids, events[i].ids_len);
     } else /* CODEC_WATCH_REGION_END */ {
         /* This is the body of a tool call. Decode only if you need
-         * the JSON arguments — otherwise just route by tool-call presence. */
+         * the JSON arguments: otherwise just route by tool-call presence. */
         char *json = NULL; size_t json_len = 0;
         codec_detokenize_opts_t o = { /*partial=*/false, /*render_special=*/false };
         codec_detokenizer_render(detok, events[i].ids, events[i].ids_len, o, &json, &json_len);
@@ -184,19 +183,19 @@ for (size_t i = 0; i < n_events; i++) {
 }
 ```
 
-The watcher is stateful across feeds — partial tool calls split between
+The watcher is stateful across feeds: partial tool calls split between
 network frames are buffered until the end marker arrives. `inside()`
 reports whether a region is currently in flight.
 
-If your model uses *plain text* markers instead of special tokens (older
+If your model uses *plain text* markers in place of special tokens (older
 Mistral, GPT-2-era models), name lookup returns `CODEC_ERR_NOT_FOUND`
 and you'll need to detect the marker after detokenization. The map's
-`special_tokens` field is the source of truth — if `<tool_call>` is in
+`special_tokens` field is the source of truth: if `<tool_call>` is in
 there, you can scan for it in binary.
 
 ### What the watcher does and doesn't touch
 
-The watcher's contract is "uint32 in, uint32 out" — it never invokes
+The watcher's contract is "uint32 in, uint32 out": it never invokes
 the detokenizer, never allocates a string, never looks at the vocab.
 The only fields of the map it reads are the two `special_tokens`
 entries you name in `_new`.
@@ -215,23 +214,23 @@ Concretely:
 | Returned `REGION_END` ids pointer                       | Owned by the watcher; valid until next `feed()` or `free()` |
 
 This is enforced by `test_watcher_does_not_decode_tokens` in
-[`test/test_tool_watcher.c`](test/test_tool_watcher.c), which feeds the
-watcher with a map whose `vocab` is empty and `vocab_size` is `4`,
+[`test/test_tool_watcher.c`](test/test_tool_watcher.c). That test feeds the
+watcher a map whose `vocab` is empty and `vocab_size` is `4`,
 using token IDs at `0xFFFFFF00`, `0xDEADBEEF`, `0xCAFEBABE`, etc. Any
-implementation that decoded — or even narrowed through a string
-round-trip — would fail the bit-for-bit equality checks on the emitted
+implementation that decoded: or even narrowed through a string
+round-trip: would fail the bit-for-bit equality checks on the emitted
 event IDs and the pointer-aliasing checks on `PASSTHROUGH` events.
 
 ### Failure modes
 
 | # | Scenario | What the watcher does | What the caller must do |
 |---|----------|-----------------------|-------------------------|
-| 1 | Malformed JSON inside the markers | Emits `REGION_END` with the buffered IDs as if everything's fine — the watcher doesn't know about JSON | Decode the IDs, attempt `JSON.parse`, return error to the model |
-| 2 | Tool name doesn't exist in your registry | Same — watcher's job ends at the bytes | Caller looks up the name and returns "function not found" to the model |
+| 1 | Malformed JSON inside the markers | Emits `REGION_END` with the buffered IDs as if everything's fine: the watcher doesn't know about JSON | Decode the IDs, attempt `JSON.parse`, return error to the model |
+| 2 | Tool name doesn't exist in your registry | Same: watcher's job ends at the bytes | Caller looks up the name and returns "function not found" to the model |
 | 3 | Tool execution fails | Watcher already done | Caller's normal error handling |
-| 4 | Stray end marker (no preceding start) | Passes through as a regular ID — orchestrator forwards it as-is. Tested. | Probably nothing — most clients won't notice. If you want to detect server bugs, log when an end-marker ID appears outside an active region. |
+| 4 | Stray end marker (no preceding start) | Passes through as a regular ID: orchestrator forwards it as-is. Tested. | Probably nothing: most clients won't notice. If you want to detect server bugs, log when an end-marker ID appears outside an active region. |
 | 5 | Nested start (`<tool_call>…<tool_call>…`) | Inner `<tool_call>` ignored; everything until first `</tool_call>` is the body. Subsequent `</tool_call>` becomes a stray end (case 4). | If your model genuinely emits nested calls, you'd want a stack-based watcher. Most don't. |
-| 6 | Start marker but `done=true` arrives before end marker — truncated mid-region | Currently silently buffers, then frees the buffer when the watcher is freed. **This is the bad one.** | Today: nothing helpful. The bytes are gone. A `_finish()` API surfacing them as `CODEC_WATCH_TRUNCATED` is on the v0.2.1 roadmap. |
+| 6 | Start marker but `done=true` arrives before end marker: truncated mid-region | Currently silently buffers, then frees the buffer when the watcher is freed. **This is the bad one.** | Today: nothing helpful. The bytes are gone. A `_finish()` API surfacing them as `CODEC_WATCH_TRUNCATED` is on the v0.2.1 roadmap. |
 | 7 | Multiple regions back-to-back | Each gets its own `REGION_END` event, in order | Process them sequentially |
 
 ### Performance
@@ -263,16 +262,16 @@ cmake --build build --config Release --target bench_watcher
 ./build/examples/Release/bench_watcher [num_tokens] [region_density] [chunk]
 ```
 
-The bench is self-contained (synthetic map embedded in the binary), so
+The bench is self-contained (synthetic map embedded in the binary):
 it runs without any external map file.
 
 ### Acting on a detected tool call
 
 The watcher tells you *that* a tool call happened and hands you the
 body IDs. Turning that into an actual function invocation is three
-steps. None of them require Codec primitives — the whole point of the
-watcher is to give you the body once, in one place, so you can plug
-into whatever dispatch infrastructure you already have.
+steps. None of them require Codec primitives: the whole point of the
+watcher is to give you the body once, in one place. You can plug
+it into whatever dispatch infrastructure you already have.
 
 ```c
 /* 1. Decode the body into JSON.
@@ -286,7 +285,7 @@ size_t json_len = 0;
 codec_detokenizer_render(detok, ev.ids, ev.ids_len, o, &json, &json_len);
 
 /* 2. Parse + dispatch. libcodec already vendors jsmn (used internally
- *    for map parsing) — you can reuse it, or pull in cJSON / yyjson /
+ *    for map parsing): you can reuse it, or pull in cJSON / yyjson /
  *    whatever your project standardizes on. The sketch below uses a
  *    fictional helpers tool_call_parse() / tool_registry_invoke() that
  *    wrap whatever JSON library + function table you have. */
@@ -301,7 +300,7 @@ if (!tool_call_parse(json, json_len, &call)) {
 
 const tool_t *t = tool_registry_lookup(reg, call.name);
 if (!t) {
-    /* Failure mode #2: function not found. Same idea — model gets the
+    /* Failure mode #2: function not found. Same idea: model gets the
      * error and (usually) recovers. */
     send_tool_error(orch, "unknown_function", call.name);
 } else {
@@ -312,8 +311,8 @@ if (!t) {
         send_tool_error(orch, "execution_failed", result);
     } else {
         /* 3. Feed the result back to the model as a "tool" role
-         *    message. The exact format is model-specific — Llama-3 and
-         *    Qwen-2.5 use slightly different wrapper templates — but
+         *    message. The exact format is model-specific: Llama-3 and
+         *    Qwen-2.5 use slightly different wrapper templates: but
          *    it's always a small JSON snippet you append to the next
          *    prompt and re-tokenize on the way in. */
         orch_append_tool_result(orch, call.name, result);
@@ -334,7 +333,7 @@ A few things worth knowing while wiring this up:
   skip detokenize entirely.
 - **Construct the detokenizer once.** `codec_detokenizer_new` parses
   the vocab and builds an `id → bytes` table. Don't rebuild it per
-  region — keep one alongside the watcher for the lifetime of the
+  region: keep one alongside the watcher for the lifetime of the
   session.
 - **Keep the body around until you've replied.** `ev.ids` points into
   the watcher's internal buffer and is invalidated by the next
@@ -369,16 +368,16 @@ A few things worth knowing while wiring this up:
 | `codec_protobuf_stream_*`             | Incremental decoder for length-prefixed protobuf streams.            |
 | `codec_hash_zstd_dict(bytes, len, out_hex)` | Hash dict bytes to canonical `sha256:<hex>` form.              |
 | `codec_select_zstd_dict_for_response(...)` | Match a response's `Codec-Zstd-Dict` header against loaded dicts. |
-| `codec_well_known_dict_url(origin, hash, out_url, len)` (v0.5) | Build `<origin>/.well-known/codec/dicts/<sha>.zstd`. URL builder only — libcodec is HTTP-agnostic; caller does the fetch. |
+| `codec_well_known_dict_url(origin, hash, out_url, len)` (v0.5) | Build `<origin>/.well-known/codec/dicts/<sha>.zstd`. URL builder only: libcodec is HTTP-agnostic; caller does the fetch. |
 | `codec_verify_zstd_dict_bytes(bytes, len, expected_hash)` (v0.5) | After fetching dict bytes with your HTTP stack of choice, verify they hash to the expected sha256 before feeding into libzstd. Hard-fails on mismatch (`CODEC_ERR_HASH_MISMATCH`). |
 
 Header is `<codec/codec.h>`. Full Doxygen-style comments documenting every function are in the header.
 
 ## Correctness
 
-- **Test suite (CTest, 4 binaries, 22 cases) passes 100%** — frame round-trip both formats, detokenizer with byte_level + metaspace + byte fallback + partial UTF-8 buffering, map parsing + sha256 verification, msgpack stream split-frame reassembly, protobuf chunk-boundary handling.
+- **Test suite (CTest, 4 binaries, 22 cases) passes 100%**: frame round-trip both formats, detokenizer with byte_level + metaspace + byte fallback + partial UTF-8 buffering, map parsing + sha256 verification, msgpack stream split-frame reassembly, protobuf chunk-boundary handling.
 - **Real Qwen-2 round-trip**: when run with `CODEC_MAPS_QWEN=/path/to/qwen2.json`, decodes the actual 152K-vocab Qwen-2 map and round-trips known token IDs back to text bit-identically.
-- **Algorithmic parity** with the polyglot ports: same byte_level / metaspace decode logic, same UTF-8 buffer rules, same hex-decoded sha256 verification — verified by feeding the same fixtures into all four implementations and asserting equal output.
+- **Algorithmic parity** with the polyglot ports: same byte_level / metaspace decode logic, same UTF-8 buffer rules, same hex-decoded sha256 verification: verified by feeding the same fixtures into all four implementations and asserting equal output.
 
 Sample bench (Windows MSVC release build, 100K single-token msgpack frames decoded + detokenized through the real Qwen-2 152K-vocab map):
 
@@ -395,8 +394,8 @@ The bench keeps memory allocation deliberately naive (a fresh `codec_frame_t` an
 **Shipped** (bit-identical to the higher-level bindings, verified against the cross-stack matrix):
 
 - `Detokenizer` (IDs → UTF-8)
-- **`BPEEncoder` (text → IDs)** — `codec_bpe_encoder_new` / `codec_bpe_encode` / `codec_bpe_encoder_free`. Byte-level + metaspace pre-tokenizers, both supported. Pretok runs on the [pretokenizer-program runtime](../../spec/PRETOKENIZER_PROGRAM.md) (no PCRE2 dependency — Unicode `\p{L}` / `\p{N}` queries go through generated tables in `codec_unicode_tables.c`). Round-trips against the real Qwen-2 tokenizer fixture under `test/test_bpe.c`.
-- `Translator` (cross-vocab `ids_A → utf-8 → ids_B`) — `codec_translator_new` / `_translate` / `_finish` / `_free`. Streaming-safe (buffers to whitespace before flushing BPE).
+- **`BPEEncoder` (text → IDs)**: `codec_bpe_encoder_new` / `codec_bpe_encode` / `codec_bpe_encoder_free`. Byte-level + metaspace pre-tokenizers, both supported. Pretok runs on the [pretokenizer-program runtime](../../spec/PRETOKENIZER_PROGRAM.md) (no PCRE2 dependency: Unicode `\p{L}` / `\p{N}` queries go through generated tables in `codec_unicode_tables.c`). Round-trips against the real Qwen-2 tokenizer fixture under `test/test_bpe.c`.
+- `Translator` (cross-vocab `ids_A → utf-8 → ids_B`): `codec_translator_new` / `_translate` / `_finish` / `_free`. Streaming-safe (buffers to whitespace before flushing BPE).
 - `ToolWatcher` (control-ID region detection)
 - Wire frame encode + decode (msgpack + protobuf)
 - Compression (gzip / brotli / dict-zstd via system libs)
@@ -410,12 +409,12 @@ The BPE encoder + Translator + pretok runtime + Unicode tables are ~25 KB of obj
 cmake -S . -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DCODEC_WITH_BPE_ENCODER=OFF
 ```
 
-Result: ~25 KB lighter static lib on x86-64 (more like 15-30 KB on Cortex-M / Xtensa / RISC-V depending on toolchain). The public-API symbols still link — they return `CODEC_ERR_NOT_BUILT` consistently — so consumer code doesn't need any `#ifdef` guards. Calling `codec_bpe_encode` / `codec_translator_translate` / `codec_pretok_run_program` on a decode-only build is a clean runtime error, not a link failure.
+Result: ~25 KB lighter static lib on x86-64 (more like 15-30 KB on Cortex-M / Xtensa / RISC-V depending on toolchain). The public-API symbols still link: they return `CODEC_ERR_NOT_BUILT` consistently: so consumer code doesn't need any `#ifdef` guards. Calling `codec_bpe_encode` / `codec_translator_translate` / `codec_pretok_run_program` on a decode-only build produces a clean runtime error rather than a link failure.
 
 **Deliberately not in scope**:
 
-- **HTTP client** — `codec_map_from_json` takes bytes you've already fetched. Use libcurl, libsoup, libfetch, etc. to do the GET. This stays opinion-free about networking.
-- **Safety-policy descriptor publishing** — server-side concern; lives in the higher-level languages (Python / .NET / TS). C has parse + hash + URL only.
+- **HTTP client**: `codec_map_from_json` takes bytes you've already fetched. Use libcurl, libsoup, libfetch, etc. to do the GET. This stays opinion-free about networking.
+- **Safety-policy descriptor publishing**: server-side concern; lives in the higher-level languages (Python / .NET / TS). C has parse + hash + URL only.
 
 ## Map sources
 
@@ -425,7 +424,7 @@ Result: ~25 KB lighter static lib on x86-64 (more like 15-30 KB on Cortex-M / Xt
 https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/<family>.json
 ```
 
-14 model families covering 70+ aliases — see [`codec-maps`](https://github.com/wdunn001/codec-maps) for the index. Pin by sha256 from the index.
+14 model families covering 70+ aliases: see [`codec-maps`](https://github.com/wdunn001/codec-maps) for the index. Pin by sha256 from the index.
 
 ## Layout
 
@@ -452,20 +451,20 @@ packages/c/
 | OS               | Compiler      | Status |
 |------------------|---------------|--------|
 | Windows 10/11    | MSVC 2022     | ✅ tested |
-| Linux            | GCC 9+, Clang 9+ | Should work — pure C99, stdlib-only |
-| macOS            | Apple Clang   | Should work — pure C99, stdlib-only |
+| Linux            | GCC 9+, Clang 9+ | Should work: pure C99, stdlib-only |
+| macOS            | Apple Clang   | Should work: pure C99, stdlib-only |
 
 C99 is the minimum standard. There are no platform-specific intrinsics or syscalls.
 
 ## License
 
-MIT — see [LICENSE](https://github.com/wdunn001/Codec/blob/main/LICENSE) at the repo root. Vendored deps:
-- `src/sha256.c` — Brad Conte's public domain implementation.
-- `src/jsmn.h` — Serge Zaitsev, MIT license.
+MIT: see [LICENSE](https://github.com/wdunn001/Codec/blob/main/LICENSE) at the repo root. Vendored deps:
+- `src/sha256.c`: Brad Conte's public domain implementation.
+- `src/jsmn.h`: Serge Zaitsev, MIT license.
 
 ## Related
 
-- **Codec spec** — [github.com/wdunn001/Codec/spec/PROTOCOL.md](https://github.com/wdunn001/Codec/blob/main/spec/PROTOCOL.md)
-- **Tokenizer dialect registry** — [github.com/wdunn001/codec-maps](https://github.com/wdunn001/codec-maps)
-- **Sister-language clients** — [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) (TS/JS), [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) (.NET), [`codecai`](https://pypi.org/project/codecai/) (Python).
-- **Server PRs** — [vLLM #41765](https://github.com/vllm-project/vllm/pull/41765), [SGLang #24483](https://github.com/sgl-project/sglang/pull/24483), llama.cpp (in flight).
+- **Codec spec**: [github.com/wdunn001/Codec/spec/PROTOCOL.md](https://github.com/wdunn001/Codec/blob/main/spec/PROTOCOL.md)
+- **Tokenizer dialect registry**: [github.com/wdunn001/codec-maps](https://github.com/wdunn001/codec-maps)
+- **Sister-language clients**: [`@codecai/web`](https://www.npmjs.com/package/@codecai/web) (TS/JS), [`Codec.Net`](https://www.nuget.org/packages/Codec.Net) (.NET), [`codecai`](https://pypi.org/project/codecai/) (Python).
+- **Server PRs**: [vLLM #41765](https://github.com/vllm-project/vllm/pull/41765), [SGLang #24483](https://github.com/sgl-project/sglang/pull/24483), llama.cpp (in flight).

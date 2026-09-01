@@ -109,7 +109,7 @@ static void test_protobuf_empty_ids(void) {
 /* tool_calls encode + forward-compat decode.
  * We don't expose a decoder for the tool_calls field yet (no in-tree
  * consumer needs it), but the existing decoders MUST keep parsing the
- * other fields cleanly when tool_calls is present — every shipped
+ * other fields cleanly when tool_calls is present: every shipped
  * client does the same skip-unknown-key dance. This locks that in. */
 static void test_msgpack_tool_calls(void) {
     codec_frame_t in; codec_frame_init(&in);
@@ -127,7 +127,7 @@ static void test_msgpack_tool_calls(void) {
     codec_buffer_t buf = {0};
     CT_EQ_INT(codec_encode_msgpack(&in, &buf), CODEC_OK);
 
-    /* The map header is fixmap(3) = 0x83 — ids/done/tool_calls (no
+    /* The map header is fixmap(3) = 0x83: ids/done/tool_calls (no
      * finish_reason on this frame). If this byte changes, the wire
      * shape changed. */
     CT_EQ_INT(buf.data[0], 0x83);
@@ -260,7 +260,7 @@ static void test_protobuf_rejects_truncated_fixed_width_fields(void) {
  */
 
 static void test_msgpack_rejects_deep_nesting(void) {
-    /* 81 A1 78 <N x 0x91> C0 — fixmap(1), key "x", deeply nested value. */
+    /* 81 A1 78 <N x 0x91> C0 is fixmap(1), key "x", deeply nested value. */
     const size_t N = 200000;
     size_t n = 3 + N + 1;
     uint8_t *b = (uint8_t *)malloc(n);

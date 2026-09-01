@@ -1,4 +1,4 @@
-"""Stream decoder tests — mirror packages/web/test/stream.test.ts."""
+"""Stream decoder tests: mirror packages/web/test/stream.test.ts."""
 from __future__ import annotations
 
 import struct

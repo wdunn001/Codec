@@ -7,7 +7,7 @@ public class BPETests
 {
     private static TokenizerMap MakeByteLevelFixture()
     {
-        // Tiny synthetic byte_level map — single space encodes to "Ġ" via GPT-2.
+        // Tiny synthetic byte_level map: single space encodes to "Ġ" via GPT-2.
         var space = ByteEncoder.EncodeByteLevelChars(new byte[] { 0x20 });
         var vocab = new Dictionary<string, int>
         {
@@ -123,7 +123,7 @@ public class BPETests
     {
         // Regression guard for the special-token pre-scan. Reference IDs
         // come from HuggingFace `tokenizers` 0.23.1 reading
-        // Qwen-2.5-0.5B-Instruct's tokenizer.json — the encoder must emit
+        // Qwen-2.5-0.5B-Instruct's tokenizer.json: the encoder must emit
         // each `<|...|>` delimiter as a single atomic vocab ID, not as 6
         // byte-level tokens.
         var path = Fixtures.FindQwenMap();

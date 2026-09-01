@@ -21,7 +21,7 @@ namespace Codec;
 /// decompressing. See <c>spec/PROTOCOL.md</c> "Codec-Zstd-Dict response
 /// header" for the full contract.
 ///
-/// The actual zstd decompression is intentionally out of scope here — the
+/// The actual zstd decompression is intentionally out of scope here: the
 /// BCL has gzip + brotli built in, zstd needs a third-party package
 /// (ZstdSharp.Port / ZstdNet / native bindings), and either way the
 /// caller usually already has its own HTTP plumbing. This class gives you
@@ -32,7 +32,7 @@ public static class Compression
 {
     /// <summary>
     /// Compute the canonical Codec-Zstd-Dict hash for <paramref name="bytes"/>.
-    /// Returns <c>sha256:&lt;lowercase hex&gt;</c> — same shape as the
+    /// Returns <c>sha256:&lt;lowercase hex&gt;</c>: same shape as the
     /// server-side header value and the <c>hash</c> field in tokenizer-map
     /// <c>zstd_dictionaries[]</c> entries.
     /// </summary>
@@ -49,12 +49,12 @@ public static class Compression
     /// Pick the zstd dict to decompress this response with.
     /// </summary>
     /// <param name="responseHeaders">Response headers. Lookups are
-    /// case-insensitive — HTTP header names are case-insensitive per
+    /// case-insensitive: HTTP header names are case-insensitive per
     /// RFC 7230 §3.2 and most .NET HTTP layers expose a case-insensitive
     /// view, but a caller-supplied <see cref="Dictionary{TKey,TValue}"/>
     /// with the default comparer is normalised here.</param>
     /// <param name="loadedDicts">
-    /// <c>{sha256_hash: dict_bytes}</c> — the dicts the client has loaded
+    /// <c>{sha256_hash: dict_bytes}</c>: the dicts the client has loaded
     /// locally. Hashes follow the same <c>sha256:&lt;hex&gt;</c> format
     /// the server emits.</param>
     /// <returns>
@@ -70,14 +70,14 @@ public static class Compression
     /// <item>the <c>Codec-Zstd-Dict</c> header is missing (per spec the
     /// server MUST emit it on every zstd response),</item>
     /// <item>the header is malformed (not <c>sha256:&lt;hex&gt;</c>),</item>
-    /// <item>the header names a hash we have not loaded — the caller
+    /// <item>the header names a hash we have not loaded: the caller
     /// should fetch the dict from the tokenizer map's
     /// <c>zstd_dictionaries[]</c> entry whose <c>hash</c> matches, or
     /// retry the request with <c>Accept-Encoding: gzip</c> to downgrade
     /// to a no-dict path.</item>
     /// </list>
     /// A wrong-dict decompression would produce garbage bytes that
-    /// downstream parsers would misinterpret — fail fast instead.
+    /// downstream parsers would misinterpret: fail fast instead.
     /// </exception>
     public static byte[]? SelectZstdDictForResponse(
         IDictionary<string, string> responseHeaders,
@@ -159,7 +159,7 @@ public static class Compression
 /// any dict the client has loaded, or is missing on a zstd response.
 ///
 /// A wrong-dict decompression would produce garbage bytes that downstream
-/// parsers (msgpack, protobuf) would misinterpret — fail fast instead.
+/// parsers (msgpack, protobuf) would misinterpret: fail fast instead.
 /// </summary>
 public class CodecZstdDictException : Exception
 {
@@ -175,7 +175,7 @@ public class CodecZstdDictException : Exception
 /// .NET twin of <c>codecai.discover_zstd_dict</c> (Python),
 /// <c>@codecai/web#discoverZstdDict</c> (TypeScript), and
 /// <c>codec_rs::discover_zstd_dict</c> (Rust). The discovery surface is
-/// hard-fail by design — silent fallback to identity bytes was the v0.4.1
+/// hard-fail by design: silent fallback to identity bytes was the v0.4.1
 /// sglang COPY-dicts regression class this surface eliminates.
 /// </summary>
 public static class ZstdDictDiscovery

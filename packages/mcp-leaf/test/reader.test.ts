@@ -1,5 +1,5 @@
 /**
- * @codecai/mcp-leaf — reader-side tests.
+ * @codecai/mcp-leaf: reader-side tests.
  *
  * Verifies the symmetry contract: a result produced by `wrapToolCall`
  * round-trips through the reader (`readCodecMeta` / `takeIds`) without
@@ -179,7 +179,7 @@ describe('mcp-leaf reader', () => {
     const result: CallToolResult = {
       content: [
         { type: 'text', text: 'hello' },
-        // Legacy sibling block — older Codec-aware tools shipped this.
+        // Legacy sibling block: older Codec-aware tools shipped this.
         { type: '_codec_meta' as 'text', map_id: 'sha256:abc', ids: [1, 2, 3] } as unknown as { type: 'text'; text: string },
       ],
     };

@@ -5,7 +5,7 @@
 //
 // Reads a methodology JSON written by capture_methodology.py and emits a
 // SCHEMA-v1 result JSON. Wire bytes are sums of raw socket reads from
-// reqwest's bytes_stream() (no automatic decompression — see
+// reqwest's bytes_stream() (no automatic decompression: see
 // reqwest::Client::no_gzip/no_brotli/no_zstd in main.rs). Decompression
 // is best-effort for token counting and never overrides wire/TTFB on
 // failure (e.g. zstd dict mismatch when no client-side dict is loaded).
@@ -37,7 +37,7 @@ fn zstd_dicts() -> &'static HashMap<String, Vec<u8>> {
 
 /// Load each dict file into the bench-side registry, keyed by its
 /// canonical Codec-Zstd-Dict sha256. Missing files are silently
-/// skipped — the bench then decompresses successfully only on cells
+/// skipped: the bench then decompresses successfully only on cells
 /// whose Codec-Zstd-Dict header matches a hash we have. Call once
 /// before the matrix loop begins.
 pub fn load_zstd_dict_files(paths: &[&Path]) -> HashMap<String, Vec<u8>> {
@@ -184,7 +184,7 @@ fn count_protobuf(data: &[u8]) -> usize {
 // Codec-Zstd-Dict header via the production helper in `codec_rs` and
 // pass the matched dict bytes to `zstd::stream::Decoder::with_dictionary`.
 // A missing/malformed/unknown-hash header is a fatal decode error per
-// spec — we propagate it as a string in the same shape the rest of the
+// spec: we propagate it as a string in the same shape the rest of the
 // matrix expects, instead of silently bare-decoding with no dict.
 fn try_decode(
     content_encoding: &str,
@@ -216,7 +216,7 @@ fn try_decode(
             }
             // Spec says Codec-Zstd-Dict is mandatory on zstd responses,
             // but pre-header (v0.0/v0.1) servers can still omit it. Fall
-            // back to bare zstd in that case — and surface the absence
+            // back to bare zstd in that case: and surface the absence
             // as part of the error message if the bare decode also fails.
             Ok(None) => Ok(compressed.to_vec()),
             Err(codec_rs::CodecZstdDictError::MissingHeader) => {
@@ -304,7 +304,7 @@ async fn run_one(
         .to_lowercase();
 
     // Snapshot response headers (lowercased keys) so try_decode can run
-    // select_zstd_dict_for_response against them. Cheap — only used per
+    // select_zstd_dict_for_response against them. Cheap: only used per
     // request, and reqwest's HeaderMap keys are already ASCII-lowercase
     // on the wire.
     let mut response_headers: HashMap<String, String> = HashMap::new();
@@ -375,7 +375,7 @@ pub async fn run_matrix(args: MatrixArgs) -> Result<(), Box<dyn std::error::Erro
     // process-global ZSTD_DICTS registry. Mirrors the
     // load_zstd_dict_files(...) call in
     // packages/demo-python/src/codec_demo/matrix_run.py. Missing files
-    // are tolerated — the bench then surfaces a 'Dictionary mismatch'
+    // are tolerated: the bench then surfaces a 'Dictionary mismatch'
     // style error on zstd cells whose hash we don't have, rather than
     // crashing.
     let dict_dir = repo_root.join("dictionaries");
@@ -396,7 +396,7 @@ pub async fn run_matrix(args: MatrixArgs) -> Result<(), Box<dyn std::error::Erro
         }
     } else {
         eprintln!(
-            "no zstd dicts found under {} — zstd cells will fail to decode",
+            "no zstd dicts found under {}: zstd cells will fail to decode",
             dict_dir.display()
         );
     }

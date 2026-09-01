@@ -30,9 +30,9 @@ cmake --build build --config Release
                     --max-tokens 64
 ```
 
-Output mirrors the other demos — same shape, same numbers within noise. That's the polyglot interop proof.
+Output mirrors the other demos: same shape, same numbers within noise. That's the polyglot interop proof.
 
 ## Notes
 
-- Wire bytes come from libcurl's `CURLINFO_SIZE_DOWNLOAD_T`, which reports the bytes that crossed the socket. We don't ask libcurl to auto-decompress (`CURLOPT_ACCEPT_ENCODING` left unset), so the body buffer is the raw stream — exactly what libcodec wants for binary decode. JSON-SSE bodies are equally readable as plain text.
+- Wire bytes come from libcurl's `CURLINFO_SIZE_DOWNLOAD_T`. That reports the bytes that crossed the socket. We don't ask libcurl to auto-decompress (`CURLOPT_ACCEPT_ENCODING` left unset). The body buffer is the raw stream as a result: exactly what libcodec wants for binary decode. JSON-SSE bodies are equally readable as plain text.
 - `--max-tokens` should match what you use in the other demos so the per-token numbers compare cleanly.

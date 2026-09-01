@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-extract-mcp-corpus.py — build an MCP-shaped corpus from prior live-bench runs.
+extract-mcp-corpus.py: build an MCP-shaped corpus from prior live-bench runs.
 
 The bench harness packages/bench/src/mcp-live.ts saves decoded JSON-RPC
 messages alongside its wire-byte measurements. Re-encoding those messages
 through msgpack reconstructs corpus samples whose byte distribution matches
-real gateway traffic — same envelope shape, same tool-result text content,
+real gateway traffic: same envelope shape, same tool-result text content,
 same JSON-RPC method patterns.
 
 This is faster + cheaper than re-hammering the live gateway with hundreds
 of fresh requests, and it reuses traffic already paid for. The
 reconstructed bytes aren't byte-identical to what was on the wire (the
 gateway's msgpack encoder may serialize identical content slightly
-differently than ours) but the *distribution* — which is what the zstd
-dict trainer cares about — matches.
+differently than ours) but the *distribution*: which is what the zstd
+dict trainer cares about: matches.
 
 Output layout matches what train-zstd-dict.py expects:
 
@@ -22,7 +22,7 @@ Output layout matches what train-zstd-dict.py expects:
         <sha8>-<method>.bin
         manifest.jsonl
 
-A separate protobuf path is left for a follow-up — the live gateway
+A separate protobuf path is left for a follow-up: the live gateway
 returns msgpack today, so re-encoding to protobuf would invent a corpus
 that doesn't exist. Train protobuf dicts by capturing fresh against a
 gateway running with stream_format=protobuf.
@@ -58,7 +58,7 @@ def iter_messages(results_root: Path) -> Iterable[tuple[str, dict[str, Any]]]:
             for row in report.get('rows', []):
                 if not row.get('ok'):
                     continue
-                # Only msgpack-* variants give us realistic message shapes —
+                # Only msgpack-* variants give us realistic message shapes:
                 # json variants are JSON-RPC over text, which we don't
                 # currently train a dict for.
                 variant = row.get('variant', '')

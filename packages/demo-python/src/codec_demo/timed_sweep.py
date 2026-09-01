@@ -1,4 +1,4 @@
-"""Definitive timed sweep — single run, fixed prompt, multiple reps, all
+"""Definitive timed sweep: single run, fixed prompt, multiple reps, all
 12 cells (3 paths x 4 encodings) at 3 sizes. Reports both wire bytes
 and TTFT so the time-vs-bytes story comes from one consistent dataset.
 
@@ -93,7 +93,7 @@ async def main_async(args: argparse.Namespace) -> None:
                         file=sys.stderr,
                     )
 
-    print(f"# Codec timed sweep — definitive run\n")
+    print(f"# Codec timed sweep: definitive run\n")
     print(f"Server: {args.url}")
     print(f"Model:  {args.model}")
     print(f"Reps:   {args.reps}  (medians shown)")

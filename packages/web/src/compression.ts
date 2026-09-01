@@ -7,7 +7,7 @@
  * before decompressing. See spec/versions/v0.4.md
  * "Codec-Zstd-Dict response header" for the full contract.
  *
- * The actual zstd decompression is intentionally out of scope here —
+ * The actual zstd decompression is intentionally out of scope here:
  * browsers will soon ship native `DecompressionStream('zstd')`, Node has
  * `@mongodb-js/zstd` / `zstd-codec` / `fzstd`, and any non-trivial caller
  * already has its own HTTP plumbing. This module just gives you the small
@@ -23,7 +23,7 @@ import type { } from './types.js'; // keep alongside other modules for tree-shak
  * dict the client has loaded, or is missing on a zstd response.
  *
  * A wrong-dict decompression would produce garbage bytes that downstream
- * msgpack/protobuf parsers would misinterpret — fail fast instead.
+ * msgpack/protobuf parsers would misinterpret: fail fast instead.
  */
 export class CodecZstdDictError extends Error {
   constructor(message: string) {
@@ -35,7 +35,7 @@ export class CodecZstdDictError extends Error {
 /**
  * Compute the canonical `Codec-Zstd-Dict` hash for `dictBytes`.
  *
- * Returns `sha256:<lowercase hex>` — same shape as the server-side header
+ * Returns `sha256:<lowercase hex>`: same shape as the server-side header
  * value and the `hash` field in tokenizer-map `zstd_dictionaries[]`
  * entries.
  *
@@ -90,7 +90,7 @@ function lookupHeader(headers: ResponseHeadersLike, name: string): string | null
  * @param responseHeaders Headers from the HTTP response. Either a
  *   `Headers` instance (from `fetch`) or a plain object (case-insensitive
  *   lookup either way).
- * @param loadedDicts `Map<sha256_hash, dict_bytes>` — the dicts the
+ * @param loadedDicts `Map<sha256_hash, dict_bytes>`: the dicts the
  *   client has loaded locally. Hashes follow the same `sha256:<hex>`
  *   format the server emits.
  *
@@ -104,7 +104,7 @@ function lookupHeader(headers: ResponseHeadersLike, name: string): string | null
  * @throws CodecZstdDictError when the response is zstd but:
  *   - The `Codec-Zstd-Dict` header is missing (per spec, the server
  *     MUST emit it on every zstd response).
- *   - The header names a hash we haven't loaded — caller should fetch
+ *   - The header names a hash we haven't loaded: caller should fetch
  *     the dict from the tokenizer map's `zstd_dictionaries[]` entry
  *     whose `hash` matches, or retry the request with
  *     `Accept-Encoding: gzip` to downgrade to a no-dict path.

@@ -1,5 +1,5 @@
 /**
- * @codecai/mcp-leaf — MCP-tool-author-side helper for the Codec leaf-mode
+ * @codecai/mcp-leaf: MCP-tool-author-side helper for the Codec leaf-mode
  * contract.
  *
  * The architectural target in spec/PROTOCOL.md § Tool-call calling
@@ -40,7 +40,7 @@ export {
   type WrapToolCallOptions,
 } from './leaf.js';
 
-// Reader side — symmetric helper for clients receiving Codec-aware results.
+// Reader side: symmetric helper for clients receiving Codec-aware results.
 // See `reader.ts` for usage examples.
 export {
   hasCodecMeta,
@@ -52,7 +52,7 @@ export {
   type CodecMetaPairing,
 } from './reader.js';
 
-// v0.4 version-negotiation primitives re-exported for convenience —
+// v0.4 version-negotiation primitives re-exported for convenience:
 // MCP tool authors that already use @codecai/mcp-leaf get a single
 // import surface for the wire-level negotiation too. Canonical impl
 // in @codecai/web.

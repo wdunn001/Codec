@@ -6,7 +6,7 @@ character space).
 """
 from __future__ import annotations
 
-METASPACE = "▁"  # ▁ — SentencePiece metaspace marker.
+METASPACE = "▁"  # ▁: SentencePiece metaspace marker.
 
 
 def _build_byte_unicode_tables() -> tuple[dict[int, str], dict[str, int]]:
@@ -37,7 +37,7 @@ _BYTE_TO_CHAR, _CHAR_TO_BYTE = _build_byte_unicode_tables()
 
 
 def byte_to_char(b: int) -> str:
-    """Map a byte (0–255) to its GPT-2-encoded character."""
+    """Map a byte (0 to 255) to its GPT-2-encoded character."""
     return _BYTE_TO_CHAR[b]
 
 
@@ -50,7 +50,7 @@ def decode_byte_level_token(raw_token: str) -> bytes:
     """Decode a byte-level BPE token (e.g. ``"Ġhello"``) to its raw bytes.
 
     Reverses the GPT-2 byte→unicode table. Characters outside the table
-    fall back to UTF-8 encoding (defensive — shouldn't happen for valid
+    fall back to UTF-8 encoding (defensive: shouldn't happen for valid
     vocab entries).
     """
     out = bytearray()
@@ -66,7 +66,7 @@ def decode_byte_level_token(raw_token: str) -> bytes:
 def encode_byte_level_chars(data: bytes) -> str:
     """Encode raw bytes into a string of GPT-2 byte-encoded characters.
 
-    The result matches the keys of a byte_level vocab — used by the BPE
+    The result matches the keys of a byte_level vocab: used by the BPE
     tokenizer to look up tokens after pre-tokenization.
     """
     return "".join(_BYTE_TO_CHAR[b] for b in data)

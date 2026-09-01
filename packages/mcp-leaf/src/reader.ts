@@ -12,8 +12,8 @@
  * Why both sides matter. Today the leaf-mode bypass is observable only at the
  * gateway (metamcp's `[Codec][leaf]` log fires when it sees a Codec
  * payload on a downstream result). Without a reader on the client side,
- * the client either decodes the text and re-tokenizes — wasting the work
- * the tool already did — or trusts the gateway to do the right thing.
+ * the client either decodes the text and re-tokenizes: wasting the work
+ * the tool already did: or trusts the gateway to do the right thing.
  * The reader closes that gap.
  *
  * Quick start:
@@ -26,7 +26,7 @@
  * Backwards compatibility: results produced by older Codec-aware tools
  * may carry the legacy `{ type: '_codec_meta', map_id, ids }` SIBLING
  * content block instead of the new per-block `_meta` field. The reader
- * accepts both shapes — the `_meta` form is preferred (passes MCP SDK
+ * accepts both shapes: the `_meta` form is preferred (passes MCP SDK
  * validation; sibling form crashes the SDK with -32602 on the server
  * side and was withdrawn in v0.3.2).
  */
@@ -53,13 +53,13 @@ import { CODEC_META_KEY, readCodecMetaFromBlock } from './leaf.js';
 export interface CodecMetaPairing {
   /** Index in the original `result.content` array of the `text` block. */
   readonly textIndex: number;
-  /** The text block's text — useful for fallback retokenization paths. */
+  /** The text block's text: useful for fallback retokenization paths. */
   readonly text: string;
   /** The Codec payload's IDs, or `null` if absent. */
   readonly ids: readonly number[] | null;
   /** The Codec payload's `map_id`, or `null` if absent. */
   readonly mapId: string | null;
-  /** Where the payload was found — `"meta"` (current shape, preferred)
+  /** Where the payload was found: `"meta"` (current shape, preferred)
    *  or `"sibling"` (legacy v0.3.0/0.3.1 sibling-block shape). `null`
    *  when no payload was present. */
   readonly source: 'meta' | 'sibling' | null;
@@ -84,7 +84,7 @@ export class CodecMetaMapMismatchError extends Error {
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Returns true iff the result has at least one Codec meta payload —
+ * Returns true iff the result has at least one Codec meta payload:
  * either a current-shape `_meta['ai.codec/leaf-tokenization']` on a
  * text block, or a legacy `{ type: '_codec_meta' }` sibling block.
  */
@@ -109,7 +109,7 @@ export function findCodecMeta(
   const block = result.content[textIndex];
   const onBlock = readCodecMetaFromBlock(block);
   if (onBlock) return onBlock;
-  // Legacy v0.3.0/v0.3.1 sibling-block shape — `_codec_meta` block
+  // Legacy v0.3.0/v0.3.1 sibling-block shape: `_codec_meta` block
   // immediately following the text block.
   const next = result.content[textIndex + 1];
   if (isLegacyCodecMetaBlock(next)) {
@@ -120,7 +120,7 @@ export function findCodecMeta(
 
 /**
  * Walk the content array and return one `CodecMetaPairing` per text block.
- * Non-text blocks (image, audio, resource) are skipped silently — they don't
+ * Non-text blocks (image, audio, resource) are skipped silently: they don't
  * carry a Codec contract.
  *
  * If `opts.expectedMapHash` is set, every payload's `map_id` MUST equal it
@@ -234,7 +234,7 @@ function isLegacyCodecMetaBlock(b: unknown): b is CodecMetaBlock {
   );
 }
 
-// Mirror leaf.ts's normalisation rule. We keep this private — the writer
+// Mirror leaf.ts's normalisation rule. We keep this private: the writer
 // validates aggressively at construction time; the reader only normalises so a
 // caller's bare-hex input can be compared to a `sha256:`-prefixed wire value.
 function normaliseHash(input: string): string {

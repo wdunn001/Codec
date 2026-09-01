@@ -191,8 +191,8 @@ participates in Codec negotiation as a server.
 This document describes Codec at version `0.5`. Earlier minor
 versions (`0.2`, `0.3`, `0.4`) of the same major version are
 wire-compatible with the surface specified here: a `0.2` client
-implementation can speak with a `0.5` server, and a `0.5` client
-implementation can speak with a `0.2` server, modulo the optional
+implementation can speak with a `0.5` server. A `0.5` client
+implementation can likewise speak with a `0.2` server, modulo the optional
 extensions added at each subsequent minor.
 
 The following table summarizes the additive evolution across
@@ -218,8 +218,8 @@ Codec defines two interchangeable wire encodings for streamed
 token identifiers, selected by the client via the request-body
 `stream_format` field:
 
-- `"msgpack"` -- MessagePack {{MSGPACK}} maps with named keys.
-- `"protobuf"` -- Length-prefixed Protocol Buffers {{PROTOBUF}}
+- `"msgpack"`: MessagePack {{MSGPACK}} maps with named keys.
+- `"protobuf"`: Length-prefixed Protocol Buffers {{PROTOBUF}}
   messages.
 
 A Codec response body consists of one or more concatenated frames
@@ -488,18 +488,18 @@ normative.
 
 Codec defines a `<origin>/.well-known/codec/` URI prefix for
 discovery of out-of-band artefacts that a client requires to
-interpret a Codec stream. Three subpaths are defined in this
-version:
+interpret a Codec stream. The subpaths defined in this
+version are:
 
-- `<origin>/.well-known/codec/maps/<id>.json` -- mutable tokenizer
+- `<origin>/.well-known/codec/maps/<id>.json`: mutable tokenizer
   descriptor keyed by identifier. A content-addressed sibling
   `<origin>/.well-known/codec/maps/sha256/<hex>.json` SHOULD also be
   present.
-- `<origin>/.well-known/codec/policies/<id>.json` -- mutable
+- `<origin>/.well-known/codec/policies/<id>.json`: mutable
   sanitized safety-policy descriptor. A content-addressed sibling
   at `<origin>/.well-known/codec/policies/sha256/<hex>.json` SHOULD
   also be present.
-- `<origin>/.well-known/codec/dicts/<sha256-hex>.zstd` -- the
+- `<origin>/.well-known/codec/dicts/<sha256-hex>.zstd`: the
   pre-trained Zstandard dictionary bytes, always content-addressed.
   No mutable per-id form is defined; the sha256 IS the identifier.
 
@@ -527,8 +527,8 @@ carries:
 
 The receiver reconstructs `ids` by cumulative summation from
 `base_id`. Each frame independently carries its own `base_id`;
-the framing is therefore stateless across frames, and a proxy
-that drops a frame in transit does NOT desynchronize the decoder.
+the framing is therefore stateless across frames. A proxy
+that drops a frame in transit does NOT desynchronize the decoder as a result.
 
 The delta-varint axis exploits locality in adjacent token
 identifiers (consecutive token IDs from a vocabulary commonly
@@ -641,8 +641,8 @@ implementation experience, in the sense of RFC 2026 §4.1.2.
 
 This section addresses security considerations specific to
 Codec. It does not replace the general HTTP security
-considerations of {{Section 17 of RFC9110}}, which continue to
-apply.
+considerations of {{Section 17 of RFC9110}}. Those considerations
+continue to apply.
 
 ## Binary middlebox blindness
 
@@ -671,8 +671,8 @@ The `Codec-Server-Version` response header and the
 `/codec/version` endpoint are server-asserted; a misconfigured
 or malicious server can advertise a version it does not
 implement. Receivers SHOULD NOT use the advertised version as a
-security boundary; it is a courtesy signal for graceful
-degradation, not authentication. Receivers that need to be
+security boundary; it is purely a courtesy signal for graceful
+degradation. Receivers that need to be
 certain the server speaks a given version MUST verify
 behaviourally (the server emits the expected frame shape) and
 fail the request when behaviour disagrees with the advertised
@@ -769,8 +769,8 @@ SHOULD NOT rely on IANA's registry to validate them.
 
 # Privacy Considerations
 
-The wire shape specified in this document carries token
-identifiers, not text. An on-path observer that does not possess
+The wire shape specified in this document carries only token
+identifiers. An on-path observer that does not possess
 the tokenizer descriptor for the in-use model cannot
 detokenize identifiers to text without additional work.
 

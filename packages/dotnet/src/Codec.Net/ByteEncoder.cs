@@ -4,7 +4,7 @@ using System.Text;
 namespace Codec;
 
 /// <summary>
-/// Shared encoder utilities — the GPT-2 byte↔unicode mapping table and
+/// Shared encoder utilities: the GPT-2 byte↔unicode mapping table and
 /// helpers used by both <see cref="Detokenizer"/> and <see cref="BPETokenizer"/>.
 /// </summary>
 public static class ByteEncoder
@@ -44,7 +44,7 @@ public static class ByteEncoder
         }
     }
 
-    /// <summary>Maps a byte (0–255) to its GPT-2-encoded character.</summary>
+    /// <summary>Maps a byte (0 to 255) to its GPT-2-encoded character.</summary>
     public static char ByteToChar(int b) => ByteToCharMap[b];
 
     /// <summary>Maps a GPT-2-encoded character codepoint back to a byte; returns -1 if not in the table.</summary>
@@ -54,7 +54,7 @@ public static class ByteEncoder
     /// <summary>
     /// Decode a byte-level BPE token (e.g. "Ġhello") to its raw bytes by
     /// reversing the GPT-2 byte→unicode table. Characters outside the
-    /// table fall back to UTF-8 bytes (defensive — shouldn't happen for
+    /// table fall back to UTF-8 bytes (defensive: shouldn't happen for
     /// valid vocab entries).
     /// </summary>
     public static byte[] DecodeByteLevelToken(string rawToken)
@@ -81,7 +81,7 @@ public static class ByteEncoder
             }
             else
             {
-                // Unknown char — emit as UTF-8 bytes.
+                // Unknown char: emit as UTF-8 bytes.
                 var s = char.ConvertFromUtf32(cp);
                 buf.AddRange(Encoding.UTF8.GetBytes(s));
             }

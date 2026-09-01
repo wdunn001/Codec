@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 /**
- * Codec-aware Time MCP server — reference example for the leaf-mode contract.
+ * Codec-aware Time MCP server: reference example for the leaf-mode contract.
  *
  * Mirrors the surface of the canonical `mcp-server-time` (Python reference)
  * MCP server, but adds @codecai/mcp-leaf wrapping so every CallToolResult
  * carries a `_codec_meta` sibling block alongside its text content. A
  * Codec-aware gateway (metamcp at feat/codec-binary-transport, commit
  * 6632f17 onwards) detects the pre-tokenized output via its
- * `hasExistingCodecMeta` guard and bypasses its back-compat shim — the
+ * `hasExistingCodecMeta` guard and bypasses its back-compat shim: the
  * gateway becomes a transparent ID pipe for this hop, the `leafBypasses`
  * counter increments, and the once-per-(vocab, process) `[Codec][leaf]`
  * info log fires.
  *
  * Non-Codec-aware clients on the same MCP namespace ignore the `_codec_meta`
  * block and see the original text exactly as before. The contract is
- * additive — graduating to leaf-mode is invisible to legacy clients.
+ * additive: graduating to leaf-mode is invisible to legacy clients.
  *
  * Tools exposed:
  *   - get_current_time(timezone?: string)
@@ -31,7 +31,7 @@
  *   codec-time-leaf
  *
  * Without the env vars, the server runs without leaf-mode (gateway falls
- * through to its back-compat shim path — which is fine, just slower wire).
+ * through to its back-compat shim path: which is fine, just slower wire).
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -123,7 +123,7 @@ async function main() {
   );
 
   // Lazy-loaded leaf-mode tokenizer. Only constructed if the env vars
-  // are present — otherwise the server runs without leaf-mode and falls
+  // are present: otherwise the server runs without leaf-mode and falls
   // back to standard text-only responses (gateway shim handles those).
   let leafMeta: MetaTokenizer | null = null;
   const mapUrl = process.env.CODEC_MAP_URL;
@@ -205,7 +205,7 @@ async function main() {
       content: [{ type: 'text' as const, text }],
     };
     // Wrap with _codec_meta sibling iff leaf-mode is enabled. A NULL meta
-    // skips the wrap and returns the raw result — graceful degradation
+    // skips the wrap and returns the raw result: graceful degradation
     // for environments without a Codec map configured.
     return leafMeta ? wrapToolCall(result, leafMeta) : result;
   });

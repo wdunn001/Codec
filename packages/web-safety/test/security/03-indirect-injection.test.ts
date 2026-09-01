@@ -1,5 +1,5 @@
 /**
- * 03 — Indirect prompt injection attack/defense tests.
+ * 03: Indirect prompt injection attack/defense tests.
  *
  * Covers JSON role injection (the canonical f-string-JSON breakout) and
  * chat-template special-token boundary breaks. Both demonstrate the
@@ -38,7 +38,7 @@ interface Payload {
 }
 
 /**
- * Models the *vulnerable* recruiter pipeline — string-builds JSON with the
+ * Models the *vulnerable* recruiter pipeline: string-builds JSON with the
  * bio interpolated as raw text, then reparses. Bug: no `JSON.stringify` on the
  * bio. Anything inside the bio that's valid JSON syntax breaks out.
  */
@@ -64,7 +64,7 @@ function vulnerableFstringPipeline(bio: string): Payload {
 }
 
 /**
- * The defended pipeline — uses native object construction (or equivalent
+ * The defended pipeline: uses native object construction (or equivalent
  * `JSON.stringify` on user content). Bio is data, not structure.
  */
 function defendedPipeline(bio: string): Payload {
@@ -112,7 +112,7 @@ test('defense: defended pipeline keeps the messages array intact', () => {
   const bio = load('json-role-injection-bio.txt');
   const payload = defendedPipeline(bio);
 
-  // Exactly 2 messages — system + user — as the framework intended.
+  // Exactly 2 messages: system + user: as the framework intended.
   assert.equal(payload.messages.length, 2);
   assert.equal(payload.messages[0].role, 'system');
   assert.equal(payload.messages[1].role, 'user');
@@ -170,6 +170,6 @@ test('note: system-reminder mimicry is NOT stripped by sanitizeForCodec (intenti
   const payload = load('system-reminder-mimicry.txt');
   const { text } = sanitizeForCodec(payload);
   assert.ok(text.includes('<system-reminder>'), 'tag preserved by sanitizer');
-  // The handling defense lives in prompt assembly — see
+  // The handling defense lives in prompt assembly: see
   // spec/proposals/v0.6-security/03-indirect-injection.md "universal defense pattern".
 });

@@ -4,7 +4,7 @@
  * Two layers:
  *   1. Direct interpreter unit tests on synthetic inputs, asserting the
  *      op set behaves as documented in spec/PRETOKENIZER_PROGRAM.md.
- *   2. **Equivalence with the regex** on real maps — for any input
+ *   2. **Equivalence with the regex** on real maps: for any input
  *      string, running the compiled program must produce the same
  *      sequence of pieces as compiling and running the corresponding
  *      `pre_tokenizer_pattern`. This is the core spec property.
@@ -39,7 +39,7 @@ const QWEN_LIKE: PreTokProgram = {
 test('pretok program: simple ASCII sentence', () => {
   // Llama-3-style: leading space attaches to the next letter run via
   // `[^\r\n\p{L}\p{N}]?\p{L}+`. So "Hello world!" splits into
-  // ["Hello", " world", "!"] — note the space attached to "world".
+  // ["Hello", " world", "!"]: note the space attached to "world".
   const out = runPreTokProgram(QWEN_LIKE, 'Hello world!');
   assert.deepEqual(out, ['Hello', ' world', '!']);
 });
@@ -54,7 +54,7 @@ test('pretok program: contractions are case-insensitive', () => {
 });
 
 test('pretok program: digits run (Qwen-style: 1 digit per piece)', () => {
-  // Qwen-2 regex is `\p{N}` (no quantifier) — one digit per regex
+  // Qwen-2 regex is `\p{N}` (no quantifier): one digit per regex
   // iteration, so digit runs come out one digit at a time. Match the
   // canonical regex behavior precisely.
   const qwen: PreTokProgram = {
@@ -100,7 +100,7 @@ test('pretok program: trailing whitespace at EOI matches trailing_ws', () => {
 });
 
 test('pretok program: emoji and CJK are letters via \\p{L}', () => {
-  // CJK ideographs are \p{L}o (Letter, other) — should match "letters" op.
+  // CJK ideographs are \p{L}o (Letter, other): should match "letters" op.
   const out = runPreTokProgram(QWEN_LIKE, '日本語');
   assert.deepEqual(out, ['日本語']);
 });
@@ -189,7 +189,7 @@ const STRESS_INPUTS = [
 
 function runRegex(re: string, input: string): string[] {
   // The patterns under test use ES2025 `(?i:...)` inline-flag groups which
-  // not every runtime supports — go through the same fallback ladder that
+  // not every runtime supports: go through the same fallback ladder that
   // BPETokenizer uses (gv → gu → desugared gu) so this equivalence test
   // exercises whichever code path the runtime actually takes.
   const r = compilePreTokRegexWithFallback(re, 'test-equivalence');
@@ -254,7 +254,7 @@ test('equivalence: real Qwen-2 map regex compiles + matches on stress inputs',
 //
 // spec/PRETOKENIZER_PROGRAM.md § Class membership pins the whitespace class:
 //
-//   `\s` — `\p{White_Space}` plus the ASCII whitespace fallbacks
+//   `\s` means `\p{White_Space}` plus the ASCII whitespace fallbacks
 //
 // JavaScript's native `\s` is a different set. It excludes U+0085 NEXT LINE,
 // which is neither a line terminator nor category Zs, and it includes U+FEFF

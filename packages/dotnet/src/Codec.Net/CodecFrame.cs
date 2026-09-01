@@ -11,7 +11,7 @@ public sealed class CodecFrame
     /// <summary>Token IDs emitted by the model in this chunk.</summary>
     public IReadOnlyList<int> Ids { get; init; } = Array.Empty<int>();
 
-    /// <summary><c>true</c> on the final frame — no further frames follow.</summary>
+    /// <summary><c>true</c> on the final frame: no further frames follow.</summary>
     public bool Done { get; init; }
 
     /// <summary>

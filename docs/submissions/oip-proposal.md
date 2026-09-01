@@ -8,14 +8,14 @@
 
 Open Inference Protocol (OIP) v2 standardises the request/response shape for
 inference servers (KServe, NVIDIA Triton, Seldon Core, Hugging Face TGI all
-implement it today). The current spec uses JSON for the response body, which
+implement it today). The current spec uses JSON for the response body. That
 forces the same serialise/parse/tokenise overhead this proposal's parent
 project (Codec) was designed to eliminate.
 
 This proposal adds Codec as a wire-format extension to OIP v2: keep OIP's
 request shape, swap the response body for Codec frames when both client and
 server negotiate it. The extension is layered on the existing OIP
-infrastructure with zero breaking changes — a client that doesn't request
+infrastructure with zero breaking changes: a client that doesn't request
 Codec sees the same JSON wire OIP serves today.
 
 ## What's proposed
@@ -45,10 +45,10 @@ is Codec-framed.
 
 The OIP v2 response envelope (`{"model_name", "outputs": [...]}`) stays
 JSON. Each output element's `data` field, if it's a token-stream output,
-gets carried as Codec frames instead of a JSON `data` array.
+gets carried as Codec frames in place of a JSON `data` array.
 
 For streaming responses (which OIP v2 supports via the SSE convention), each
-SSE event's payload is one Codec frame instead of a JSON object.
+SSE event's payload becomes a single Codec frame in place of a JSON object.
 
 ### Discovery
 
@@ -80,10 +80,10 @@ publish their tokenizer maps at the standard well-known paths.
 
 - **Not a replacement for OIP v2 JSON.** The JSON path stays the default;
   Codec is an opt-in axis advertised via `stream_format`.
-- **Not a fork.** This proposal is purely additive — clients that don't
+- **Not a fork.** This proposal is purely additive: clients that don't
   understand `stream_format` see today's behaviour unchanged.
 - **Not a wholesale protocol change.** The OIP request envelope, the
-  output shape, the SSE convention — all preserved.
+  output shape, the SSE convention: all preserved.
 
 ## Acceptance criterion for v0.5 cut
 
@@ -129,4 +129,4 @@ maintainer engagement loop is post-v0.5.
 
 ## Acknowledgements
 
-[ TBD — populated post-submission ]
+[ TBD: populated post-submission ]

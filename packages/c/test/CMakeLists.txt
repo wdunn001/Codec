@@ -42,7 +42,7 @@ endif()
 # Make the dict-zstd interop fixture discoverable to test_compression. The
 # fixture lives in packages/bench/fixtures/dict-zstd-interop/ and is the
 # same one every Codec client (TS / Python / Rust / Java / .NET) cross-verifies
-# byte-for-byte against — see its manifest.json for the contract.
+# byte-for-byte against: see its manifest.json for the contract.
 if(EXISTS "${CMAKE_SOURCE_DIR}/../bench/fixtures/dict-zstd-interop/manifest.json")
     set_tests_properties(test_compression PROPERTIES
         ENVIRONMENT "CODEC_DICT_ZSTD_INTEROP_DIR=${CMAKE_SOURCE_DIR}/../bench/fixtures/dict-zstd-interop")

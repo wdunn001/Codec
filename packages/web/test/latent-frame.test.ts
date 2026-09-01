@@ -1,9 +1,9 @@
 /**
- * @codecai/web — latent-frame round-trip tests across all 7 pipelines.
+ * @codecai/web: latent-frame round-trip tests across all 7 pipelines.
  *
  * Goal: prove the TypeScript port (`src/latent-frame.ts`) is byte-identical
  * to the Python reference (`packages/python/src/codecai/server/latent_frame.py`)
- * at the latent-byte boundary. We exercise both halves in-process — encode
+ * at the latent-byte boundary. We exercise both halves in-process: encode
  * with `LatentStreamEncoder`, decode with `LatentStreamDecoder`, assert that
  * the reconstructed tensor matches the input within the per-pipeline
  * tolerance set by the spec (raw = bit-exact; quantizing pipelines = within
@@ -280,7 +280,7 @@ describe('msgpack header + frame shape', () => {
 
   test('decoder rejects header missing required fields', async () => {
     // Build a msgpack object that genuinely lacks `dtype` (the encoder
-    // would normally set it to undefined which serialises as a key — we
+    // would normally set it to undefined which serialises as a key: we
     // bypass the encoder here and emit the bare msgpack ourselves).
     const { encode } = await import('@msgpack/msgpack');
     const bytes = encode({ type: 'header', latent_space_id: 'x', shape: SHAPE, pipeline: 'raw' });
@@ -326,7 +326,7 @@ describe('activation profile: header round-trip', () => {
     assert.equal(header.shape, undefined);
   });
 
-  test('non-activation header is unaffected — shape still required, profile/nEmbd absent', () => {
+  test('non-activation header is unaffected: shape still required, profile/nEmbd absent', () => {
     const enc = new LatentStreamEncoder({
       latentSpaceId: 'sd-vae-ft-mse', shape: SHAPE, dtype: 'fp16', pipeline: 'raw',
     });

@@ -9,7 +9,7 @@ Docker Hub artifacts sees change between versions.
 
 ---
 
-## v0.5.0 — 2026-05-18
+## v0.5.0: 2026-05-18
 
 **Theme: efficiency + observability + cohort honesty.** Wire-additive
 over v0.4 (v0.4 → v0.5 happy-path bytes are identical). New surfaces are
@@ -22,20 +22,20 @@ client opts in.
 - **Delta-varint stream encoding** (`stream_format: "msgpack-delta"` /
   `"protobuf-delta"`): frames carry `base_id` + zigzag-encoded deltas
   against the prior frame's last identifier. Stateless framing
-  preserved. ~10–15% wire reduction pre-zstd, ~3–5% post-zstd. Python
+  preserved. ~10 to 15% wire reduction pre-zstd, ~3 to 5% post-zstd. Python
   reference impl; engine-side emit pending in v0.5.x.
 - **Discoverable Zstandard dictionaries** at
   `<origin>/.well-known/codec/dicts/<sha256>.zstd`. Hash-pinned; client
   MUST verify the bytes hash to the URL component. Closes the v0.4.1
   silent-COPY-dicts-drop regression class by making dictionary drift a
-  hard-fail (404 or hash mismatch) instead of a silent fallback to
+  hard-fail (404 or hash mismatch), replacing what used to be a silent fallback to
   identity bytes. Codified at release-checklist §1.7 with a 4-sub-gate
   audit; the v0.5 cut caught + fixed a llamacpp regression where
   `master` was vanilla upstream without the codec patches.
 - **GPU-side latent quantize fast path** for the diffusion forks:
   `LatentStreamEncoderOptions.gpu_quantize=True` accepts a CUDA
-  `torch.Tensor`, quantizes on-device, transfers the int4/int8 result
-  instead of the fp16 latent. ~75% PCIe reduction on int4 at SDXL.
+  `torch.Tensor`, quantizes on-device, transfers only the int4/int8 result
+  over PCIe. ~75% PCIe reduction on int4 at SDXL.
 - **Bolt-on tool dispatcher contract** on the engine side, paired with
   `@codecai/tool-kit` on the client side. Manifest schema +
   `_codec_meta` envelope let a tool author publish pre-tokenized IDs so
@@ -43,7 +43,7 @@ client opts in.
   model's `<tool_call>` region. End-to-end loop measured at
   `agent-loop/{mock,searxng,metamcp}.txt` in the cross-stack matrix.
 
-### Client packages — v0.5.0 cohort
+### Client packages: v0.5.0 cohort
 
 All 11 published artifacts bumped 0.4.1 → 0.5.0:
 
@@ -62,28 +62,27 @@ New surfaces shipped across the cohort:
   bench grid, 2 unit-tested). `@codecai/wire-compress` is the canonical
   TypeScript impl; the same selection logic ships in Python / .NET /
   Rust / Java / C. Flipped `zstdEnabled` default ON.
-- **`policies-enumerate` subcommand** on `@codecai/maps-cli` —
-  resolves v0.4-OQ4 ("how does an operator audit the catalog of
+- **`policies-enumerate` subcommand** on `@codecai/maps-cli`: resolves v0.4-OQ4 ("how does an operator audit the catalog of
   published safety policies on a deployment").
-- **`@codecai/tool-kit` v0.5.0** — promoted from scaffold to first-
+- **`@codecai/tool-kit` v0.5.0**: promoted from scaffold to first-
   class family member with a runnable reference tool at
   `examples/time-tool/` (`@codecai/codec-time-tool` on npm).
 
 ### Engine forks
 
-- **sglang** — patches on `wdunn001/sglang/main`; v0.5 work includes
+- **sglang**: patches on `wdunn001/sglang/main`; v0.5 work includes
   `codec_dispatcher` (bolt-on tool dispatch, with cached `ToolRegistry`
   + async `dispatch_call_async`), OpenAI-bypass for direct numpy ID
   emission (~25-40% codec-encode CPU saved per token), and the picker
   rewrite integration. **Upstream PR filed**: sgl-project/sglang#25544,
   DCO-signed and through 5 gemini-code-assist bot review-fix
   iterations.
-- **vLLM** — patches on `wdunn001/vllm/main` with identical surface.
+- **vLLM**: patches on `wdunn001/vllm/main` with identical surface.
   **Upstream PR filed**: vllm-project/vllm#42896, also DCO-signed and
   through bot review (5 issues: struct.unpack bytes path, hardened
   `_decode_varint` shift-cap, async dispatch, cached registry,
   manifest dict-shape guard).
-- **llama.cpp** — codec patches now actually on `master` (merge commit
+- **llama.cpp**: codec patches now actually on `master` (merge commit
   `5b8f73b86`); the v0.5 cut caught the prior state where master was
   vanilla upstream and the engine was silently serving identity-encoded
   msgpack. Caught by §1.7 sub-gate 3 wire probe.
@@ -96,7 +95,7 @@ New surfaces shipped across the cohort:
 - Bakes `/opt/codec/dicts/qwen2.5-synth-{msgpack,protobuf}-v1.dict` at
   build time (16 KB each, fetched from
   `wdunn001/Codec/main/dictionaries/`).
-- Ships `/opt/codec/check-dict-availability.sh` — the §1.7 sub-gate 2
+- Ships `/opt/codec/check-dict-availability.sh`: the §1.7 sub-gate 2
   probe.
 - Verified for `import brotli, zstandard, msgpack` via §1.9 before push.
 
@@ -107,9 +106,9 @@ ComfyUI / diffusers only.
 ### Benchmarks
 
 Full cohort at `packages/bench/results/2026-05-17T23-06-45Z/`. Headline
-numbers — **byte-identical to v0.4.1** (confirms the wire-additive
+numbers: **byte-identical to v0.4.1** (confirms the wire-additive
 invariant); the §1.7 + §1.9 gates added in this release exist to
-guarantee that, not change it.
+guarantee that invariant.
 
 - **§1 protocol-only synthetic**: 4.8× (uniform-random) → 391.9×
   (cyclic) over Codec identity; ~50× → ~4000× over JSON-SSE identity.
@@ -118,20 +117,20 @@ guarantee that, not change it.
   bound T=0).
 - **§2 cross-language interop**: **72/72 wire-unanimous + 72/72
   decode-unanimous** across 3 engines × 6 client languages. vllm
-  required `REPS=4` to median out its documented `~10–20%` scheduler
+  required `REPS=4` to median out its documented `~10 to 20%` scheduler
   variance at T=0.
 
 ### Release-process additions
 
-- **release-checklist §1.7** — zstd dictionary availability gate
+- **release-checklist §1.7**: zstd dictionary availability gate
   (4 sub-gates).
-- **release-checklist §1.9** — engine image protocol-critical dep
+- **release-checklist §1.9**: engine image protocol-critical dep
   audit (`import brotli, zstandard, msgpack` before push).
-- **release-checklist §3.5** — bench surface coverage gate. The rule
+- **release-checklist §3.5**: bench surface coverage gate. The rule
   codifies per-surface re-run triggers so a future release can't skip
   token-bench / translator / agent-loop / leaf-microbench by
   rationalizing them as "not wire-format-sensitive."
-- **`packages/bench/scripts/release-bench.sh`** — one-shot orchestrator
+- **`packages/bench/scripts/release-bench.sh`**: one-shot orchestrator
   for the full §3 + §3.5 cohort.
 
 ### IETF Internet-Draft
@@ -171,7 +170,7 @@ cut and ship as part of v0.5.0:
 
 ### libcodec: optional BPE encoder for embedded / IoT builds
 
-New CMake option `CODEC_WITH_BPE_ENCODER` (default ON) lets embedded / IoT consumers drop the BPE encoder + Translator + pretok-program runtime + Unicode tables at build time. Decode-only firmware, observers/middleware that route raw token streams, and tools built on the `@codecai/tool-kit` pre-cached pattern never call runtime BPE — for them the ~25 KB of compiled code + data is dead weight.
+New CMake option `CODEC_WITH_BPE_ENCODER` (default ON) lets embedded / IoT consumers drop the BPE encoder + Translator + pretok-program runtime + Unicode tables at build time. Decode-only firmware, observers/middleware that route raw token streams, and tools built on the `@codecai/tool-kit` pre-cached pattern never call runtime BPE: for them the ~25 KB of compiled code + data is dead weight.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DCODEC_WITH_BPE_ENCODER=OFF
@@ -179,14 +178,14 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=MinSizeRel -DCODEC_WITH_BPE_ENCODER=OFF
 
 - libcodec.a: **128,278 → 103,178 bytes** on x86-64 Linux Release (~25 KB lighter). Cortex-M / Xtensa / RISC-V cross-compiles save proportionally more after `-Os` strips Unicode tables.
 - Decode-side API surface (Detokenizer, ToolWatcher, stream decoders, frame codec, compression, safety-policy) unchanged.
-- Public-API symbols for the dropped surface still link — `codec_bpe_encoder_new` / `codec_bpe_encode` / `codec_translator_new` / `codec_translator_translate` / `codec_translator_finish` / `codec_pretok_run_program` / `codec_pretok_run_metaspace` and their `_free` counterparts return `CODEC_ERR_NOT_BUILT` (new in `codec_status_t`) so consumer code doesn't need `#ifdef` guards.
+- Public-API symbols for the dropped surface still link: `codec_bpe_encoder_new` / `codec_bpe_encode` / `codec_translator_new` / `codec_translator_translate` / `codec_translator_finish` / `codec_pretok_run_program` / `codec_pretok_run_metaspace` and their `_free` counterparts return `CODEC_ERR_NOT_BUILT` (new in `codec_status_t`) so consumer code doesn't need `#ifdef` guards.
 - BPE / Translator / pretok tests skipped from the test suite when the option is OFF; tests pass at 12/12 ON and 9/9 OFF.
-- `codec_status_t` gains `CODEC_ERR_NOT_BUILT = -10` (additive — existing callers see an `int` they didn't recognize, treat as generic error).
+- `codec_status_t` gains `CODEC_ERR_NOT_BUILT = -10` (additive: existing callers see an `int` they didn't recognize, treat as generic error).
 - CMakeLists version bumped 0.4.0 → 0.4.1 (was a stale leftover).
 
 ### Docs honesty pass on libcodec
 
-User asked "why is libcodec decode only" — answer was it isn't, hadn't been for a while; I'd been quoting a stale README section. Fixed `packages/c/README.md` and the root README polyglot-clients table to correctly list `Detokenizer · BPEEncoder · ToolWatcher · Translator · stream decoders · pretok-program runtime (no PCRE2, generated Unicode tables)` for the C99 row. Roadmap items "C BPE encoder + Translator" dropped — they shipped.
+User asked "why is libcodec decode only": answer was it isn't, hadn't been for a while; I'd been quoting a stale README section. Fixed `packages/c/README.md` and the root README polyglot-clients table to correctly list `Detokenizer · BPEEncoder · ToolWatcher · Translator · stream decoders · pretok-program runtime (no PCRE2, generated Unicode tables)` for the C99 row. Roadmap items "C BPE encoder + Translator" dropped: they shipped.
 
 ### @codecai/tool-kit setup
 
@@ -196,8 +195,8 @@ Companion: setup pass on the codec-tool-kit package which had been scaffolded ea
 
 - **Renamed** `codec-tool-kit` → `@codecai/tool-kit` for consistency with the rest of the @codecai/* family.
 - **Bumped** to `0.4.1` to join the family at the current cohort version.
-- **Added** to the `publish-npm.yml` workflow alongside web, web-safety, web-llm, maps-cli, mcp-leaf — same idempotent skip-if-version-exists guard.
-- **Built reference tool**: `packages/codec-tool-kit/examples/time-tool/` (`@codecai/codec-time-tool` on npm) — runnable bolt-on with manifest + build-time precache script + runtime + CLI demo + tests (4/4 pass). Returns the current UTC time as pre-cached token IDs, demonstrating the gateway-pays-nothing pattern end-to-end. Companion to `codec-time-leaf` (which demonstrates the leaf-mode wrap pattern for existing MCP servers).
+- **Added** to the `publish-npm.yml` workflow alongside web, web-safety, web-llm, maps-cli, mcp-leaf: same idempotent skip-if-version-exists guard.
+- **Built reference tool**: `packages/codec-tool-kit/examples/time-tool/` (`@codecai/codec-time-tool` on npm): runnable bolt-on with manifest + build-time precache script + runtime + CLI demo + tests (4/4 pass). Returns the current UTC time as pre-cached token IDs, demonstrating the gateway-pays-nothing pattern end-to-end. Companion to `codec-time-leaf` (which demonstrates the leaf-mode wrap pattern for existing MCP servers).
 - **Workspace** registered the new example as a workspace member.
 - **Docs**:
   - codec-website: new `/docs/codec-tool-kit/` page mirroring the `/docs/codec-leaf/` format
@@ -208,7 +207,7 @@ SDK tests stay green (16/16). Reference tool tests green (4/4). No spec changes;
 
 ---
 
-## v0.4.1 — 2026-05-16
+## v0.4.1: 2026-05-16
 
 **Theme: protocol-only honesty + cross-client dict-zstd interop + bench gate hardening.**
 
@@ -217,40 +216,40 @@ matrix had been silently papering over: (a) the §1 headline ratio
 conflated protocol efficiency with model-output behaviour; (b) only Python
 actually decoded dict-zstd responses, the other 5 clients silently
 produced garbage; (c) the bench's unanimity check only inspected wire
-bytes, not whether anything decoded. Each of these is now fixed AND
+bytes. It never checked whether anything decoded. Each of these is now fixed AND
 defended by regression tests so the next release can't re-introduce them.
 
 ### Wire-protocol changes
 
-**None — v0.4.1 is wire-additive over v0.4 and decodes byte-identically
+**None: v0.4.1 is wire-additive over v0.4 and decodes byte-identically
 on every v0.4 client.** A v0.4 server emits the exact same frames it did
 at v0.4.0; v0.4.1 client improvements are purely consumer-side fidelity
 (handling dict-zstd correctly that v0.4 clients silently mishandled).
 
-### Client packages — dict-zstd interop landed across the family
+### Client packages: dict-zstd interop landed across the family
 
 Before v0.4.1, only `codecai` (Python) actually decoded Codec's dict-zstd
 responses. The other 5 clients either silently returned the compressed
 bytes (TS/Web, C) or errored loudly (Rust, Java, .NET). The bench's
-wire-byte unanimity check missed this because it only verified the
-clients *received* the same bytes, not that they *decoded* the same
+wire-byte unanimity check missed this because it only verified that
+clients *received* the same bytes. It never checked that they *decoded* the same
 tokens. v0.4.1 ships real dict-zstd support in all 6 clients:
 
-- **`@codecai/web` 0.4.1** — new `compression.ts` (`hashZstdDict`,
+- **`@codecai/web` 0.4.1**: new `compression.ts` (`hashZstdDict`,
   `selectZstdDictForResponse`, `CodecZstdDictError`) matching Python's
   API shape. Demo bench client uses Node 22.15+ built-in
   `zlib.zstdDecompressSync({dictionary})` (no new npm dependency).
-- **`codec-rs` 0.4.1** — new `compression` module + 17 unit + integration
+- **`codec-rs` 0.4.1**: new `compression` module + 17 unit + integration
   tests against the shared interop fixture; demo bench wires through
   `zstd::stream::Decoder::with_dictionary`.
-- **`Codec.Net` 0.4.1** — new `Compression.cs` + 18 tests; demo uses
+- **`Codec.Net` 0.4.1**: new `Compression.cs` + 18 tests; demo uses
   `ZstdSharp.Port` for portable pure-C# dict decompression.
-- **`ai.codec:codec` 0.4.1** — new `Compression.java` +
+- **`ai.codec:codec` 0.4.1**: new `Compression.java` +
   `CodecZstdDictError`; demo uses `zstd-jni` `ZstdDictDecompress`.
-  *Local build only — Maven Central publish deferred to a follow-up.*
-- **`libcodec` 0.4.1** — new `codec_compression.{c,hpp}` + 12 tests +
+  *Local build only: Maven Central publish deferred to a follow-up.*
+- **`libcodec` 0.4.1**: new `codec_compression.{c,hpp}` + 12 tests +
   CMake integration; demo links libzstd via `pkg-config`.
-- **`@codecai/mcp-leaf` 0.4.1** — fixed an unrelated hash-validation
+- **`@codecai/mcp-leaf` 0.4.1**: fixed an unrelated hash-validation
   ordering bug that was masking the validation error behind a fetch
   failure in CI.
 
@@ -258,7 +257,7 @@ Every client's dict-zstd test loads the same fixture
 (`packages/bench/fixtures/dict-zstd-interop/`, captured from a real
 `codec-sglang:v0.4.1` zstd response) and asserts byte-identical
 decompression + msgpack round-trip yielding the same 32 token IDs.
-Cross-client interop now provable in CI, not just hoped for.
+Cross-client interop is now provable in CI.
 
 ### Engine forks
 
@@ -271,7 +270,7 @@ Cross-client interop now provable in CI, not just hoped for.
   spec preference order zstd > br > gzip > identity with dict-gate +
   emits `Codec-Zstd-Dict: sha256:<hex>` on every zstd response.
   `GET /codec/schema` endpoint also added (was missing from the C++ port).
-- **`wdunn001/sglang` + `wdunn001/vllm`** — fixed
+- **`wdunn001/sglang` + `wdunn001/vllm`**: fixed
   `_compress_brotli`'s per-chunk `flush()` that was inflating small
   streams (64-token msgpack: 1,159 B vs 975 B identity). Removed; brotli
   now compresses correctly across all stream sizes. New
@@ -279,23 +278,21 @@ Cross-client interop now provable in CI, not just hoped for.
 
 ### Bench infrastructure
 
-- **Synthetic-stream wire bench** (`packages/bench/scripts/synthetic_wire_bench.py`)
-  — pure-library wire measurement. 8 sizes × 4 corpora × 4 encodings;
+- **Synthetic-stream wire bench** (`packages/bench/scripts/synthetic_wire_bench.py`): pure-library wire measurement. 8 sizes × 4 corpora × 4 encodings;
   no engine, no model. The new §1 headline in MATRIX.md/RESULTS.md.
   Honest range: ~4-17× over identity on typical streams, 100-400× on
   structurally-repetitive ones.
-- **Aggregator gate hardening** — `aggregate.py` now (a) exits non-zero
+- **Aggregator gate hardening**: `aggregate.py` now (a) exits non-zero
   on any cell with a non-empty `error` field, (b) reports both
   wire-unanimous AND decode-unanimous counts in §2. The old wire-only
   check let cells where 3/6 clients errored on decode get reported as
   "unanimous" (because their wire bytes happened to match).
-- **Engine-image acceptance gate** (`packages/bench/tests/test_engine_acceptance.py`)
-  — 9 protocol probes (`/codec/schema`, spec preference-order
+- **Engine-image acceptance gate** (`packages/bench/tests/test_engine_acceptance.py`): 9 protocol probes (`/codec/schema`, spec preference-order
   compression negotiation, `Codec-Zstd-Dict` header presence,
   detokenize-bypass) that run BEFORE `run-all-langs.sh` invokes the
   bench. Catches the "image was built from a stale Dockerfile"
-  regression class in ~15s instead of via the bench's headline
-  aggregator.
+  regression class in ~15s, well before the bench's headline
+  aggregator would surface it.
 
 ### supervisor + release checklist
 
@@ -339,12 +336,12 @@ All 7 engine images at `v0.4.1`:
 ### Spec proposals (for v0.5)
 
 Two design docs added to `spec/proposals/`:
-- `v0.5-prompt-dialects.md` — per-concept opportunistic substitution
+- `v0.5-prompt-dialects.md`: per-concept opportunistic substitution
   dictionaries at the language layer (concept → cheapest model-understood
   representation; e.g. emoji, CJK char, math symbol, abbreviation), as
   the third stackable compression layer alongside Codec's framing and
   dict-zstd wire layers.
-- `packages/bench/docs/COMPRESSIBLE_PROMPTS.md` — prompt-engineering
+- `packages/bench/docs/COMPRESSIBLE_PROMPTS.md`: prompt-engineering
   patterns that produce naturally compressible model output (structured
   schemas, vocabulary locks, restate-then-answer, tabular formats).
 
@@ -352,7 +349,7 @@ Both filed as v0.5 / v0.6 candidates.
 
 ---
 
-## v0.4 — 2026-05-11
+## v0.4: 2026-05-11
 
 **Theme: safety-policy negotiation as a TLS-style capability axis, plus
 the cross-stack docs / bench / versioning infrastructure that makes
@@ -361,22 +358,22 @@ this and future cuts auditable.**
 ### Wire-protocol additions (additive over v0.3; no field removals, no
 closed-enum tightening, no canonical-bytes changes)
 
-- `HELLO.accept_safety_policies` — clients declare which policy IDs (or
+- `HELLO.accept_safety_policies`: clients declare which policy IDs (or
   `"*"`) they're willing to talk to. New optional field; absent on
   v0.3 clients (server treats as `["*"]`).
-- `READY.safety_policy_id` + `READY.safety_policy_hash` — server
+- `READY.safety_policy_id` + `READY.safety_policy_hash`: server
   declares the sanitized policy it's enforcing. Both optional;
   absent on v0.3 servers (client falls back to "unknown policy").
-- `finish_reason: "policy_violation"` — new enum value on the streaming
+- `finish_reason: "policy_violation"`: new enum value on the streaming
   completion frame. v0.3 clients see this as an unknown string and
   treat it as a generic terminal frame.
 
 ### New artifacts
 
-- **`@codecai/web-safety`** (`packages/web-safety/`) — optional sibling
+- **`@codecai/web-safety`** (`packages/web-safety/`): optional sibling
   to `@codecai/web`. Ships:
   - Always-on **prefilter** (secrets / PII / Shannon-entropy catch-all,
-    framework-free SafetyGate state machine) — catches doomed prompts
+    framework-free SafetyGate state machine): catches doomed prompts
     in the browser before they hit the wire.
   - **Classifier registry** with two opt-in classifiers: Prompt Guard
     86M via Transformers.js (default tier), Llama Guard 3 1B via
@@ -384,7 +381,7 @@ closed-enum tightening, no canonical-bytes changes)
     taxonomy as the server-side classifier so policy decisions are
     symmetric across hosts.
   - 62 tests, no host-framework dependency.
-- **`spec/safety-policy.schema.json`** — sanitized publishable policy
+- **`spec/safety-policy.schema.json`**: sanitized publishable policy
   descriptor (categories + actions + classifier family + summary
   stats; never operator-internal banned-id lists or thresholds).
 - **`.well-known/codec/policies/<id>.json`** discovery + content-
@@ -397,8 +394,8 @@ closed-enum tightening, no canonical-bytes changes)
 - `SafetyPolicyDescriptor` + `discoverSafetyPolicy` / `load_safety_policy`
   added in every client lib. Canonical-bytes hashing (2-space JSON +
   trailing newline + null-omitted) is byte-identical across TS /
-  Python / Rust / .NET / Java / C, so `safety_policy_hash` matches
-  across the stack.
+  Python / Rust / .NET / Java / C. `safety_policy_hash` matches
+  across the stack as a result.
 
 ### codec-supervisor (the operator side)
 
@@ -431,19 +428,18 @@ closed-enum tightening, no canonical-bytes changes)
   (`@codecai/web`, `codecai`, `codec-rs`, `Codec.Net`, `ai.codec:codec`).
   Before this fix, `BPETokenizer.encode("<|im_start|>...<|im_end|>")`
   on Qwen-2.5 split chat-template delimiters into 6 byte-level
-  tokens each (`<`, `|`, `im`, `_start`, `|`, `>`) instead of
+  tokens each (`<`, `|`, `im`, `_start`, `|`, `>`), never
   emitting the single atomic vocab ID (151644 / 151645). Affected
-  every model with `<|...|>` chat / tool-call / FIM specials —
-  Qwen-2 / Qwen-2.5, Llama-3.1+, Phi-3 / Phi-4, DeepSeek, Gemma.
+  every model with `<|...|>` chat / tool-call / FIM specials: Qwen-2 / Qwen-2.5, Llama-3.1+, Phi-3 / Phi-4, DeepSeek, Gemma.
   Bug visible because Qwen-2.5-0.5B is small enough that wrong
   tokenization produces visibly incoherent replies.
-- **`(?i:...)` desugar in `@codecai/web/bpe.ts`** — GPT-2-family
+- **`(?i:...)` desugar in `@codecai/web/bpe.ts`**: GPT-2-family
   pre-tokenizer patterns use the ES2025 RegExp Pattern Modifiers
   inline-flag group that throws on Chrome <125, iOS Safari <18,
   Firefox <132, Node <23. The encoder now rewrites
-  `(?i:abc)` → `(?:[aA][bB][cC])` as the third fallback, so BPE
-  encoding works on every shipped mobile-leaning runtime.
-- **`pre_tokenizer_program` op-list** — runtime ports added to
+  `(?i:abc)` → `(?:[aA][bB][cC])` as the third fallback. BPE
+  encoding now works on every shipped mobile-leaning runtime.
+- **`pre_tokenizer_program` op-list**: runtime ports added to
   `codec-rs` (new `pretok_program.rs` module) so the Rust BPE works
   on Qwen-2 / Llama-3 / Phi-4 / cl100k_base maps for the first
   time (the `regex` crate doesn't support `(?i:...)` or `\s+(?!\S)`).
@@ -456,14 +452,14 @@ closed-enum tightening, no canonical-bytes changes)
   cased-letter shape (o200k_base / mistral-nemo).
 - **convert-tiktoken merge derivation fix** in codec-maps: the
   previous `max(rank(left), rank(right))` heuristic picked splits
-  that aren't reachable via greedy BPE from initial bytes — so
-  vocabulary tokens like `Hello` on o200k_base were *encoded as*
-  `["H", "ello"]` instead of `[13225]`. Replaced with Karpathy-style
+  that aren't reachable via greedy BPE from initial bytes. Vocabulary
+  tokens like `Hello` on o200k_base were wrongly *encoded as*
+  `["H", "ello"]`; the correct single-token encoding is `[13225]`. Replaced with Karpathy-style
   greedy-BPE simulation that emits reachable splits. Affected every
   shipped OpenAI tokenizer in codec-maps; now HF-byte-identical.
 - **HF Sequence pretokenizer mapping** for smollm2 / falcon /
-  deepseek-v3: the BPE merges happen to not bridge the boundaries
-  HF's Sequence pretokenizer introduces, so a single regex + program
+  deepseek-v3: the BPE merges never bridge the boundaries
+  HF's Sequence pretokenizer introduces. A single regex + program
   produces HF-byte-identical IDs without a schema extension.
 
 ### Documentation infrastructure
@@ -474,7 +470,7 @@ closed-enum tightening, no canonical-bytes changes)
   block plus a LIVING `## Open questions (v0.X)` block that evolves
   across releases per the convention in
   `docs/PROTOCOL_VERSION_HISTORY.md`.
-- **`docs/RELEASE_CHECKLIST.md`** (12 phases) — formalises the gate
+- **`docs/RELEASE_CHECKLIST.md`** (12 phases): formalises the gate
   between feature work and a published cut. Binding from v0.4
   forward.
 - **Versioning policy codified** in `spec/versions/v0.4.md`: minor
@@ -489,16 +485,16 @@ closed-enum tightening, no canonical-bytes changes)
   Java / C). Measures encode + decode time over a fixed golden
   corpus per language. Output aggregated into MATRIX.md §X.
 - `aggregate.py.fmt_bytes` now emits explicit `b` (byte) suffix on
-  bare numeric values — reviewer feedback after the
+  bare numeric values: reviewer feedback after the
   2026-05-09T17-09-35Z run flagged unsuffixed integers as confusing.
 - Fresh run at `packages/bench/results/2026-05-11T00-12-00Z/`:
   - **24/24 unanimous on all 3 engines** (llama.cpp, sglang, vllm)
     across 6 client languages.
   - sglang 2K-token reduction: **291 b dict-zstd (1,707×)**.
 
-### Wire numbers, v0.3.x → v0.4 (no per-cell change — v0.4 is
-wire-additive over v0.3, so the same payloads compress identically;
-the additions are protocol-level negotiation, not in-frame data):
+### Wire numbers, v0.3.x → v0.4 (no per-cell change: v0.4 is
+wire-additive over v0.3. The same payloads compress identically;
+the additions are protocol-level negotiation, applied outside the frame data):
 
 | Engine     | v0.3.x best @ 2K | v0.4 best @ 2K |
 |---|---:|---:|
@@ -507,20 +503,19 @@ the additions are protocol-level negotiation, not in-frame data):
 | vllm       | 3,874 b gzip (137×) | 3,874 b gzip (137×) |
 
 Cross-language equality after the BPE special-token fix:
-**6/6 byte-identical** on every Codec cell (was 6/6 before too —
-the BPE bug affected encode, not the wire-decode path the matrix
+**6/6 byte-identical** on every Codec cell (was 6/6 before too: the BPE bug affected encode; it never touched the wire-decode path the matrix
 measures).
 
 ---
 
-## v0.3.4 — 2026-05-09
+## v0.3.4: 2026-05-09
 
 Latent modality first end-to-end run validated on the lab.
 
 (see `git log v0.3.0..v0.3.4` until this file is back-filled with
 narrative entries.)
 
-## v0.3.2 — 2026-05-09
+## v0.3.2: 2026-05-09
 
 MCP leaf-mode `_meta` wire-shape change. The earlier `_codec_meta`
 sibling-content-block form was rejected by the MCP SDK's
@@ -529,12 +524,12 @@ leaf-tokenization payload on existing text content blocks.
 `@codecai/mcp-leaf` reader keeps back-compat for both shapes during
 the v0.3.x transition window.
 
-## v0.3.0 — earlier in 2026-05
+## v0.3.0: earlier in 2026-05
 
-Latent modality added — VAE latents on the wire across seven
+Latent modality added: VAE latents on the wire across seven
 [pipelines](spec/PIPELINES.md). First customer-facing version.
 
-## v0.2.x — 2026-04
+## v0.2.x: 2026-04
 
 Initial release surface: text-token modality, msgpack/protobuf
 frames, transport-compression negotiation (`identity` / `gzip` /

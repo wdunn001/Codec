@@ -5,18 +5,18 @@ Companion to ``packages/bench/docs/ENERGY_METHODOLOGY.md``. Reproduces
 every per-hop, per-request, and worldwide-aggregate number cited there
 from first principles, with two layers:
 
-  1. Calculator path (always available) — apply the per-byte costs
+  1. Calculator path (always available): apply the per-byte costs
      pinned in the methodology doc to whatever payload sizes the caller
      specifies. Pure arithmetic. Outputs the per-hop, per-request,
      fleet-aggregate, car-equivalence tables verbatim.
 
-  2. RAPL probe path (Linux + Intel/AMD with powercap) — actually
+  2. RAPL probe path (Linux + Intel/AMD with powercap): actually
      measure CPU energy consumed by JSON parse/serialise, tokenise/
      detokenise, gzip/zstd, and msgpack encode/decode under the same
      payload shapes. Replaces the "published per-byte costs" with
      measured ones for the local hardware.
 
-The calculator path is what gates the methodology doc — it must produce
+The calculator path is what gates the methodology doc: it must produce
 the headline numbers (820 mJ JSON, 2 mJ Codec, ~400 cars/yr, etc.) with
 zero hidden assumptions. The RAPL path is for operators who want to
 validate the per-byte cost table against their own hardware.
@@ -58,7 +58,7 @@ from pathlib import Path
 from typing import Any
 
 # ---------------------------------------------------------------------------
-# Per-byte cost table — keep this in sync with ENERGY_METHODOLOGY.md § "Per-
+# Per-byte cost table: keep this in sync with ENERGY_METHODOLOGY.md § "Per-
 # hop energy budget (JSON-SSE baseline)". Numbers are non-GPU energy in
 # nanojoules per byte, lab-NUC calibration. The methodology doc carries the
 # sources; this dict is the executable form.
@@ -167,7 +167,7 @@ def per_request_total(
     """Compose a per-visible-reply budget from per-hop budgets × round-trips.
 
     The leaf (user-facing) hop on Codec MUST detokenise once to render. That
-    cost is added after the n-round-trip multiplier — it happens exactly
+    cost is added after the n-round-trip multiplier: it happens exactly
     once per visible reply, not per hop.
     """
     json_hop = json_sse_hop(json_sse_payload_bytes, costs)
@@ -285,7 +285,7 @@ def rapl_probe_costs(payload_bytes: int, iterations: int) -> dict[str, float]:
     """Measure per-byte energy for each cost component using a real payload.
 
     Falls back to the published table for anything we can't measure locally
-    (LAN/backbone/RAN are infrastructure costs, not CPU costs — those stay
+    (LAN/backbone/RAN are infrastructure costs, not CPU costs: those stay
     published per the methodology).
     """
     measured = dict(PUBLISHED_NJ_PER_BYTE)  # start from published, override CPU ops
@@ -313,7 +313,7 @@ def rapl_probe_costs(payload_bytes: int, iterations: int) -> dict[str, float]:
         "gzip_decompress", lambda _p: gzip.decompress(gz_bytes), payload, iterations,
     )
 
-    # msgpack — uses msgspec if available (matches Codec's reference), else fallback
+    # msgpack: uses msgspec if available (matches Codec's reference), else fallback
     try:
         import msgspec.msgpack as _mp
         enc = _mp.Encoder()
@@ -328,10 +328,10 @@ def rapl_probe_costs(payload_bytes: int, iterations: int) -> dict[str, float]:
             payload, iterations,
         )
     except ImportError:
-        # No msgspec — leave the published numbers, note in the output.
+        # No msgspec: leave the published numbers, note in the output.
         measured["_msgspec_missing"] = 1.0
 
-    # BPE tokenise — uses tiktoken if available, else falls back to published.
+    # BPE tokenise: uses tiktoken if available, else falls back to published.
     try:
         import tiktoken
         enc = tiktoken.get_encoding("cl100k_base")
@@ -364,7 +364,7 @@ def render_report(
     profiles: list[int],
 ) -> str:
     lines: list[str] = []
-    lines.append("# Codec energy bench — output")
+    lines.append("# Codec energy bench: output")
     lines.append("")
     lines.append(f"Run timestamp (UTC): {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}")
     lines.append(f"Cost source: **{cost_source}**")

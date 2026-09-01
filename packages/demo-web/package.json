@@ -2,7 +2,7 @@
   "name": "@codec/demo-web",
   "private": true,
   "version": "0.1.0",
-  "description": "Browser bench app for Codec — runs the same prompt across JSON-SSE and Codec wire formats with every compression encoding, shows the wire-size grid live.",
+  "description": "Browser bench app for Codec: runs the same prompt across JSON-SSE and Codec wire formats with every compression encoding, shows the wire-size grid live.",
   "type": "module",
   "scripts": {
     "dev": "vite",
