@@ -33,6 +33,7 @@ from .encoder import (
     encode_byte_level_chars,
 )
 from .detokenize import Detokenizer, detokenize
+from .pretok_program import run_pretok_program
 from .tokenize import (
     BPETokenizer,
     LongestMatchTokenizer,
@@ -130,6 +131,8 @@ __all__ = [
     # detokenize
     "Detokenizer",
     "detokenize",
+    # pretok program
+    "run_pretok_program",
     # tokenize
     "BPETokenizer",
     "LongestMatchTokenizer",

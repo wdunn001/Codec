@@ -113,6 +113,12 @@ class TokenizerMap:
     pre_tokenizer_pattern: str | None = None
     """Pre-tokenizer regex (byte_level only)."""
 
+    pre_tokenizer_program: dict[str, Any] | None = None
+    """Pre-tokenizer op-list (byte_level only), see
+    ``spec/PRETOKENIZER_PROGRAM.md``. Preferred over
+    :attr:`pre_tokenizer_pattern` when present; falls back to the regex
+    when absent so old maps keep working unchanged."""
+
     byte_fallback_start: int | None = None
     byte_fallback_end: int | None = None
 
@@ -158,6 +164,7 @@ class TokenizerMap:
             encoder=obj.get("encoder"),
             merges=obj.get("merges"),
             pre_tokenizer_pattern=obj.get("pre_tokenizer_pattern"),
+            pre_tokenizer_program=obj.get("pre_tokenizer_program"),
             byte_fallback_start=obj.get("byte_fallback_start"),
             byte_fallback_end=obj.get("byte_fallback_end"),
             special_tokens=obj.get("special_tokens"),
