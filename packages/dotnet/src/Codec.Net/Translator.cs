@@ -12,7 +12,7 @@
 // from @codecai/web and the Python Translator from codecai: same
 // word-boundary buffering rules.
 //
-// Streaming caveat: BPE merges depend on context, so re-tokenizing
+// Streaming caveat: BPE merges depend on context. Re-tokenizing
 // partial words mid-stream produces different IDs than re-tokenizing
 // the complete word. The Translator buffers text until a safe boundary
 // (whitespace) before flushing through BPE. Pass partial=true for
@@ -87,9 +87,9 @@ public sealed class Translator
         }
 
         // Streaming chunk: find the last safe boundary and flush before it.
-        // Pre-tokenizers split at whitespace, so re-encoding text up to the
-        // last whitespace yields the same IDs as re-encoding the complete
-        // word later.
+        // Pre-tokenizers split at whitespace. Re-encoding text up to the
+        // last whitespace therefore yields the same IDs as re-encoding the
+        // complete word later.
         int safe = FindLastSafeBoundary(_textBuffer);
         if (safe <= 0) return Array.Empty<int>();
 

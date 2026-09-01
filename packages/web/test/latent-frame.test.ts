@@ -10,8 +10,8 @@
  * one quantum of round-trip drift).
  *
  * Conformance against the Python encoder's golden bytes happens at
- * packages/bench/golden/pipelines/<name>/ and is exercised by the bench
- * harness, not here.
+ * packages/bench/golden/pipelines/<name>/, exercised by the bench
+ * harness.
  */
 
 import { test, describe } from 'node:test';
@@ -271,7 +271,7 @@ describe('msgpack header + frame shape', () => {
   });
 
   test('decoder rejects header with type !== "header"', async () => {
-    // Encode raw msgpack that looks like a frame, not a header. The decoder
+    // Encode raw msgpack shaped like a frame. The decoder
     // detects the mismatch via the `type` discriminator.
     const { encode } = await import('@msgpack/msgpack');
     const bytes = encode({ type: 'frame', latent_space_id: 'x', shape: SHAPE, dtype: 'fp16', pipeline: 'raw' });
@@ -292,9 +292,9 @@ describe('msgpack header + frame shape', () => {
 //
 // Per-token transformer activations for legion's pipeline-split stage
 // protocol. Unlike the video/image latent modality above, tokenCount
-// varies per frame (prefill chunks vs single decode tokens), so these
-// streams use `ActivationStreamEncoder` / `ActivationStreamDecoder` rather
-// than `LatentStreamEncoder` / `LatentStreamDecoder`. See spec/PIPELINES.md
+// varies per frame (prefill chunks vs single decode tokens). These
+// streams use `ActivationStreamEncoder` / `ActivationStreamDecoder`,
+// a separate pair from `LatentStreamEncoder` / `LatentStreamDecoder`. See spec/PIPELINES.md
 // § Activation profile. Golden fixtures live at
 // packages/bench/golden/pipelines/activation/ and freeze the exact bytes
 // these classes must keep reproducing.
@@ -409,7 +409,7 @@ describe('activation profile: frame round-trip', () => {
     const frameBytes = enc.frame(activations, { seq: 0, keyframe: true, posStart: 100, tokens: [1, 2, 3, 4] });
     const decoded = dec.decodeFrame(decodeLatentFrameMsgpack(frameBytes));
     assert.equal(decoded.tokenCount, tokenCount);
-    // Fixture values are fp16-exact, so this round-trips bit-for-bit.
+    // Fixture values are fp16-exact. This round-trips bit-for-bit.
     assert.deepEqual(Array.from(decoded.activations), Array.from(activations));
   });
 
@@ -595,8 +595,8 @@ describe('fp32 payload alignment (regression)', () => {
 // The decoder derives the element count from the header's declared `shape`.
 // Nothing on the wire forces the frame payload to match that count. Before
 // these tests the raw/fp32 path built a `Float32Array` view sized from the
-// header alone, so a short payload read past the end of the msgpack bin and
-// surfaced neighbouring wire bytes as tensor values.
+// header alone. A short payload then read past the end of the msgpack bin
+// and surfaced neighbouring wire bytes as tensor values.
 
 describe('frame payload length validation', () => {
   function frameWith(data: Uint8Array, extra: Record<string, unknown> = {}) {
@@ -660,7 +660,7 @@ describe('frame payload length validation', () => {
     assert.throws(() => dec.decodeFrame(frameWith(new Uint8Array(8))), /length/i);
   });
 
-  test('int4 pipeline rejects a short payload instead of zero-filling', () => {
+  test('int4 pipeline rejects a short payload', () => {
     const header = decodeLatentHeaderMsgpack(
       encodeLatentHeaderMsgpack({
         latent_space_id: 'trunc:int4', shape: [8, 8], dtype: 'fp16',

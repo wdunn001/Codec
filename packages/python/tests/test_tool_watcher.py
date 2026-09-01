@@ -152,8 +152,8 @@ def test_real_qwen2():
     # Some published codec-maps qwen2.json snapshots stop at
     # <|video_pad|> (151656) and omit the chat-tuned <tool_call>/
     # </tool_call> entries. If they're absent, fall back to a pair of
-    # specials that ARE in the file: we're testing the watcher, not
-    # the map. The IDs themselves are arbitrary.
+    # specials that ARE in the file: we're testing the watcher here.
+    # The IDs themselves are arbitrary.
     if "<tool_call>" in specials and "</tool_call>" in specials:
         start_name, end_name = "<tool_call>", "</tool_call>"
     else:

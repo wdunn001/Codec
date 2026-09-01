@@ -8,8 +8,8 @@
  * the same select-dict decision tree.
  *
  * The actual libzstd decompression step is exercised by the demo bench
- * (packages/demo-c/matrix_run.c), not here: libcodec doesn't link
- * against libzstd, and the parity contract for this module is "hash
+ * (packages/demo-c/matrix_run.c). libcodec doesn't link
+ * against libzstd here. The parity contract for this module is "hash
  * matches" + "select returns the right verdict for each header
  * combination". */
 
@@ -21,7 +21,7 @@
 #include <string.h>
 
 /* The hash the manifest records for dict.bin. Hard-coded here so the
- * test catches any future drift in sha256 output, not just whether the
+ * test catches any future drift in sha256 output, beyond whether the
  * fixture and the helper agree with each other. */
 static const char EXPECTED_DICT_HASH[] =
     "sha256:29a810f3fbded045d55f1cd4435c7d2959f6dbc9c697dc7fe41fb44bd2e891db";
@@ -179,8 +179,8 @@ static void test_select_not_zstd_on_gzip(void) {
     setup_dummy_registry();
     codec_header_kv_t headers[] = {
         { "Content-Encoding", "gzip" },
-        /* Server should not emit Codec-Zstd-Dict on non-zstd, but even
-         * if it does we still return NOT_ZSTD: the dict-zstd codepath
+        /* The server here does emit Codec-Zstd-Dict even on non-zstd.
+         * We still return NOT_ZSTD regardless: the dict-zstd codepath
          * doesn't apply. */
         { "Codec-Zstd-Dict",  DUMMY_DICT_HASH },
     };

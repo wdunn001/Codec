@@ -9,12 +9,13 @@ Two purposes, one collection step:
 
   1. Bench corpus: deterministic per-fixture capture (one .bin per
      (latent_space, format, pipeline, fixture-key) tuple). The bytes
-     match the wire bench cells will measure against, and the same
-     latent tensor inside (after pipeline inversion) feeds golden-builder
-     so the perceptual reference is rendered against bit-exact inputs.
+     match the wire bench cells will measure against. The same
+     latent tensor inside (after pipeline inversion) also feeds
+     golden-builder. The perceptual reference is therefore rendered
+     against bit-exact inputs.
   2. Dict-training corpus: repeated capture across many seed +
-     prompt variants for a given (format, pipeline) pair, so
-     train-zstd-dict-latents.py has enough byte-distribution diversity
+     prompt variants for a given (format, pipeline) pair. This gives
+     train-zstd-dict-latents.py enough byte-distribution diversity
      to produce a useful dict. Pass --mode=train and --n-samples=N to
      opt in.
 
@@ -292,7 +293,7 @@ def main() -> None:
             "pipelines to capture. Image fixtures: raw / int8 / int4 only. "
             "Video fixtures: raw / int8-adaptive / int4-adaptive / delta+int8 "
             "/ delta+int4. The script auto-skips incompatible (fixture, "
-            "pipeline) pairs, so passing the full set is safe."
+            "pipeline) pairs. Passing the full set is safe."
         ),
     )
     ap.add_argument(
@@ -305,7 +306,7 @@ def main() -> None:
     )
     ap.add_argument(
         "--overwrite", action="store_true",
-        help="overwrite existing manifest instead of resuming",
+        help="overwrite the existing manifest",
     )
     args = ap.parse_args()
     sys.exit(asyncio.run(main_async(args)))

@@ -128,8 +128,7 @@ export function App() {
       </h1>
       <p className="subtitle">
         Same prompt, same model, three wire formats × four compression encodings.
-        Numbers are <em>actual bytes received</em> (Performance.encodedBodySize),
-        not headers or estimates.
+        Numbers are <em>actual bytes received</em> (Performance.encodedBodySize).
       </p>
 
       <div className="controls">

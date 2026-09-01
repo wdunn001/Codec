@@ -1,7 +1,7 @@
 """Python parity tests for slice 11.
 
 Mirrors `packages/web/test/safety-policy.test.ts`: same shape, same
-assertions, so a regression on either side surfaces.
+assertions. A regression on either side therefore surfaces.
 """
 from __future__ import annotations
 

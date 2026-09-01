@@ -17,15 +17,15 @@ Wire shape per frame (msgpack):
 Decode is the inverse: cumulative sum starting from base_id, dezigzag each
 delta to get the signed int, add to the running id.
 
-Why chained deltas (rather than "all relative to base_id"): adjacent tokens
-in semantically related sequences typically differ by small amounts (1-100),
-so chained zigzag-varint stays in the 1-byte msgpack range. With base-relative
+Why chained deltas: adjacent tokens
+in semantically related sequences typically differ by small amounts (1-100).
+Chained zigzag-varint therefore stays in the 1-byte msgpack range. With base-relative
 deltas, a frame's later ids would have arbitrarily large offsets and need
 multi-byte encoding.
 
-Stateless framing preserved: every frame carries its own base_id, so a proxy
-that drops a frame in the middle of a stream doesn't desynchronise the
-decoder for subsequent frames.
+Stateless framing preserved: every frame carries its own base_id. A proxy
+that drops a frame in the middle of a stream therefore doesn't desynchronise
+the decoder for subsequent frames.
 
 The chained-vs-base-relative choice is normative: picked because chained
 gives 10-15% better wire on real token sequences (see v0.5 OQ2 for the
@@ -66,8 +66,8 @@ def zigzag_encode(n: int) -> int:
     ... so small magnitudes (positive OR negative) get small unsigned
     values that fit in one byte under msgpack's fixint encoding.
     """
-    # Use int.bit_length() rather than (n << 1) ^ (n >> 31) so this works
-    # for arbitrarily large negative ints in Python (no fixed bit width).
+    # Use int.bit_length() so this works for arbitrarily large negative
+    # ints in Python (no fixed bit width).
     if n >= 0:
         return n * 2
     return -n * 2 - 1

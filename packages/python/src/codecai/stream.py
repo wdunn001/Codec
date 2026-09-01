@@ -44,8 +44,8 @@ async def decode_msgpack_stream(body: AsyncIterable[bytes]) -> AsyncIterator[Cod
     """Yield frames from a stream of concatenated MessagePack maps.
 
     Frame shape: ``{"ids": [int...], "done": bool, "finish_reason"?: str}``.
-    msgspec doesn't ship a streaming unpacker, so we reassemble incrementally
-    by trying to decode the buffer after each chunk and advancing on success.
+    msgspec doesn't ship a streaming unpacker. We reassemble incrementally
+    instead, trying to decode the buffer after each chunk and advancing on success.
     """
     buf = bytearray()
     async for chunk in body:

@@ -60,7 +60,7 @@ internal static class Program
                 var b = File.ReadAllBytes(p);
                 ZstdDicts[Compression.HashZstdDict(b)] = b;
             }
-            catch (IOException) { /* missing dict → cell decode fails, not fatal */ }
+            catch (IOException) { /* missing dict; cell decode fails, run continues */ }
         }
     }
 
@@ -185,10 +185,10 @@ internal static class Program
             //   - throws CodecZstdDictException on missing / malformed /
             //     unknown-hash header,
             //   - returns null only for non-zstd responses (we already
-            //     branched, so that path is unreachable here).
-            // We then plug the dict into ZstdSharp's Decompressor so the
-            // tokens-per-cell number reflects the real decoded payload
-            // instead of being approximated to wire bytes.
+            //     branched: that path is unreachable here).
+            // We then plug the dict into ZstdSharp's Decompressor. The
+            // tokens-per-cell number then reflects the real decoded
+            // payload directly.
             var hdrs = CollectHeaders(resp);
             var dictBytes = Compression.SelectZstdDictForResponse(hdrs, ZstdDicts);
             using var dec = new Decompressor();
@@ -589,8 +589,8 @@ internal static class Program
     /// Resolve <c>&lt;repo-root&gt;/dictionaries/</c> relative to this
     /// assembly. Mirrors the path-walk in
     /// <c>RunMatrixAsync</c>: codec-bench.dll lives at
-    /// <c>packages/demo-dotnet/bin/.../codec-bench.dll</c>, so the repo
-    /// root is five hops up.
+    /// <c>packages/demo-dotnet/bin/.../codec-bench.dll</c>. The repo
+    /// root is therefore five hops up.
     /// </summary>
     static string ResolveDictionariesDir()
     {

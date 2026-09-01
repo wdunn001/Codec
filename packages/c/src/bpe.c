@@ -196,7 +196,7 @@ static codec_status_t emit_ids(const codec_tokenizer_map_t *map,
     for (size_t i = 0; i < count; i++) {
         /* Build a NUL-terminated copy of the slice for the lookup. We
          * could store a flat-array form but the lookup uses bsearch
-         * with strcmp, so the key needs a sentinel. */
+         * with strcmp. The key needs a sentinel. */
         char tmp_stack[256];
         char *tmp = tmp_stack;
         char *tmp_heap = NULL;

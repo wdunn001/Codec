@@ -42,7 +42,7 @@ export interface Cell {
 export interface Path {
   label: string;
   format: StreamFormat;
-  /** `bidirectional` paths use Path B (token IDs in instead of text prompt). */
+  /** `bidirectional` paths use Path B (token IDs in). */
   bidirectional?: boolean;
 }
 

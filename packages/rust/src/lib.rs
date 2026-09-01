@@ -5,8 +5,8 @@
 //! transport protocol: the functional twin of `Codec.Net`,
 //! `@codecai/web`, and `codecai`.
 //!
-//! Codec carries `uint32` token IDs on the wire instead of UTF-8 / JSON,
-//! deferring text decoding to the presentation layer. This crate lets a
+//! Codec carries `uint32` token IDs on the wire, deferring text decoding
+//! to the presentation layer. This crate lets a
 //! Rust client decode/encode Codec frames, parse tokenizer maps,
 //! detokenize/tokenize, watch for tool calls, translate cross-vocab, and
 //! load maps over HTTP: all with full sha256 verification.

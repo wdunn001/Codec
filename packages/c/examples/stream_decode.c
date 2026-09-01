@@ -5,8 +5,8 @@
  * of token IDs as a msgpack stream, then decodes it back through the
  * detokenizer and prints the recovered text.
  *
- * Real applications would feed the bytes from `fetch()`/`curl` instead of
- * synthesising them locally, but the decode path is identical.
+ * Real applications would feed the bytes from `fetch()`/`curl`; the
+ * decode path is identical either way.
  *
  *   stream_decode <map.json>
  */

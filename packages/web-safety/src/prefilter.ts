@@ -44,9 +44,9 @@
  *     browser, against the prompt the user typed, before tokenize +
  *     encode. Never serialized to the wire either: the *output* of
  *     the prefilter (gate-redacted text, or "user cancelled") is
- *     what reaches the wire, not the rule list.
+ *     what reaches the wire.
  *
- * The two halves are complementary, not duplicating. A host that
+ * The two halves are complementary. A host that
  * runs both gets defense-in-depth: cheap regex catches the obvious
  * cases here on the client, server-side enforcement catches the
  * subtle cases that the model would have otherwise complied with.
@@ -203,8 +203,8 @@ const REGEX_RULES: readonly RegexRule[] = [
   {
     category: 'secrets',
     rule: 'jwt',
-    // Three base64url segments. JWTs are not always secrets, but emitting
-    // one in chat is almost always a mistake.
+    // Three base64url segments. Emitting a JWT in chat is almost always
+    // a mistake, whether or not it is technically a secret.
     pattern: /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g,
     confidence: 0.85,
   },
@@ -298,9 +298,9 @@ const REGEX_RULES: readonly RegexRule[] = [
   },
 
   // Destructive system commands embedded as literal text. The user
-  // pasting `rm -rf /` into a chat box almost always means "look at
-  // this dangerous thing", not "do this dangerous thing", but
-  // surfacing the match in a redact-or-confirm dialog catches the
+  // pasting `rm -rf /` into a chat box usually means "look at this
+  // dangerous thing," rarely a literal instruction to run it.
+  // Surfacing the match in a redact-or-confirm dialog catches the
   // rare cases where it'd be sent to a code-executing agent.
   {
     category: 'dangerous_action',

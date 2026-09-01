@@ -16,8 +16,8 @@ use crate::map::TokenizerMap;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct DetokenizeOptions {
     /// If `true`, this is not the final chunk: buffer any trailing
-    /// partial UTF-8 sequence rather than emitting replacement
-    /// characters. Set to `false` on the last chunk so the buffer flushes.
+    /// partial UTF-8 sequence. Set to `false` on the last chunk so the
+    /// buffer flushes.
     pub partial: bool,
     /// If `true`, render special tokens (e.g. `<|eos|>`) as text. Default: false.
     pub render_special: bool,

@@ -35,8 +35,8 @@ class TranslatorTests {
      * Streaming with a synthetic byte_level map. Verifies the
      * word-boundary buffering stays consistent across chunked feeds:
      * the chunked path must produce the same DETOKENIZED text as the
-     * one-shot path. (BPE merges depend on context, so token IDs may
-     * differ across chunked vs one-shot: but the text round-trips.)
+     * one-shot path. (BPE merges depend on context. Token IDs may
+     * therefore differ across chunked vs one-shot: but the text round-trips.)
      */
     @Test
     void streamingChunksProduceSameTextAsOneShot() {

@@ -25,7 +25,7 @@ import type { TokenizerMap } from '../src/types.ts';
 
 // ── Synthetic byte_level fixture ─────────────────────────────────────────────
 // Tiny vocab covering "hello world" + a few GPT-2-encoded byte chars. Merges
-// are crafted so "hello" merges from h+e+l+l+o, and "Ġworld" merges from
+// are crafted so "hello" merges from h+e+l+l+o. "Ġworld" merges from
 // "Ġ" + "world".
 
 function makeByteLevelFixture(): TokenizerMap {
@@ -95,7 +95,7 @@ test('BPE byte_level: round-trips through detokenizer', () => {
   assert.equal(out, text);
 });
 
-test('BPE byte_level: merges greedily by priority, not left-to-right', () => {
+test('BPE byte_level: merges greedily by priority', () => {
   // Build a fixture where the wrong order produces the wrong tokens.
   const G = encodeByteLevelChars(new Uint8Array([0x20]));
   const vocab: Record<string, number> = {
@@ -138,7 +138,7 @@ function makeMetaspaceFixture(): TokenizerMap {
     vocab[`<0x${hex}>`] = 14 + i;
   }
   // Each merge is "left right" → the two get fused. BPE starts from individual
-  // codepoints, so we need the first merges to fuse ▁ with the next char.
+  // codepoints. The first merges therefore need to fuse ▁ with the next char.
   const merges = [
     `${M} h`,
     `${M}h e`,
@@ -284,8 +284,8 @@ test(
   () => {
     // Reference IDs from running HuggingFace tokenizers 0.23.1 against
     // Qwen/Qwen2.5-0.5B-Instruct tokenizer.json. The encoder must emit
-    // each `<|...|>` delimiter as the single atomic vocab ID, not as a
-    // byte-level sequence (`<`, `|`, `im`, `_start`, `|`, `>`).
+    // each `<|...|>` delimiter as the single atomic vocab ID, collapsing
+    // what would otherwise be a byte-level sequence (`<`, `|`, `im`, `_start`, `|`, `>`).
     const map = JSON.parse(fs.readFileSync(QWEN_MAP_PATH!, 'utf-8')) as TokenizerMap;
     const tok = new BPETokenizer(map);
     assert.deepEqual(
@@ -344,7 +344,7 @@ test(
     // merge-derivation fix. Previously codec-maps' merge file used the
     // "max-rank" split heuristic which picked unreachable splits like
     // "Hel lo" for "Hello"; greedy BPE stopped at ["H","ello"] and
-    // emitted [39, 6053] instead of HF's [13225]. The new Karpathy-style
+    // wrongly emitted [39, 6053], diverging from HF's [13225]. The new Karpathy-style
     // greedy-BPE simulation produces reachable splits.
     assert.deepEqual(tok.encode('Hello'), [13225]);
     assert.deepEqual(tok.encode('Hello, world!'), [13225, 11, 2375, 0]);
@@ -358,7 +358,7 @@ test(
     // Reference IDs from HuggingFace `tokenizers` 0.23.1 against
     // mistralai/Mistral-Nemo-Instruct-2407. Same shape as o200k_base
     // minus the per-branch contractions suffix, with `\p{N}` single-
-    // digit numbers instead of `\p{N}{1,3}`. Tests the no-trailing-ci
+    // digit numbers, a narrower quantifier than `\p{N}{1,3}`. Tests the no-trailing-ci
     // form of the letters_cased op.
     const map = JSON.parse(fs.readFileSync(NEMO_MAP_PATH!, 'utf-8')) as TokenizerMap;
     const tok = new BPETokenizer(map);

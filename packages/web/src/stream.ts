@@ -5,7 +5,7 @@
  * Two formats are supported, both emitted by the vLLM Codec server:
  *
  *   msgpack: concatenated MessagePack maps. Decoded with the official
- *              streaming unpacker (`decodeMultiStream`), which handles frame
+ *              streaming unpacker (`decodeMultiStream`). That handles frame
  *              boundaries that fall inside a single msgpack object.
  *
  *   protobuf: 4-byte big-endian length prefix followed by raw CodecFrame

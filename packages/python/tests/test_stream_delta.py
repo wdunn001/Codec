@@ -90,9 +90,9 @@ def test_stream_round_trip_multi_frame() -> None:
 
 
 def test_stream_each_frame_is_self_anchoring() -> None:
-    """Stateless framing: a proxy that drops a frame in the middle should
-    still be able to decode subsequent frames correctly, because each
-    frame carries its own base_id.
+    """Stateless framing: every frame carries its own base_id. A proxy
+    that drops a frame in the middle should still be able to decode
+    subsequent frames correctly.
     """
     frames_in = [
         ((10, 20), False),

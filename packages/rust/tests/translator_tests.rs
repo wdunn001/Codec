@@ -30,7 +30,7 @@ fn streaming_chunks_with_word_boundary_buffer() {
     let m = tiny_map();
     let mut tr = Translator::new(&m, &m);
 
-    // Chunk 1: "hello ": has trailing whitespace, so should flush
+    // Chunk 1: "hello ": has trailing whitespace. It should therefore flush
     // through to target encoding. Map is longest-match: "hello"=3,
     // " "=4.
     let part_a = tr.translate(&[3u32, 4], true);

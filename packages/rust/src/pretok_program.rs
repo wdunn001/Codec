@@ -66,7 +66,7 @@ pub enum PreTokOp {
         trailing_chars: Option<String>,
     },
     /// Cased-letter run with optional trailing case-insensitive contractions.
-    /// Used by o200k_base / mistral-nemo, which split on case boundaries.
+    /// Used by o200k_base / mistral-nemo. Both split on case boundaries.
     /// `kind: "title"` matches `[Lu Lt Lm Lo M]* [Ll Lm Lo M]+`,
     /// `kind: "upper"` matches `[Lu Lt Lm Lo M]+ [Ll Lm Lo M]*`.
     LettersCased {

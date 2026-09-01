@@ -7,7 +7,7 @@
  * literally what produced our maps in the first place: so this is the
  * gold standard for "is our BPE correct against the live model."
  *
- * Tokenization is deterministic, so no seed is needed. If our IDs match
+ * Tokenization is deterministic. No seed is needed. If our IDs match
  * HF's IDs for every test string, then a request `prompt: tok.encode(text)`
  * sent over the bidirectional Codec endpoint is bit-equivalent to a
  * request `prompt: text` decoded by the server's tokenizer.

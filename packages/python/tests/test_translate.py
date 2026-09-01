@@ -53,8 +53,8 @@ def _load_map(path: str) -> TokenizerMap:
 # ── Synthetic round-trip via two functioning byte_level maps ────────────────
 #
 # We can't construct a fully merge-bearing map by hand without writing a real
-# BPE training step, so the synthetic test runs against the real Qwen-2 map
-# in identity mode (same map used as both source and target). If the real
+# BPE training step. The synthetic test runs against the real Qwen-2 map
+# in identity mode instead (same map used as both source and target). If the real
 # map isn't mounted, this test is skipped.
 
 

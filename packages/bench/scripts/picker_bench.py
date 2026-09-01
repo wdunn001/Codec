@@ -5,9 +5,9 @@ state) combinations and records which reason_code fires for each cell.
 
 v0.5 task #49. Companion to #46 (the picker rewrite). The rewrite added a
 typed `reason_code` enum on pick() output so dashboards can group outcomes
-without parsing free text; this harness verifies every documented
-reason_code value is actually reachable, and produces a coverage matrix
-that demos how the picker decides across realistic inputs.
+without parsing free text. This harness verifies every documented
+reason_code value is actually reachable. It also produces a coverage
+matrix that demos how the picker decides across realistic inputs.
 
 Two output modes:
 
@@ -67,8 +67,8 @@ def make_picker_runner() -> Path:
     """Create a small Node shim that loads the picker + exposes a stdin loop.
 
     The shim reads JSON-lines from stdin and writes JSON-lines to stdout:
-    one Node process handles the entire batch instead of paying Node
-    startup cost per cell. Written once next to the script; idempotent.
+    one Node process handles the entire batch, paying Node startup cost
+    only once. Written once next to the script; idempotent.
     """
     here = Path(__file__).parent.parent / "picker_bench_shim.mjs"
     here.write_text(

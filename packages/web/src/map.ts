@@ -3,7 +3,7 @@
  *
  * Loads a JSON map from a URL, optionally verifies it against a SHA-256 hash
  * (the form `READY` frames declare), and stores it in a pluggable cache. Maps
- * are immutable once published, so cache hits are always valid.
+ * are immutable once published. Cache hits are therefore always valid.
  *
  * The default cache is in-memory. Browsers can wrap the Cache API; Node can
  * back it with the filesystem; edge runtimes can use KV.
@@ -165,8 +165,8 @@ export async function loadMap(opts: LoadOptions): Promise<TokenizerMap> {
   }
 
   // Static-artifact fetch: NO custom headers. `codec-client-version` forces a
-  // CORS preflight, and third-party CDN hosts (jsDelivr etc.) don't allowlist
-  // it: the whole fetch fails. Version signaling is a client<->server
+  // CORS preflight. Third-party CDN hosts (jsDelivr etc.) don't allowlist
+  // it either: the whole fetch fails. Version signaling is a client<->server
   // handshake; static maps get integrity from the hash check below instead.
   const resp = await fetchImpl(opts.url, { signal: opts.signal });
   if (!resp.ok) {

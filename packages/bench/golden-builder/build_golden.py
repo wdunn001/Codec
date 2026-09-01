@@ -26,12 +26,12 @@ Plus a manifest.json carrying:
   - torch / diffusers versions seen at decode time
 
 Bench cells reference these manifests by sha256: a mismatch quarantines
-the cell rather than silently using a stale golden.
+the cell.
 
 This is the **only** place SSIM/PSNR/LPIPS comparisons are anchored.
 Every (engine, lang) cell measuring perceptual quality runs its decoder
-on the SAME latent bytes captured in the corresponding corpora/ entry,
-and resolves against THIS golden. Cross-runtime drift (torch vs ONNX-Web
+on the SAME latent bytes captured in the corresponding corpora/ entry.
+It resolves against THIS golden. Cross-runtime drift (torch vs ONNX-Web
 vs ggml vs WGSL on identical inputs) is then a measurable property
 because the input is bit-fixed and the reference is fixed at this
 container's digest.

@@ -36,8 +36,8 @@ export class CodecNegotiationFailure extends Error {
  * Apply a hard size budget to a streaming decode. Pass an async iterable of
  * chunk buffers (from `zlib.createBrotliDecompress()`, `ZstdDecompressor`,
  * etc.) and a budget in bytes. Throws CodecDecompressionBudgetExceeded if the
- * cumulative output exceeds the budget: rejects the whole operation rather
- * than truncating, which is the correct posture for security-sensitive
+ * cumulative output exceeds the budget: rejects the whole operation
+ * outright. That is the correct posture for security-sensitive
  * decompression.
  *
  * The bench budget recommended in
@@ -67,8 +67,7 @@ export async function decodeWithBudget(
 }
 
 /**
- * Strict length-prefix validation. Rejects on mismatch rather than
- * truncate-and-continue. Codec uses length-prefixed framing for several
+ * Strict length-prefix validation. Rejects outright on mismatch. Codec uses length-prefixed framing for several
  * message types (per spec/PROTOCOL.md); reference parsers MUST enforce.
  */
 export function validateFramedLength(declared: number, actualBytes: Uint8Array): void {

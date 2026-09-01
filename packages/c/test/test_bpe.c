@@ -130,7 +130,7 @@ static void test_encode_empty_input(void) {
 static void test_encoder_construction_requires_program(void) {
     /* Same map but with pre_tokenizer_program stripped: encoder
      * construction must fail. We can't easily build that JSON without
-     * duplicating a lot, so just verify the error path with a v1-style
+     * duplicating a lot. Just verify the error path with a v1-style
      * map that has no encoder, no merges. */
     static const char NO_PROG_MAP[] =
         "{"
@@ -205,7 +205,7 @@ static void test_real_qwen2_round_trip(void) {
     CT_EQ_INT(codec_detokenizer_render(detok, ids, n, opts, &out, &out_len), CODEC_OK);
 
     /* The Detokenizer doesn't always include a leading space prefix for
-     * every byte_level token, so we compare normalized: strip any
+     * every byte_level token. We compare normalized instead: strip any
      * leading whitespace from `out` and compare to TEXT. */
     const char *p = out;
     while (out_len > 0 && (*p == ' ' || *p == '\t')) { p++; out_len--; }

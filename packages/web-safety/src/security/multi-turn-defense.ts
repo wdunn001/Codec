@@ -127,7 +127,7 @@ export function validateAssistantPrefill(
  * Conservative conversation-length guard. Returns whether the message count
  * is within a configured cap. The cap defends against system-prompt eviction
  * via sliding-window truncation: if a conversation grows beyond `maxMessages`
- * the host should force a new conversation rather than slide the window.
+ * the host should force a new conversation.
  */
 export function withinConversationLength(
   messages: readonly Message[],

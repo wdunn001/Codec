@@ -7,25 +7,28 @@ would have produced. See ``spec/PRETOKENIZER_PROGRAM.md`` for the op-set
 design and rationale; this module implements exactly the eight v1 ops that
 spec documents (the same set ``packages/c/src/pretok_program.c`` supports).
 
-Python's ``regex`` package supports ``\\p{L}`` natively, so for Python the
-program is at most a small startup speedup over the regex path (skip
-compile, skip lookbehind backtracking). It exists primarily for runtimes
-without a Unicode regex engine (``libcodec``), but porting it here keeps
-every client on the same code path, which is what makes cross-language
-equivalence auditable in the first place.
+Python's ``regex`` package supports ``\\p{L}`` natively. For Python the
+program is therefore at most a small startup speedup over the regex path
+(skip compile, skip lookbehind backtracking). It exists primarily for
+runtimes without a Unicode regex engine (``libcodec``). Porting it here
+also keeps every client on the same code path. That is what makes
+cross-language equivalence auditable in the first place.
 
-Verified against the C runtime (``packages/c/src/pretok_program.c`` and its
-``codec_unicode_is_ws`` table), not against TypeScript. At recovery time the
-TypeScript interpreter's whitespace class disagreed with C and Rust on two
-code points (native JS ``\\s`` versus ``\\p{White_Space}``; fixed in commit
-``79e93ec``), and TypeScript's metaspace splitter still diverges from C and
-Rust on how a run of non-space-or-tab whitespace (e.g. consecutive
-newlines) is pieced. Pinning this file's tests to the old TypeScript
-behavior would have encoded those bugs as the spec instead of catching
-them. See ``packages/python/tests/test_pretok_program.py`` for the in-repo
-equivalence tests, which check against C's confirmed values and Python's
-own ``regex`` engine instead of the TS reference, and :func:`_run_metaspace`
-below for the open question on the metaspace side.
+This module is verified against the C runtime
+(``packages/c/src/pretok_program.c`` and its ``codec_unicode_is_ws``
+table). TypeScript is deliberately excluded from that verification: at
+recovery time the TypeScript interpreter's whitespace class disagreed
+with C and Rust on two code points (native JS ``\\s`` versus
+``\\p{White_Space}``; fixed in commit ``79e93ec``). TypeScript's
+metaspace splitter still diverges from C and Rust on how a run of
+non-space-or-tab whitespace (e.g. consecutive newlines) is pieced.
+Pinning this file's tests to the old TypeScript behavior would have
+baked those bugs into the spec. See
+``packages/python/tests/test_pretok_program.py`` for the in-repo
+equivalence tests. Those tests check against C's confirmed values and
+Python's own ``regex`` engine, deliberately bypassing the TS reference.
+See also :func:`_run_metaspace` below for the open question on the
+metaspace side.
 """
 from __future__ import annotations
 
@@ -35,19 +38,19 @@ from .encoder import METASPACE
 
 # Unicode White_Space=Yes, transcribed from the UCD PropList. This is the
 # same 25 code points as packages/c/src/codec_unicode_tables.c's
-# WS_CODE_POINTS table, and what Rust's `regex` crate resolves `\s` to.
-# spec/PRETOKENIZER_PROGRAM.md § Class membership pins the program's `\s`
-# to exactly this set.
+# WS_CODE_POINTS table. It is also what Rust's `regex` crate resolves `\s`
+# to. spec/PRETOKENIZER_PROGRAM.md § Class membership pins the program's
+# `\s` to exactly this set.
 #
 # This is deliberately NOT `str.isspace()`. CPython's `isspace()` is a
 # superset of White_Space -- it also returns True for U+001C-U+001F, the
-# information-separator control characters, which carry bidirectional
+# information-separator control characters. Those carry bidirectional
 # class B/S but are not White_Space. Using `isspace()` as a fallback here
 # would silently reintroduce the same class of bug that made TypeScript's
 # native `\s` disagree with C on 1074 of 10316 differential-tested inputs
 # (U+0085 NEXT LINE and U+FEFF ZERO WIDTH NO-BREAK SPACE were the two
 # culprits there; see commit 79e93ec). A plain frozenset lookup over the
-# exact 25-code-point table is both correct and fast, so no fallback is
+# exact 25-code-point table is both correct and fast. No fallback is
 # needed at all.
 _WHITE_SPACE_CODE_POINTS = (
     0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x0020, 0x0085, 0x00A0,
@@ -70,8 +73,8 @@ def _is_letter(cp: str) -> bool:
 
 def _is_number(cp: str) -> bool:
     # str.isdigit covers Nd; isnumeric also covers Nl/No. \p{N} is the
-    # union of N* categories, so isnumeric is the correct match for the
-    # regex semantics.
+    # union of N* categories. isnumeric is therefore the correct match for
+    # the regex semantics.
     return cp.isnumeric()
 
 
@@ -86,7 +89,7 @@ def _match_literals_ci(op: Mapping[str, Any], s: str, i: int) -> int:
         if n <= best or i + n > len(s):
             continue
         # ASCII case-fold compare. Pre-tokenizer contraction lists are
-        # always ASCII, so a full Unicode-aware lower() is unnecessary but
+        # always ASCII. A full Unicode-aware lower() is unnecessary but
         # harmless here.
         if s[i:i + n].lower() == p.lower():
             best = n
@@ -179,7 +182,7 @@ def _match_trailing_ws(_op: Mapping[str, Any], s: str, i: int) -> int:
     if p == len(s):
         return p - i
     # Followed by non-whitespace; truncate before the last whitespace code
-    # point. Every Python str index is already one code point, so that's
+    # point. Every Python str index is already one code point. That's
     # just p - 1.
     return (p - 1) - i
 
@@ -201,13 +204,14 @@ def _run_metaspace(op: Mapping[str, Any], text: str) -> List[str]:
     This mirrors ``codec_pretok_run_metaspace`` in
     ``packages/c/src/pretok_program.c`` byte-for-byte, including its
     ``is_first`` bookkeeping: ``is_first`` goes false as soon as ANY
-    leading whitespace run (of any White_Space code point, not just a
-    literal space) is consumed, even before the first word is captured.
-    Rust's ``run_metaspace`` only clears its ``is_first`` on a literal
-    ASCII space during that leading run, which is an observable
-    disagreement between C and Rust when ``prefix_first`` is set and the
-    input starts with a non-space whitespace character (e.g. a leading
-    newline). That narrow case is left un-pinned here in favor of C's
+    leading whitespace run is consumed, even before the first word is
+    captured. That run can be any White_Space code point, with no
+    requirement that it be a literal space. Rust's ``run_metaspace``
+    only clears its ``is_first`` on a literal ASCII space during that
+    leading run. That is an observable disagreement between C and Rust
+    when ``prefix_first`` is set and the input starts with a non-space
+    whitespace character (e.g. a leading newline). That narrow case is
+    left un-pinned here in favor of C's
     simpler, uniform rule; it hasn't been resolved against any upstream
     reference.
 
@@ -303,7 +307,7 @@ def run_pretok_program(prog: Mapping[str, Any], text: str) -> List[str]:
                 break
         if not matched:
             # Defensive fallback: well-formed GPT-2-family programs end
-            # with ws_run, so any remaining non-whitespace becomes a
+            # with ws_run. Any remaining non-whitespace therefore becomes a
             # letters/numbers/punct_run match. This single-codepoint emit
             # only guards against a pathological/malformed program.
             out.append(text[i])

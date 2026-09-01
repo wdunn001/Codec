@@ -29,7 +29,7 @@ fn skips_special_tokens_by_default() {
 fn renders_special_tokens_when_asked() {
     let ids = [3u32, 266];
     let result = Detokenizer::detokenize(&tiny_map(), &ids, true);
-    // 266 isn't in the v1 tokens map, so emits replacement char. Point:
+    // 266 isn't in the v1 tokens map. It therefore emits replacement char. Point:
     // call doesn't throw and the eos token doesn't silently disappear.
     assert!(result.starts_with("hello"));
 }

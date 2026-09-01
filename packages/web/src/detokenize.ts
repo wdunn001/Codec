@@ -28,7 +28,7 @@ import type { TokenizerMap } from './types.js';
 export interface DetokenizeOptions {
   /**
    * If true, this is not the final chunk: buffer any trailing partial
-   * UTF-8 sequence rather than emitting replacement characters. Set to
+   * UTF-8 sequence. Set to
    * `false` (or omit) on the last chunk so the buffer flushes.
    */
   partial?: boolean;

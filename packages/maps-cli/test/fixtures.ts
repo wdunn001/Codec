@@ -98,7 +98,7 @@ export function makePairFormatMergesHF(): HFTokenizerJson {
     model: {
       type: 'BPE',
       vocab: { a: 0, b: 1, ab: 2 },
-      // Some HF dumps store merges as [["a","b"], ...] instead of "a b".
+      // Some HF dumps store merges as [["a","b"], ...].
       merges: [['a', 'b']] as unknown as string[],
     },
     added_tokens: [],

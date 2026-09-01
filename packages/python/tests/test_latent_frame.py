@@ -2,7 +2,7 @@
 
 Adds the v0.5 ``gpu_quantize`` opt-in contract on top of the existing
 pipeline math: with numpy input the flag MUST be a no-op (bytes identical
-to the gpu_quantize=False path), and the constructor MUST accept it
+to the gpu_quantize=False path). The constructor MUST also accept it
 unconditionally even when torch isn't installed.
 
 Bit-identity against the true torch-CUDA path is verified separately by

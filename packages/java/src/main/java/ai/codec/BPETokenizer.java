@@ -96,7 +96,7 @@ public final class BPETokenizer implements ITokenizer {
         // delimiters in vocab but not in specialTokens. Length-descending
         // alternation order so longer delimiters match before shorter
         // prefixes. Without this pre-scan, `<|im_start|>` would tokenise
-        // byte-by-byte instead of as the single atomic vocab ID.
+        // byte-by-byte, never resolving to its single atomic vocab ID.
         Map<String, Integer> specials = new HashMap<>();
         if (map.specialTokens != null) specials.putAll(map.specialTokens);
         for (Map.Entry<String, Integer> e : this.vocab.entrySet()) {

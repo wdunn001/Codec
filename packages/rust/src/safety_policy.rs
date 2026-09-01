@@ -176,8 +176,8 @@ pub enum SafetyPolicyError {
 // ── Validation ──────────────────────────────────────────────────────────────
 //
 // Hand-written shape check matching the TS / Python validators. Run
-// against the parsed serde_json::Value before attempting to deserialize
-// so we get clean error messages rather than serde's terser ones.
+// against the parsed serde_json::Value before attempting to deserialize,
+// for clean error messages.
 
 /// Documented charset spec mirrored across all client validators.
 /// Kept as a string constant so error messages cite the same regex

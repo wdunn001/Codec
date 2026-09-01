@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * placement, and result framing. See {@code spec/PROTOCOL.md} §
  * "Tool-call calling conventions in the map" for the normative table; the
  * registry of valid values is closed (additive point releases of the
- * schema, not extensible per-deployment).
+ * schema only).
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)

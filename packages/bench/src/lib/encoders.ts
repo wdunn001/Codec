@@ -1,7 +1,7 @@
 /**
  * Wire encoders under test. All four produce a stream of frames given the same
- * sequence of token-ID chunks, so byte counts and CPU times are directly
- * comparable.
+ * sequence of token-ID chunks. Byte counts and CPU times are therefore
+ * directly comparable.
  *
  *   json-sse   the current OpenAI/SSE format. Chunk → `data: {…}\n\n`.
  *              The "incumbent" we're measuring against.
@@ -25,8 +25,8 @@ export interface Chunk {
 
 // ── JSON-SSE (the incumbent) ──────────────────────────────────────────────────
 //
-// Models the real OpenAI/Ollama wire format, which detokenizes IDs to text
-// before shipping them. We use placeholder text of the average per-token width
+// Models the real OpenAI/Ollama wire format. That format detokenizes IDs
+// to text before shipping them. We use placeholder text of the average per-token width
 // observed empirically (~4 chars) so the JSON envelope cost is realistic.
 
 const TEXT_ENC = new TextEncoder();

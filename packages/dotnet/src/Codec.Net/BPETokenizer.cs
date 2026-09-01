@@ -99,7 +99,7 @@ public sealed class BPETokenizer : ITokenizer
         // chat-template revision may carry the delimiters in vocab but not in
         // SpecialTokens. Length-descending order so longer delimiters match
         // before shorter prefixes. Without this pre-scan, `<|im_start|>` would
-        // tokenise byte-by-byte instead of as the single atomic vocab ID.
+        // tokenise byte-by-byte, never resolving to its single atomic vocab ID.
         _specialIds = new Dictionary<string, int>();
         if (map.SpecialTokens is { Count: > 0 } specials)
             foreach (var (name, id) in specials) _specialIds[name] = id;

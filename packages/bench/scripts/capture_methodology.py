@@ -124,7 +124,7 @@ def hardware_block(ssh_host: str | None) -> dict[str, Any]:
 def engine_block(args: argparse.Namespace) -> dict[str, Any]:
     """Probe the running server for its capabilities. The engine version
     is taken from the CLI arg (--engine-version) since the OpenAI-compat
-    /v1/models endpoint only exposes the model id, not the server build."""
+    /v1/models endpoint only exposes the model id."""
     endpoint = args.endpoint.rstrip("/")
 
     # Confirm the server is alive.
@@ -155,7 +155,7 @@ def engine_block(args: argparse.Namespace) -> dict[str, Any]:
 
     # Probe compression support on the Codec path (msgpack if supported,
     # else json). sglang's JSON-SSE doesn't honour Accept-Encoding even
-    # when the Codec path does, so this needs to ask the right question.
+    # when the Codec path does. This needs to ask the right question as a result.
     probe_format = "msgpack" if "msgpack" in stream_formats else "json"
     compression = ["identity"]
     body = {"model": args.model, "prompt": "hi", "max_tokens": 2,

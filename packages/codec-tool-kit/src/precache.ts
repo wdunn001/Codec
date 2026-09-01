@@ -2,14 +2,14 @@
  * Build-time tokenizer cache compiler.
  *
  * The architectural value of bolt-on Codec tools comes from doing the
- * tokenizer work **at build time, not runtime**. A tool author lists
+ * tokenizer work **at build time**. A tool author lists
  * the response fragments their tool emits (templates, common values,
  * unit suffixes, etc.) and `precache()` walks the supported model
  * list, tokenises every fragment with each model's tokenizer, and
  * writes a compact JSON cache file per model.
  *
- * At runtime, the tool's hot path is a hashtable lookup, not a BPE
- * tokenisation. That's the whole point: the gateway pays nothing,
+ * At runtime, the tool's hot path is a hashtable lookup. That's the
+ * whole point: the gateway pays nothing,
  * the tool pays nothing, and the result tokens are just memcpy'd into
  * the generation context.
  *
@@ -25,7 +25,7 @@ import type { TokenizerHash } from './manifest.js';
 /**
  * Minimal tokenizer interface. Plug in any implementation at build
  * time. Both functions are synchronous because precache is a build
- * step, not a hot path.
+ * step.
  */
 export interface Tokenizer {
   /** Tokenize a string to model-specific IDs. */

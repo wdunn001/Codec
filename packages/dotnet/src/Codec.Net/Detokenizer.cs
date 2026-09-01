@@ -8,7 +8,7 @@ public readonly struct DetokenizeOptions
 {
     /// <summary>
     /// If <c>true</c>, this is not the final chunk: buffer any trailing
-    /// partial UTF-8 sequence rather than emitting replacement characters.
+    /// partial UTF-8 sequence.
     /// Set to <c>false</c> on the last chunk so the buffer flushes.
     /// </summary>
     public bool Partial { get; init; }

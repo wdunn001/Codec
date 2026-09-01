@@ -68,7 +68,7 @@ export type LatentDtype = 'fp32' | 'fp16' | 'bf16' | 'int8' | 'int4';
  * original v0.3 video/image latent modality: fixed `shape` per stream,
  * channel-first. `'activation'` is the additive per-token transformer
  * activation profile (see spec/PIPELINES.md § Activation profile); its
- * frames carry a varying `tokenCount` instead of a fixed spatial shape.
+ * frames carry a varying `tokenCount`. There is no fixed spatial shape.
  */
 export type LatentProfile = 'latent' | 'activation';
 
@@ -79,9 +79,10 @@ export interface LatentStreamHeader {
   readonly latent_space_id: string;
   /**
    * Required unless `profile === 'activation'`. Channel-first
-   * `[C, ...spatial]` for the video/image latent modality; not used by the
-   * activation profile, which carries `nEmbd` instead (token count varies
-   * per frame so there is no fixed per-stream shape to encode here).
+   * `[C, ...spatial]` for the video/image latent modality. The activation
+   * profile does not use this field: it carries `nEmbd` instead (token
+   * count varies per frame so there is no fixed per-stream shape to
+   * encode here).
    */
   readonly shape?: readonly number[];
   readonly dtype: LatentDtype;
@@ -126,7 +127,7 @@ export interface LatentFrame {
  * Pack one fp32 number into a uint16 IEEE 754 fp16 representation. Round-half-
  * to-even, full subnormal/Inf/NaN handling. Matches numpy's float16
  * conversion bit-for-bit on common inputs (modulo platform-specific NaN
- * payload bits, which msgpack ships opaquely as bytes anyway).
+ * payload bits. msgpack ships those opaquely as bytes anyway).
  */
 function f32ToF16(value: number): number {
   const f32 = new Float32Array(1);
@@ -225,7 +226,7 @@ export function computeScales(latent: Float32Array, shape: readonly number[]): F
 
 /**
  * Round-half-to-even (IEEE 754 roundTiesToEven), matching Python's
- * `numpy.rint`. JS's Math.round is round-half-away-from-zero, so we
+ * `numpy.rint`. JS's Math.round is round-half-away-from-zero. We
  * implement it explicitly here.
  */
 function rintTowardEven(x: number): number {
@@ -550,8 +551,8 @@ export class LatentStreamDecoder {
       );
     }
     // `shape` arrives off the wire. An empty array passes the truthiness
-    // guard above and would leave C undefined and totalLen NaN, which every
-    // downstream allocator silently reads as zero.
+    // guard above and would leave C undefined and totalLen NaN. Every
+    // downstream allocator silently reads that as zero.
     if (!Array.isArray(header.shape) || header.shape.length === 0) {
       throw new Error('header.shape must be a non-empty array of positive integers');
     }
@@ -579,7 +580,7 @@ export class LatentStreamDecoder {
 
   /**
    * Slice the per-channel scales prefix off an adaptive / keyframe payload.
-   * `subarray` clamps silently, so a payload too short to hold C scales would
+   * `subarray` clamps silently. A payload too short to hold C scales would
    * otherwise yield fewer than C entries and dequantize to NaN.
    */
   private splitScales(data: Uint8Array): { scales: Float32Array; rest: Uint8Array } {
@@ -686,8 +687,8 @@ function dequantize(
 // `shape` per stream), the token count VARIES per frame: prefill chunks
 // carry up to ~256 tokens, decode carries exactly 1: so there is no fixed
 // per-stream shape to negotiate. The header instead carries `nEmbd` (the
-// fixed per-token embedding width); each frame carries its own explicit
-// `tokenCount` rather than making the receiver infer it from byte length.
+// fixed per-token embedding width). Each frame carries its own explicit
+// `tokenCount`. The receiver never has to infer it from byte length.
 //
 // Normative: spec/PIPELINES.md § Activation profile. Only the `raw`
 // pipeline is implemented today (fp32 / fp16 payloads); `int8` / `delta+*`
@@ -956,7 +957,7 @@ export function decodeLatentHeaderMsgpack(bytes: Uint8Array): LatentStreamHeader
     throw new Error(`expected type:'header', got ${JSON.stringify(obj.type)}`);
   }
   const profile = obj.profile as LatentProfile | undefined;
-  // Activation-profile headers carry `nEmbd` instead of a fixed `shape`;
+  // Activation-profile headers carry `nEmbd` in place of a fixed `shape`;
   // every other profile keeps the original v0.3 required-field contract.
   const required =
     profile === 'activation'
@@ -1076,7 +1077,7 @@ function typedBytesToFloat32Array(
   bytes: Uint8Array, dtype: LatentDtype, expectedLen: number,
 ): Float32Array {
   // The element count comes from the header's declared `shape`; the payload
-  // comes from the wire. Nothing forces them to agree, so check before any
+  // comes from the wire. Nothing forces them to agree. Check before any
   // typed-array view is built over the payload. Without this a short payload
   // produced a view running past the end of the msgpack bin and surfaced
   // neighbouring wire bytes as tensor values.

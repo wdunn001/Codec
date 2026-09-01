@@ -124,8 +124,8 @@ public class BPETests
         // Regression guard for the special-token pre-scan. Reference IDs
         // come from HuggingFace `tokenizers` 0.23.1 reading
         // Qwen-2.5-0.5B-Instruct's tokenizer.json: the encoder must emit
-        // each `<|...|>` delimiter as a single atomic vocab ID, not as 6
-        // byte-level tokens.
+        // each `<|...|>` delimiter as one single atomic vocab ID, collapsing
+        // what would otherwise be 6 byte-level tokens.
         var path = Fixtures.FindQwenMap();
         if (path is null) return; // skip when codec-maps is absent
 

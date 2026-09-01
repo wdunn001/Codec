@@ -130,7 +130,7 @@ impl BPETokenizer {
         // `vocab` but not in `special_tokens`. Length-descending regex
         // alternation order so longer delimiters match before shorter
         // prefixes. Without this pre-scan, `<|im_start|>` would
-        // tokenise byte-by-byte instead of as the single atomic vocab
+        // tokenise byte-by-byte, never resolving to its single atomic vocab
         // ID (151644 for Qwen-2.5).
         let mut special_ids: HashMap<String, u32> = HashMap::new();
         if let Some(specials) = map.special_tokens.as_ref() {
