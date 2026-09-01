@@ -251,7 +251,7 @@ static size_t match_ws_run(const codec_pretok_op_t *op,
  * the caller frees with codec_pretok_free_metaspace_pieces).
  *
  * Practically, libcodec's BPE encoder is the only metaspace consumer
- * we care about today, and it can call `codec_pretok_run_metaspace`
+ * we care about today. It can call `codec_pretok_run_metaspace`
  * directly to get the prefixed pieces as a fresh string array. So we
  * keep that helper separate and don't try to share the offset-based
  * pieces representation with metaspace.

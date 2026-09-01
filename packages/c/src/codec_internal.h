@@ -52,8 +52,8 @@ struct codec_tokenizer_map {
     int32_t  byte_fallback_start;    /* -1 if absent */
     int32_t  byte_fallback_end;      /* -1 if absent */
 
-    /* Special tokens with their names retained, so callers can resolve
-     * a name like "<tool_call>" to its ID without round-tripping through
+    /* Special tokens with their names retained. Callers can therefore
+     * resolve a name like "<tool_call>" to its ID without round-tripping through
      * the detokenizer. The names are shallow-copied during JSON parse. */
     struct codec_special_entry {
         char    *name;

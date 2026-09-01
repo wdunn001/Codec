@@ -242,7 +242,7 @@ codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
 typedef struct codec_detokenizer codec_detokenizer_t;
 
 typedef struct codec_detokenize_opts {
-    bool partial;        /* buffer trailing partial UTF-8 instead of replacing */
+    bool partial;        /* buffer trailing partial UTF-8 across calls */
     bool render_special; /* emit special tokens as text */
 } codec_detokenize_opts_t;
 
@@ -356,8 +356,8 @@ codec_status_t codec_tool_watcher_feed(codec_tool_watcher_t *w,
                                        size_t *out_len);
 
 /* Returns true iff the watcher is currently inside a region (start seen,
- * end not yet seen). Useful for "should I keep buffering text instead of
- * forwarding it" decisions outside the watcher's own buffer. */
+ * end not yet seen). Useful for deciding whether to keep buffering text
+ * or start forwarding it, outside the watcher's own buffer. */
 bool codec_tool_watcher_inside(const codec_tool_watcher_t *w);
 
 /* ── Stream decoders ────────────────────────────────────────────────────── */
@@ -451,7 +451,7 @@ typedef struct codec_pretok_piece {
 /* Run the program over UTF-8 input. Pieces alias the input buffer.
  * Free with codec_pretok_free_pieces(). For metaspace single-op
  * programs, returns CODEC_ERR_INVALID_ARG: use codec_pretok_run_metaspace
- * instead, which produces freshly-allocated prefixed pieces. */
+ * instead. That produces freshly-allocated prefixed pieces. */
 codec_status_t codec_pretok_run_program(
     const codec_pretok_program_t *prog,
     const uint8_t *input, size_t input_len,
@@ -487,8 +487,8 @@ void codec_pretok_free_metaspace_pieces(char **pieces, size_t count);
  * Construction fails (CODEC_ERR_VALIDATION) if the map lacks a
  * pre_tokenizer_program or doesn't carry a byte_level / metaspace
  * encoder. v1 maps and canonical-IR vocab-only maps aren't supported
- * by BPE: the LongestMatchTokenizer path is for those, and is not yet
- * exposed in the C client.
+ * by BPE: the LongestMatchTokenizer path is for those. That path is not
+ * yet exposed in the C client.
  */
 typedef struct codec_bpe_encoder codec_bpe_encoder_t;
 
@@ -515,7 +515,7 @@ codec_status_t codec_bpe_encode(codec_bpe_encoder_t *enc,
  * codecai's Translator, and Codec.Net's Translator: same word-boundary
  * buffering rules.
  *
- * Streaming caveat: BPE merges depend on context, so re-tokenizing
+ * Streaming caveat: BPE merges depend on context. Re-tokenizing
  * partial words mid-stream produces different IDs than re-tokenizing
  * the complete word. The translator buffers text until a safe boundary
  * (whitespace) before flushing through BPE. Pass partial=1 for streaming

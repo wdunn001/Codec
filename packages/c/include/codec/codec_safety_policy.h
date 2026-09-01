@@ -128,9 +128,9 @@ codec_status_t codec_safety_policy_well_known_hash_url(const char *origin,
  * match, CODEC_ERR_HASH_MISMATCH on mismatch, CODEC_ERR_INVALID_ARG
  * on malformed expected hash.
  *
- * Mirrors the existing codec_map_verify_sha256 contract, so callers
- * that already wire that for tokenizer maps drop this in for safety
- * policies with no surprises.
+ * Mirrors the existing codec_map_verify_sha256 contract. Callers
+ * that already wire that for tokenizer maps can drop this in for
+ * safety policies with no surprises.
  */
 codec_status_t codec_safety_policy_verify_sha256(const char *bytes, size_t len,
                                                  const char *expected_hash);

@@ -13,7 +13,7 @@
  *
  * Why this is a separate module: the actual zstd decompression is
  * intentionally out of scope here: libcurl / libsoup / a custom HTTP
- * stack all already own that path, and libzstd is the standard library
+ * stack all already own that path. libzstd is the standard library
  * for the decompression step itself. This module just exposes the small
  * piece that's specific to Codec: hashing a dict to its canonical
  * registry key and matching a response's declared dict hash to one of
@@ -21,8 +21,7 @@
  *
  * The "fail fast" stance matters: wrong-dict decompression produces
  * garbage bytes that msgpack / protobuf parsers downstream will
- * misinterpret: refuse to decompress with the wrong dict rather than
- * let a malformed token-ID stream into the model layer.
+ * misinterpret: refuse to decompress with the wrong dict.
  */
 
 #ifndef CODEC_COMPRESSION_H
