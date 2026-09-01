@@ -127,9 +127,28 @@ static void test_protobuf_chunked_reassembly(void) {
     codec_buffer_free(&f1); codec_buffer_free(&f2); codec_buffer_free(&f3);
 }
 
+static void test_msgpack_stream_rejects_deep_nesting(void) {
+    /* No valid frame at all — just a run of fixarray-of-1 headers. The
+     * stream walker sizes the next frame before decoding anything, so this
+     * reaches mp_end_offset directly. */
+    const size_t N = 200000;
+    uint8_t *b = (uint8_t *)malloc(N);
+    CT_TRUE(b != NULL);
+    memset(b, 0x91, N);
+
+    codec_msgpack_stream_t *s = NULL;
+    CT_EQ_INT(codec_msgpack_stream_new(&s), CODEC_OK);
+    CT_EQ_INT(codec_msgpack_stream_feed(s, b, N), CODEC_OK);
+    codec_frame_t out;
+    CT_EQ_INT(codec_msgpack_stream_next(s, &out), CODEC_ERR_PARSE);
+    codec_msgpack_stream_free(s);
+    free(b);
+}
+
 int main(void) {
     CT_RUN(test_msgpack_in_order_and_stop);
     CT_RUN(test_msgpack_handles_split_frame);
     CT_RUN(test_protobuf_chunked_reassembly);
+    CT_RUN(test_msgpack_stream_rejects_deep_nesting);
     CT_DONE();
 }

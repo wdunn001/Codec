@@ -270,6 +270,11 @@ function quantizeInt4(latent: Float32Array, shape: readonly number[], scales: Fl
  * The low nibble of byte k holds values[2k]; the high nibble holds
  * values[2k+1]. A trailing odd value zero-pads the high nibble.
  */
+/** Wire byte count for `n` int4 values, two per byte with a high-nibble pad. */
+function packedInt4Bytes(n: number): number {
+  return Math.ceil(n / 2);
+}
+
 export function packInt4LowFirst(values: Int8Array): Uint8Array {
   const n = values.length;
   const padded = n % 2 === 1 ? n + 1 : n;
@@ -290,6 +295,12 @@ export function packInt4LowFirst(values: Int8Array): Uint8Array {
  * realised range is [-7, +7].
  */
 export function unpackInt4LowFirst(bytes: Uint8Array, expectedLen: number): Int8Array {
+  const needed = packedInt4Bytes(expectedLen);
+  if (bytes.length !== needed) {
+    throw new Error(
+      `int4 byte length ${bytes.length} != expected ${needed} for ${expectedLen} values`,
+    );
+  }
   const out = new Int8Array(expectedLen);
   for (let i = 0; i < expectedLen; i++) {
     const byte = bytes[i >>> 1]!;
@@ -538,6 +549,19 @@ export class LatentStreamDecoder {
           'header has no fixed shape — use ActivationStreamDecoder instead)',
       );
     }
+    // `shape` arrives off the wire. An empty array passes the truthiness
+    // guard above and would leave C undefined and totalLen NaN, which every
+    // downstream allocator silently reads as zero.
+    if (!Array.isArray(header.shape) || header.shape.length === 0) {
+      throw new Error('header.shape must be a non-empty array of positive integers');
+    }
+    for (const d of header.shape) {
+      if (!Number.isSafeInteger(d) || d <= 0) {
+        throw new Error(
+          `header.shape entries must be positive integers (got ${JSON.stringify(header.shape)})`,
+        );
+      }
+    }
     this.header = header;
     this.C = header.shape[0]!;
     this.spatial = header.shape.slice(1).reduce((a, b) => a * b, 1);
@@ -551,6 +575,25 @@ export class LatentStreamDecoder {
     } else {
       this.staticScales = null;
     }
+  }
+
+  /**
+   * Slice the per-channel scales prefix off an adaptive / keyframe payload.
+   * `subarray` clamps silently, so a payload too short to hold C scales would
+   * otherwise yield fewer than C entries and dequantize to NaN.
+   */
+  private splitScales(data: Uint8Array): { scales: Float32Array; rest: Uint8Array } {
+    const need = 2 * this.C;
+    if (data.length < need) {
+      throw new Error(
+        `frame payload byte length ${data.length} is shorter than the ` +
+          `${need}-byte scales prefix for ${this.C} channels`,
+      );
+    }
+    return {
+      scales: scalesFromBytes(data.subarray(0, need)),
+      rest: data.subarray(need),
+    };
   }
 
   decodeFrame(frame: LatentFrame): Float32Array {
@@ -572,21 +615,21 @@ export class LatentStreamDecoder {
     }
 
     if (p === 'int8-adaptive') {
-      const scales = scalesFromBytes(frame.data.subarray(0, 2 * this.C));
-      const q = bytesToInt8Array(frame.data.subarray(2 * this.C), totalLen);
+      const { scales, rest } = this.splitScales(frame.data);
+      const q = bytesToInt8Array(rest, totalLen);
       return dequantize(q, scales, this.C, this.spatial, 127);
     }
 
     if (p === 'int4-adaptive') {
-      const scales = scalesFromBytes(frame.data.subarray(0, 2 * this.C));
-      const q = unpackInt4LowFirst(frame.data.subarray(2 * this.C), totalLen);
+      const { scales, rest } = this.splitScales(frame.data);
+      const q = unpackInt4LowFirst(rest, totalLen);
       return dequantize(q, scales, this.C, this.spatial, 7);
     }
 
     if (p === 'delta+int8') {
       if (frame.keyframe) {
-        const scales = scalesFromBytes(frame.data.subarray(0, 2 * this.C));
-        const q = bytesToInt8Array(frame.data.subarray(2 * this.C), totalLen);
+        const { scales, rest } = this.splitScales(frame.data);
+        const q = bytesToInt8Array(rest, totalLen);
         this.lastKeyframeScales = scales;
         this.lastKeyframeQ = q;
         return dequantize(q, scales, this.C, this.spatial, 127);
@@ -601,8 +644,8 @@ export class LatentStreamDecoder {
 
     if (p === 'delta+int4') {
       if (frame.keyframe) {
-        const scales = scalesFromBytes(frame.data.subarray(0, 2 * this.C));
-        const q = unpackInt4LowFirst(frame.data.subarray(2 * this.C), totalLen);
+        const { scales, rest } = this.splitScales(frame.data);
+        const q = unpackInt4LowFirst(rest, totalLen);
         this.lastKeyframeScales = scales;
         this.lastKeyframeQ = q;
         return dequantize(q, scales, this.C, this.spatial, 7);
@@ -1017,9 +1060,33 @@ function float32ArrayToTypedBytes(latent: Float32Array, dtype: LatentDtype): Uin
   throw new Error(`unsupported raw-pipeline dtype: ${dtype}`);
 }
 
+/**
+ * Wire byte count for `n` values of `dtype` on the raw pipeline. Throws on a
+ * dtype with no defined raw wire width.
+ */
+function rawDtypeBytes(dtype: LatentDtype, n: number): number {
+  if (dtype === 'fp32') return n * 4;
+  if (dtype === 'fp16' || dtype === 'bf16') return n * 2;
+  if (dtype === 'int8') return n;
+  if (dtype === 'int4') return packedInt4Bytes(n);
+  throw new Error(`unsupported raw-pipeline dtype: ${dtype}`);
+}
+
 function typedBytesToFloat32Array(
   bytes: Uint8Array, dtype: LatentDtype, expectedLen: number,
 ): Float32Array {
+  // The element count comes from the header's declared `shape`; the payload
+  // comes from the wire. Nothing forces them to agree, so check before any
+  // typed-array view is built over the payload. Without this a short payload
+  // produced a view running past the end of the msgpack bin and surfaced
+  // neighbouring wire bytes as tensor values.
+  const needed = rawDtypeBytes(dtype, expectedLen);
+  if (bytes.length !== needed) {
+    throw new Error(
+      `${dtype} payload byte length ${bytes.length} != expected ${needed} ` +
+        `for ${expectedLen} values`,
+    );
+  }
   if (dtype === 'fp32') {
     // msgpack bin payloads land at arbitrary byte offsets inside the decode
     // buffer; a Float32Array view requires 4-byte alignment. View when

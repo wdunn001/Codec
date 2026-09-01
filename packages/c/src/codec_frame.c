@@ -262,13 +262,21 @@ static int mp_read_bool(mp_reader_t *r, bool *v) {
 }
 
 /* Skip a single msgpack value. Used to ignore unknown fields. Returns
- * remaining bytes consumed via the reader; 0 on malformed input. */
-static int mp_skip_value(mp_reader_t *r);
-static int mp_skip_n(mp_reader_t *r, uint32_t n) {
-    for (uint32_t i = 0; i < n; i++) if (!mp_skip_value(r)) return 0;
+ * remaining bytes consumed via the reader; 0 on malformed input.
+ *
+ * `depth` bounds the container nesting. Without it every 0x91 byte
+ * (fixarray of one element) costs a stack frame, so a run of them in an
+ * unknown field is a remote stack-exhaustion crash for one byte each. Codec
+ * frames nest three deep at most (map, tool_calls array, tool-call object),
+ * so the cap is far above anything legitimate. */
+#define CODEC_MP_MAX_DEPTH 64
+static int mp_skip_value(mp_reader_t *r, unsigned depth);
+static int mp_skip_n(mp_reader_t *r, uint32_t n, unsigned depth) {
+    for (uint32_t i = 0; i < n; i++) if (!mp_skip_value(r, depth)) return 0;
     return 1;
 }
-static int mp_skip_value(mp_reader_t *r) {
+static int mp_skip_value(mp_reader_t *r, unsigned depth) {
+    if (depth > CODEC_MP_MAX_DEPTH) return 0;
     if (r->remaining == 0) return 0;
     uint8_t b = r->p[0];
     /* fixint / nil / bool */
@@ -282,9 +290,9 @@ static int mp_skip_value(mp_reader_t *r) {
         r->p += 1 + n; r->remaining -= 1 + n; return 1; }
     /* fixarray / fixmap */
     if ((b & 0xF0) == 0x90) { uint32_t n = b & 0x0F; r->p++; r->remaining--;
-        return mp_skip_n(r, n); }
+        return mp_skip_n(r, n, depth + 1); }
     if ((b & 0xF0) == 0x80) { uint32_t n = b & 0x0F; r->p++; r->remaining--;
-        return mp_skip_n(r, n * 2); }
+        return mp_skip_n(r, n * 2, depth + 1); }
     /* Various wider types */
     static const uint8_t fixed_widths[256] = {
         [0xCA] = 4, [0xCB] = 8,
@@ -311,14 +319,14 @@ static int mp_skip_value(mp_reader_t *r) {
         if (r->remaining < 1 + hl) return 0;
         size_t n = 0; for (size_t i = 0; i < hl; i++) n = (n << 8) | r->p[1 + i];
         r->p += 1 + hl; r->remaining -= 1 + hl;
-        return mp_skip_n(r, (uint32_t)n);
+        return mp_skip_n(r, (uint32_t)n, depth + 1);
     }
     if (b == 0xDE || b == 0xDF) {
         size_t hl = (b == 0xDE) ? 2 : 4;
         if (r->remaining < 1 + hl) return 0;
         size_t n = 0; for (size_t i = 0; i < hl; i++) n = (n << 8) | r->p[1 + i];
         r->p += 1 + hl; r->remaining -= 1 + hl;
-        return mp_skip_n(r, (uint32_t)n * 2);
+        return mp_skip_n(r, (uint32_t)n * 2, depth + 1);
     }
     return 0;
 }
@@ -363,7 +371,7 @@ codec_status_t codec_decode_msgpack(const uint8_t *data, size_t len,
                 out->finish_reason[slen] = 0;
             }
         } else {
-            if (!mp_skip_value(&r)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
+            if (!mp_skip_value(&r, 0)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
         }
     }
 
@@ -494,6 +502,16 @@ static int pb_read_varint(const uint8_t *data, size_t len, size_t *pos, uint64_t
     return 0;
 }
 
+/* Overflow-safe "does a field of `need` bytes fit at `pos`?".
+ *
+ * `need` is a uint64_t read straight off the wire; `pos` is a size_t that
+ * pb_read_varint guarantees is <= len. Writing `pos + need > len` lets a
+ * length varint of 0xFFFFFFFFFFFFFFFF wrap the sum and pass the check, so
+ * subtract on the trusted side instead. */
+static int pb_fits(size_t len, size_t pos, uint64_t need) {
+    return need <= (uint64_t)(len - pos);
+}
+
 codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
                                            codec_frame_t *out) {
     if (!data || !out) return CODEC_ERR_INVALID_ARG;
@@ -512,8 +530,8 @@ codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
             if (field == 1 && wt == 2) {
                 uint64_t length;
                 if (!pb_read_varint(data, len, &scan, &length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
+                if (!pb_fits(len, scan, length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
                 size_t sub_end = scan + (size_t)length;
-                if (sub_end > len) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
                 size_t sp = scan;
                 while (sp < sub_end) {
                     uint64_t v; if (!pb_read_varint(data, sub_end, &sp, &v)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
@@ -523,14 +541,14 @@ codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
             } else if (wt == 0) {
                 uint64_t v; if (!pb_read_varint(data, len, &scan, &v)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
             } else if (wt == 1) {
-                if (scan + 8 > len) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
+                if (!pb_fits(len, scan, 8)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
                 scan += 8;
             } else if (wt == 2) {
                 uint64_t length; if (!pb_read_varint(data, len, &scan, &length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
-                if (scan + length > len) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
-                scan += length;
+                if (!pb_fits(len, scan, length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
+                scan += (size_t)length;
             } else if (wt == 5) {
-                if (scan + 4 > len) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
+                if (!pb_fits(len, scan, 4)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
                 scan += 4;
             } else {
                 codec_frame_destroy(out); return CODEC_ERR_PARSE;
@@ -554,10 +572,14 @@ codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
             uint64_t v; if (!pb_read_varint(data, len, &pos, &v)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
             if (field == 2) out->done = (v != 0);
         } else if (wt == 1) {
+            if (!pb_fits(len, pos, 8)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
             pos += 8;
         } else if (wt == 2) {
             uint64_t length;
             if (!pb_read_varint(data, len, &pos, &length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
+            /* Re-check here rather than relying on the pre-scan. The two
+             * passes must not be able to disagree about what fits. */
+            if (!pb_fits(len, pos, length)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
             const uint8_t *chunk = data + pos;
             size_t chunk_len = (size_t)length;
             pos += chunk_len;
@@ -567,6 +589,9 @@ codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
                 while (sp < chunk_len) {
                     uint64_t v;
                     if (!pb_read_varint(chunk, chunk_len, &sp, &v)) {
+                        codec_frame_destroy(out); return CODEC_ERR_PARSE;
+                    }
+                    if (ids_written >= ids_count) {
                         codec_frame_destroy(out); return CODEC_ERR_PARSE;
                     }
                     out->ids[ids_written++] = (uint32_t)v;
@@ -579,6 +604,7 @@ codec_status_t codec_decode_protobuf_frame(const uint8_t *data, size_t len,
                 out->finish_reason[chunk_len] = 0;
             }
         } else if (wt == 5) {
+            if (!pb_fits(len, pos, 4)) { codec_frame_destroy(out); return CODEC_ERR_PARSE; }
             pos += 4;
         } else {
             codec_frame_destroy(out); return CODEC_ERR_PARSE;

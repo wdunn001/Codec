@@ -248,3 +248,88 @@ test('equivalence: real Qwen-2 map regex compiles + matches on stress inputs',
       assert.deepEqual(fromProg, fromRe, `input: ${JSON.stringify(input)}`);
     }
   });
+
+
+// ── `\s` must mean \p{White_Space}, not JavaScript's `\s` ───────────────────
+//
+// spec/PRETOKENIZER_PROGRAM.md § Class membership pins the whitespace class:
+//
+//   `\s` — `\p{White_Space}` plus the ASCII whitespace fallbacks
+//
+// JavaScript's native `\s` is a different set. It excludes U+0085 NEXT LINE,
+// which is neither a line terminator nor category Zs, and it includes U+FEFF
+// ZERO WIDTH NO-BREAK SPACE, which Unicode does not classify as White_Space.
+// The C runtime's table (packages/c/src/codec_unicode_tables.c) and Rust's
+// `regex` crate both use \p{White_Space} exactly, so relying on native `\s`
+// here made the TypeScript pieces differ from every other implementation on
+// those two code points. A differential run of this same Qwen-like program
+// over 10316 inputs disagreed with the C runtime on 1074 of them.
+//
+// The oracle below is the literal Unicode White_Space list rather than a
+// regex, so it cannot drift with whatever the implementation happens to use.
+
+/** Unicode White_Space=Yes, transcribed from UCD PropList. */
+const WHITE_SPACE_CODE_POINTS = [
+  0x0009, 0x000a, 0x000b, 0x000c, 0x000d, 0x0020, 0x0085, 0x00a0,
+  0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006,
+  0x2007, 0x2008, 0x2009, 0x200a, 0x2028, 0x2029, 0x202f, 0x205f,
+  0x3000,
+];
+
+/** Zero-width or invisible characters that are NOT White_Space. */
+const NOT_WHITE_SPACE_CODE_POINTS = [0xfeff, 0x200b, 0x180e, 0x2060, 0x00ad];
+
+/**
+ * Probe the interpreter's whitespace predicate for one code point.
+ *
+ * With the Qwen-like program, the input `a<CP>!` splits three ways when CP is
+ * whitespace, because `punct_run` stops at it. When CP is not whitespace,
+ * `punct_run` absorbs it together with the `!` and there are two pieces.
+ */
+function treatsAsWhitespace(cp: number): boolean {
+  const pieces = runPreTokProgram(QWEN_LIKE, `a${String.fromCodePoint(cp)}!`);
+  return pieces.length === 3;
+}
+
+function hex(cp: number): string {
+  return `U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+}
+
+test('pretok program: whitespace class is exactly Unicode White_Space', () => {
+  for (const cp of WHITE_SPACE_CODE_POINTS) {
+    if (cp === 0x20) continue; // punct_run's lead_space consumes it either way
+    assert.equal(treatsAsWhitespace(cp), true,
+      `${hex(cp)} is White_Space and must split`);
+  }
+  for (const cp of NOT_WHITE_SPACE_CODE_POINTS) {
+    assert.equal(treatsAsWhitespace(cp), false,
+      `${hex(cp)} is not White_Space and must not split`);
+  }
+});
+
+test('pretok program: U+0085 NEXT LINE is whitespace', () => {
+  // Confirmed against the C runtime, which produces ['a', '', '!'].
+  assert.deepEqual(runPreTokProgram(QWEN_LIKE, 'a!'), ['a', '', '!']);
+});
+
+test('pretok program: U+FEFF is not whitespace', () => {
+  // Confirmed against the C runtime, which produces ['a', '﻿!'].
+  assert.deepEqual(runPreTokProgram(QWEN_LIKE, 'a﻿!'), ['a', '﻿!']);
+});
+
+test('pretok program: ws_run groups a mixed White_Space run as C does', () => {
+  // Input is a, U+0085, U+2009 THIN SPACE, U+0020, b. The C runtime emits
+  // the pieces 61 / c285e28089 / 2062, so U+0085 belongs to the run.
+  assert.deepEqual(
+    runPreTokProgram(QWEN_LIKE, 'a  b'),
+    ['a', ' ', ' b'],
+  );
+});
+
+test('pretok program: trailing_ws treats U+0085 as part of the run', () => {
+  // C emits ['a', ''] for this input.
+  assert.deepEqual(
+    runPreTokProgram(QWEN_LIKE, 'a'),
+    ['a', ''],
+  );
+});

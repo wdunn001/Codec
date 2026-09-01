@@ -65,18 +65,26 @@ codec_status_t codec_msgpack_stream_feed(codec_msgpack_stream_t *s,
 /* Walk a single msgpack value to find its end offset. Returns 0 if the
  * buffer is too short, -1 on malformed input, otherwise the byte index
  * just past the value. */
-static long mp_end_offset(const uint8_t *p, size_t len, size_t pos);
+/* `depth` bounds container nesting. This walker runs on the raw accumulated
+ * buffer before any frame is decoded, so a plain run of 0x91 bytes with no
+ * valid frame in it is enough to exhaust the stack. Codec frames nest three
+ * deep at most. */
+#define CODEC_MP_MAX_DEPTH 64
+static long mp_end_offset(const uint8_t *p, size_t len, size_t pos, unsigned depth);
 
-static long mp_skip_n(const uint8_t *p, size_t len, size_t pos, uint32_t n) {
+static long mp_skip_n(const uint8_t *p, size_t len, size_t pos, uint32_t n,
+                      unsigned depth) {
     for (uint32_t i = 0; i < n; i++) {
-        long next = mp_end_offset(p, len, pos);
+        long next = mp_end_offset(p, len, pos, depth);
         if (next <= 0) return next;
         pos = (size_t)next;
     }
     return (long)pos;
 }
 
-static long mp_end_offset(const uint8_t *p, size_t len, size_t pos) {
+static long mp_end_offset(const uint8_t *p, size_t len, size_t pos,
+                          unsigned depth) {
+    if (depth > CODEC_MP_MAX_DEPTH) return -1;
     if (pos >= len) return 0;
     uint8_t b = p[pos];
 
@@ -90,8 +98,8 @@ static long mp_end_offset(const uint8_t *p, size_t len, size_t pos) {
         return (long)(pos + 1 + n);
     }
     /* fixarray / fixmap */
-    if ((b & 0xF0) == 0x90) return mp_skip_n(p, len, pos + 1, b & 0x0F);
-    if ((b & 0xF0) == 0x80) return mp_skip_n(p, len, pos + 1, (uint32_t)(b & 0x0F) * 2);
+    if ((b & 0xF0) == 0x90) return mp_skip_n(p, len, pos + 1, b & 0x0F, depth + 1);
+    if ((b & 0xF0) == 0x80) return mp_skip_n(p, len, pos + 1, (uint32_t)(b & 0x0F) * 2, depth + 1);
 
     /* fixed-width primitives */
     static const uint8_t fixed_widths[256] = {
@@ -121,14 +129,14 @@ static long mp_end_offset(const uint8_t *p, size_t len, size_t pos) {
         if (pos + 1 + hl > len) return 0;
         size_t n = 0;
         for (size_t i = 0; i < hl; i++) n = (n << 8) | p[pos + 1 + i];
-        return mp_skip_n(p, len, pos + 1 + hl, (uint32_t)n);
+        return mp_skip_n(p, len, pos + 1 + hl, (uint32_t)n, depth + 1);
     }
     if (b == 0xDE || b == 0xDF) {
         size_t hl = (b == 0xDE) ? 2 : 4;
         if (pos + 1 + hl > len) return 0;
         size_t n = 0;
         for (size_t i = 0; i < hl; i++) n = (n << 8) | p[pos + 1 + i];
-        return mp_skip_n(p, len, pos + 1 + hl, (uint32_t)n * 2);
+        return mp_skip_n(p, len, pos + 1 + hl, (uint32_t)n * 2, depth + 1);
     }
     /* ext family (0xC7..0xC9) — skip for now */
     if (b == 0xC7 || b == 0xC8 || b == 0xC9) {
@@ -145,7 +153,7 @@ static long mp_end_offset(const uint8_t *p, size_t len, size_t pos) {
 codec_status_t codec_msgpack_stream_next(codec_msgpack_stream_t *s,
                                          codec_frame_t *out) {
     if (!s || !out) return CODEC_ERR_INVALID_ARG;
-    long end = mp_end_offset(s->buf.data, s->buf.len, 0);
+    long end = mp_end_offset(s->buf.data, s->buf.len, 0, 0);
     if (end == 0) return CODEC_ERR_INCOMPLETE;
     if (end < 0)  return CODEC_ERR_PARSE;
 

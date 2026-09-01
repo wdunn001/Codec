@@ -589,3 +589,155 @@ describe('fp32 payload alignment (regression)', () => {
     }
   });
 });
+
+// ── Truncated / oversized payload rejection (v0.6) ──────────────────────────
+//
+// The decoder derives the element count from the header's declared `shape`.
+// Nothing on the wire forces the frame payload to match that count. Before
+// these tests the raw/fp32 path built a `Float32Array` view sized from the
+// header alone, so a short payload read past the end of the msgpack bin and
+// surfaced neighbouring wire bytes as tensor values.
+
+describe('frame payload length validation', () => {
+  function frameWith(data: Uint8Array, extra: Record<string, unknown> = {}) {
+    return decodeLatentFrameMsgpack(
+      encodeLatentFrameMsgpack({
+        data, seq: 0, keyframe: true, done: false, ...extra,
+      } as never),
+    );
+  }
+
+  test('raw/fp32 rejects a payload shorter than the declared shape', () => {
+    const header = decodeLatentHeaderMsgpack(
+      encodeLatentHeaderMsgpack({
+        latent_space_id: 'trunc:fp32', shape: [1, 4], dtype: 'fp32', pipeline: 'raw',
+      }),
+    );
+    const dec = new LatentStreamDecoder(header);
+    // 4 declared elements = 16 bytes. Send 4.
+    assert.throws(
+      () => dec.decodeFrame(frameWith(new Uint8Array([0, 0, 0x80, 0x3f]))),
+      /length/i,
+    );
+  });
+
+  test('raw/fp32 does not surface neighbouring msgpack bytes as values', () => {
+    const header = decodeLatentHeaderMsgpack(
+      encodeLatentHeaderMsgpack({
+        latent_space_id: 'leak:fp32', shape: [1, 4], dtype: 'fp32', pipeline: 'raw',
+      }),
+    );
+    const dec = new LatentStreamDecoder(header);
+    // `finish_reason` puts recognisable bytes after the bin payload.
+    const frame = frameWith(new Uint8Array([0, 0, 0x80, 0x3f]), {
+      finish_reason: 'AAAAAAAAAAAAAAAA',
+    });
+    assert.equal(frame.data.byteOffset % 4, 0, 'precondition: aligned fast path');
+    let out: Float32Array | null = null;
+    try { out = dec.decodeFrame(frame); } catch { /* rejecting is the fix */ }
+    if (out !== null) {
+      assert.fail(`decoded ${out.length} floats from a 4-byte payload: ${Array.from(out)}`);
+    }
+  });
+
+  test('raw/fp32 rejects a payload longer than the declared shape', () => {
+    const header = decodeLatentHeaderMsgpack(
+      encodeLatentHeaderMsgpack({
+        latent_space_id: 'over:fp32', shape: [1, 2], dtype: 'fp32', pipeline: 'raw',
+      }),
+    );
+    const dec = new LatentStreamDecoder(header);
+    assert.throws(() => dec.decodeFrame(frameWith(new Uint8Array(64))), /length/i);
+  });
+
+  test('raw/int8 rejects a short payload', () => {
+    const header = decodeLatentHeaderMsgpack(
+      encodeLatentHeaderMsgpack({
+        latent_space_id: 'trunc:int8', shape: [1, 20], dtype: 'int8', pipeline: 'raw',
+      }),
+    );
+    const dec = new LatentStreamDecoder(header);
+    assert.throws(() => dec.decodeFrame(frameWith(new Uint8Array(8))), /length/i);
+  });
+
+  test('int4 pipeline rejects a short payload instead of zero-filling', () => {
+    const header = decodeLatentHeaderMsgpack(
+      encodeLatentHeaderMsgpack({
+        latent_space_id: 'trunc:int4', shape: [8, 8], dtype: 'fp16',
+        pipeline: 'int4', scales: new Uint8Array(16),
+      }),
+    );
+    const dec = new LatentStreamDecoder(header);
+    // 64 declared elements = 32 packed bytes. Send 1.
+    assert.throws(() => dec.decodeFrame(frameWith(new Uint8Array([0xff]))), /length/i);
+  });
+
+  test('int4-adaptive rejects a payload too short to hold its scales', () => {
+    const header = decodeLatentHeaderMsgpack(
+      encodeLatentHeaderMsgpack({
+        latent_space_id: 'trunc:int4a', shape: [4, 4], dtype: 'fp16',
+        pipeline: 'int4-adaptive',
+      }),
+    );
+    const dec = new LatentStreamDecoder(header);
+    // C=4 needs 8 scale bytes plus 8 packed bytes. Send 4 total.
+    assert.throws(() => dec.decodeFrame(frameWith(new Uint8Array(4))), /length/i);
+  });
+
+  test('a 1-byte frame cannot force a large allocation', () => {
+    const header = decodeLatentHeaderMsgpack(
+      encodeLatentHeaderMsgpack({
+        latent_space_id: 'dos:int4', shape: [100000, 1000], dtype: 'fp16',
+        pipeline: 'int4', scales: new Uint8Array(200000),
+      }),
+    );
+    const dec = new LatentStreamDecoder(header);
+    assert.throws(() => dec.decodeFrame(frameWith(new Uint8Array([0x11]))), /length/i);
+  });
+
+  test('unpackInt4LowFirst rejects a buffer too short for expectedLen', () => {
+    assert.throws(() => unpackInt4LowFirst(new Uint8Array([0xff]), 64), /length/i);
+  });
+
+  test('an empty shape is rejected at construction', () => {
+    const header = decodeLatentHeaderMsgpack(
+      encodeLatentHeaderMsgpack({
+        latent_space_id: 'shape:empty', shape: [], dtype: 'fp32', pipeline: 'raw',
+      }),
+    );
+    assert.throws(() => new LatentStreamDecoder(header), /shape/i);
+  });
+
+  test('a non-integer or non-positive shape entry is rejected at construction', () => {
+    for (const shape of [[0, 4], [-1, 4], [1.5, 4], [1, Number.NaN]]) {
+      const header = decodeLatentHeaderMsgpack(
+        encodeLatentHeaderMsgpack({
+          latent_space_id: 'shape:bad', shape, dtype: 'fp32', pipeline: 'raw',
+        }),
+      );
+      assert.throws(
+        () => new LatentStreamDecoder(header), /shape/i,
+        `shape ${JSON.stringify(shape)} should be rejected`,
+      );
+    }
+  });
+
+  test('a well-formed frame still round-trips on every pipeline', () => {
+    for (const p of PIPELINE_NAMES) {
+      const latent = makeFixtureLatent();
+      const staticScales = p === 'int8' || p === 'int4'
+        ? computeScales(latent, SHAPE) : undefined;
+      const enc = new LatentStreamEncoder({
+        latentSpaceId: `ok:${p}`, shape: [...SHAPE], dtype: 'fp16', pipeline: p,
+        ...(staticScales ? { staticScales } : {}),
+      });
+      const header = decodeLatentHeaderMsgpack(enc.header(latent));
+      const dec = new LatentStreamDecoder(header);
+      const frame = decodeLatentFrameMsgpack(
+        enc.frame(latent, { seq: 0, keyframe: true, done: false }),
+      );
+      const out = dec.decodeFrame(frame);
+      assert.equal(out.length, C * SPATIAL, `pipeline ${p} length`);
+    }
+  });
+});

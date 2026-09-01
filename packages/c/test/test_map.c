@@ -124,6 +124,92 @@ static void test_real_qwen2_round_trip(void) {
     codec_map_free(m);
 }
 
+/* ── Structurally incomplete JSON ───────────────────────────────────────── */
+/*
+ * jsmn accepts a key with no value: `{"a"}` yields an OBJECT of size 1 and
+ * a single STRING, with no JSMN_ERROR_PART. Every walker here assumed an
+ * object of size N is backed by 2N tokens, so it read one past the end of
+ * a token array allocated to exactly the parsed count. In install_entry and
+ * the special_tokens loop the garbage token's start/end then became an
+ * offset and length into the JSON buffer.
+ */
+
+static void test_rejects_bare_key_at_root(void) {
+    const char *json = "{\"a\"}";
+    codec_tokenizer_map_t *m = NULL;
+    CT_EQ_INT(codec_map_from_json(json, strlen(json), &m), CODEC_ERR_PARSE);
+    CT_TRUE(m == NULL);
+}
+
+static void test_rejects_odd_vocab_child_count(void) {
+    const char *json =
+        "{\"id\":\"a\",\"version\":\"1\",\"vocab_size\":1,"
+        "\"vocab\":{\"a\":1,\"b\"}}";
+    codec_tokenizer_map_t *m = NULL;
+    CT_EQ_INT(codec_map_from_json(json, strlen(json), &m), CODEC_ERR_PARSE);
+    CT_TRUE(m == NULL);
+}
+
+static void test_rejects_bare_key_in_special_tokens(void) {
+    const char *json =
+        "{\"id\":\"a\",\"version\":\"1\",\"vocab_size\":1,"
+        "\"vocab\":{\"a\":1},\"special_tokens\":{\"x\":1,\"y\"}}";
+    codec_tokenizer_map_t *m = NULL;
+    CT_EQ_INT(codec_map_from_json(json, strlen(json), &m), CODEC_ERR_PARSE);
+    CT_TRUE(m == NULL);
+}
+
+/* ── Token id as an allocation primitive ────────────────────────────────── */
+/*
+ * The id table is sized by the largest token id in the document. vocab_size
+ * is parsed and validated but never compared against any id, so a single
+ * entry with a huge id sized the allocation on its own. A 63-byte document
+ * with id 100000000 reached 2.1 GB resident in 1.25 seconds and returned
+ * CODEC_OK. id 4294967295 asks for 64 GiB.
+ */
+
+static void test_rejects_id_far_beyond_document_size(void) {
+    const char *json =
+        "{\"id\":\"a\",\"version\":\"1\",\"vocab_size\":1,"
+        "\"vocab\":{\"x\":4294967295}}";
+    codec_tokenizer_map_t *m = NULL;
+    CT_TRUE(codec_map_from_json(json, strlen(json), &m) != CODEC_OK);
+    CT_TRUE(m == NULL);
+}
+
+static void test_rejects_moderately_large_id_from_tiny_document(void) {
+    const char *json =
+        "{\"id\":\"a\",\"version\":\"1\",\"vocab_size\":1,"
+        "\"vocab\":{\"x\":100000000}}";
+    codec_tokenizer_map_t *m = NULL;
+    CT_TRUE(codec_map_from_json(json, strlen(json), &m) != CODEC_OK);
+    CT_TRUE(m == NULL);
+}
+
+static void test_accepts_ids_at_real_vocabulary_scale(void) {
+    /* The cap must not reject a small hand-written map whose special-token
+     * ids sit at real-vocabulary scale. This shape is exactly what
+     * test_tool_calling.c uses. */
+    const char *json =
+        "{\"id\":\"a\",\"version\":\"2\",\"encoder\":\"identity\","
+        "\"vocab_size\":151665,\"vocab\":{\"a\":0},"
+        "\"special_tokens\":{\"<t>\":151657}}";
+    codec_tokenizer_map_t *m = NULL;
+    CT_EQ_INT(codec_map_from_json(json, strlen(json), &m), CODEC_OK);
+    CT_TRUE(m != NULL);
+    codec_map_free(m);
+}
+
+static void test_rejects_overflowing_id_literal(void) {
+    /* parse_int accumulated into a signed long with no overflow check. */
+    const char *json =
+        "{\"id\":\"a\",\"version\":\"1\",\"vocab_size\":1,"
+        "\"vocab\":{\"x\":99999999999999999999999}}";
+    codec_tokenizer_map_t *m = NULL;
+    CT_TRUE(codec_map_from_json(json, strlen(json), &m) != CODEC_OK);
+    CT_TRUE(m == NULL);
+}
+
 int main(void) {
     CT_RUN(test_v2_basic_parse);
     CT_RUN(test_v2_roundtrip_render);
@@ -132,5 +218,12 @@ int main(void) {
     CT_RUN(test_sha256_verify_mismatch);
     CT_RUN(test_sha256_invalid_length);
     CT_RUN(test_real_qwen2_round_trip);
+    CT_RUN(test_rejects_bare_key_at_root);
+    CT_RUN(test_rejects_odd_vocab_child_count);
+    CT_RUN(test_rejects_bare_key_in_special_tokens);
+    CT_RUN(test_rejects_id_far_beyond_document_size);
+    CT_RUN(test_rejects_moderately_large_id_from_tiny_document);
+    CT_RUN(test_accepts_ids_at_real_vocabulary_scale);
+    CT_RUN(test_rejects_overflowing_id_literal);
     CT_DONE();
 }

@@ -12,6 +12,7 @@
 
 #define JSMN_HEADER
 #include "jsmn.h"
+#include "codec_jsmn_guard.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -59,6 +60,10 @@ static jsmntok_t *parse_json_(const char *json, size_t len, size_t *toks_count) 
     jsmn_init(&p);
     int got = jsmn_parse(&p, json, len, toks, (unsigned int)needed);
     if (got != needed) {
+        free(toks);
+        return NULL;
+    }
+    if (!codec_jsmn_tree_complete(toks, (size_t)got)) {
         free(toks);
         return NULL;
     }

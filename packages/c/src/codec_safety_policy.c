@@ -16,6 +16,7 @@
  * only so the linker doesn't see two copies of jsmn_parse / jsmn_init. */
 #define JSMN_HEADER
 #include "jsmn.h"
+#include "codec_jsmn_guard.h"
 #include "sha256.h"
 
 #include <stdarg.h>
@@ -208,6 +209,10 @@ codec_status_t codec_safety_policy_from_json(const char *json, size_t len,
         n = jsmn_parse(&parser, json, len, toks, (unsigned int)cap);
     }
     if (n < 1 || toks[0].type != JSMN_OBJECT) {
+        free(toks);
+        return CODEC_ERR_PARSE;
+    }
+    if (!codec_jsmn_tree_complete(toks, (size_t)n)) {
         free(toks);
         return CODEC_ERR_PARSE;
     }
