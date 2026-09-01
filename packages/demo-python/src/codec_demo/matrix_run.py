@@ -163,7 +163,7 @@ async def main_async(args: argparse.Namespace) -> None:
     # repo-root/dictionaries/. If the server is configured to use a
     # different dict, the wire/ttft numbers still land: only the
     # decoded-tokens count drops to 0 with a "Codec-Zstd-Dict mismatch"
-    # error string on the row, which keeps reviewers honest.
+    # error string on the row. That keeps reviewers honest.
     dict_dir = REPO_ROOT / "dictionaries"
     load_zstd_dict_files(
         str(dict_dir / "qwen2.5-synth-msgpack-v1.dict"),

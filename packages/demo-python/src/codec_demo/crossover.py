@@ -123,8 +123,9 @@ def render_winner_per_size(results: list[CellResult], sizes: list[int]) -> str:
 
 
 def derive_rule(results: list[CellResult], path_label: str, sizes: list[int]) -> dict[str, object]:
-    """For one path, find the size at which each encoding starts winning, and
-    the size at which each encoding stops being competitive (>20% over winner)."""
+    """For one path, find the size at which each encoding starts winning.
+    Also find the size at which each encoding stops being competitive
+    (>20% over winner)."""
     out: dict[str, object] = {"path": path_label, "wins": {}, "losses": {}}
     for size in sizes:
         row = [r for r in results if r.size == size and r.path_label == path_label and r.wire_bytes is not None]

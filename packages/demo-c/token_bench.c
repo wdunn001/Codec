@@ -6,7 +6,7 @@
  * demo-java/.../TokenBench.java.
  *
  * libcodec doesn't yet ship a BPE encoder (per top-level README; the C
- * client is detokenize-only for BPE), so this driver only times decode.
+ * client is detokenize-only for BPE). This driver only times decode.
  * encode_* fields in the output are null.
  *
  * Usage:

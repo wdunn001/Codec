@@ -42,7 +42,7 @@ import msgpack
 # Qwen2.5-Instruct chat template asks for tool calls inside literal
 # `<tool_call>...</tool_call>` delimiters. The corresponding token IDs
 # are 151657 / 151658 in the qwen2 vocab. The model emits these as
-# single tokens, so server-side detection is a uint32 compare.
+# single tokens. Server-side detection is therefore a uint32 compare.
 DEFAULT_PROMPT = (
     "<|im_start|>system\n"
     "You are a helpful assistant. You may call functions when relevant.\n"

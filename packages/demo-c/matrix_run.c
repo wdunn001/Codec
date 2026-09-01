@@ -18,7 +18,7 @@
  * Dependencies: libcurl (HTTP), libcodec (codec_decode_msgpack /
  * codec_decode_protobuf_frame for token counting). No JSON library:
  * we hand-roll narrow substring extraction for the few methodology
- * fields we read, and printf-format the result. The bench's primary
+ * fields we read. We then printf-format the result. The bench's primary
  * signal (wire bytes / TTFB / total) doesn't depend on the JSON layer
  * being correct.
  *
@@ -232,8 +232,8 @@ static int zstd_decompress_with_dict(const uint8_t *src, size_t src_len,
         ZSTD_freeDCtx(dctx); return 0;
     }
 
-    /* Grow geometrically. Codec frame streams are small (KBs, not MBs) so
-     * we start with a 64 KB output buffer and double on overflow. */
+    /* Grow geometrically. Codec frame streams are small, on the order of KBs.
+     * We start with a 64 KB output buffer and double on overflow. */
     size_t cap = 64 * 1024;
     uint8_t *dst = (uint8_t *)malloc(cap);
     if (!dst) { ZSTD_freeDCtx(dctx); return 0; }
@@ -454,7 +454,7 @@ static void run_one(CURL *curl, const char *endpoint, const char *model,
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &st);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 180L);
     /* CRITICAL: do NOT set CURLOPT_ACCEPT_ENCODING: that would tell
-     * curl to auto-decompress, which would corrupt our wire-byte count.
+     * curl to auto-decompress. That would corrupt our wire-byte count.
      * The Accept-Encoding header is set manually above. */
     curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 
@@ -483,7 +483,7 @@ static void run_one(CURL *curl, const char *endpoint, const char *model,
      *   zstd: verify Codec-Zstd-Dict against the loaded dict registry
      *                     (codec_select_zstd_dict_for_response), decompress with
      *                     libzstd, then count post-decompression tokens.
-     *   gzip / br: libcodec doesn't link a gzip/brotli decoder, so we
+     *   gzip / br: libcodec doesn't link a gzip/brotli decoder. We
      *                     report the requested `size` (same fallback the bench
      *                     used before this change). The primary signal
      *                     (wire_bytes / TTFB / total_ms) is captured pre-decompress
@@ -756,7 +756,7 @@ int main(int argc, char **argv) {
      * as the prompts file. If the server is configured to use a different
      * dict, the wire/ttft numbers still land: only the decoded-tokens
      * count drops to 0 with a "Codec-Zstd-Dict mismatch" error string on
-     * the row, which keeps reviewers honest. */
+     * the row. That keeps reviewers honest. */
     {
         char anchor[256];
         snprintf(anchor, sizeof(anchor), "packages/bench/%s", prompts_rel);
@@ -792,18 +792,18 @@ int main(int argc, char **argv) {
      * then close. This is a hack, but the methodology JSON as written by
      * capture_methodology.py is line-organised and has these blocks at
      * the top level: substituting the entire blocks via printf is
-     * unsafe, so we splice into the existing JSON structure.
+     * unsafe. We splice into the existing JSON structure instead.
      *
      * Simpler implementation that mirrors the other ports' "fill in
      * client + bench_tool" semantics: write a fresh JSON document that
      * embeds the original methodology as a sub-object with our blocks
      * substituted. This duplicates fields but is structurally correct
-     * and the aggregator validates by fingerprint, not by exact bytes. */
+     * and the aggregator validates by fingerprint. */
     fputs("{\n  \"schema_version\": \"1\",\n", out);
     fputs("  \"methodology\": ", out);
     /* Naive: emit the whole methodology then append a comment-via-key of
      * our blocks. Aggregator accepts both because it walks the methodology
-     * as a dict, and `client` + `bench_tool` keys appear once each (Python
+     * as a dict. `client` + `bench_tool` keys appear once each (Python
      * json.load uses last-wins on duplicates, JS too). To keep it simple,
      * we strip the trailing `}` from methodology and append our blocks
      * as new keys. */

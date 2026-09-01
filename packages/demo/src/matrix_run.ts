@@ -7,8 +7,8 @@
  * never invents methodology fields. The runner only fills in the `client` and
  * `bench_tool` blocks before emitting.
  *
- * Wire-byte measurement: uses Node's raw `http`/`https` module (NOT global
- * `fetch`, which auto-decompresses gzip/br). We measure exactly the bytes
+ * Wire-byte measurement: uses Node's raw `http`/`https` module. NOT global
+ * `fetch`: that auto-decompresses gzip/br. We measure exactly the bytes
  * that arrive on the socket before any Content-Encoding decompression: the
  * value SCHEMA.md mandates.
  *
@@ -284,8 +284,8 @@ function decompressBody(
       // via Codec-Zstd-Dict. selectZstdDictForResponse validates the header
       // shape, matches it against ZSTD_DICTS, and throws CodecZstdDictError
       // on missing / unknown / malformed: wrong-dict decompression would
-      // produce garbage bytes that msgpack parsers misinterpret, so fail
-      // fast is the spec-mandated behaviour
+      // produce garbage bytes that msgpack parsers misinterpret. Fail
+      // fast is therefore the spec-mandated behaviour
       // (spec/versions/v0.4.md §Codec-Zstd-Dict response header).
       const dict = selectZstdDictForResponse(responseHeaders, ZSTD_DICTS);
       return zstdDecompressWithDict(body, dict);
@@ -462,8 +462,8 @@ async function runOne(inp: RunInput): Promise<CellResult> {
     // signal is wire_bytes / ttft_ms / total_ms: those are measured
     // pre-decompression on the raw socket and stay accurate. Tokens
     // are deterministic at temperature=0; vLLM emits exactly `size`
-    // tokens in the normal completion path, so we report `size` rather
-    // than the misleading 0 when the body decode fails. Mirrors the
+    // tokens in the normal completion path. We report `size` when the
+    // body decode fails, avoiding the misleading 0. Mirrors the
     // matching C-side fallback in packages/demo-c/matrix_run.c.
     if (tokens <= 0 && (ae !== 'identity' || !decompressOk)) {
       tokens = inp.size;

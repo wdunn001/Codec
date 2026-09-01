@@ -3,7 +3,7 @@
 and TTFT so the time-vs-bytes story comes from one consistent dataset.
 
 This exists because the previous TTFT and crossover tables were stitched
-together from separate runs, which produced subtle inconsistencies in
+together from separate runs. That produced subtle inconsistencies in
 the brotli numbers (small Codec frames + small differences in emitted
 token counts give surprisingly different br behaviour).
 

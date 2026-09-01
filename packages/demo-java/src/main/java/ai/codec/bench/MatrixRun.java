@@ -7,9 +7,9 @@
 //   packages/demo-rust/src/matrix_run.rs
 //
 // Reads a methodology JSON written by capture_methodology.py and emits
-// a SCHEMA-v1 result JSON. JDK HttpClient doesn't auto-decompress, so
-// wire bytes are exactly what's off the socket: no special config
-// needed. Decompression is best-effort for token counting and never
+// a SCHEMA-v1 result JSON. JDK HttpClient doesn't auto-decompress.
+// Wire bytes are therefore exactly what's off the socket: no special
+// config needed. Decompression is best-effort for token counting and never
 // overrides wire/TTFB on failure (e.g. zstd dict mismatch when no
 // matching dict is loaded client-side).
 
@@ -198,8 +198,8 @@ public final class MatrixRun {
      *  against {@link #ZSTD_DICTS} via
      *  {@link Compression#selectZstdDictForResponse} and decompresses
      *  with that dict: bare {@code ZstdInputStream(...)} (no dict) only
-     *  works against no-dict servers, and the v0.4 bench fleet emits
-     *  dict-zstd, so the no-dict path produced
+     *  works against no-dict servers. The v0.4 bench fleet emits
+     *  dict-zstd. The no-dict path therefore produced
      *  "ZstdIOException: Dictionary mismatch" before this rewire. */
     static byte[] tryDecode(String contentEncoding,
                             byte[] compressed,
@@ -234,7 +234,7 @@ public final class MatrixRun {
         ZstdInputStream zis = new ZstdInputStream(new ByteArrayInputStream(compressed));
         if (dict != null) {
             // ZstdDictDecompress holds a native-side parsed dict: reuse
-            // it across the stream rather than re-parsing on every chunk.
+            // it across the stream, avoiding a re-parse on every chunk.
             try (ZstdDictDecompress parsed = new ZstdDictDecompress(dict)) {
                 zis.setDict(parsed);
                 return readAll(zis);

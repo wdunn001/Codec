@@ -185,7 +185,7 @@ fn count_protobuf(data: &[u8]) -> usize {
 // pass the matched dict bytes to `zstd::stream::Decoder::with_dictionary`.
 // A missing/malformed/unknown-hash header is a fatal decode error per
 // spec: we propagate it as a string in the same shape the rest of the
-// matrix expects, instead of silently bare-decoding with no dict.
+// matrix expects.
 fn try_decode(
     content_encoding: &str,
     response_headers: &HashMap<String, String>,
@@ -305,8 +305,8 @@ async fn run_one(
 
     // Snapshot response headers (lowercased keys) so try_decode can run
     // select_zstd_dict_for_response against them. Cheap: only used per
-    // request, and reqwest's HeaderMap keys are already ASCII-lowercase
-    // on the wire.
+    // request. reqwest's HeaderMap keys are already ASCII-lowercase
+    // on the wire too.
     let mut response_headers: HashMap<String, String> = HashMap::new();
     for (k, v) in resp.headers().iter() {
         if let Ok(s) = v.to_str() {
@@ -363,7 +363,7 @@ pub async fn run_matrix(args: MatrixArgs) -> Result<(), Box<dyn std::error::Erro
 
     // Repo root = parent of packages/. Derive from this binary's dir if
     // the methodology references a relative prompts path. Cargo target
-    // dir is target/release|debug, so up 3 from binary → repo root.
+    // dir is target/release|debug. That means up 3 from binary → repo root.
     let bin_path = std::env::current_exe()?;
     let repo_root = bin_path
         .ancestors()
@@ -376,8 +376,7 @@ pub async fn run_matrix(args: MatrixArgs) -> Result<(), Box<dyn std::error::Erro
     // load_zstd_dict_files(...) call in
     // packages/demo-python/src/codec_demo/matrix_run.py. Missing files
     // are tolerated: the bench then surfaces a 'Dictionary mismatch'
-    // style error on zstd cells whose hash we don't have, rather than
-    // crashing.
+    // style error on zstd cells whose hash we don't have.
     let dict_dir = repo_root.join("dictionaries");
     let dict_paths = [
         dict_dir.join("qwen2.5-synth-msgpack-v1.dict"),
@@ -401,7 +400,7 @@ pub async fn run_matrix(args: MatrixArgs) -> Result<(), Box<dyn std::error::Erro
         );
     }
     // First writer wins (OnceLock); on repeat runs in tests / harnesses
-    // the existing registry stays put, which is the right semantics.
+    // the existing registry stays put. That is the right semantics.
     let _ = ZSTD_DICTS.set(dicts);
 
     let prompts_rel = methodology["workload"]["prompts_file"]
