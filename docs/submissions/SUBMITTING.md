@@ -226,8 +226,8 @@ Submissions Editor (ISE):
 
 > `https://www.rfc-editor.org/about/independent/`
 
-The ISE process is lighter-weight than WG adoption but produces an
-Informational RFC rather than a Standards-Track one. For Codec
+The ISE process is lighter-weight than WG adoption. It produces an
+Informational RFC. For Codec
 specifically, Informational is sufficient: the draft is purely
 descriptive. It says "here's a thing that exists," never "here's
 a thing the IETF endorses."
