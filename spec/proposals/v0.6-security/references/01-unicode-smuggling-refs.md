@@ -34,7 +34,7 @@ Companion to [`../01-unicode-smuggling.md`](../01-unicode-smuggling.md).
 - https://github.com/cosgo7/zero-width-detector: detection
 - https://330k.github.io/misc_tools/unicode_steganography.html: encode/decode
 
-**Threat model significance:** primarily a **filter-evasion** vector rather than a smuggling vector: most tokenizers handle these inconsistently. The smuggled payload often fragments as a result. The value to attackers is defeating naive substring/regex match in security policies.
+**Threat model significance:** primarily a **filter-evasion** vector: most tokenizers handle these inconsistently. The smuggled payload often fragments as a result. The value to attackers is defeating naive substring/regex match in security policies.
 
 ---
 

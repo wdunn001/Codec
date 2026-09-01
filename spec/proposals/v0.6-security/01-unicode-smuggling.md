@@ -18,7 +18,7 @@ For Codec specifically: **anything client-side that round-trips user text throug
 
 ### 1. Unicode Tag block (U+E0000:U+E007F)
 
-**Mechanism.** The Unicode Tag block is a copy of ASCII (U+E0000 + ASCII codepoint = the tag equivalent). These characters render as nothing in every commonly-deployed font. Most BPE tokenizers (GPT, Llama, Claude, Mistral) tokenize them as distinct tokens rather than as zero-width whitespace. An attacker can encode an arbitrary ASCII string in tag-block characters and the model will see it as text while a human reviewer sees nothing.
+**Mechanism.** The Unicode Tag block is a copy of ASCII (U+E0000 + ASCII codepoint = the tag equivalent). These characters render as nothing in every commonly-deployed font. Most BPE tokenizers (GPT, Llama, Claude, Mistral) tokenize them as distinct tokens. An attacker can encode an arbitrary ASCII string in tag-block characters and the model will see it as text while a human reviewer sees nothing.
 
 **Public reference:** Riley Goodside's June 2024 demonstration. Joseph Thacker's subsequent writeup. Cataloged at https://embracethered.com under "ASCII Smuggler."
 
