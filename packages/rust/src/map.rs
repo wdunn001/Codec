@@ -55,7 +55,7 @@ pub struct TokenizerMap {
     pub pre_tokenizer_pattern: Option<String>,
     /// Compiled pre-tokenizer program. Preferred over `pre_tokenizer_pattern`
     /// when present: the runtime executes the ops directly with no regex
-    /// engine, which unblocks the GPT-2-family maps whose `(?i:...)` and
+    /// engine. That unblocks the GPT-2-family maps whose `(?i:...)` and
     /// `(?!\S)` syntax the `regex` crate doesn't support. See
     /// [`crate::pretok_program::PreTokProgram`] and
     /// [`spec/PRETOKENIZER_PROGRAM.md`](https://github.com/wdunn001/Codec/blob/main/spec/PRETOKENIZER_PROGRAM.md).
@@ -73,7 +73,7 @@ pub struct TokenizerMap {
     /// Per-model tool-calling convention. Optional; populated by
     /// `@codecai/maps-cli` when it detects a known chat-template signature.
     /// Absent on maps generated before this block existed; readers MUST treat
-    /// absence as "convention not declared" rather than as an error. See
+    /// absence as "convention not declared". See
     /// `spec/PROTOCOL.md` § "Tool-call calling conventions in the map".
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "tool_calling")]
     pub tool_calling: Option<ToolCallingBlock>,

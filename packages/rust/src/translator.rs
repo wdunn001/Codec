@@ -13,7 +13,7 @@
 //! from `@codecai/web` and the Python Translator from `codecai`: same
 //! word-boundary buffering rules.
 //!
-//! Streaming caveat: BPE merges depend on context, so re-tokenizing
+//! Streaming caveat: BPE merges depend on context. Re-tokenizing
 //! partial words mid-stream produces different IDs than re-tokenizing
 //! the complete word. The Translator buffers text until a safe boundary
 //! (whitespace) before flushing through BPE. Pass `partial=true` for

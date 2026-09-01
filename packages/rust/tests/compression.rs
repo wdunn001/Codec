@@ -286,7 +286,7 @@ fn fixture_decompress_byte_identical_and_msgpack_token_ids_match() {
         "first 10 token IDs MUST match manifest"
     );
 
-    // And the hardcoded check from the task description, so the
+    // Also the hardcoded check from the task description. The
     // assertion is visible in this file too.
     assert_eq!(
         &ids[..10],
@@ -294,8 +294,8 @@ fn fixture_decompress_byte_identical_and_msgpack_token_ids_match() {
     );
 }
 
-// Compile-time guard: the test file lives at packages/rust/tests, so the
-// fixture is two levels up (../bench/fixtures/dict-zstd-interop).
+// Compile-time guard: the test file lives at packages/rust/tests. The
+// fixture is therefore two levels up (../bench/fixtures/dict-zstd-interop).
 #[test]
 fn fixture_root_exists() {
     let r = fixture_root();
