@@ -65,7 +65,7 @@ function vulnerableFstringPipeline(bio: string): Payload {
 
 /**
  * The defended pipeline: uses native object construction (or equivalent
- * `JSON.stringify` on user content). Bio is data, not structure.
+ * `JSON.stringify` on user content). Bio is treated as data.
  */
 function defendedPipeline(bio: string): Payload {
   return {
@@ -118,7 +118,7 @@ test('defense: defended pipeline keeps the messages array intact', () => {
   assert.equal(payload.messages[1].role, 'user');
 
   // The bio's JSON-looking content is now INSIDE the user message content
-  // as data, not structure. Verify the injection phrase is preserved as text.
+  // as data. Verify the injection phrase is preserved as text.
   assert.ok(
     payload.messages[1].content.includes('PRIORITY OVERRIDE'),
     'attack payload preserved as content (defense did not lose data)',
@@ -164,9 +164,9 @@ test('attack: system-reminder mimicry uses the Claude harness pattern', () => {
 test('note: system-reminder mimicry is NOT stripped by sanitizeForCodec (intentional)', () => {
   // sanitizeForCodec strips STRUCTURAL attacks (smuggling, chat-template tokens).
   // The `<system-reminder>` tag is a semantic-level attack that must be handled
-  // at the prompt-assembly layer (wrap in `<untrusted_content>`) rather than
-  // stripped at the wire boundary, because legitimate use cases (logging,
-  // documentation about prompts) need to round-trip the literal text.
+  // Legitimate use cases (logging, documentation about prompts) need to
+  // round-trip the literal text. The tag is therefore handled at the
+  // prompt-assembly layer (wrap in `<untrusted_content>`).
   const payload = load('system-reminder-mimicry.txt');
   const { text } = sanitizeForCodec(payload);
   assert.ok(text.includes('<system-reminder>'), 'tag preserved by sanitizer');

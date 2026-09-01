@@ -3,8 +3,8 @@
  *
  * Wraps Meta's Prompt Guard 86M (a BERT-tier classifier for prompt
  * injection / jailbreak detection) via Transformers.js. ~80 MB after
- * ONNX quantization; runs on CPU/WASM with no WebGPU requirement, so
- * it works on every device with a modern browser (or in Node ≥18).
+ * ONNX quantization; runs on CPU/WASM with no WebGPU requirement. It
+ * works on every device with a modern browser as a result (or in Node ≥18).
  *
  * Loaded lazily on first `score()` call. Idempotent `load()` lets a
  * host pre-warm if it wants the first prompt to feel instant.
@@ -236,7 +236,7 @@ export function registerPromptGuard86m(opts: PromptGuard86mOptions = {}): void {
         'Meta Prompt Guard 86M via Transformers.js: tier-1 default; CPU/WASM, ~80 MB',
     });
   } catch (e) {
-    // Re-registration is a no-op rather than a hard error (hosts may
+    // Re-registration is a no-op (hosts may
     // import the registration module from multiple entry points).
     if (e instanceof Error && /already registered/.test(e.message)) return;
     throw e;

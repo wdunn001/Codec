@@ -9,7 +9,7 @@
  *
  * The Anthropic MCP "by design" STDIO command-injection wave of April 2026
  * (Ox Security, 7,000+ servers, 150M+ downloads) puts the burden on host
- * implementations rather than the protocol: see
+ * implementations: see
  * spec/proposals/v0.6-security/references/06-tool-agent-refs.md for context.
  * This module is exactly the kind of layer Anthropic deferred to host
  * developers.
@@ -72,7 +72,7 @@ export type TrustTier = 'system' | 'user' | 'external' | 'tool_result';
  * Wrap externally-sourced content in `<untrusted_content>` tags before
  * concatenating into a model prompt. The companion system-prompt directive
  * (host-supplied) instructs the model to treat content inside these tags as
- * data, not instructions.
+ * data.
  *
  * Origin labels:
  *   - `mcp.<server>.tool-description`: tool description from MCP server
@@ -106,8 +106,8 @@ export interface CollisionResult {
 }
 
 /**
- * Detect tool-name collisions across multiple MCP servers, and produce the
- * recommended namespacing (server-qualified). When two servers register the
+ * Detect tool-name collisions across multiple MCP servers. Produce the
+ * recommended namespacing (server-qualified) as a result. When two servers register the
  * same tool name, the model has no way to choose between them; namespacing
  * with `<server>.<name>` removes the ambiguity AND surfaces the situation
  * to the host application for explicit user confirmation before granting

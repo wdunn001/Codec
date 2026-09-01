@@ -2,9 +2,9 @@
  * `LlamaGuard31B`: tier-2 opt-in browser safety classifier.
  *
  * Wraps Meta's Llama Guard 3 1B via MLC web-llm. ~1 GB after WebGPU
- * q4 quantization; requires WebGPU + GB-class memory headroom, so it
+ * q4 quantization; requires WebGPU + GB-class memory headroom. It
  * back-stops the always-on tier-1 Prompt Guard 86M (slice 3) on
- * capable devices. Surfaces the full Llama Guard 3 14-category
+ * capable devices as a result. Surfaces the full Llama Guard 3 14-category
  * taxonomy (S1:S14) so policy descriptors can route per-category.
  *
  * Generator-DI design: the classifier does NOT hard-import
@@ -321,7 +321,7 @@ const defaultGeneratorFactory: LlamaGuardGeneratorFactory = async (modelId, opts
  *
  *   import { registerLlamaGuard31B } from '@codecai/web-safety/classifiers/llama-guard-3-1b';
  *   registerLlamaGuard31B({
- *     // Reuse leet's existing engine pool instead of spinning up a fresh one:
+ *     // Reuse leet's existing engine pool:
  *     generatorFactory: leetEngineGeneratorFactory,
  *   });
  */

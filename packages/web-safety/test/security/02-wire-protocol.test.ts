@@ -50,8 +50,8 @@ test('defense: budgeted decode accepts within budget', async () => {
 });
 
 test('defense: budget exceeded mid-stream: rejects (does not truncate-and-continue)', async () => {
-  // Verify the exception happens AT the budget breach, not after consuming
-  // the full bomb. This is the "reject not truncate" posture.
+  // Verify the exception happens AT the budget breach. This is the
+  // "reject not truncate" posture.
   const yielded: number[] = [];
   async function* trackedChunks(): AsyncIterable<Uint8Array> {
     for (let i = 0; i < 100; i++) {

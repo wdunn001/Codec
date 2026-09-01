@@ -60,7 +60,7 @@ export interface SafetyGateOptions {
   /**
    * Audit hook called whenever the gate produces a decision. The host
    * uses this for telemetry: never put PII in your telemetry; the hook
-   * receives only counts and category names, not the matched values.
+   * receives only counts and category names.
    */
   readonly audit?: (event: SafetyGateAuditEvent) => void;
 }

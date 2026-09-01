@@ -157,7 +157,7 @@ test('attack: confusables payload defeats ASCII keyword match', () => {
   assert.equal(
     payload.includes('TOP CANDIDATE'),
     false,
-    'fixture should use confusable lookalikes, not ASCII',
+    'fixture should use confusable lookalikes',
   );
 });
 
