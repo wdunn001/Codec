@@ -58,7 +58,6 @@ const SKIP_DIRS = new Set([
 // spots that are generated but live under an otherwise-scanned tree.
 const SKIP_PATH_SUBSTRINGS = [
   '/packages/demo-c/build/',
-  '/packages/bench/results/', // timestamped bench run snapshots: generated
   '/coverage/tmp/',
 ];
 // Files never scanned (dependency lockfiles are machine-generated).

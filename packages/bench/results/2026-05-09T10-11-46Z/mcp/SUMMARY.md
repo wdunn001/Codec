@@ -1,10 +1,10 @@
-# SUMMARY — MCP wire bench against codec-metamcp v0.3.0 + codec-time-leaf
+# SUMMARY: MCP wire bench against codec-metamcp v0.3.0 + codec-time-leaf
 
 **Run**: `2026-05-09T10-11-46Z`
 **Engine**: `wdunn001/codec-metamcp:v0.3.0` (MCP zstd dict mounted)
 **Lab**: `vinez@192.168.1.88` (2× RTX 3090, Docker 27.5)
 **Endpoint**: `http://192.168.1.88:12008/metamcp/openwebui-api/mcp`
-**Namespace**: 7 MCP servers — original 6 (Time / Calculator / Playwright / Sequential-Thinking / YouTube-Transcripts / Memory) **+ `codec-time-leaf` (the Codec-aware reference server)**
+**Namespace**: 7 MCP servers: original 6 (Time / Calculator / Playwright / Sequential-Thinking / YouTube-Transcripts / Memory) **+ `codec-time-leaf` (the Codec-aware reference server)**
 **Bridge**: `wdunn001/codec-time-leaf:v0.3.0` exposed via `mcp-proxy` SSE bridge at `codec-time-leaf-bridge:9001/sse` on the lab's docker network
 **Vocab map**: `qwen2` (sha256:`9db56ff6`)
 
@@ -21,7 +21,7 @@
 Same 3.6× win as the prior namespace (38 tools); time-leaf adds ~700 B
 to the list but compresses identically. Variants 4 and 5 collapse to
 the same number on `tools/list` because that endpoint is purely a
-metamcp-internal dispatcher response — no downstream `_codec_meta`
+metamcp-internal dispatcher response: no downstream `_codec_meta`
 blocks to short-circuit.
 
 ## End-to-end integration milestone
@@ -65,7 +65,7 @@ Net effect on this bench:
 - The 4.6 KB response shown for `codec-time-leaf__get_current_time`
   under `json` is the **error envelope**, not a real tool result.
 - The 1.1 KB compressed response under `msgpack-both+gzip+map` (variant 5)
-  is the **same error envelope, gzipped** — which still compresses to
+  is the **same error envelope, gzipped**: which still compresses to
   4.2× over the JSON form, but doesn't quantify the leaf-mode bypass.
 
 The bug is in codec-metamcp's CallToolResult validation order. The
@@ -83,7 +83,7 @@ Tracked as the Phase 6 follow-up against the codec-metamcp fork.
 - v0.3.0 metamcp + the MCP zstd dict load cleanly; no regression on
   the 38 baseline tools.
 - The `tools/list` 3.6× win is reproducible against the augmented namespace.
-- The codec-time-leaf integration plumbing is end-to-end live —
+- The codec-time-leaf integration plumbing is end-to-end live:
   what's blocking the leaf-mode wire-bytes number is the gateway-side
   validation order bug above, not the leaf-mode contract itself.
 - The `[Codec][shim]` and `[Codec][leaf]` log paths in metamcp v0.3.0
@@ -103,7 +103,7 @@ Same as `2026-05-09T09-26-54Z/mcp/SUMMARY.md`:
 ## Next concrete step
 
 Fix codec-metamcp's CallToolResult validation order so `_codec_meta`
-blocks pass through the gateway. Then re-run this bench — the
+blocks pass through the gateway. Then re-run this bench: the
 codec-time-leaf cells will show real tool results (not error envelopes)
 and variant 5 will quantify the leaf-mode bypass against variant 4
 end-to-end. That's the headline number we set out to measure.

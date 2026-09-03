@@ -102,7 +102,7 @@ impl BPETokenizer {
         // support `(?i:...)` inline-flag groups or `(?!\S)` lookaround.
         let (pre_tok_regex, pre_tok_program) = if encoder == "byte_level" {
             if let Some(prog) = map.pre_tokenizer_program.as_ref() {
-                if prog.ops.is_empty() {
+                if prog.is_empty() {
                     return Err(format!(
                         "BPETokenizer: byte_level map \"{}\" has empty pre_tokenizer_program.",
                         map.id

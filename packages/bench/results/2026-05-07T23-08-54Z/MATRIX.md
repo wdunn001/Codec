@@ -1,4 +1,4 @@
-# Cross-stack benchmark matrix — 2026-05-07T23:08:54Z
+# Cross-stack benchmark matrix: 2026-05-07T23:08:54Z
 
 First Phase-1 run under the SCHEMA-v1 methodology
 ([SCHEMA.md](../../methodology/SCHEMA.md)). One stack (sglang via Docker
@@ -25,7 +25,7 @@ sibling JSONs to `results/2026-05-07T23-08-54Z/{engine}/{lang}.json`.
 | Model | `Qwen/Qwen2.5-0.5B-Instruct` (fp16) |
 | Endpoint | `http://localhost:30002` (LAN, supervisor proxy → backend on :30000) |
 | Stream formats supported | `json`, `msgpack`, `protobuf` |
-| Compression supported | `identity`, `gzip` (the image predates today's dict-zstd-gate; `zstandard` and `brotli` not in container — `br`/`zstd` cells fall through to identity) |
+| Compression supported | `identity`, `gzip` (the image predates today's dict-zstd-gate; `zstandard` and `brotli` not in container: `br`/`zstd` cells fall through to identity) |
 | Client | `codecai 0.2.0` / CPython 3.12.3 / httpx 0.28.1 / msgpack 1.1.2 |
 | Bench tool | `demo-python/codec-demo.matrix_run` 0.1.0 / 2 reps / median aggregation |
 | TTFT | wall-clock from POST to first received byte (httpx `aiter_raw`, before decompression) |
@@ -59,8 +59,8 @@ sibling JSONs to `results/2026-05-07T23-08-54Z/{engine}/{lang}.json`.
 | 2048 | 16.2× | **1,401×** | 24.2× | **1,595×** |
 
 **Headline:** `protobuf + gzip` at 2K tokens collapses 496 KB of JSON-SSE
-into 311 bytes — a **1,595× wire reduction**. Format-only floor (no
-compression) is a constant 16–24× across all sizes; compression is what
+into 311 bytes: a **1,595× wire reduction**. Format-only floor (no
+compression) is a constant 16 to 24× across all sizes; compression is what
 unlocks the runaway improvement on long streams as the deflate context
 amortises across more frames.
 
@@ -78,7 +78,7 @@ Qwen2.5-0.5B / RTX 3090).
 
 `br` and `zstd` cells in this run match `identity` on the wire because
 the running container's middleware doesn't have `brotli` or
-`zstandard` Python packages — the negotiator silently falls through to
+`zstandard` Python packages: the negotiator silently falls through to
 identity. This image will be regenerated once today's libcodec
 `tool_calls` field and the Codec-Zstd-Dict header land on Docker Hub;
 re-running this matrix against the new image will fill the br/zstd
@@ -105,8 +105,8 @@ detection. **TTFB**: JSON-SSE 2,018 ms → Codec 56.8 ms = **35.5× faster
 first byte** (the JSON-SSE path was rate-limited by something
 extra-spicy on this run; gap is real but the absolute number is
 high-noise). Server-`tool_watcher` consumes the marker tokens, so its
-visible token count is just the prefix tokens before the call —
-1 here — while the structured `tool_calls` payload rides on the frame.
+visible token count is just the prefix tokens before the call:
+1 here: while the structured `tool_calls` payload rides on the frame.
 
 † Path B "Codec msgpack + client detokenize" needs the HuggingFace
 `transformers` package for tokenizer access. Not installed in this
@@ -151,7 +151,7 @@ prompt: "Search the web for the latest news about Anthropic Claude."
 network round-trip (~1.1 s on this run); the Codec wire savings show up
 as bytes, not as wall-clock. Matches RESULTS.md §5 (18.2×).
 
-### MetaMCP (Time MCP server) — **skipped this run**
+### MetaMCP (Time MCP server): **skipped this run**
 
 Lab box does not have `METAMCP_API_KEY` set in `vinez`'s shell. Future
 run: export the key and re-run with prompt
@@ -175,15 +175,15 @@ SCHEMA-v1 emitter in its language. Concretely:
 | llama.cpp | All 6 langs | ⚠ `feat/codec-binary-transport` + `feat/codec-compression` merged to fork master, builds clean against latest upstream, **no GGUF loaded yet on the lab box** |
 
 Plus, two bench types not yet generalised across languages:
-- **Tokenizer / detokenizer microbench** — each library has its own
+- **Tokenizer / detokenizer microbench**: each library has its own
   tests; no unified schema yet. `packages/bench/src/handoff.ts` is the
   TS-only reference; needs SCHEMA-v2 (or a §5 extension) and
   per-language emitters.
-- **E2E + tool-call** — `agent_bench.py` and `toolcall_bench.py` are
+- **E2E + tool-call**: `agent_bench.py` and `toolcall_bench.py` are
   Python-only. Mirroring them across the other 5 client langs would
   fill those rows.
 
-Both are doable but each is its own day of work — see the Phase 2
+Both are doable but each is its own day of work: see the Phase 2
 breakdown in the bench runbook for sequencing.
 
 ---

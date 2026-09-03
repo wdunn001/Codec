@@ -237,6 +237,139 @@ function findNemoMap(): string | null {
 const NEMO_MAP_PATH = findNemoMap();
 const haveNemo = NEMO_MAP_PATH !== null;
 
+function findLlama3Map(): string | null {
+  for (const c of [
+    path.resolve(import.meta.dirname, '../../../../codec-maps/maps/meta-llama/llama-3.json'),
+    path.resolve(import.meta.dirname, '../../../../../codec-maps/maps/meta-llama/llama-3.json'),
+    '/mnt/h/dev/codec-maps/maps/meta-llama/llama-3.json',
+    'H:/dev/codec-maps/maps/meta-llama/llama-3.json',
+  ]) if (fs.existsSync(c)) return c;
+  return null;
+}
+const LLAMA3_MAP_PATH = findLlama3Map();
+const haveLlama3 = LLAMA3_MAP_PATH !== null;
+
+// ── Metaspace golden-fixture parity (the whitespace-corruption bug fix) ────
+//
+// Reference IDs in test/fixtures/metaspace-golden.json come from running
+// HuggingFace `tokenizers` 0.23.1's `Tokenizer.from_file()` directly against
+// each model publisher's own tokenizer.json (add_special_tokens=False), not
+// from re-deriving the algorithm by hand. See that file's `_provenance`.
+function findMetaspaceMap(relPath: string): string | null {
+  for (const c of [
+    path.resolve(import.meta.dirname, '../../../../codec-maps/maps', relPath),
+    path.resolve(import.meta.dirname, '../../../../../codec-maps/maps', relPath),
+    `/mnt/h/dev/codec-maps/maps/${relPath}`,
+    `H:/dev/codec-maps/maps/${relPath}`,
+  ]) if (fs.existsSync(c)) return c;
+  return null;
+}
+
+interface MetaspaceGolden {
+  readonly models: Record<string, ReadonlyArray<{ readonly text: string; readonly ids: readonly number[] }>>;
+}
+
+function loadMetaspaceGolden(): MetaspaceGolden {
+  const p = path.resolve(import.meta.dirname, 'fixtures/metaspace-golden.json');
+  return JSON.parse(fs.readFileSync(p, 'utf-8')) as MetaspaceGolden;
+}
+
+// Each of the 8 metaspace maps named in the corruption report, mapped to its
+// path under codec-maps/maps/ and its golden-fixture key.
+const METASPACE_MAPS: ReadonlyArray<{ readonly golden: string; readonly relPath: string }> = [
+  { golden: 'gemma-1', relPath: 'google/gemma-1.json' },
+  { golden: 'gemma-2', relPath: 'google/gemma-2.json' },
+  { golden: 'gemma-3', relPath: 'google/gemma-3.json' },
+  { golden: 'llama-2', relPath: 'meta-llama/llama-2.json' },
+  { golden: 'phi-3', relPath: 'microsoft/phi-3.json' },
+  { golden: 'mistral-v3', relPath: 'mistralai/mistral-v3.json' },
+  { golden: 'mixtral', relPath: 'mistralai/mixtral.json' },
+  { golden: 'codestral', relPath: 'mistralai/codestral.json' },
+];
+
+for (const { golden, relPath } of METASPACE_MAPS) {
+  const mapPath = findMetaspaceMap(relPath);
+  test(
+    `BPE metaspace: ${golden} matches HuggingFace reference IDs for every golden sample`,
+    { skip: !mapPath && `codec-maps/maps/${relPath} not present locally` },
+    () => {
+      const map = JSON.parse(fs.readFileSync(mapPath!, 'utf-8')) as TokenizerMap;
+      const tok = new BPETokenizer(map);
+      const goldenData = loadMetaspaceGolden();
+      const samples = goldenData.models[golden];
+      assert.ok(samples && samples.length > 0, `no golden samples for ${golden}`);
+      for (const { text, ids } of samples!) {
+        assert.deepEqual(
+          tok.encode(text),
+          ids as number[],
+          `${golden} mismatch for ${JSON.stringify(text)}`,
+        );
+      }
+    },
+  );
+}
+
+test(
+  'BPE metaspace: reproduces the reported bug case ("a  b" double space, gemma-2)',
+  { skip: !findMetaspaceMap('google/gemma-2.json') && 'codec-maps/maps/google/gemma-2.json not present locally' },
+  () => {
+    // Before the fix, `preTokenize` collapsed `/[ \t]+/g` to a single space
+    // and then dropped it entirely, so "a  b" and "a b" pre-tokenized
+    // identically to ["▁a", "▁b"]. The double space was silently destroyed
+    // before BPE ever ran, and the vocab's dedicated two-run token (id 139,
+    // "▁▁") was unreachable. Reference IDs from HuggingFace `tokenizers`
+    // 0.23.1 against google/gemma-2's tokenizer.json.
+    const map = JSON.parse(
+      fs.readFileSync(findMetaspaceMap('google/gemma-2.json')!, 'utf-8'),
+    ) as TokenizerMap;
+    const tok = new BPETokenizer(map);
+    const oneSpace = tok.encode('a b');
+    const twoSpace = tok.encode('a  b');
+    assert.notDeepEqual(
+      twoSpace,
+      oneSpace,
+      'a single space and a double space must not produce identical IDs',
+    );
+    assert.deepEqual(twoSpace, [235250, 139, 235268], 'must reach the dedicated ▁▁ run token (id 139)');
+    // Reference ID from HuggingFace `tokenizers` 0.23.1: the single space
+    // merges as an ordinary ▁ prefix onto "b" (id 518, "▁b"), not as a
+    // standalone token and not dropped.
+    assert.deepEqual(oneSpace, [235250, 518], 'a single space attaches as an ordinary ▁b prefix');
+  },
+);
+
+test(
+  'BPE byte_level: unaffected by the metaspace fix (qwen2 + llama-3 double-space and tab regression)',
+  {
+    skip:
+      !haveRealMap && !haveLlama3 &&
+      'neither codec-maps/qwen2.json nor codec-maps/llama-3.json present locally',
+  },
+  () => {
+    // byte_level maps go through the pre_tokenizer_program/regex branch of
+    // preTokenize, never the metaspace branch touched by this fix. Prove it
+    // by round-tripping double-space and tab-indented text, which is
+    // exactly the shape that was broken for metaspace maps.
+    const mapPaths = [QWEN_MAP_PATH, LLAMA3_MAP_PATH].filter((p): p is string => p !== null);
+    assert.ok(mapPaths.length > 0);
+    for (const mp of mapPaths) {
+      const map = JSON.parse(fs.readFileSync(mp, 'utf-8')) as TokenizerMap;
+      const tok = new BPETokenizer(map);
+      const detok = new Detokenizer(map);
+      const samples = [
+        'a  b',
+        'a   b',
+        'def add(a, b):\n    return a + b',
+        'Multiple   spaces   between   words.',
+      ];
+      for (const s of samples) {
+        const out = detok.render(tok.encode(s));
+        assert.equal(out, s, `${mp}: round-trip failed for ${JSON.stringify(s)}`);
+      }
+    }
+  },
+);
+
 test(
   'BPE byte_level: round-trips real Qwen-2 map for ASCII text',
   { skip: !haveRealMap && 'codec-maps/qwen2.json not present locally' },

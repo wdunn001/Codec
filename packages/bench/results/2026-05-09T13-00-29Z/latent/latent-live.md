@@ -1,24 +1,24 @@
-# latent-live results — 2026-05-09T13-00-29Z
+# latent-live results: 2026-05-09T13-00-29Z
 
 Endpoint: `http://192.168.1.88:8181/v1/images/generations`  ·  latent space: `stabilityai/sd-vae-ft-mse`
 reps: 1  ·  cells: 14
 
 | fixture | kind  | pipeline      | fmt     | enc      | wire_bytes | ttff_ms | total_ms | frames | error?                                                       |
 |---------|-------|---------------|---------|----------|------------|---------|----------|--------|--------------------------------------------------------------|
-| 256     | image | raw           | msgpack | identity | —          | —       | —        | —      | HTTP 500: Internal Server Error                              |
-| 256     | image | int8          | msgpack | identity | —          | —       | —        | —      | HTTP 500: Internal Server Error                              |
-| 256     | image | int4          | msgpack | identity | —          | —       | —        | —      | HTTP 500: Internal Server Error                              |
-| 256     | image | int8-adaptive | msgpack | identity | —          | —       | —        | —      | HTTP 400: {"detail":"pipeline 'int8-adaptive' not supported  |
-| 256     | image | int4-adaptive | msgpack | identity | —          | —       | —        | —      | HTTP 400: {"detail":"pipeline 'int4-adaptive' not supported  |
-| 256     | image | int8          | msgpack | gzip     | —          | —       | —        | —      | HTTP 500: Internal Server Error                              |
-| 256     | image | int8          | msgpack | zstd     | —          | —       | —        | —      | HTTP 500: Internal Server Error                              |
-| 512     | image | raw           | msgpack | identity | —          | —       | —        | —      | HTTP 500: Internal Server Error                              |
-| 512     | image | int8          | msgpack | identity | —          | —       | —        | —      | HTTP 500: Internal Server Error                              |
-| 512     | image | int4          | msgpack | identity | —          | —       | —        | —      | HTTP 500: Internal Server Error                              |
-| 512     | image | int8-adaptive | msgpack | identity | —          | —       | —        | —      | HTTP 400: {"detail":"pipeline 'int8-adaptive' not supported  |
-| 512     | image | int4-adaptive | msgpack | identity | —          | —       | —        | —      | HTTP 400: {"detail":"pipeline 'int4-adaptive' not supported  |
-| 512     | image | int8          | msgpack | gzip     | —          | —       | —        | —      | HTTP 500: Internal Server Error                              |
-| 512     | image | int8          | msgpack | zstd     | —          | —       | —        | —      | HTTP 500: Internal Server Error                              |
+| 256     | image | raw           | msgpack | identity | n/a          | n/a       | n/a        | n/a      | HTTP 500: Internal Server Error                              |
+| 256     | image | int8          | msgpack | identity | n/a          | n/a       | n/a        | n/a      | HTTP 500: Internal Server Error                              |
+| 256     | image | int4          | msgpack | identity | n/a          | n/a       | n/a        | n/a      | HTTP 500: Internal Server Error                              |
+| 256     | image | int8-adaptive | msgpack | identity | n/a          | n/a       | n/a        | n/a      | HTTP 400: {"detail":"pipeline 'int8-adaptive' not supported  |
+| 256     | image | int4-adaptive | msgpack | identity | n/a          | n/a       | n/a        | n/a      | HTTP 400: {"detail":"pipeline 'int4-adaptive' not supported  |
+| 256     | image | int8          | msgpack | gzip     | n/a          | n/a       | n/a        | n/a      | HTTP 500: Internal Server Error                              |
+| 256     | image | int8          | msgpack | zstd     | n/a          | n/a       | n/a        | n/a      | HTTP 500: Internal Server Error                              |
+| 512     | image | raw           | msgpack | identity | n/a          | n/a       | n/a        | n/a      | HTTP 500: Internal Server Error                              |
+| 512     | image | int8          | msgpack | identity | n/a          | n/a       | n/a        | n/a      | HTTP 500: Internal Server Error                              |
+| 512     | image | int4          | msgpack | identity | n/a          | n/a       | n/a        | n/a      | HTTP 500: Internal Server Error                              |
+| 512     | image | int8-adaptive | msgpack | identity | n/a          | n/a       | n/a        | n/a      | HTTP 400: {"detail":"pipeline 'int8-adaptive' not supported  |
+| 512     | image | int4-adaptive | msgpack | identity | n/a          | n/a       | n/a        | n/a      | HTTP 400: {"detail":"pipeline 'int4-adaptive' not supported  |
+| 512     | image | int8          | msgpack | gzip     | n/a          | n/a       | n/a        | n/a      | HTTP 500: Internal Server Error                              |
+| 512     | image | int8          | msgpack | zstd     | n/a          | n/a       | n/a        | n/a      | HTTP 500: Internal Server Error                              |
 
 ────────────────────────────────────────────────────────────────────────
-Generated by `packages/bench/src/latent-live.ts`. Schema: [bench/methodology/SCHEMA.md](../../methodology/SCHEMA.md) §"Latent modality (v0.3+ — additive fields)".
+Generated by `packages/bench/src/latent-live.ts`. Schema: [bench/methodology/SCHEMA.md](../../methodology/SCHEMA.md) §"Latent modality (v0.3+: additive fields)".

@@ -113,7 +113,12 @@ class BPETokenizer(Tokenizer):
         # startup-time speedup plus keeping every client on the same
         # code path, which is what makes the equivalence claim auditable.
         if self._encoder == "byte_level":
-            if m.pre_tokenizer_program and m.pre_tokenizer_program.get("ops"):
+            # A v1 program carries "ops"; a v2 program carries "stages"
+            # instead (see spec/PRETOKENIZER_PROGRAM.md § Versioning).
+            # Both are usable programs; treat either shape as present.
+            if m.pre_tokenizer_program and (
+                m.pre_tokenizer_program.get("ops") or m.pre_tokenizer_program.get("stages")
+            ):
                 self._pre_tok_program: dict[str, Any] | None = m.pre_tokenizer_program
                 self._pre_tok_re = None
             elif m.pre_tokenizer_pattern:

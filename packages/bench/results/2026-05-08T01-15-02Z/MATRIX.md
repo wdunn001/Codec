@@ -1,10 +1,10 @@
-# Cross-stack benchmark matrix — 2026-05-08T01-15-02Z
+# Cross-stack benchmark matrix: 2026-05-08T01-15-02Z
 
 Auto-generated from `packages/bench/results/2026-05-08T01-15-02Z/{engine}/{lang}.json` by `packages/bench/scripts/aggregate.py`. SCHEMA.md is the source of truth on what each cell measures.
 
 ## §1. Headline wire reduction @ 2K tokens
 
-Per engine, best-case Codec compression vs JSON-SSE identity. Python row chosen as the canonical client (others agree byte-identically — see §3).
+Per engine, best-case Codec compression vs JSON-SSE identity. Python row chosen as the canonical client (others agree byte-identically: see §3).
 
 | Engine | JSON-SSE identity | Codec msgpack + gzip | Codec msgpack + dict-zstd | Codec protobuf + gzip | Codec protobuf + dict-zstd |
 |---|---:|---:|---:|---:|---:|
@@ -42,7 +42,7 @@ For every Codec cell (size × {msgpack,protobuf} × encoding), how many byte-ide
 
 ## §3. Wire-byte grid per engine (Python row)
 
-Median bytes across reps. Other 5 client languages agree byte-identically on every Codec cell — see §2.
+Median bytes across reps. Other 5 client languages agree byte-identically on every Codec cell: see §2.
 
 ### llama.cpp
 
@@ -98,9 +98,9 @@ Per the SCHEMA.md TTFB definition split (see §5), clients fall into two cohorts
 - **Body-byte cohort** (Python httpx aiter_raw, TypeScript Node http data event, C libcurl WRITEFUNCTION): TTFB = wall-clock from POST to first body byte
 - **Headers-byte cohort** (.NET ResponseHeadersRead, Rust reqwest send().await, Java HttpClient.send): TTFB = wall-clock from POST to headers received
 
-Bodies and headers tend to arrive in the same TCP segment for non-buffered encodings (identity/gzip/br) — both cohorts agree. They diverge sharply on dict-zstd, where the server's chunker buffers small responses to end-of-stream.
+Bodies and headers tend to arrive in the same TCP segment for non-buffered encodings (identity/gzip/br): both cohorts agree. They diverge sharply on dict-zstd, where the server's chunker buffers small responses to end-of-stream.
 
-### llama.cpp — msgpack TTFB (median ms across reps)
+### llama.cpp: msgpack TTFB (median ms across reps)
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
@@ -117,7 +117,7 @@ Bodies and headers tend to arrive in the same TCP segment for non-buffered encod
 | 2048 | br | 39.2 | 42.4 |
 | 2048 | zstd | 39.1 | 39.4 |
 
-### sglang — msgpack TTFB (median ms across reps)
+### sglang: msgpack TTFB (median ms across reps)
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
@@ -134,7 +134,7 @@ Bodies and headers tend to arrive in the same TCP segment for non-buffered encod
 | 2048 | br | 45.4 | 36.4 |
 | 2048 | zstd | 3918 | 36.2 |
 
-### vllm — msgpack TTFB (median ms across reps)
+### vllm: msgpack TTFB (median ms across reps)
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
@@ -163,11 +163,11 @@ Every row above came from a SCHEMA-v1 result file with a methodology fingerprint
 
 ## §6. Quarantine
 
-None — every row's methodology fingerprint matched its engine's canonical block.
+None: every row's methodology fingerprint matched its engine's canonical block.
 
 ## §7. Known sources of variance (post-mortem)
 
-The vllm rows in §2 read as "0/24 cells unanimous" — none of the 6 client
+The vllm rows in §2 read as "0/24 cells unanimous": none of the 6 client
 languages agree byte-identically. After bisect this resolves to **three
 independent phenomena**, none of them a Codec-frame bug:
 
@@ -176,25 +176,25 @@ independent phenomena**, none of them a Codec-frame bug:
    (`packages/demo/src/matrix_run.ts`) both lacked a token-decode path
    for cells where the response body was compressed (gzip/br/zstd).
    `wire_bytes` was correct (raw socket count, measured pre-decompression);
-   only the `tokens_emitted` column was always 0. **Patched** — both
+   only the `tokens_emitted` column was always 0. **Patched**: both
    drivers now fall back to the requested `size` when decode isn't
    feasible, since vLLM at temperature=0 emits exactly `size` tokens
    in normal completion. Future runs should show consistent token
    counts.
 
 2. **vLLM is non-deterministic across reps for the same request.**
-   Example: `dotnet json+br @2048` reps were `[431917, 529897]` —
+   Example: `dotnet json+br @2048` reps were `[431917, 529897]`:
    one run was ~98 KB shorter than the next on identical input. vLLM's
    batching + scheduling produces slightly different output even at
-   temperature=0; on long completions this manifests as ±10–20 % wire
+   temperature=0; on long completions this manifests as ±10 to 20 % wire
    variance and occasional early EOS (Python observed 2031/2048
    tokens on the same cell). **Recommendation**: bump reps for vLLM
    cells to ≥4 (sglang and llama.cpp are stable at 2 reps).
 
 3. **Per-client `wire_bytes` measurement convention drift.**
    Even with identical Codec frames on the wire, totals differ by
-   10–16 B for Python (httpx aiter_raw) and Web (Node fetch) vs the
-   libcurl / reqwest / Java / .NET cohort — consistent across reps,
+   10 to 16 B for Python (httpx aiter_raw) and Web (Node fetch) vs the
+   libcurl / reqwest / Java / .NET cohort: consistent across reps,
    so it's structural, not noise. Most likely cause: HTTP envelope
    accounting (chunked-transfer line markers, trailer handling)
    counts differently per HTTP-library. The vLLM endpoint serves
@@ -208,11 +208,11 @@ independent phenomena**, none of them a Codec-frame bug:
    "agree to within ~16 B on Codec body, identical on identity-encoded
    payloads" rather than strict byte-equality.
 
-For sglang and llama.cpp the §2 unanimity check stays clean — those
+For sglang and llama.cpp the §2 unanimity check stays clean: those
 two engines are deterministic across reps and the bench-driver token
 gaps don't surface as wire-byte mismatches there.
 
-### Resolution — re-run on `2026-05-09T17-09-35Z`
+### Resolution: re-run on `2026-05-09T17-09-35Z`
 
 All three sources of variance addressed. See
 `packages/bench/results/2026-05-09T17-09-35Z/MATRIX.md` §2:
@@ -221,7 +221,7 @@ All three sources of variance addressed. See
 |-----------|---|---|
 | sglang    | 24 / 24 | clean |
 | llama.cpp | 24 / 24 | clean; only ≤5 B drift remains on JSON-SSE rows |
-| vllm      | 24 / 24 | **was 0 / 24 here** — fixed by REPS≥2 + token-decode patch |
+| vllm      | 24 / 24 | **was 0 / 24 here**: fixed by REPS≥2 + token-decode patch |
 
 Fixes shipped: token-decode fallback for compressed cells (C
 `packages/demo-c/matrix_run.c`, TS `packages/demo/src/matrix_run.ts`,

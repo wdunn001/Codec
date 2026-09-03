@@ -15,7 +15,7 @@ consumer tokenize speedup:     12.4× (plain 0.052 ms → leaf 0.004 ms)
 leaf integrity (ids ≡ encode(text)):  ✓ 20/20 samples
 
 Notes:
-  * Leaf-mode wire overhead is fixed per text block (~80–150 B for the
+  * Leaf-mode wire overhead is fixed per text block (~80 to 150 B for the
     _meta envelope) and savings scale with text length. For tiny
     timestamp results, leaf adds wire bytes; consumer CPU still wins
     because tokenize is O(chars). The crossover where leaf wire ≤ plain

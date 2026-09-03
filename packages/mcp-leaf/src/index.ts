@@ -16,7 +16,7 @@
  *
  *   const meta = await makeMetaTokenizer({
  *     mapUrl:  'https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/qwen/qwen2.json',
- *     mapHash: 'sha256:0549cbec9d451832f9f8c9dcd2553210fdf4e6f4ff64feebe64d3a09950a5022',
+ *     mapHash: 'sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad',
  *   });
  *
  *   // …in your tool handler:

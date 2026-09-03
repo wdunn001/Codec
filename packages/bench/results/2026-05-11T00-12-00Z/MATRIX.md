@@ -1,10 +1,10 @@
-# Cross-stack benchmark matrix — 2026-05-11T00-12-00Z
+# Cross-stack benchmark matrix: 2026-05-11T00-12-00Z
 
 Auto-generated from `packages/bench/results/2026-05-11T00-12-00Z/{engine}/{lang}.json` by `packages/bench/scripts/aggregate.py`. SCHEMA.md is the source of truth on what each cell measures.
 
 ## §1. Headline wire reduction @ 2K tokens
 
-Per engine, best-case Codec compression vs JSON-SSE identity. Python row chosen as the canonical client (others agree byte-identically — see §3).
+Per engine, best-case Codec compression vs JSON-SSE identity. Python row chosen as the canonical client (others agree byte-identically: see §3).
 
 | Engine | JSON-SSE identity | Codec msgpack + gzip | Codec msgpack + dict-zstd | Codec protobuf + gzip | Codec protobuf + dict-zstd |
 |---|---:|---:|---:|---:|---:|
@@ -30,7 +30,7 @@ For every Codec cell (size × {msgpack,protobuf} × encoding), how many byte-ide
 
 ## §3. Wire-byte grid per engine (Python row)
 
-Median bytes across reps. Other 5 client languages agree byte-identically on every Codec cell — see §2.
+Median bytes across reps. Other 5 client languages agree byte-identically on every Codec cell: see §2.
 
 ### llama.cpp
 
@@ -86,9 +86,9 @@ Per the SCHEMA.md TTFB definition split (see §5), clients fall into two cohorts
 - **Body-byte cohort** (Python httpx aiter_raw, TypeScript Node http data event, C libcurl WRITEFUNCTION): TTFB = wall-clock from POST to first body byte
 - **Headers-byte cohort** (.NET ResponseHeadersRead, Rust reqwest send().await, Java HttpClient.send): TTFB = wall-clock from POST to headers received
 
-Bodies and headers tend to arrive in the same TCP segment for non-buffered encodings (identity/gzip/br) — both cohorts agree. They diverge sharply on dict-zstd, where the server's chunker buffers small responses to end-of-stream.
+Bodies and headers tend to arrive in the same TCP segment for non-buffered encodings (identity/gzip/br): both cohorts agree. They diverge sharply on dict-zstd, where the server's chunker buffers small responses to end-of-stream.
 
-### llama.cpp — msgpack TTFB (median ms across reps)
+### llama.cpp: msgpack TTFB (median ms across reps)
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
@@ -105,7 +105,7 @@ Bodies and headers tend to arrive in the same TCP segment for non-buffered encod
 | 2048 | br | 45.8 | 39.0 |
 | 2048 | zstd | 39.2 | 39.1 |
 
-### sglang — msgpack TTFB (median ms across reps)
+### sglang: msgpack TTFB (median ms across reps)
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
@@ -122,7 +122,7 @@ Bodies and headers tend to arrive in the same TCP segment for non-buffered encod
 | 2048 | br | 46.1 | 41.4 |
 | 2048 | zstd | 3923 | 36.6 |
 
-### vllm — msgpack TTFB (median ms across reps)
+### vllm: msgpack TTFB (median ms across reps)
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
@@ -150,7 +150,7 @@ Cross-language pass over a fixed golden corpus (`packages/bench/golden/qwen2.jso
 | **dotnet** | 0.09 | 3,319,838 /s | 0.13 | 2,179,195 /s | 2.15 | 0.23 |
 | **rust** | 0.06 | 4,880,122 /s | 0.04 | 7,103,785 /s | 0.08 | 0.05 |
 | **java** | 0.22 | 1,291,461 /s | 0.12 | 2,313,304 /s | 0.53 | 0.41 |
-| **c** | — | — | 0.02 | 17,346,602 /s | — | 0.02 |
+| **c** | n/a | n/a | 0.02 | 17,346,602 /s | n/a | 0.02 |
 
 - **c**: libcodec is detokenize-only; encode_* are null pending C BPE encoder.
 
@@ -166,4 +166,4 @@ Every row above came from a SCHEMA-v1 result file with a methodology fingerprint
 
 ## §6. Quarantine
 
-None — every row's methodology fingerprint matched its engine's canonical block.
+None: every row's methodology fingerprint matched its engine's canonical block.

@@ -1,10 +1,10 @@
-# Cross-stack benchmark matrix — 2026-05-07T23:42:00Z
+# Cross-stack benchmark matrix: 2026-05-07T23:42:00Z
 
 Re-run after rebuilding `wdunn001/codec-sglang:latest` to pick up the
 runtime deps the previous run was missing. Image now ships
 `zstandard 0.25.0` + `brotli 1.2.0` so the compression negotiator can
 actually advertise br/zstd. **This is the canonical "end user e2e
-path" run** — every step from `docker pull` through `bench complete`
+path" run**: every step from `docker pull` through `bench complete`
 went through Hub-published artifacts; no hot-patches.
 
 Supersedes the 2026-05-07T23-08-54Z run (which had `zstandard`/`brotli`
@@ -29,7 +29,7 @@ live engine probe (server-asserted, not declared in config).
 | Endpoint | `http://localhost:30002` (LAN, supervisor proxy → backend on :30000) |
 | `stream_format_supported` (probed) | `json`, `msgpack`, `protobuf` |
 | `compression_supported` (probed) | `identity`, `gzip`, `br` |
-| zstd absence | **expected** — codec_compression's dict-gate (spec/PROTOCOL.md "Pre-trained ZSTD dictionaries") drops zstd from negotiation when no dict is registered. With deps installed but no dict loaded, the probe correctly omits zstd. |
+| zstd absence | **expected**: codec_compression's dict-gate (spec/PROTOCOL.md "Pre-trained ZSTD dictionaries") drops zstd from negotiation when no dict is registered. With deps installed but no dict loaded, the probe correctly omits zstd. |
 | Client | `codecai 0.2.0` / CPython 3.12.3 / httpx 0.28.1 / msgpack 1.1.2 |
 | Bench tool | `demo-python/codec-demo.matrix_run` 0.1.0 / 2 reps / median |
 
@@ -59,19 +59,19 @@ the negotiator drops zstd from candidates and an
 `Accept-Encoding: zstd`-only request gets back identity. To unlock the
 zstd column, an operator needs to load a pre-trained dictionary at
 startup via `set_zstd_dict("msgpack", bytes)` /
-`set_zstd_dict("protobuf", bytes)` — the reference dicts ship at
+`set_zstd_dict("protobuf", bytes)`: the reference dicts ship at
 [`dictionaries/qwen2.5-{msgpack,protobuf}-v1.dict`](../../../../dictionaries/).
 Adding a `CODEC_ZSTD_DICT_*` env var to codec-supervisor that wires
 this in at startup is open follow-on work.
 
 ‡ **br cells expand at small sizes, marginally helpful at large.** sglang
 ships per-frame brotli compression with a default quality that doesn't
-fit small-frame Codec workloads — at 64 and 512 tokens the per-block
+fit small-frame Codec workloads: at 64 and 512 tokens the per-block
 overhead exceeds the savings, sometimes producing more bytes than
 identity. At 2K tokens br is ~1.4× smaller than identity (msgpack 30,681 →
 21,844) but still 60× **larger** than gzip's 354 bytes. Reproduces the
 "sglang br middleware misconfigured" finding from RESULTS.md §1f. **Not
-a Codec protocol issue** — patching sglang's middleware to use a
+a Codec protocol issue**: patching sglang's middleware to use a
 streaming-aware brotli config (or to disable per-frame compression for
 binary streams) would fix it.
 
@@ -83,7 +83,7 @@ binary streams) would fix it.
 | 512 | 16.3× | **170.6×** | 24.2× | **172.2×** |
 | 2048 | 16.2× | **1,401×** | 24.2× | **1,595×** |
 
-Gzip column matches the previous run within noise — the encoding
+Gzip column matches the previous run within noise: the encoding
 implementation didn't change, only the runtime deps. The br column is
 new (was unavailable in the previous image) and shows the misconfigured
 behaviour described above.
@@ -99,12 +99,12 @@ All gzip and br cells stream cleanly; total wall-clock is decode-bound
 | 512 | 46.4 | 45.2 | 45.6 | 44.8 |
 | 2048 | 47.7 | 45.5 | 37.8 | 47.6 |
 
-Br preserves TTFT (no buffering) — the only cost is the wire-bytes
+Br preserves TTFT (no buffering): the only cost is the wire-bytes
 malfunction at small sizes. If sglang's br middleware is fixed,
 br becomes a viable interactive fallback for clients without gzip
 support (Safari/iOS edge cases).
 
-Raw data: [`sglang/python.json`](sglang/python.json) — 36 rows with per-rep arrays.
+Raw data: [`sglang/python.json`](sglang/python.json): 36 rows with per-rep arrays.
 
 ---
 
@@ -124,7 +124,7 @@ prompt: "What is the weather in Tokyo?"  → model emits
 **Wire reduction**: 6,034 → 393 = **15.4×**. **TTFB**: JSON-SSE
 1,155 ms → Codec 47.4 ms = **24× faster first byte**. The
 JSON-SSE TTFB is high-variance run-to-run (the previous run measured
-2,018 ms; this run 1,155 ms — both far above the Codec path's
+2,018 ms; this run 1,155 ms: both far above the Codec path's
 consistent ~50 ms).
 
 † Path B requires `transformers` to detokenize the buffered region IDs
@@ -161,16 +161,16 @@ prompt: "Search the web for the latest news about Anthropic Claude."
 | JSON-SSE + client scan + dispatch | 77,124 B | 3,025.7 ms | 57.4 ms | 3,669.3 ms | 1 |
 | Codec msgpack + server tool_watcher + dispatch | **4,121 B** | 1,200.9 ms | 52.4 ms | **1,829.4 ms** | 1 |
 
-**18.7× wire reduction. 50% faster end-to-end** on this run — though
+**18.7× wire reduction. 50% faster end-to-end** on this run: though
 this turn's JSON-SSE dispatch took an unusual 3.0 s vs Codec's 1.2 s.
 That's a property of the SearXNG server (probably warmed cache for the
-Codec turn vs cold-cache for the JSON-SSE turn), not Codec's doing —
+Codec turn vs cold-cache for the JSON-SSE turn), not Codec's doing:
 the previous run measured 1.0/1.1 s dispatch on both paths and the
 totals nearly tied. **The wire reduction is the durable claim**;
 total-time delta on real-tool turns is dominated by the tool, not the
 wire.
 
-### MetaMCP — **still skipped this run**
+### MetaMCP: **still skipped this run**
 
 `METAMCP_API_KEY` not set on `vinez`'s shell. Previous run noted the
 same. To fill: `export METAMCP_API_KEY=…` before invoking
@@ -194,19 +194,19 @@ Same shopping list as the prior run plus a now-unblocked item:
 
 Plus:
 
-- **Tokenizer/detokenizer microbench schema** — needs SCHEMA-v2 (or §5
+- **Tokenizer/detokenizer microbench schema**: needs SCHEMA-v2 (or §5
   extension) and per-lang emitters.
-- **E2E + tool-call ports** — currently Python-only (`agent_bench.py`,
+- **E2E + tool-call ports**: currently Python-only (`agent_bench.py`,
   `toolcall_bench.py`).
-- **Aggregator script** (`packages/bench/scripts/aggregate.py`) —
+- **Aggregator script** (`packages/bench/scripts/aggregate.py`):
   SCHEMA.md describes one; doesn't exist yet. MATRIX.md is still
   hand-written per run.
-- **Dict-zstd column** — needs an operator wiring path
+- **Dict-zstd column**: needs an operator wiring path
   (`CODEC_ZSTD_DICT_MSGPACK`/`_PROTOBUF` env var on codec-supervisor
   that calls `set_zstd_dict()` on sglang startup, OR a supervisor
   `/admin/codec/dicts` endpoint). Once available, re-run §1 with both
   reference dicts loaded and the zstd column will fill.
-- **sglang br middleware tuning** — switch from per-frame brotli to a
+- **sglang br middleware tuning**: switch from per-frame brotli to a
   streaming-aware config (or disable for Codec content types). Upstream
   fix in sglang, not in this repo.
 
@@ -224,7 +224,7 @@ Plus:
 | ToolWatcher TTFB vs JSON-SSE | 24× faster | high-variance JSON-SSE side | §2 |
 | Mock-tool agent loop | **16.9× wire, 14% faster e2e** | wire identical, total slightly faster | §3 |
 | SearXNG agent loop | **18.7× wire** | wire same; total noisier (network-bound) | §3 |
-| br middleware misconfigured | confirmed | new — was not measurable on prior image | §1 |
+| br middleware misconfigured | confirmed | new: was not measurable on prior image | §1 |
 
 The wire numbers are byte-identical to the previous run because the
 encoder is deterministic and the model output is temperature-0

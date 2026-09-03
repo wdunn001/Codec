@@ -1,4 +1,4 @@
-ToolWatcher CPU microbench — v0.4.1 rerun on lab (gcc:13 container build, AMD EPYC 8124P)
+ToolWatcher CPU microbench: v0.4.1 rerun on lab (gcc:13 container build, AMD EPYC 8124P)
 
 Command: bench_watcher 1000000 0.05 1024
   (1M synthetic tokens, 5% region density, 1024-id chunks)

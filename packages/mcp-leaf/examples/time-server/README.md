@@ -19,7 +19,7 @@ codec-time-leaf
 
 # With leaf-mode: server emits _codec_meta, gateway bypass kicks in:
 CODEC_MAP_URL=https://cdn.jsdelivr.net/gh/wdunn001/codec-maps@main/maps/qwen/qwen2.json \
-CODEC_MAP_HASH=sha256:887311099cdc09e7022001a01fa1da396750d669b7ed2c242a000b9badd09791 \
+CODEC_MAP_HASH=sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad \
 codec-time-leaf
 ```
 
@@ -33,7 +33,7 @@ Wire it into an MCP client (Claude Desktop, Continue, the metamcp gateway as an 
       "command": "codec-time-leaf",
       "env": {
         "CODEC_MAP_URL": "https://cdn.jsdelivr.net/gh/wdunn001/codec-maps@main/maps/qwen/qwen2.json",
-        "CODEC_MAP_HASH": "sha256:887311099cdc09e7022001a01fa1da396750d669b7ed2c242a000b9badd09791"
+        "CODEC_MAP_HASH": "sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad"
       }
     }
   }

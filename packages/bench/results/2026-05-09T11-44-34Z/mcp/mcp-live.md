@@ -1,4 +1,4 @@
-# MCP wire bench — 2026-05-09T11-44-34Z
+# MCP wire bench: 2026-05-09T11-44-34Z
 
 Target: `http://192.168.1.88:12008/metamcp/openwebui-api/mcp`
 Vocab map: `https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/qwen/qwen2.json` (sha256 `sha256:9db56…`)
@@ -23,7 +23,7 @@ Vocab map: `https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/qwen/qwen2.json
 | msgpack-both+gzip     | 200    | 360 B | 5.9 KB      | 3.6×         | 78.7 ms  | 80.3 ms  |
 | msgpack-both+gzip+map | 200    | 522 B | 5.9 KB      | 3.6×         | 2.25 s   | 2.25 s   |
 
-## tools/call — `codec-time-leaf__get_current_time`
+## tools/call: `codec-time-leaf__get_current_time`
 
 | variant               | status | req   | resp (wire) | resp vs json | TTFB    | total   |
 |-----------------------|--------|-------|-------------|--------------|---------|---------|

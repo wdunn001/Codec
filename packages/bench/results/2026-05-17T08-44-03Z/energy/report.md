@@ -1,4 +1,4 @@
-# Codec energy bench — output
+# Codec energy bench: output
 
 Run timestamp (UTC): 2026-05-17T08:44:14Z
 Cost source: **published (per ENERGY_METHODOLOGY.md table)**
