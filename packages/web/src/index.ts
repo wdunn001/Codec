@@ -115,6 +115,7 @@ export {
 export {
   ToolWatcher,
   ToolWatcherError,
+  DEFAULT_REGION_CAP,
   type WatcherEvent,
 } from './tool-watcher.js';
 

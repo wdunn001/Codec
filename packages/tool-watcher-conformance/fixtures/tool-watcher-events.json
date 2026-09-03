@@ -1,0 +1,163 @@
+{
+  "description": "Cross-implementation ToolWatcher conformance fixtures. Every Codec ToolWatcher implementation (C, TypeScript, Python, Rust, .NET, Java) must reproduce these event streams exactly, in this order. This is the single source of truth: when the event contract changes, edit this file first and update every language's tests to match.",
+  "start_id": 90,
+  "end_id": 91,
+  "cases": [
+    {
+      "name": "passthrough_then_region_then_passthrough",
+      "region_cap": null,
+      "feeds": [[0, 1, 90, 3, 4, 91, 0, 2]],
+      "end": null,
+      "events": [
+        { "kind": "passthrough", "ids": [0, 1] },
+        { "kind": "region", "ids": [3, 4] },
+        { "kind": "passthrough", "ids": [0, 2] }
+      ]
+    },
+    {
+      "name": "region_split_across_feeds",
+      "region_cap": null,
+      "feeds": [[0, 90, 3], [4, 91, 1]],
+      "end": null,
+      "events": [
+        { "kind": "passthrough", "ids": [0] },
+        { "kind": "region", "ids": [3, 4] },
+        { "kind": "passthrough", "ids": [1] }
+      ]
+    },
+    {
+      "name": "multiple_regions_in_one_feed",
+      "region_cap": null,
+      "feeds": [[0, 90, 3, 91, 1, 90, 4, 91, 2]],
+      "end": null,
+      "events": [
+        { "kind": "passthrough", "ids": [0] },
+        { "kind": "region", "ids": [3] },
+        { "kind": "passthrough", "ids": [1] },
+        { "kind": "region", "ids": [4] },
+        { "kind": "passthrough", "ids": [2] }
+      ]
+    },
+    {
+      "name": "empty_region_is_still_reported",
+      "region_cap": null,
+      "feeds": [[0, 90, 91, 1]],
+      "end": null,
+      "events": [
+        { "kind": "passthrough", "ids": [0] },
+        { "kind": "region", "ids": [] },
+        { "kind": "passthrough", "ids": [1] }
+      ]
+    },
+    {
+      "name": "empty_region_split_across_feeds",
+      "region_cap": null,
+      "feeds": [[90], [91]],
+      "end": null,
+      "events": [
+        { "kind": "region", "ids": [] }
+      ]
+    },
+    {
+      "name": "empty_region_does_not_disturb_the_next_region",
+      "region_cap": null,
+      "feeds": [[90, 91, 90, 7, 91]],
+      "end": null,
+      "events": [
+        { "kind": "region", "ids": [] },
+        { "kind": "region", "ids": [7] }
+      ]
+    },
+    {
+      "name": "stray_end_passes_through",
+      "region_cap": null,
+      "feeds": [[0, 91, 1]],
+      "end": null,
+      "events": [
+        { "kind": "passthrough", "ids": [0, 91, 1] }
+      ]
+    },
+    {
+      "name": "ordering_matches_defect3_example",
+      "region_cap": null,
+      "feeds": [[10, 90, 13, 91, 11, 90, 14, 91, 12]],
+      "end": null,
+      "events": [
+        { "kind": "passthrough", "ids": [10] },
+        { "kind": "region", "ids": [13] },
+        { "kind": "passthrough", "ids": [11] },
+        { "kind": "region", "ids": [14] },
+        { "kind": "passthrough", "ids": [12] }
+      ]
+    },
+    {
+      "name": "nested_start_is_dropped_from_body_but_observable",
+      "region_cap": null,
+      "feeds": [[90, 1, 90, 2, 91, 3]],
+      "end": null,
+      "events": [
+        { "kind": "nested_start", "ids": [90] },
+        { "kind": "region", "ids": [1, 2] },
+        { "kind": "passthrough", "ids": [3] }
+      ]
+    },
+    {
+      "name": "truncated_at_end_of_stream_with_finish_reason",
+      "region_cap": null,
+      "feeds": [[7, 90, 41, 42]],
+      "end": { "finish_reason": "length" },
+      "events": [
+        { "kind": "passthrough", "ids": [7] },
+        { "kind": "truncated", "ids": [41, 42], "finish_reason": "length" }
+      ]
+    },
+    {
+      "name": "truncated_reports_empty_body_when_stream_ends_right_after_start",
+      "region_cap": null,
+      "feeds": [[90]],
+      "end": { "finish_reason": null },
+      "events": [
+        { "kind": "truncated", "ids": [], "finish_reason": null }
+      ]
+    },
+    {
+      "name": "end_outside_region_emits_nothing",
+      "region_cap": null,
+      "feeds": [[90, 3, 91, 4]],
+      "end": { "finish_reason": "stop" },
+      "events": [
+        { "kind": "region", "ids": [3] },
+        { "kind": "passthrough", "ids": [4] }
+      ]
+    },
+    {
+      "name": "overflow_fires_once_at_cap_then_resyncs_on_end_marker",
+      "region_cap": 3,
+      "feeds": [[90, 1, 2, 3, 4, 5, 91, 9]],
+      "end": null,
+      "events": [
+        { "kind": "overflow", "ids": [1, 2, 3] },
+        { "kind": "passthrough", "ids": [9] }
+      ]
+    },
+    {
+      "name": "overflow_then_truncated_reports_both",
+      "region_cap": 2,
+      "feeds": [[90, 1, 2, 3, 4]],
+      "end": { "finish_reason": "length" },
+      "events": [
+        { "kind": "overflow", "ids": [1, 2] },
+        { "kind": "truncated", "ids": [1, 2], "finish_reason": "length" }
+      ]
+    },
+    {
+      "name": "exact_cap_does_not_overflow",
+      "region_cap": 3,
+      "feeds": [[90, 1, 2, 3, 91]],
+      "end": null,
+      "events": [
+        { "kind": "region", "ids": [1, 2, 3] }
+      ]
+    }
+  ]
+}

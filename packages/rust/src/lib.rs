@@ -83,7 +83,9 @@ pub use stream::{
     decode_msgpack_stream, decode_protobuf_frame, decode_protobuf_stream, MsgpackFrameIter,
     ProtobufFrameIter, StreamError,
 };
-pub use pretok_program::{run_pretok_program, PreTokOp, PreTokProgram};
+pub use pretok_program::{run_pretok_program, PreTokOp, PreTokProgram, PreTokStage};
 pub use tokenize::{BPETokenizer, ITokenizer};
-pub use tool_watcher::{ToolWatcher, ToolWatcherError, WatcherEvent, WatcherEventKind};
+pub use tool_watcher::{
+    ToolWatcher, ToolWatcherError, WatcherEvent, WatcherEventKind, DEFAULT_REGION_CAP,
+};
 pub use translator::{static_translation_table, translate_one_shot, Translator};

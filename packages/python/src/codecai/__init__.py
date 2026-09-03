@@ -76,9 +76,11 @@ from .discover import (
     well_known_map_url,
 )
 from .tool_watcher import (
+    DEFAULT_REGION_CAP,
     ToolWatcher,
     ToolWatcherError,
     WatcherEvent,
+    WatcherEventKind,
 )
 from .translate import (
     Translator,
@@ -162,6 +164,8 @@ __all__ = [
     "ToolWatcher",
     "ToolWatcherError",
     "WatcherEvent",
+    "WatcherEventKind",
+    "DEFAULT_REGION_CAP",
     # translate
     "Translator",
     "translate",

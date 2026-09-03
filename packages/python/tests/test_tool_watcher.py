@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from codecai import (
+    DEFAULT_REGION_CAP,
     TokenizerMap,
     ToolWatcher,
     ToolWatcherError,
@@ -123,6 +124,195 @@ def test_never_decodes_operates_on_raw_ids():
     assert evs[0].ids == (12345, BIG_A)
     assert evs[1].ids == (BIG_B, BIG_C)  # body verbatim, no narrowing
     assert evs[2].ids == (99999,)
+
+
+# ── Ordering: interleaved events in stream order (defect 3) ──────────────────
+#
+# [a, S, X, E, b, S, Y, E, c] must produce five ORDERED events:
+# passthrough(a) / region(X) / passthrough(b) / region(Y) / passthrough(c).
+# This is the exact shape every language's watcher must agree on.
+
+
+def test_ordering_matches_defect3_example():
+    w = ToolWatcher(SYN_MAP, "<tool_call>", "</tool_call>")
+    a, b, c, x, y = 0, 1, 2, 3, 4  # hello, world, !, foo, bar
+    evs = w.feed([a, START, x, END, b, START, y, END, c])
+    assert len(evs) == 5
+    assert evs[0].kind == "passthrough" and evs[0].ids == (a,)
+    assert evs[1].kind == "region" and evs[1].ids == (x,)
+    assert evs[2].kind == "passthrough" and evs[2].ids == (b,)
+    assert evs[3].kind == "region" and evs[3].ids == (y,)
+    assert evs[4].kind == "passthrough" and evs[4].ids == (c,)
+
+
+# ── Nested start markers (defect 5) ───────────────────────────────────────────
+
+
+def test_nested_start_is_dropped_from_body_but_observable():
+    w = ToolWatcher(SYN_MAP, "<tool_call>", "</tool_call>")
+    # S 0 S 1 E 2 -> nested_start / region([0,1]) / passthrough([2])
+    evs = w.feed([START, 0, START, 1, END, 2])
+    assert len(evs) == 3
+    assert evs[0].kind == "nested_start" and evs[0].ids == (START,)
+    assert evs[1].kind == "region" and evs[1].ids == (0, 1)
+    assert evs[2].kind == "passthrough" and evs[2].ids == (2,)
+
+
+# ── Truncation: end() while inside a region (defect 1) ────────────────────────
+#
+# An unterminated region (stream ends mid tool-call, e.g. the model hit its
+# length limit) used to be silently dropped: no event, no signal,
+# indistinguishable from a model that never called a tool. end() must report
+# it, carrying the finish reason so a length stop is distinguishable from a
+# malformed emission.
+
+
+def test_end_emits_truncated_with_finish_reason():
+    w = ToolWatcher(SYN_MAP, "<tool_call>", "</tool_call>")
+    evs = w.feed([0, START, 3, 4])
+    assert len(evs) == 1
+    assert evs[0].kind == "passthrough"
+    assert w.inside
+
+    evs = w.end("length")
+    assert len(evs) == 1
+    assert evs[0].kind == "truncated"
+    assert evs[0].ids == (3, 4)
+    assert evs[0].finish_reason == "length"
+    assert not w.inside
+
+    # A second end() call is a no-op: nothing left in flight.
+    assert w.end("length") == []
+
+
+def test_end_reports_empty_body_when_stream_ends_right_after_start():
+    w = ToolWatcher(SYN_MAP, "<tool_call>", "</tool_call>")
+    w.feed([START])
+    assert w.inside
+
+    evs = w.end()  # no finish reason known
+    assert len(evs) == 1
+    assert evs[0].kind == "truncated"
+    assert evs[0].ids == ()
+    assert evs[0].finish_reason is None
+
+
+def test_end_outside_region_emits_nothing():
+    w = ToolWatcher(SYN_MAP, "<tool_call>", "</tool_call>")
+    w.feed([START, 3, END, 4])
+    assert not w.inside
+    assert w.end("stop") == []
+
+
+# ── Overflow: region buffer cap (defect 2) ─────────────────────────────────────
+#
+# The region buffer used to grow without bound: a client that can make the
+# model emit a start marker without a matching end marker could grow it to
+# the entire remaining generation. The cap must be enforced and the overflow
+# must be a defined, observable event, not a silent truncation.
+
+
+def test_region_cap_defaults_and_is_settable():
+    w = ToolWatcher(SYN_MAP, "<tool_call>", "</tool_call>")
+    assert w.region_cap == DEFAULT_REGION_CAP
+
+    w.set_region_cap(3)
+    assert w.region_cap == 3
+
+    # 0 resets to the default rather than becoming an unusable cap.
+    w.set_region_cap(0)
+    assert w.region_cap == DEFAULT_REGION_CAP
+
+    w2 = ToolWatcher(SYN_MAP, "<tool_call>", "</tool_call>", region_cap=3)
+    assert w2.region_cap == 3
+
+
+def test_overflow_fires_once_at_cap_then_resyncs_on_end_marker():
+    w = ToolWatcher(SYN_MAP, "<tool_call>", "</tool_call>", region_cap=3)
+    # Region body is 5 tokens long against a cap of 3: must overflow once,
+    # with exactly the first 3 tokens, and must NOT also emit a region
+    # event for the same region when the end marker eventually arrives.
+    evs = w.feed([START, 1, 2, 3, 4, 5, END, 9])
+    assert len(evs) == 2
+    assert evs[0].kind == "overflow" and evs[0].ids == (1, 2, 3)
+    assert evs[1].kind == "passthrough" and evs[1].ids == (9,)
+    assert not w.inside
+
+
+def test_overflow_then_truncated_reports_both():
+    # A region that overflows and then never sees an end marker must
+    # report BOTH: the overflow (memory bound hit) and the truncation
+    # (stream ended without a close). They are orthogonal signals.
+    w = ToolWatcher(SYN_MAP, "<tool_call>", "</tool_call>", region_cap=2)
+    evs = w.feed([START, 1, 2, 3, 4])
+    assert len(evs) == 1
+    assert evs[0].kind == "overflow" and evs[0].ids == (1, 2)
+
+    evs = w.end("length")
+    assert len(evs) == 1
+    assert evs[0].kind == "truncated"
+    assert evs[0].ids == (1, 2)
+    assert evs[0].finish_reason == "length"
+
+
+def test_exact_cap_does_not_overflow():
+    # Off-by-one check: a region whose body is exactly `cap` tokens must
+    # close cleanly as "region", not as "overflow".
+    w = ToolWatcher(SYN_MAP, "<tool_call>", "</tool_call>", region_cap=3)
+    evs = w.feed([START, 1, 2, 3, END])
+    assert len(evs) == 1
+    assert evs[0].kind == "region" and evs[0].ids == (1, 2, 3)
+
+
+# ── Fixture-driven conformance cases ──────────────────────────────────────────
+#
+# packages/tool-watcher-conformance/fixtures/tool-watcher-events.json is the
+# cross-language source of truth for the event contract: every Codec
+# ToolWatcher implementation must reproduce it exactly. Every case there runs
+# here too, so this file can't silently fall out of sync with it.
+
+_FIXTURE_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "tool-watcher-conformance" / "fixtures" / "tool-watcher-events.json"
+)
+_FIXTURE = json.loads(_FIXTURE_PATH.read_text(encoding="utf-8"))
+_FIXTURE_MAP = TokenizerMap(
+    id="test/fixture",
+    version="2",
+    vocab_size=100,
+    encoder="byte_level",
+    vocab={},
+    special_tokens={"<start>": _FIXTURE["start_id"], "<end>": _FIXTURE["end_id"]},
+)
+
+
+def _normalize(kind: str, ids: tuple[int, ...] | list[int], finish_reason: str | None):
+    entry = {"kind": kind, "ids": list(ids)}
+    if kind == "truncated":
+        entry["finish_reason"] = finish_reason
+    return entry
+
+
+@pytest.mark.parametrize(
+    "case", _FIXTURE["cases"], ids=[c["name"] for c in _FIXTURE["cases"]]
+)
+def test_fixture_case(case):
+    region_cap = case["region_cap"] if case["region_cap"] is not None else DEFAULT_REGION_CAP
+    w = ToolWatcher(_FIXTURE_MAP, "<start>", "<end>", region_cap=region_cap)
+
+    actual = []
+    for feed_ids in case["feeds"]:
+        for ev in w.feed(feed_ids):
+            actual.append(_normalize(ev.kind, ev.ids, ev.finish_reason))
+    if case["end"] is not None:
+        for ev in w.end(case["end"]["finish_reason"]):
+            actual.append(_normalize(ev.kind, ev.ids, ev.finish_reason))
+
+    expected = [
+        _normalize(e["kind"], e["ids"], e.get("finish_reason"))
+        for e in case["events"]
+    ]
+    assert actual == expected
 
 
 # ── Real Qwen-2 sanity check (skipped unless CODEC_MAPS_QWEN is set) ─────────

@@ -13,6 +13,7 @@ import path from 'node:path';
 import {
   ToolWatcher,
   ToolWatcherError,
+  DEFAULT_REGION_CAP,
   validateMap,
   type TokenizerMap,
 } from '../src/index.ts';
@@ -138,6 +139,221 @@ test('ToolWatcher: never decodes: operates on raw IDs', () => {
   assert.deepEqual(evs[1]!.ids, [BIG_B, BIG_C]);  /* body verbatim */
   assert.deepEqual(evs[2]!.ids, [99999]);
 });
+
+// ── Ordering: interleaved events in stream order (defect 3) ────────────────
+//
+// [a, S, X, E, b, S, Y, E, c] must produce five ORDERED events:
+// passthrough(a) / region(X) / passthrough(b) / region(Y) / passthrough(c).
+// This is the exact shape every language's watcher must agree on.
+
+test('ToolWatcher: ordering matches the defect-3 example', () => {
+  const w = new ToolWatcher(SYN_MAP, '<tool_call>', '</tool_call>');
+  const a = 0, b = 1, c = 2, x = 3, y = 4; // hello, world, !, foo, bar
+  const evs = w.feed([a, START, x, END, b, START, y, END, c]);
+  assert.equal(evs.length, 5);
+  assert.equal(evs[0]!.kind, 'passthrough');
+  assert.deepEqual(evs[0]!.ids, [a]);
+  assert.equal(evs[1]!.kind, 'region');
+  assert.deepEqual(evs[1]!.ids, [x]);
+  assert.equal(evs[2]!.kind, 'passthrough');
+  assert.deepEqual(evs[2]!.ids, [b]);
+  assert.equal(evs[3]!.kind, 'region');
+  assert.deepEqual(evs[3]!.ids, [y]);
+  assert.equal(evs[4]!.kind, 'passthrough');
+  assert.deepEqual(evs[4]!.ids, [c]);
+});
+
+// ── Nested start markers (defect 5) ─────────────────────────────────────────
+
+test('ToolWatcher: nested start is dropped from the body but observable', () => {
+  const w = new ToolWatcher(SYN_MAP, '<tool_call>', '</tool_call>');
+  // S 0 S 1 E 2 -> nested_start / region([0,1]) / passthrough([2])
+  const evs = w.feed([START, 0, START, 1, END, 2]);
+  assert.equal(evs.length, 3);
+  assert.equal(evs[0]!.kind, 'nested_start');
+  assert.deepEqual(evs[0]!.ids, [START]);
+  assert.equal(evs[1]!.kind, 'region');
+  assert.deepEqual(evs[1]!.ids, [0, 1]);
+  assert.equal(evs[2]!.kind, 'passthrough');
+  assert.deepEqual(evs[2]!.ids, [2]);
+});
+
+// ── Truncation: end() while inside a region (defect 1) ──────────────────────
+//
+// An unterminated region (stream ends mid tool-call, e.g. the model hit
+// its length limit) used to be silently dropped: no event, no signal,
+// indistinguishable from a model that never called a tool. end() must
+// report it, carrying the finish reason so a length stop is distinguishable
+// from a malformed emission.
+
+test('ToolWatcher: end() emits truncated with the finish reason', () => {
+  const w = new ToolWatcher(SYN_MAP, '<tool_call>', '</tool_call>');
+  let evs = w.feed([0, START, 3, 4]);
+  assert.equal(evs.length, 1);
+  assert.equal(evs[0]!.kind, 'passthrough');
+  assert.equal(w.inside, true);
+
+  evs = w.end('length');
+  assert.equal(evs.length, 1);
+  assert.equal(evs[0]!.kind, 'truncated');
+  assert.deepEqual(evs[0]!.ids, [3, 4]);
+  assert.equal((evs[0] as { finishReason: string | null }).finishReason, 'length');
+  assert.equal(w.inside, false);
+
+  // A second end() call is a no-op: nothing left in flight.
+  assert.deepEqual(w.end('length'), []);
+});
+
+test('ToolWatcher: end() reports an empty body when the stream ends right after start', () => {
+  const w = new ToolWatcher(SYN_MAP, '<tool_call>', '</tool_call>');
+  w.feed([START]);
+  assert.equal(w.inside, true);
+
+  const evs = w.end(); // no finish reason known
+  assert.equal(evs.length, 1);
+  assert.equal(evs[0]!.kind, 'truncated');
+  assert.deepEqual(evs[0]!.ids, []);
+  assert.equal((evs[0] as { finishReason: string | null }).finishReason, null);
+});
+
+test('ToolWatcher: end() outside a region emits nothing', () => {
+  const w = new ToolWatcher(SYN_MAP, '<tool_call>', '</tool_call>');
+  w.feed([START, 3, END, 4]);
+  assert.equal(w.inside, false);
+  assert.deepEqual(w.end('stop'), []);
+});
+
+// ── Overflow: region buffer cap (defect 2) ──────────────────────────────────
+//
+// The region buffer used to grow without bound: a client that can make
+// the model emit a start marker without a matching end marker could grow
+// it to the entire remaining generation. The cap must be enforced and the
+// overflow must be a defined, observable event, not a silent truncation.
+
+test('ToolWatcher: region cap defaults and is settable', () => {
+  const w = new ToolWatcher(SYN_MAP, '<tool_call>', '</tool_call>');
+  assert.equal(w.regionCap, DEFAULT_REGION_CAP);
+
+  w.setRegionCap(3);
+  assert.equal(w.regionCap, 3);
+
+  // 0 resets to the default rather than becoming an unusable cap.
+  w.setRegionCap(0);
+  assert.equal(w.regionCap, DEFAULT_REGION_CAP);
+
+  const w2 = new ToolWatcher(SYN_MAP, '<tool_call>', '</tool_call>', 3);
+  assert.equal(w2.regionCap, 3);
+});
+
+test('ToolWatcher: overflow fires once at the cap, then resyncs on the end marker', () => {
+  const w = new ToolWatcher(SYN_MAP, '<tool_call>', '</tool_call>', 3);
+  // Region body is 5 tokens long against a cap of 3: must overflow once,
+  // with exactly the first 3 tokens, and must NOT also emit a region
+  // event for the same region when the end marker eventually arrives.
+  const evs = w.feed([START, 1, 2, 3, 4, 5, END, 9]);
+  assert.equal(evs.length, 2);
+  assert.equal(evs[0]!.kind, 'overflow');
+  assert.deepEqual(evs[0]!.ids, [1, 2, 3]);
+  assert.equal(evs[1]!.kind, 'passthrough');
+  assert.deepEqual(evs[1]!.ids, [9]);
+  assert.equal(w.inside, false);
+});
+
+test('ToolWatcher: overflow then truncated reports both', () => {
+  // A region that overflows and then never sees an end marker must
+  // report BOTH: the overflow (memory bound hit) and the truncation
+  // (stream ended without a close). They are orthogonal signals.
+  const w = new ToolWatcher(SYN_MAP, '<tool_call>', '</tool_call>', 2);
+  let evs = w.feed([START, 1, 2, 3, 4]);
+  assert.equal(evs.length, 1);
+  assert.equal(evs[0]!.kind, 'overflow');
+  assert.deepEqual(evs[0]!.ids, [1, 2]);
+
+  evs = w.end('length');
+  assert.equal(evs.length, 1);
+  assert.equal(evs[0]!.kind, 'truncated');
+  assert.deepEqual(evs[0]!.ids, [1, 2]);
+});
+
+test('ToolWatcher: a region exactly at the cap does not overflow', () => {
+  // Off-by-one check: a region whose body is exactly `cap` tokens must
+  // close cleanly as `region`, not as `overflow`.
+  const w = new ToolWatcher(SYN_MAP, '<tool_call>', '</tool_call>', 3);
+  const evs = w.feed([START, 1, 2, 3, END]);
+  assert.equal(evs.length, 1);
+  assert.equal(evs[0]!.kind, 'region');
+  assert.deepEqual(evs[0]!.ids, [1, 2, 3]);
+});
+
+// ── Fixture-driven conformance cases ────────────────────────────────────────
+//
+// packages/tool-watcher-conformance/fixtures/tool-watcher-events.json is the
+// cross-language source of truth for the event contract: every Codec
+// ToolWatcher implementation must reproduce it exactly. Every case there
+// runs here too, so this file can't silently fall out of sync with it.
+
+interface FixtureEvent {
+  kind: string;
+  ids: number[];
+  finish_reason?: string | null;
+}
+interface FixtureCase {
+  name: string;
+  region_cap: number | null;
+  feeds: number[][];
+  end: { finish_reason: string | null } | null;
+  events: FixtureEvent[];
+}
+interface Fixture {
+  start_id: number;
+  end_id: number;
+  cases: FixtureCase[];
+}
+
+const FIXTURE_PATH = path.resolve(
+  import.meta.dirname, '../../tool-watcher-conformance/fixtures/tool-watcher-events.json');
+const fixture: Fixture = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf-8'));
+
+const fixtureMapRaw = {
+  id: 'test/fixture',
+  version: '2' as const,
+  vocab_size: 100,
+  encoder: 'byte_level' as const,
+  vocab: {},
+  special_tokens: { '<start>': fixture.start_id, '<end>': fixture.end_id },
+};
+validateMap(fixtureMapRaw);
+const FIXTURE_MAP: TokenizerMap = fixtureMapRaw;
+
+for (const c of fixture.cases) {
+  test(`fixture: ${c.name}`, () => {
+    const w = new ToolWatcher(FIXTURE_MAP, '<start>', '<end>', c.region_cap ?? DEFAULT_REGION_CAP);
+    const actual: Array<{ kind: string; ids: number[]; finish_reason?: string | null }> = [];
+    for (const feedIds of c.feeds) {
+      for (const ev of w.feed(feedIds)) {
+        const entry: { kind: string; ids: number[]; finish_reason?: string | null } =
+          { kind: ev.kind, ids: [...ev.ids] };
+        if (ev.kind === 'truncated') entry.finish_reason = ev.finishReason;
+        actual.push(entry);
+      }
+    }
+    if (c.end) {
+      for (const ev of w.end(c.end.finish_reason)) {
+        const entry: { kind: string; ids: number[]; finish_reason?: string | null } =
+          { kind: ev.kind, ids: [...ev.ids] };
+        if (ev.kind === 'truncated') entry.finish_reason = ev.finishReason;
+        actual.push(entry);
+      }
+    }
+    const expected = c.events.map(e => {
+      const entry: { kind: string; ids: number[]; finish_reason?: string | null } =
+        { kind: e.kind, ids: e.ids };
+      if (e.kind === 'truncated') entry.finish_reason = e.finish_reason ?? null;
+      return entry;
+    });
+    assert.deepEqual(actual, expected);
+  });
+}
 
 // ── Real Qwen-2 sanity check (when codec-maps is mounted) ──────────────────
 
