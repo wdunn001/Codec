@@ -15,7 +15,18 @@
  */
 
 import type { TokenizerMap, ToolCallingBlock } from '@codecai/web';
-import { compilePreTokenizerRegex, metaspaceProgram } from './compile-pretok.js';
+import {
+  metaspaceProgram,
+  compileAlternationOps,
+  recognizeDigitsRunRegex,
+  isCjkIsolateRegex,
+  isDigitTriplesRegex,
+  BYTE_LEVEL_DEFAULT_OPS,
+  BYTE_LEVEL_DEFAULT_REGEX,
+  type PreTokStage,
+  type PreTokProgramV1,
+  type PreTokProgramV2,
+} from './compile-pretok.js';
 
 // ── HuggingFace tokenizer.json shape ────────────────────────────────────────
 
@@ -25,6 +36,19 @@ interface HFNode {
   pretokenizers?: HFNode[];
   decoders?: HFNode[];
   replacement?: string;
+  /** `Split` only. Default per HuggingFace `tokenizers`: `'Isolated'`. */
+  behavior?: string;
+  /** `Split` only. Default per HuggingFace `tokenizers`: `false`. */
+  invert?: boolean;
+  /** `Digits` only. Default per HuggingFace `tokenizers`: `false`. */
+  individual_digits?: boolean;
+  /** `ByteLevel` only. Default per HuggingFace `tokenizers`: `true`. */
+  use_regex?: boolean;
+  /** `ByteLevel` / `Metaspace` only. Default per HuggingFace `tokenizers`:
+   * `true`. No source this converter has been verified against sets this,
+   * so a `true` value is refused rather than silently ignored: see
+   * `compilePreTokenizerStages`. */
+  add_prefix_space?: boolean;
 }
 
 export interface HFTokenizerJson {
@@ -99,9 +123,214 @@ function detectEncoder(hf: HFTokenizerJson): 'byte_level' | 'metaspace' | undefi
   return undefined;
 }
 
-function extractPreTokenizerPattern(hf: HFTokenizerJson): string | undefined {
-  const split = findInTree(hf.pre_tokenizer, 'Split');
-  return split?.pattern?.Regex;
+/**
+ * Walk a byte_level `pre_tokenizer` tree and compile it into a v2
+ * `pre_tokenizer_program` (an ordered list of stages), plus a legacy v1
+ * `pre_tokenizer_pattern` string when the whole tree reduces to exactly
+ * one alternation stage (old clients without a program-aware runtime can
+ * then still use the map).
+ *
+ * This replaces the historical `extractPreTokenizerPattern`, which called
+ * `findInTree(hf.pre_tokenizer, 'Split')` and used whichever `Split` node
+ * it found FIRST, anywhere in the tree, discarding every other stage in
+ * the Sequence along with that Split's own `behavior` and `invert` fields.
+ * That was only safe for the one shape it was implicitly written for,
+ * `Sequence[Split(regex), ByteLevel(use_regex=false)]`. Real Sequences are
+ * frequently longer: SmolLM2 is `Sequence[Digits, ByteLevel]` (zero Split
+ * nodes: the old code silently produced no pattern and no working program
+ * at all), Falcon is `Sequence[Punctuation, ByteLevel, Digits, Split]`
+ * (four stages, three of them dropped), DeepSeek-V3/R1 is
+ * `Sequence[Split, Split, Split, ByteLevel]` (three Split nodes, two
+ * dropped, and the surviving one's `behavior`/`invert` ignored).
+ *
+ * Each child of the Sequence (or the lone node, if `pre_tokenizer` isn't a
+ * Sequence at all) is classified and lowered to ONE stage, in order. A
+ * child this function doesn't recognise throws immediately: emitting a
+ * plausible-looking but wrong program for an unrecognised shape is the
+ * exact defect this function exists to not repeat. See
+ * spec/PRETOKENIZER_PROGRAM.md § Compiler failure is loud.
+ */
+function compilePreTokenizerStages(
+  hf: HFTokenizerJson,
+): { stages: PreTokStage[]; legacyPattern?: string } {
+  const root = hf.pre_tokenizer;
+  const children: HFNode[] = root
+    ? root.type === 'Sequence'
+      ? (root.pretokenizers ?? [])
+      : [root]
+    : [];
+
+  const stages: PreTokStage[] = [];
+  // Set only when a stage's ops came verbatim from a Split node's own
+  // regex, so the legacy pattern (if emitted) matches exactly what a v1
+  // client would have run.
+  let verbatimAlternationRegex: string | undefined;
+  // A `Split(pattern, Isolated, invert=false)` node whose pattern isn't
+  // one of the recognised shapes has ONE safe degraded fallback: treat it
+  // as a plain "find all regex matches, emit each as a piece" scan, which
+  // is exactly what `Isolated` + `invert=false` faithfully means for ANY
+  // regex, recognised or not (see the Split-node comment below). That's
+  // not an approximation, it's the literal semantics. But it can only be
+  // expressed as a legacy `pre_tokenizer_pattern` regex string, not as a
+  // program stage (this compiler doesn't have a generic "run this regex"
+  // stage: every stage kind is a specific narrow shape). So it's only
+  // usable when this Split is the SOLE contributor to the whole
+  // pre_tokenizer: if anything else in the Sequence also needs a program
+  // stage, a pattern-only fallback for just this one piece can't be
+  // combined with program stages for the others, and the conversion must
+  // fail loud instead.
+  let unrecognizedSplitPattern: string | undefined;
+  let unrecognizedSplitCount = 0;
+
+  const fail = (why: string): never => {
+    throw new Error(
+      `convertHFTokenizer: cannot faithfully lower this pre_tokenizer to a ` +
+        `pre_tokenizer_program: ${why} Refusing to emit an approximate ` +
+        `program: see spec/PRETOKENIZER_PROGRAM.md § Compiler failure is loud.`,
+    );
+  };
+
+  for (const node of children) {
+    switch (node.type) {
+      case 'Digits': {
+        stages.push({
+          stage: 'digits_isolate',
+          mode: node.individual_digits ? 'individual' : 'grouped',
+        });
+        break;
+      }
+
+      case 'Punctuation': {
+        const behavior = node.behavior ?? 'Isolated';
+        if (behavior !== 'Contiguous') {
+          fail(
+            `Punctuation stage has behavior "${behavior}"; only "Contiguous" ` +
+              `has a verified faithful lowering (punctuation_contiguous).`,
+          );
+        }
+        stages.push({ stage: 'punctuation_contiguous' });
+        break;
+      }
+
+      case 'ByteLevel': {
+        if (node.add_prefix_space) {
+          fail('ByteLevel stage has add_prefix_space=true, which is not implemented.');
+        }
+        // Default per HuggingFace `tokenizers`: true.
+        const useRegex = node.use_regex ?? true;
+        if (useRegex) {
+          stages.push({ stage: 'alternation', ops: BYTE_LEVEL_DEFAULT_OPS.map((o) => ({ ...o })) });
+        }
+        // use_regex=false contributes no stage: it's a byte-encode-only
+        // step, and byte encoding is applied unconditionally downstream
+        // (BPETokenizer.encodePieceToVocabSpace) whenever encoder is
+        // byte_level, independent of the pretok program.
+        break;
+      }
+
+      case 'Split': {
+        const pattern =
+          node.pattern?.Regex ??
+          fail('Split stage has no Regex pattern (String-literal Split patterns are not supported).');
+        const behavior = node.behavior ?? 'Isolated';
+        const invert = node.invert ?? false;
+
+        if (behavior === 'Isolated' && !invert) {
+          const maxRun = recognizeDigitsRunRegex(pattern);
+          if (maxRun !== null) {
+            stages.push(
+              maxRun > 0
+                ? { stage: 'digits_isolate', mode: 'grouped', max_run: maxRun }
+                : { stage: 'digits_isolate', mode: 'grouped' },
+            );
+            break;
+          }
+          if (isCjkIsolateRegex(pattern)) {
+            stages.push({ stage: 'cjk_isolate' });
+            break;
+          }
+          if (isDigitTriplesRegex(pattern)) {
+            stages.push({ stage: 'digit_triples_isolate' });
+            break;
+          }
+          const ops = compileAlternationOps(pattern);
+          if (ops) {
+            stages.push({ stage: 'alternation', ops });
+            verbatimAlternationRegex = pattern;
+            break;
+          }
+          // Unrecognised shape, but Isolated + invert=false: safe to
+          // degrade to a pattern-only fallback IF this turns out to be
+          // the sole contributor once the whole Sequence has been walked
+          // (checked after the loop, below).
+          unrecognizedSplitPattern = pattern;
+          unrecognizedSplitCount += 1;
+          break;
+        } else if (behavior === 'Removed' && invert) {
+          // Removed + invert=true on one of the recognised EXHAUSTIVE
+          // alternation shapes (every recognised shape ends in a bare
+          // `\s+` catchall, so it always matches: there are never any
+          // unmatched gaps) reduces to the same output as Isolated +
+          // invert=false on that same regex: every span the regex
+          // produces is emitted, in order, with nothing removed because
+          // there's nothing left to be the "removed" side of the split
+          // once invert flips is-match to is-gap and there are no gaps.
+          // phi-4-mini ships exactly this (Removed, invert=true, the
+          // o200k/mistral-nemo cased-letter shape).
+          const ops = compileAlternationOps(pattern);
+          if (ops) {
+            stages.push({ stage: 'alternation', ops });
+            verbatimAlternationRegex = pattern;
+            break;
+          }
+        }
+
+        fail(
+          `Split stage (behavior=${behavior}, invert=${invert}) has an ` +
+            `unrecognised pattern: ${JSON.stringify(pattern)}`,
+        );
+        break; // unreachable: fail() throws
+      }
+
+      case 'Metaspace':
+        fail('Metaspace nested inside a byte_level Sequence is not supported.');
+        break; // unreachable: fail() throws
+
+      default:
+        fail(`unrecognised pre_tokenizer node type "${node.type}".`);
+    }
+  }
+
+  // Reconcile an unrecognised-but-Isolated-invert=false Split, if any.
+  // It's a safe degrade to pattern-only ONLY when it was the sole
+  // contributor: nothing else in the Sequence produced a program stage,
+  // and it didn't happen more than once (two unrecognised Splits in one
+  // Sequence can't both fall back to a single legacy pattern string).
+  if (unrecognizedSplitCount > 0) {
+    if (unrecognizedSplitCount === 1 && stages.length === 0) {
+      return { stages: [], legacyPattern: unrecognizedSplitPattern };
+    }
+    fail(
+      `Split stage pattern is not recognised: ${JSON.stringify(unrecognizedSplitPattern)}. ` +
+        `It sits alongside other stages in a Sequence this converter cannot partially ` +
+        `lower: either every stage compiles to a program stage, or none of them do.`,
+    );
+  }
+
+  // A legacy v1 pattern is only honest when the WHOLE tree reduces to
+  // exactly one alternation stage: multi-stage Sequences (Digits +
+  // ByteLevel, Punctuation + ByteLevel + Digits + Split, ...) have no
+  // single regex that reproduces their output, so old program-unaware
+  // clients simply can't run these maps. That's the spec's existing
+  // allowance (a map without a pattern is valid, program-only), applied
+  // honestly instead of papering over it with a regex that only agrees
+  // with the real tokenizer some of the time.
+  let legacyPattern: string | undefined;
+  if (stages.length === 1 && stages[0]!.stage === 'alternation') {
+    legacyPattern = verbatimAlternationRegex ?? BYTE_LEVEL_DEFAULT_REGEX;
+  }
+
+  return { stages, legacyPattern };
 }
 
 function normalizeMerges(hf: HFTokenizerJson): string[] | undefined {
@@ -316,8 +545,12 @@ export function convertHFTokenizer(
 
   const encoder = detectEncoder(hf);
   const merges = normalizeMerges(hf);
-  const pre_tokenizer_pattern =
-    encoder === 'byte_level' ? extractPreTokenizerPattern(hf) : undefined;
+  // Compiled eagerly (not lazily inside the pre_tokenizer_program block
+  // below) so an unrecognised Sequence shape throws here, at conversion
+  // time, rather than producing a map that silently has neither a working
+  // pattern nor a working program.
+  const preTok = encoder === 'byte_level' ? compilePreTokenizerStages(hf) : undefined;
+  const pre_tokenizer_pattern = preTok?.legacyPattern;
 
   const vocab: Record<string, number> = { ...hf.model.vocab };
   const special_tokens: Record<string, number> = {};
@@ -355,14 +588,26 @@ export function convertHFTokenizer(
     (result as { pre_tokenizer_pattern?: string }).pre_tokenizer_pattern =
       pre_tokenizer_pattern;
 
-  // Compile the regex into a v2.1 pre_tokenizer_program when the regex
-  // is one we recognise. Old clients ignore the field; new clients
-  // (and the C runtime once it lands) skip the regex engine entirely.
-  // For metaspace encoders, emit the metaspace_split shortcut directly.
-  if (encoder === 'byte_level' && pre_tokenizer_pattern) {
-    const prog = compilePreTokenizerRegex(pre_tokenizer_pattern);
-    if (prog) {
-      (result as { pre_tokenizer_program?: typeof prog }).pre_tokenizer_program = prog;
+  // Emit the compiled pre_tokenizer_program. Old clients ignore the
+  // field; new clients (and the C runtime once it's updated for v2, see
+  // spec/PRETOKENIZER_PROGRAM.md § Versioning) skip the regex engine
+  // entirely. For metaspace encoders, emit the metaspace_split shortcut
+  // directly.
+  //
+  // Stay on v1 whenever the source reduces to exactly one alternation
+  // stage (every currently-published byte_level map except SmolLM2,
+  // Falcon and DeepSeek-V3/R1): zero output churn for maps this fix
+  // didn't need to touch, and v1-only clients (Python/Rust/C haven't been
+  // updated for v2 in this pass) keep working on them unchanged. Only
+  // emit v2 when the source is a genuine multi-stage Sequence that v1
+  // cannot represent at all.
+  if (encoder === 'byte_level' && preTok && preTok.stages.length > 0) {
+    if (preTok.stages.length === 1 && preTok.stages[0]!.stage === 'alternation') {
+      const prog: PreTokProgramV1 = { version: 1, ops: preTok.stages[0]!.ops };
+      (result as { pre_tokenizer_program?: PreTokProgramV1 }).pre_tokenizer_program = prog;
+    } else {
+      const prog: PreTokProgramV2 = { version: 2, stages: preTok.stages };
+      (result as { pre_tokenizer_program?: PreTokProgramV2 }).pre_tokenizer_program = prog;
     }
   } else if (encoder === 'metaspace') {
     const prog = metaspaceProgram();

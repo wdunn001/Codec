@@ -52,6 +52,42 @@ static codec_pretok_program_t make_qwen_like(uint32_t numbers_max_run) {
     return prog;
 }
 
+/* o200k_base / o200k_harmony / mistral-nemo-style program: two
+ * letters_cased ops (title, then upper) plus numbers. Real maps also
+ * carry punct_run/newline_block/trailing_ws/ws_run; none of this
+ * file's letters_cased test inputs contain punctuation or standalone
+ * whitespace runs that would reach them (a leading space is consumed
+ * by letters_cased's own lead_other), so they're omitted here rather
+ * than exercised without being tested. */
+static codec_pretok_program_t make_o200k_like(void) {
+    static const char *CI[] = {
+        "'s", "'t", "'re", "'ve", "'m", "'ll", "'d",
+    };
+    static codec_pretok_op_t ops[3];
+
+    ops[0].kind = CODEC_PRETOK_LETTERS_CASED;
+    ops[0].u.letters_cased.kind        = CODEC_PRETOK_CASED_TITLE;
+    ops[0].u.letters_cased.lead_other  = 1;
+    ops[0].u.letters_cased.trailing_ci = (char **)CI;
+    ops[0].u.letters_cased.trailing_ci_count = sizeof(CI) / sizeof(CI[0]);
+
+    ops[1].kind = CODEC_PRETOK_LETTERS_CASED;
+    ops[1].u.letters_cased.kind        = CODEC_PRETOK_CASED_UPPER;
+    ops[1].u.letters_cased.lead_other  = 1;
+    ops[1].u.letters_cased.trailing_ci = (char **)CI;
+    ops[1].u.letters_cased.trailing_ci_count = sizeof(CI) / sizeof(CI[0]);
+
+    ops[2].kind = CODEC_PRETOK_NUMBERS;
+    ops[2].u.numbers.max_run = 3;
+
+    codec_pretok_program_t prog = {
+        .version  = 1,
+        .ops      = ops,
+        .op_count = 3,
+    };
+    return prog;
+}
+
 /* Compare runtime output to an expected list of UTF-8 piece strings. */
 static int pieces_match_strings(const uint8_t *input,
                                 const codec_pretok_piece_t *pieces, size_t n,
@@ -176,6 +212,54 @@ static void test_metaspace_prefix_first_skips_first(void) {
     codec_pretok_free_metaspace_pieces(pieces, count);
 }
 
+/* ── letters_cased (o200k_base / o200k_harmony / mistral-nemo) ─────────────
+ *
+ * Expected outputs below were captured by actually running this exact
+ * program (as JSON) through packages/web/src/pretok-program.ts, the
+ * reference v2 executor (which also implements v1 ops), not hand
+ * derived: see the parent task's verification notes. This op was
+ * previously entirely unimplemented in C: any map carrying it
+ * (mistral-nemo, o200k_base, o200k_harmony) failed CODEC_ERR_PARSE at
+ * codec_map_from_json() time.
+ */
+
+static void test_letters_cased_camel_case_splits_on_boundary(void) {
+    codec_pretok_program_t prog = make_o200k_like();
+    ASSERT_PIECES(prog, "MyCamelCase", "My", "Camel", "Case");
+}
+
+static void test_letters_cased_all_caps_acronym_stays_whole(void) {
+    /* [Lu]*[Ll]+ is greedy: with only ONE upper-to-lower transition in
+     * the whole word, title matches start to end in a single piece.
+     * This is not an acronym-boundary heuristic; it's exactly what the
+     * op's own regex describes. */
+    codec_pretok_program_t prog = make_o200k_like();
+    ASSERT_PIECES(prog, "HTTPServer", "HTTPServer");
+}
+
+static void test_letters_cased_upper_then_trailing_ci_contraction(void) {
+    /* "IT'S" : title fails (no lowercase after the run before the
+     * apostrophe), upper matches "IT" then extends through the
+     * case-insensitive "'s" contraction. */
+    codec_pretok_program_t prog = make_o200k_like();
+    ASSERT_PIECES(prog, "IT'S working", "IT'S", " working");
+}
+
+static void test_letters_cased_lead_other_absorbs_leading_space(void) {
+    codec_pretok_program_t prog = make_o200k_like();
+    ASSERT_PIECES(prog, " CamelCase", " Camel", "Case");
+}
+
+static void test_letters_cased_with_trailing_digit_run(void) {
+    codec_pretok_program_t prog = make_o200k_like();
+    ASSERT_PIECES(prog, "helloWorld123", "hello", "World", "123");
+}
+
+static void test_letters_cased_single_letter_then_space_then_upper(void) {
+    codec_pretok_program_t prog = make_o200k_like();
+    ASSERT_PIECES(prog, "a B", "a", " B");
+}
+
 /* The Unicode class predicates (codec_unicode_is_letter/_number/_ws)
  * are internal: exercised indirectly by every match_* op below. The
  * letters / numbers / ws_run tests would fail loudly if the tables
@@ -192,5 +276,11 @@ int main(void) {
     CT_RUN(test_emoji_and_cjk_as_letters);
     CT_RUN(test_metaspace_split);
     CT_RUN(test_metaspace_prefix_first_skips_first);
+    CT_RUN(test_letters_cased_camel_case_splits_on_boundary);
+    CT_RUN(test_letters_cased_all_caps_acronym_stays_whole);
+    CT_RUN(test_letters_cased_upper_then_trailing_ci_contraction);
+    CT_RUN(test_letters_cased_lead_other_absorbs_leading_space);
+    CT_RUN(test_letters_cased_with_trailing_digit_run);
+    CT_RUN(test_letters_cased_single_letter_then_space_then_upper);
     CT_DONE();
 }

@@ -55,7 +55,7 @@ codecai-maps validate ./qwen_qwen2.json
 
 ```bash
 codecai-maps hash ./qwen_qwen2.json
-# → sha256:c73972f7a580936d724ffd8df9df2ce546d255c543e9d09b6d75e5bf69b1a64d
+# → sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad
 ```
 
 Use this value when pinning a map: `loadMap({ url, hash })` will reject any map that doesn't match.
