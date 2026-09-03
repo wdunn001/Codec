@@ -427,6 +427,303 @@ static void test_watcher_region_across_feeds_still_survives(void) {
     codec_tool_watcher_free(w);
 }
 
+/* ── Truncation: codec_tool_watcher_end() while inside a region ───────── */
+/*
+ * Defect: an unterminated region (stream ends mid tool-call, e.g. the
+ * model hit its length limit) used to be silently dropped: no event, no
+ * signal, indistinguishable from a model that never called a tool.
+ * codec_tool_watcher_end() must report it.
+ */
+
+static void test_watcher_end_emits_truncated_with_finish_reason(void) {
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new_with_ids(1000, 1001, &w), CODEC_OK);
+
+    uint32_t ids[] = { 7, 1000, 41, 42 };
+    codec_watcher_event_t *evs = NULL;
+    size_t n = 0;
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids, 4, &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 1);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_PASSTHROUGH);
+    CT_TRUE(codec_tool_watcher_inside(w));
+
+    CT_EQ_INT(codec_tool_watcher_end(w, "length", &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 1);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_REGION_TRUNCATED);
+    CT_EQ_SZ(evs[0].ids_len, 2);
+    CT_EQ_INT(evs[0].ids[0], 41);
+    CT_EQ_INT(evs[0].ids[1], 42);
+    CT_EQ_STR(evs[0].finish_reason, "length");
+    CT_TRUE(!codec_tool_watcher_inside(w));
+
+    /* A second end() call is a no-op: nothing left in flight. */
+    CT_EQ_INT(codec_tool_watcher_end(w, "length", &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 0);
+
+    codec_tool_watcher_free(w);
+}
+
+static void test_watcher_end_reports_empty_body_when_stream_ends_right_after_start(void) {
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new_with_ids(1000, 1001, &w), CODEC_OK);
+
+    uint32_t ids[] = { 1000 };
+    codec_watcher_event_t *evs = NULL;
+    size_t n = 0;
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids, 1, &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 0);
+    CT_TRUE(codec_tool_watcher_inside(w));
+
+    /* No finish_reason known: NULL is a legitimate argument. */
+    CT_EQ_INT(codec_tool_watcher_end(w, NULL, &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 1);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_REGION_TRUNCATED);
+    CT_EQ_SZ(evs[0].ids_len, 0);
+    CT_TRUE(evs[0].finish_reason == NULL);
+
+    codec_tool_watcher_free(w);
+}
+
+static void test_watcher_end_outside_region_emits_nothing(void) {
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new_with_ids(1000, 1001, &w), CODEC_OK);
+
+    uint32_t ids[] = { 1000, 5, 1001, 6 };
+    codec_watcher_event_t *evs = NULL;
+    size_t n = 0;
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids, 4, &evs, &n), CODEC_OK);
+    CT_TRUE(!codec_tool_watcher_inside(w));
+
+    CT_EQ_INT(codec_tool_watcher_end(w, "stop", &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 0);
+
+    codec_tool_watcher_free(w);
+}
+
+/* ── Overflow: region buffer cap ───────────────────────────────────────── */
+/*
+ * Defect: the region buffer grew without bound. A client that can make
+ * the model emit a start marker without a matching end marker could grow
+ * it to the entire remaining generation. The cap must be enforced and the
+ * overflow must be a defined, observable event, not a silent truncation.
+ */
+
+static void test_watcher_region_cap_defaults_and_is_settable(void) {
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new_with_ids(1000, 1001, &w), CODEC_OK);
+    CT_EQ_SZ(codec_tool_watcher_region_cap(w), CODEC_TOOL_WATCHER_DEFAULT_REGION_CAP);
+
+    codec_tool_watcher_set_region_cap(w, 3);
+    CT_EQ_SZ(codec_tool_watcher_region_cap(w), 3);
+
+    /* 0 resets to the default rather than becoming an unusable cap. */
+    codec_tool_watcher_set_region_cap(w, 0);
+    CT_EQ_SZ(codec_tool_watcher_region_cap(w), CODEC_TOOL_WATCHER_DEFAULT_REGION_CAP);
+
+    codec_tool_watcher_free(w);
+}
+
+static void test_watcher_overflow_fires_once_at_cap_then_resyncs_on_end_marker(void) {
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new_with_ids(1000, 1001, &w), CODEC_OK);
+    codec_tool_watcher_set_region_cap(w, 3);
+
+    /* Region body is 5 tokens long against a cap of 3: must overflow once,
+     * with exactly the first 3 tokens, and must NOT also emit REGION_END
+     * for the same region when the end marker eventually arrives. */
+    uint32_t ids[] = { 1000, 1, 2, 3, 4, 5, 1001, 9 };
+    codec_watcher_event_t *evs = NULL;
+    size_t n = 0;
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids, sizeof(ids) / sizeof(ids[0]),
+                                       &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 2);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_REGION_OVERFLOW);
+    CT_EQ_SZ(evs[0].ids_len, 3);
+    CT_EQ_INT(evs[0].ids[0], 1);
+    CT_EQ_INT(evs[0].ids[1], 2);
+    CT_EQ_INT(evs[0].ids[2], 3);
+    CT_EQ_INT((int)evs[1].kind, (int)CODEC_WATCH_PASSTHROUGH);
+    CT_EQ_SZ(evs[1].ids_len, 1);
+    CT_EQ_INT(evs[1].ids[0], 9);
+    CT_TRUE(!codec_tool_watcher_inside(w));
+
+    codec_tool_watcher_free(w);
+}
+
+static void test_watcher_overflow_then_truncated_reports_both(void) {
+    /* A region that overflows and then never sees an end marker must
+     * report BOTH: the overflow (memory bound hit) and the truncation
+     * (stream ended without a close). They are orthogonal signals. */
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new_with_ids(1000, 1001, &w), CODEC_OK);
+    codec_tool_watcher_set_region_cap(w, 2);
+
+    uint32_t ids[] = { 1000, 1, 2, 3, 4 };
+    codec_watcher_event_t *evs = NULL;
+    size_t n = 0;
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids, 5, &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 1);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_REGION_OVERFLOW);
+    CT_EQ_SZ(evs[0].ids_len, 2);
+
+    CT_EQ_INT(codec_tool_watcher_end(w, "length", &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 1);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_REGION_TRUNCATED);
+    CT_EQ_SZ(evs[0].ids_len, 2);
+    CT_EQ_STR(evs[0].finish_reason, "length");
+
+    codec_tool_watcher_free(w);
+}
+
+static void test_watcher_exact_cap_does_not_overflow(void) {
+    /* Off-by-one check: a region whose body is exactly `cap` tokens must
+     * close cleanly as REGION_END, not as REGION_OVERFLOW. */
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new_with_ids(1000, 1001, &w), CODEC_OK);
+    codec_tool_watcher_set_region_cap(w, 3);
+
+    uint32_t ids[] = { 1000, 1, 2, 3, 1001 };
+    codec_watcher_event_t *evs = NULL;
+    size_t n = 0;
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids, 5, &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 1);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_REGION_END);
+    CT_EQ_SZ(evs[0].ids_len, 3);
+
+    codec_tool_watcher_free(w);
+}
+
+/* ── Nested start markers ──────────────────────────────────────────────── */
+/*
+ * Defect: a start marker seen while already inside a region vanished with
+ * no diagnostic: not in the region body, not anywhere else. The behaviour
+ * (drop from the body; no nested regions) is unchanged, but it must now
+ * be observable.
+ */
+
+static void test_watcher_nested_start_is_observable_and_ordered(void) {
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new_with_ids(1000, 1001, &w), CODEC_OK);
+
+    /* S 1 S 2 E 3 -> nested_start / region([1,2]) / passthrough([3]) */
+    uint32_t ids[] = { 1000, 1, 1000, 2, 1001, 3 };
+    codec_watcher_event_t *evs = NULL;
+    size_t n = 0;
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids, 6, &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 3);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_NESTED_START);
+    CT_EQ_SZ(evs[0].ids_len, 1);
+    CT_EQ_INT(evs[0].ids[0], 1000);
+    CT_EQ_INT((int)evs[1].kind, (int)CODEC_WATCH_REGION_END);
+    CT_EQ_SZ(evs[1].ids_len, 2);
+    CT_EQ_INT(evs[1].ids[0], 1);
+    CT_EQ_INT(evs[1].ids[1], 2);
+    CT_EQ_INT((int)evs[2].kind, (int)CODEC_WATCH_PASSTHROUGH);
+    CT_EQ_SZ(evs[2].ids_len, 1);
+    CT_EQ_INT(evs[2].ids[0], 3);
+
+    codec_tool_watcher_free(w);
+}
+
+/* ── Empty region: start marker immediately followed by end marker ────── */
+/*
+ * Defect: an empty region emitted NO event at all in C, because the
+ * emit_region() helper skipped zero-length spans. The other five
+ * implementations (TypeScript, Python, Rust, Java, .NET) all emit
+ * REGION_END with an empty body. A model that emits
+ * "<tool_call></tool_call>" was therefore indistinguishable, to a C
+ * caller, from a model that never called a tool at all: exactly the
+ * silent swallow that REGION_TRUNCATED and NESTED_START were added to
+ * prevent. Not covered by the shared conformance fixture, which is why
+ * it survived.
+ */
+
+static void test_watcher_empty_region_is_still_reported(void) {
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new_with_ids(90, 91, &w), CODEC_OK);
+
+    /* Bare empty region. */
+    uint32_t ids[] = { 90, 91 };
+    codec_watcher_event_t *evs = NULL;
+    size_t n = 0;
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids, 2, &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 1);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_REGION_END);
+    CT_EQ_SZ(evs[0].ids_len, 0);
+
+    /* Surrounded by passthrough: ordering must still hold. */
+    codec_tool_watcher_reset(w);
+    uint32_t ids2[] = { 0, 90, 91, 1 };
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids2, 4, &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 3);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_PASSTHROUGH);
+    CT_EQ_SZ(evs[0].ids_len, 1);
+    CT_EQ_INT(evs[0].ids[0], 0);
+    CT_EQ_INT((int)evs[1].kind, (int)CODEC_WATCH_REGION_END);
+    CT_EQ_SZ(evs[1].ids_len, 0);
+    CT_EQ_INT((int)evs[2].kind, (int)CODEC_WATCH_PASSTHROUGH);
+    CT_EQ_SZ(evs[2].ids_len, 1);
+    CT_EQ_INT(evs[2].ids[0], 1);
+
+    /* Empty region split across two feeds. */
+    codec_tool_watcher_reset(w);
+    uint32_t a[] = { 90 };
+    uint32_t b[] = { 91 };
+    CT_EQ_INT(codec_tool_watcher_feed(w, a, 1, &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 0);
+    CT_TRUE(codec_tool_watcher_inside(w));
+    CT_EQ_INT(codec_tool_watcher_feed(w, b, 1, &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 1);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_REGION_END);
+    CT_EQ_SZ(evs[0].ids_len, 0);
+
+    /* An empty region must not disturb a following non-empty one: the
+     * arena offset bookkeeping has to stay correct across a 0-length
+     * span. */
+    codec_tool_watcher_reset(w);
+    uint32_t ids3[] = { 90, 91, 90, 7, 91 };
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids3, 5, &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 2);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_REGION_END);
+    CT_EQ_SZ(evs[0].ids_len, 0);
+    CT_EQ_INT((int)evs[1].kind, (int)CODEC_WATCH_REGION_END);
+    CT_EQ_SZ(evs[1].ids_len, 1);
+    CT_EQ_INT(evs[1].ids[0], 7);
+
+    codec_tool_watcher_free(w);
+}
+
+/* ── Ordering: interleaved events in stream order (defect 3) ──────────── */
+/*
+ * [a, S, X, E, b, S, Y, E, c] must produce five ORDERED events:
+ * passthrough(a) / region(X) / passthrough(b) / region(Y) / passthrough(c).
+ * This is the exact shape every language's watcher must agree on.
+ */
+
+static void test_watcher_ordering_matches_defect3_example(void) {
+    codec_tool_watcher_t *w = NULL;
+    CT_EQ_INT(codec_tool_watcher_new_with_ids(90, 91, &w), CODEC_OK);
+
+    uint32_t a = 10, b = 11, c = 12, x = 13, y = 14;
+    uint32_t ids[] = { a, 90, x, 91, b, 90, y, 91, c };
+    codec_watcher_event_t *evs = NULL;
+    size_t n = 0;
+    CT_EQ_INT(codec_tool_watcher_feed(w, ids, 9, &evs, &n), CODEC_OK);
+    CT_EQ_SZ(n, 5);
+    CT_EQ_INT((int)evs[0].kind, (int)CODEC_WATCH_PASSTHROUGH);
+    CT_EQ_INT(evs[0].ids[0], (int)a);
+    CT_EQ_INT((int)evs[1].kind, (int)CODEC_WATCH_REGION_END);
+    CT_EQ_INT(evs[1].ids[0], (int)x);
+    CT_EQ_INT((int)evs[2].kind, (int)CODEC_WATCH_PASSTHROUGH);
+    CT_EQ_INT(evs[2].ids[0], (int)b);
+    CT_EQ_INT((int)evs[3].kind, (int)CODEC_WATCH_REGION_END);
+    CT_EQ_INT(evs[3].ids[0], (int)y);
+    CT_EQ_INT((int)evs[4].kind, (int)CODEC_WATCH_PASSTHROUGH);
+    CT_EQ_INT(evs[4].ids[0], (int)c);
+
+    codec_tool_watcher_free(w);
+}
+
 int main(void) {
     CT_RUN(test_map_special_id_resolves_by_name);
     CT_RUN(test_watcher_passthrough_then_region_then_passthrough);
@@ -438,5 +735,15 @@ int main(void) {
     CT_RUN(test_watcher_real_qwen2);
     CT_RUN(test_watcher_two_regions_one_feed_keep_distinct_ids);
     CT_RUN(test_watcher_region_across_feeds_still_survives);
+    CT_RUN(test_watcher_end_emits_truncated_with_finish_reason);
+    CT_RUN(test_watcher_end_reports_empty_body_when_stream_ends_right_after_start);
+    CT_RUN(test_watcher_end_outside_region_emits_nothing);
+    CT_RUN(test_watcher_region_cap_defaults_and_is_settable);
+    CT_RUN(test_watcher_overflow_fires_once_at_cap_then_resyncs_on_end_marker);
+    CT_RUN(test_watcher_overflow_then_truncated_reports_both);
+    CT_RUN(test_watcher_exact_cap_does_not_overflow);
+    CT_RUN(test_watcher_nested_start_is_observable_and_ordered);
+    CT_RUN(test_watcher_empty_region_is_still_reported);
+    CT_RUN(test_watcher_ordering_matches_defect3_example);
     CT_DONE();
 }
