@@ -24,6 +24,9 @@ const char *codec_status_str(codec_status_t s) {
         case CODEC_ERR_NOT_FOUND:     return "not found";
         case CODEC_ERR_TRUNCATED:     return "truncated";
         case CODEC_ERR_INVALID_UTF8:  return "invalid utf-8";
+        case CODEC_ERR_NOT_BUILT:     return "not built into this library";
+        case CODEC_ERR_UNSUPPORTED_PRETOK_VERSION:
+            return "unsupported pre_tokenizer_program version";
         default:                      return "unknown error";
     }
 }

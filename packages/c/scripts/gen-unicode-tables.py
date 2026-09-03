@@ -3,10 +3,21 @@
 """
 gen-unicode-tables.py: emit a C99 file with Unicode property tables.
 
-The Codec pre-tokenizer program references three Unicode classes:
-  - Letter   (\\p{L}): General_Category in {Lu, Ll, Lt, Lm, Lo}
-  - Number   (\\p{N}): General_Category in {Nd, Nl, No}
-  - White_Space (\\s): code points with Unicode property White_Space
+The Codec pre-tokenizer program references six Unicode classes:
+  - Letter      (\\p{L}): General_Category in {Lu, Ll, Lt, Lm, Lo}
+  - Number      (\\p{N}): General_Category in {Nd, Nl, No}
+  - White_Space (\\s):    code points with Unicode property White_Space
+  - Mark        (\\p{M}): General_Category in {Mn, Mc, Me}
+  - Punctuation (\\p{P}): General_Category in {Pc, Pd, Ps, Pe, Pi, Pf, Po}
+  - Symbol      (\\p{S}): General_Category in {Sm, Sc, Sk, So}
+
+Mark, Punctuation and Symbol back the v2 pre-tokenizer-program schema's
+composite classes (`letters.body: "L_M"`, `letters.lead_other_class:
+"l_p_s"`, `punct_run.charset: "p_s"`): see
+spec/PRETOKENIZER_PROGRAM.md § Class membership. The runtime composes
+those from the primitive predicates below at query time (mirroring
+packages/web/src/pretok-program.ts's isLetter/isMark/isPunct/isSymbol);
+no separate composite table is generated.
 
 Most regex engines bring these tables internally. libcodec ships them as
 generated C arrays so the runtime has zero regex dependency. The output
@@ -49,6 +60,9 @@ WHITE_SPACE_CODEPOINTS = [
 # General_Category prefixes that constitute each class.
 LETTER_PREFIXES = ("L",)   # Lu, Ll, Lt, Lm, Lo
 NUMBER_PREFIXES = ("N",)   # Nd, Nl, No
+MARK_PREFIXES   = ("M",)   # Mn, Mc, Me
+PUNCT_PREFIXES  = ("P",)   # Pc, Pd, Ps, Pe, Pi, Pf, Po
+SYMBOL_PREFIXES = ("S",)   # Sm, Sc, Sk, So
 
 # Unicode max code point.
 MAX_CP = 0x10FFFF
@@ -83,6 +97,35 @@ def is_number(cp: int) -> bool:
     return unicodedata.category(chr(cp)).startswith(NUMBER_PREFIXES)
 
 
+def is_mark(cp: int) -> bool:
+    return unicodedata.category(chr(cp)).startswith(MARK_PREFIXES)
+
+
+def is_punct(cp: int) -> bool:
+    return unicodedata.category(chr(cp)).startswith(PUNCT_PREFIXES)
+
+
+def is_symbol(cp: int) -> bool:
+    return unicodedata.category(chr(cp)).startswith(SYMBOL_PREFIXES)
+
+
+# letters_cased op composite classes (packages/*/pretok-program.*'s
+# isLetterUpper / isLetterLower): the "upper cluster" is Lu + Lt + the
+# shared Lm/Lo/M set that also validates in the lower cluster; the
+# "lower cluster" is Ll + that same shared set. Lm/Lo/M sit in BOTH,
+# which is what makes the case-boundary matcher backtrack.
+CASED_UPPER_CATEGORIES = ("Lu", "Lt", "Lm", "Lo", "Mn", "Mc", "Me")
+CASED_LOWER_CATEGORIES = ("Ll", "Lm", "Lo", "Mn", "Mc", "Me")
+
+
+def is_cased_upper(cp: int) -> bool:
+    return unicodedata.category(chr(cp)) in CASED_UPPER_CATEGORIES
+
+
+def is_cased_lower(cp: int) -> bool:
+    return unicodedata.category(chr(cp)) in CASED_LOWER_CATEGORIES
+
+
 def emit_array(name: str, ranges: List[Tuple[int, int]]) -> str:
     lines = [f"static const codec_cp_range_t {name}_RANGES[] = {{"]
     for lo, hi in ranges:
@@ -114,16 +157,23 @@ HEADER = """\
  * Source generator: packages/c/scripts/gen-unicode-tables.py
  * Unicode revision: {unicode_version}
  *
- * Three Unicode property tables used by the pre-tokenizer program
- * runtime: Letter (\\p{{L}}), Number (\\p{{N}}), White_Space (\\s).
- * Letter and Number ship as sorted (lo, hi) interval lists; query
- * with binary search. White_Space is small enough to ship as a
- * sorted code-point list.
+ * Eight Unicode property tables used by the pre-tokenizer program
+ * runtime: Letter (\\p{{L}}), Number (\\p{{N}}), White_Space (\\s),
+ * Mark (\\p{{M}}), Punctuation (\\p{{P}}), Symbol (\\p{{S}}), and the
+ * `letters_cased` op's two composite classes, CasedUpper
+ * (Lu ∪ Lt ∪ Lm ∪ Lo ∪ M) and CasedLower (Ll ∪ Lm ∪ Lo ∪ M). All eight
+ * ship as sorted (lo, hi) interval lists queried with binary search,
+ * except White_Space, small enough to ship as a sorted code-point list.
  *
- * The runtime exposes three predicates in codec_internal.h:
+ * The runtime exposes eight predicates in codec_internal.h:
  *   bool codec_unicode_is_letter(uint32_t cp);
  *   bool codec_unicode_is_number(uint32_t cp);
  *   bool codec_unicode_is_ws(uint32_t cp);
+ *   bool codec_unicode_is_mark(uint32_t cp);
+ *   bool codec_unicode_is_punct(uint32_t cp);
+ *   bool codec_unicode_is_symbol(uint32_t cp);
+ *   bool codec_unicode_is_letter_cased_upper(uint32_t cp);
+ *   bool codec_unicode_is_letter_cased_lower(uint32_t cp);
  */
 #include "codec_internal.h"
 
@@ -176,6 +226,26 @@ bool codec_unicode_is_number(uint32_t cp) {
 bool codec_unicode_is_ws(uint32_t cp) {
     return sorted_array_contains(WS_CODE_POINTS, WS_CODE_POINTS_N, cp) != 0;
 }
+
+bool codec_unicode_is_mark(uint32_t cp) {
+    return range_contains(MARK_RANGES, MARK_RANGES_N, cp) != 0;
+}
+
+bool codec_unicode_is_punct(uint32_t cp) {
+    return range_contains(PUNCT_RANGES, PUNCT_RANGES_N, cp) != 0;
+}
+
+bool codec_unicode_is_symbol(uint32_t cp) {
+    return range_contains(SYMBOL_RANGES, SYMBOL_RANGES_N, cp) != 0;
+}
+
+bool codec_unicode_is_letter_cased_upper(uint32_t cp) {
+    return range_contains(CASED_UPPER_RANGES, CASED_UPPER_RANGES_N, cp) != 0;
+}
+
+bool codec_unicode_is_letter_cased_lower(uint32_t cp) {
+    return range_contains(CASED_LOWER_RANGES, CASED_LOWER_RANGES_N, cp) != 0;
+}
 """
 
 
@@ -189,15 +259,31 @@ def main() -> int:
     print(f"scanning {MAX_CP + 1} code points…", file=sys.stderr)
     letter_ranges = collect_ranges(is_letter)
     number_ranges = collect_ranges(is_number)
+    mark_ranges   = collect_ranges(is_mark)
+    punct_ranges  = collect_ranges(is_punct)
+    symbol_ranges = collect_ranges(is_symbol)
+    cased_upper_ranges = collect_ranges(is_cased_upper)
+    cased_lower_ranges = collect_ranges(is_cased_lower)
 
     total_letter_cps = sum(hi - lo + 1 for lo, hi in letter_ranges)
     total_number_cps = sum(hi - lo + 1 for lo, hi in number_ranges)
+    total_mark_cps   = sum(hi - lo + 1 for lo, hi in mark_ranges)
+    total_punct_cps  = sum(hi - lo + 1 for lo, hi in punct_ranges)
+    total_symbol_cps = sum(hi - lo + 1 for lo, hi in symbol_ranges)
 
     print(f"  letter: {len(letter_ranges):4d} ranges, "
           f"{total_letter_cps:6d} code points", file=sys.stderr)
     print(f"  number: {len(number_ranges):4d} ranges, "
           f"{total_number_cps:6d} code points", file=sys.stderr)
     print(f"  ws:     {len(WHITE_SPACE_CODEPOINTS):4d} code points", file=sys.stderr)
+    print(f"  mark:   {len(mark_ranges):4d} ranges, "
+          f"{total_mark_cps:6d} code points", file=sys.stderr)
+    print(f"  punct:  {len(punct_ranges):4d} ranges, "
+          f"{total_punct_cps:6d} code points", file=sys.stderr)
+    print(f"  symbol: {len(symbol_ranges):4d} ranges, "
+          f"{total_symbol_cps:6d} code points", file=sys.stderr)
+    print(f"  cased_upper: {len(cased_upper_ranges):4d} ranges", file=sys.stderr)
+    print(f"  cased_lower: {len(cased_lower_ranges):4d} ranges", file=sys.stderr)
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -208,6 +294,16 @@ def main() -> int:
         f.write(emit_array("NUMBER", number_ranges))
         f.write("\n\n")
         f.write(emit_codepoint_array("WS_CODE_POINTS", WHITE_SPACE_CODEPOINTS))
+        f.write("\n\n")
+        f.write(emit_array("MARK", mark_ranges))
+        f.write("\n\n")
+        f.write(emit_array("PUNCT", punct_ranges))
+        f.write("\n\n")
+        f.write(emit_array("SYMBOL", symbol_ranges))
+        f.write("\n\n")
+        f.write(emit_array("CASED_UPPER", cased_upper_ranges))
+        f.write("\n\n")
+        f.write(emit_array("CASED_LOWER", cased_lower_ranges))
         f.write(FOOTER)
 
     bytes_written = out.stat().st_size

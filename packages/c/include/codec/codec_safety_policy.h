@@ -69,34 +69,34 @@ typedef struct codec_safety_policy codec_safety_policy_t;
  * CODEC_ERR_VALIDATION for shape violations. The caller frees with
  * codec_safety_policy_free.
  */
-codec_status_t codec_safety_policy_from_json(const char *json, size_t len,
+CODEC_API codec_status_t codec_safety_policy_from_json(const char *json, size_t len,
                                              codec_safety_policy_t **out);
 
-void codec_safety_policy_free(codec_safety_policy_t *policy);
+CODEC_API void codec_safety_policy_free(codec_safety_policy_t *policy);
 
 /* ── Accessors (strings owned by the policy; valid until free) ─────────── */
 
-const char *codec_safety_policy_id(const codec_safety_policy_t *policy);
-const char *codec_safety_policy_version(const codec_safety_policy_t *policy);
+CODEC_API const char *codec_safety_policy_id(const codec_safety_policy_t *policy);
+CODEC_API const char *codec_safety_policy_version(const codec_safety_policy_t *policy);
 
-size_t codec_safety_policy_tokenizer_count(const codec_safety_policy_t *policy);
-const char *codec_safety_policy_tokenizer(const codec_safety_policy_t *policy,
+CODEC_API size_t codec_safety_policy_tokenizer_count(const codec_safety_policy_t *policy);
+CODEC_API const char *codec_safety_policy_tokenizer(const codec_safety_policy_t *policy,
                                           size_t index);
 
-size_t codec_safety_policy_category_count(const codec_safety_policy_t *policy);
-const char *codec_safety_policy_category_name(const codec_safety_policy_t *policy,
+CODEC_API size_t codec_safety_policy_category_count(const codec_safety_policy_t *policy);
+CODEC_API const char *codec_safety_policy_category_name(const codec_safety_policy_t *policy,
                                               size_t index);
-codec_safety_action_t codec_safety_policy_category_action(
+CODEC_API codec_safety_action_t codec_safety_policy_category_action(
     const codec_safety_policy_t *policy, size_t index);
-const char *codec_safety_policy_category_description(
+CODEC_API const char *codec_safety_policy_category_description(
     const codec_safety_policy_t *policy, size_t index);
 
-const char *codec_safety_policy_classifier_family(const codec_safety_policy_t *policy);
-codec_classifier_host_t codec_safety_policy_classifier_host(
+CODEC_API const char *codec_safety_policy_classifier_family(const codec_safety_policy_t *policy);
+CODEC_API codec_classifier_host_t codec_safety_policy_classifier_host(
     const codec_safety_policy_t *policy);
 
-const char *codec_safety_policy_category_registry(const codec_safety_policy_t *policy);
-const char *codec_safety_policy_published_at(const codec_safety_policy_t *policy);
+CODEC_API const char *codec_safety_policy_category_registry(const codec_safety_policy_t *policy);
+CODEC_API const char *codec_safety_policy_published_at(const codec_safety_policy_t *policy);
 
 /* ── URL builders ──────────────────────────────────────────────────────── */
 
@@ -108,7 +108,7 @@ const char *codec_safety_policy_published_at(const codec_safety_policy_t *policy
  * the id fails the [a-z0-9._/-]+ check or contains a path-traversal
  * segment, CODEC_ERR_TRUNCATED if `out_cap` is too small.
  */
-codec_status_t codec_safety_policy_well_known_url(const char *origin,
+CODEC_API codec_status_t codec_safety_policy_well_known_url(const char *origin,
                                                   const char *policy_id,
                                                   char *out, size_t out_cap);
 
@@ -116,7 +116,7 @@ codec_status_t codec_safety_policy_well_known_url(const char *origin,
  * Content-addressed URL by sha256 hex (no "sha256:" prefix; expects
  * 64 lowercase hex chars).
  */
-codec_status_t codec_safety_policy_well_known_hash_url(const char *origin,
+CODEC_API codec_status_t codec_safety_policy_well_known_hash_url(const char *origin,
                                                        const char *hash_hex,
                                                        char *out, size_t out_cap);
 
@@ -132,7 +132,7 @@ codec_status_t codec_safety_policy_well_known_hash_url(const char *origin,
  * that already wire that for tokenizer maps drop this in for safety
  * policies with no surprises.
  */
-codec_status_t codec_safety_policy_verify_sha256(const char *bytes, size_t len,
+CODEC_API codec_status_t codec_safety_policy_verify_sha256(const char *bytes, size_t len,
                                                  const char *expected_hash);
 
 #ifdef __cplusplus

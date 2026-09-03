@@ -125,7 +125,17 @@ function(_codec_configure_target tgt is_shared)
         target_compile_options(${tgt} PRIVATE -Wall -Wextra -Wpedantic -Wno-unused-parameter)
     endif()
     if(${is_shared})
-        target_compile_definitions(${tgt} PRIVATE CODEC_BUILD_SHARED=1)
+        # CODEC_BUILD_SHARED (PRIVATE): seen only while compiling codec_shared's
+        # own sources. Tells codec.h to emit the export attribute.
+        # CODEC_SHARED (INTERFACE): propagated automatically to anything that
+        # links codec::codec, including through an installed find_package()
+        # consumer. Tells codec.h to emit the import attribute on Windows.
+        # See the CODEC_API comment in include/codec/codec.h for the full
+        # scheme, including why this does not collide with the
+        # option(CODEC_BUILD_SHARED ...) above.
+        target_compile_definitions(${tgt}
+            PRIVATE   CODEC_BUILD_SHARED=1
+            INTERFACE CODEC_SHARED=1)
     endif()
 endfunction()
 

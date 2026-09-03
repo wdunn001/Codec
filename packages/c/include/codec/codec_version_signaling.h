@@ -77,13 +77,13 @@ typedef struct {
  *         CODEC_ERR_PARSE if the JSON itself is malformed;
  *         CODEC_ERR_INVALID_ARG if pointers are NULL.
  */
-codec_status_t codec_version_required_parse(
+CODEC_API codec_status_t codec_version_required_parse(
     const char *json_bytes,
     size_t json_len,
     codec_version_required_body_t *out);
 
 /** Release all owned strings. Safe to call on a zero-initialized struct. */
-void codec_version_required_free(codec_version_required_body_t *body);
+CODEC_API void codec_version_required_free(codec_version_required_body_t *body);
 
 /**
  * Parsed .well-known/codec/version-policy.json document.
@@ -97,19 +97,19 @@ typedef struct {
     char *valid_until;       /* may be NULL */
 } codec_version_policy_doc_t;
 
-codec_status_t codec_version_policy_parse(
+CODEC_API codec_status_t codec_version_policy_parse(
     const char *json_bytes,
     size_t json_len,
     codec_version_policy_doc_t *out);
 
-void codec_version_policy_free(codec_version_policy_doc_t *doc);
+CODEC_API void codec_version_policy_free(codec_version_policy_doc_t *doc);
 
 /**
  * Build the well-known URL for an origin into `out_buf` (NUL-terminated).
  * Returns CODEC_OK on success, CODEC_ERR_TRUNCATED if buf_size is
  * insufficient (in which case `out_buf` is left untouched).
  */
-codec_status_t codec_well_known_version_policy_url(
+CODEC_API codec_status_t codec_well_known_version_policy_url(
     const char *origin,
     char *out_buf,
     size_t buf_size);

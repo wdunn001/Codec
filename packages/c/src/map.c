@@ -199,18 +199,49 @@ static codec_status_t set_entry(codec_tokenizer_map_t *m, uint32_t id,
     return CODEC_OK;
 }
 
+/* Frees the dynamically-allocated contents of one op (its `patterns`
+ * array, if it has one). Does not free `op` itself: ops always live
+ * inside a caller-owned array (prog->ops for v1, or a stage's
+ * u.alternation.ops for v2). Safe to call on a zero-initialized (not
+ * yet parsed, or parse-failed) op: kind == 0 matches no case here. */
+static void free_pretok_op_contents(codec_pretok_op_t *op) {
+    if (op->kind == CODEC_PRETOK_LITERALS_CI && op->u.literals_ci.patterns) {
+        for (size_t k = 0; k < op->u.literals_ci.count; k++)
+            free(op->u.literals_ci.patterns[k]);
+        free(op->u.literals_ci.patterns);
+    } else if (op->kind == CODEC_PRETOK_LITERALS && op->u.literals.patterns) {
+        for (size_t k = 0; k < op->u.literals.count; k++)
+            free(op->u.literals.patterns[k]);
+        free(op->u.literals.patterns);
+    } else if (op->kind == CODEC_PRETOK_LETTERS_CASED && op->u.letters_cased.trailing_ci) {
+        for (size_t k = 0; k < op->u.letters_cased.trailing_ci_count; k++)
+            free(op->u.letters_cased.trailing_ci[k]);
+        free(op->u.letters_cased.trailing_ci);
+    } else if (op->kind == CODEC_PRETOK_PUNCT_RUN && op->u.punct_run.trailing_chars) {
+        free(op->u.punct_run.trailing_chars);
+    }
+}
+
 static void free_pretok_program(codec_pretok_program_t *prog) {
     if (!prog) return;
     if (prog->ops) {
         for (size_t i = 0; i < prog->op_count; i++) {
-            codec_pretok_op_t *op = &prog->ops[i];
-            if (op->kind == CODEC_PRETOK_LITERALS_CI && op->u.literals_ci.patterns) {
-                for (size_t k = 0; k < op->u.literals_ci.count; k++)
-                    free(op->u.literals_ci.patterns[k]);
-                free(op->u.literals_ci.patterns);
-            }
+            free_pretok_op_contents(&prog->ops[i]);
         }
         free(prog->ops);
+    }
+    if (prog->stages) {
+        for (size_t i = 0; i < prog->stage_count; i++) {
+            codec_pretok_stage_t *stage = &prog->stages[i];
+            if (stage->kind == CODEC_PRETOK_STAGE_ALTERNATION
+                && stage->u.alternation.ops) {
+                for (size_t k = 0; k < stage->u.alternation.op_count; k++) {
+                    free_pretok_op_contents(&stage->u.alternation.ops[k]);
+                }
+                free(stage->u.alternation.ops);
+            }
+        }
+        free(prog->stages);
     }
     free(prog);
 }
@@ -350,6 +381,31 @@ static int parse_bool_token(const char *json, const jsmntok_t *t, int *out) {
     return 0;
 }
 
+/* Parse a JSON array of string literals (a `literals_ci` or `literals`
+ * op's `patterns` field) into a fresh `char *` array. `arr_idx` is the
+ * index of the JSMN_ARRAY token itself. Returns CODEC_ERR_PARSE on a
+ * non-string element, CODEC_ERR_OUT_OF_MEMORY on allocation failure. */
+static codec_status_t parse_literals_array(
+    const char *json, const jsmntok_t *toks, size_t arr_idx,
+    char ***out_patterns, size_t *out_count)
+{
+    const jsmntok_t *arr = &toks[arr_idx];
+    *out_patterns = (char **)calloc((size_t)arr->size, sizeof(char *));
+    if (!*out_patterns) return CODEC_ERR_OUT_OF_MEMORY;
+    *out_count = (size_t)arr->size;
+    size_t elem_pos = arr_idx + 1;
+    for (int k = 0; k < arr->size; k++) {
+        const jsmntok_t *str = &toks[elem_pos];
+        if (str->type != JSMN_STRING) return CODEC_ERR_PARSE;
+        size_t L = (size_t)(str->end - str->start), uL;
+        char *p = json_unescape(json + str->start, L, &uL);
+        if (!p) return CODEC_ERR_OUT_OF_MEMORY;
+        (*out_patterns)[k] = p;
+        elem_pos = skip_subtree(toks, elem_pos);
+    }
+    return CODEC_OK;
+}
+
 static codec_status_t parse_one_pretok_op(
     codec_pretok_op_t *out_op,
     const char *json,
@@ -373,16 +429,23 @@ static codec_status_t parse_one_pretok_op(
     }
     if (!kind_str) return CODEC_ERR_PARSE;
 
-    /* Dispatch on op kind. */
+    /* Dispatch on op kind. Order matters only where one name is a
+     * prefix of another ("literals" / "literals_ci"): the exact-length
+     * check on kind_len before strncmp rules out a false match either
+     * way, so declaration order here is cosmetic. */
     memset(out_op, 0, sizeof(*out_op));
     if (kind_len == 11 && strncmp(kind_str, "literals_ci", 11) == 0) {
         out_op->kind = CODEC_PRETOK_LITERALS_CI;
+    } else if (kind_len == 8 && strncmp(kind_str, "literals", 8) == 0) {
+        out_op->kind = CODEC_PRETOK_LITERALS;
     } else if (kind_len == 7 && strncmp(kind_str, "letters", 7) == 0) {
         out_op->kind = CODEC_PRETOK_LETTERS;
     } else if (kind_len == 7 && strncmp(kind_str, "numbers", 7) == 0) {
         out_op->kind = CODEC_PRETOK_NUMBERS;
     } else if (kind_len == 9 && strncmp(kind_str, "punct_run", 9) == 0) {
         out_op->kind = CODEC_PRETOK_PUNCT_RUN;
+    } else if (kind_len == 19 && strncmp(kind_str, "punct_ascii_letters", 19) == 0) {
+        out_op->kind = CODEC_PRETOK_PUNCT_ASCII_LETTERS;
     } else if (kind_len == 13 && strncmp(kind_str, "newline_block", 13) == 0) {
         out_op->kind = CODEC_PRETOK_NEWLINE_BLOCK;
     } else if (kind_len == 11 && strncmp(kind_str, "trailing_ws", 11) == 0) {
@@ -391,6 +454,8 @@ static codec_status_t parse_one_pretok_op(
         out_op->kind = CODEC_PRETOK_WS_RUN;
     } else if (kind_len == 15 && strncmp(kind_str, "metaspace_split", 15) == 0) {
         out_op->kind = CODEC_PRETOK_METASPACE_SPLIT;
+    } else if (kind_len == 13 && strncmp(kind_str, "letters_cased", 13) == 0) {
+        out_op->kind = CODEC_PRETOK_LETTERS_CASED;
     } else {
         return CODEC_ERR_PARSE;
     }
@@ -405,25 +470,41 @@ static codec_status_t parse_one_pretok_op(
         if (out_op->kind == CODEC_PRETOK_LITERALS_CI
             && tok_str_eq(json, key, "patterns")
             && val->type == JSMN_ARRAY) {
-            out_op->u.literals_ci.patterns =
-                (char **)calloc((size_t)val->size, sizeof(char *));
-            if (!out_op->u.literals_ci.patterns) return CODEC_ERR_OUT_OF_MEMORY;
-            out_op->u.literals_ci.count = (size_t)val->size;
-            size_t arr_pos = pos + 2;
-            for (int k = 0; k < val->size; k++) {
-                const jsmntok_t *str = &toks[arr_pos];
-                if (str->type != JSMN_STRING) return CODEC_ERR_PARSE;
-                size_t L = (size_t)(str->end - str->start), uL;
-                char *p = json_unescape(json + str->start, L, &uL);
-                if (!p) return CODEC_ERR_OUT_OF_MEMORY;
-                out_op->u.literals_ci.patterns[k] = p;
-                arr_pos++;
-            }
+            codec_status_t st = parse_literals_array(
+                json, toks, pos + 1,
+                &out_op->u.literals_ci.patterns, &out_op->u.literals_ci.count);
+            if (st != CODEC_OK) return st;
+        } else if (out_op->kind == CODEC_PRETOK_LITERALS
+                   && tok_str_eq(json, key, "patterns")
+                   && val->type == JSMN_ARRAY) {
+            codec_status_t st = parse_literals_array(
+                json, toks, pos + 1,
+                &out_op->u.literals.patterns, &out_op->u.literals.count);
+            if (st != CODEC_OK) return st;
         } else if (out_op->kind == CODEC_PRETOK_LETTERS
-                   && tok_str_eq(json, key, "lead_other")
-                   && val->type == JSMN_PRIMITIVE) {
+                   && val->type == JSMN_PRIMITIVE
+                   && tok_str_eq(json, key, "lead_other")) {
             int b;
             if (parse_bool_token(json, val, &b)) out_op->u.letters.lead_other = b;
+        } else if (out_op->kind == CODEC_PRETOK_LETTERS
+                   && val->type == JSMN_PRIMITIVE
+                   && tok_str_eq(json, key, "lead_space")) {
+            int b;
+            if (parse_bool_token(json, val, &b)) out_op->u.letters.lead_space = b;
+        } else if (out_op->kind == CODEC_PRETOK_LETTERS
+                   && val->type == JSMN_STRING
+                   && tok_str_eq(json, key, "lead_other_class")) {
+            /* "l_n" (default) or "l_p_s"; see codec.h. */
+            out_op->u.letters.lead_other_class = tok_str_eq(json, val, "l_p_s")
+                ? CODEC_PRETOK_LEAD_OTHER_L_P_S
+                : CODEC_PRETOK_LEAD_OTHER_L_N;
+        } else if (out_op->kind == CODEC_PRETOK_LETTERS
+                   && val->type == JSMN_STRING
+                   && tok_str_eq(json, key, "body")) {
+            /* "L" (default) or "L_M"; see codec.h. */
+            out_op->u.letters.body = tok_str_eq(json, val, "L_M")
+                ? CODEC_PRETOK_LETTERS_BODY_L_M
+                : CODEC_PRETOK_LETTERS_BODY_L;
         } else if (out_op->kind == CODEC_PRETOK_NUMBERS
                    && tok_str_eq(json, key, "max_run")
                    && val->type == JSMN_PRIMITIVE) {
@@ -432,6 +513,11 @@ static codec_status_t parse_one_pretok_op(
                           (size_t)(val->end - val->start), &v) && v >= 0) {
                 out_op->u.numbers.max_run = (uint32_t)v;
             }
+        } else if (out_op->kind == CODEC_PRETOK_NUMBERS
+                   && tok_str_eq(json, key, "lead_space")
+                   && val->type == JSMN_PRIMITIVE) {
+            int b;
+            if (parse_bool_token(json, val, &b)) out_op->u.numbers.lead_space = b;
         } else if (out_op->kind == CODEC_PRETOK_PUNCT_RUN
                    && val->type == JSMN_PRIMITIVE) {
             int b;
@@ -441,14 +527,145 @@ static codec_status_t parse_one_pretok_op(
             else if (tok_str_eq(json, key, "trailing_newlines")
                      && parse_bool_token(json, val, &b))
                 out_op->u.punct_run.trailing_newlines = b;
+        } else if (out_op->kind == CODEC_PRETOK_PUNCT_RUN
+                   && val->type == JSMN_STRING
+                   && tok_str_eq(json, key, "trailing_chars")) {
+            size_t L = (size_t)(val->end - val->start), uL;
+            char *p = json_unescape(json + val->start, L, &uL);
+            if (!p) return CODEC_ERR_PARSE;
+            out_op->u.punct_run.trailing_chars = p;
+        } else if (out_op->kind == CODEC_PRETOK_PUNCT_RUN
+                   && val->type == JSMN_STRING
+                   && tok_str_eq(json, key, "charset")) {
+            /* "not_ws_L_N" (default) or "p_s"; see codec.h. */
+            out_op->u.punct_run.charset = tok_str_eq(json, val, "p_s")
+                ? CODEC_PRETOK_PUNCT_CHARSET_P_S
+                : CODEC_PRETOK_PUNCT_CHARSET_NOT_WS_L_N;
         } else if (out_op->kind == CODEC_PRETOK_METASPACE_SPLIT
                    && tok_str_eq(json, key, "prefix_first")
                    && val->type == JSMN_PRIMITIVE) {
             int b;
             if (parse_bool_token(json, val, &b))
                 out_op->u.metaspace_split.prefix_first = b;
+        } else if (out_op->kind == CODEC_PRETOK_LETTERS_CASED
+                   && val->type == JSMN_STRING
+                   && tok_str_eq(json, key, "kind")) {
+            /* "title" or "upper"; no third value is valid. An
+             * unrecognised string here (a future kind this build
+             * doesn't know) falls back to TITLE rather than failing
+             * the parse: kept consistent with every other v1/v2 enum
+             * field in this parser (lead_other_class, body, charset),
+             * all of which default rather than reject an unknown
+             * string. */
+            out_op->u.letters_cased.kind = tok_str_eq(json, val, "upper")
+                ? CODEC_PRETOK_CASED_UPPER
+                : CODEC_PRETOK_CASED_TITLE;
+        } else if (out_op->kind == CODEC_PRETOK_LETTERS_CASED
+                   && val->type == JSMN_PRIMITIVE
+                   && tok_str_eq(json, key, "lead_other")) {
+            int b;
+            if (parse_bool_token(json, val, &b)) out_op->u.letters_cased.lead_other = b;
+        } else if (out_op->kind == CODEC_PRETOK_LETTERS_CASED
+                   && val->type == JSMN_ARRAY
+                   && tok_str_eq(json, key, "trailing_ci")) {
+            codec_status_t st = parse_literals_array(
+                json, toks, pos + 1,
+                &out_op->u.letters_cased.trailing_ci,
+                &out_op->u.letters_cased.trailing_ci_count);
+            if (st != CODEC_OK) return st;
         }
         pos = next_pos;
+    }
+    return CODEC_OK;
+}
+
+/* Parse one v2 stage object: `{"stage": "...", ...kind-specific fields}`.
+ * An `alternation` stage's own `ops` array reuses parse_one_pretok_op,
+ * the same per-op parser a v1 program's `ops` array uses. */
+static codec_status_t parse_one_pretok_stage(
+    codec_pretok_stage_t *out_stage,
+    const char *json,
+    const jsmntok_t *toks, size_t stage_idx)
+{
+    const jsmntok_t *obj = &toks[stage_idx];
+    if (obj->type != JSMN_OBJECT) return CODEC_ERR_PARSE;
+
+    const char *kind_str = NULL;
+    size_t kind_len = 0;
+    size_t pos = stage_idx + 1;
+    for (int j = 0; j < obj->size; j++) {
+        const jsmntok_t *key = &toks[pos];
+        const jsmntok_t *val = &toks[pos + 1];
+        if (tok_str_eq(json, key, "stage") && val->type == JSMN_STRING) {
+            kind_str = json + val->start;
+            kind_len = (size_t)(val->end - val->start);
+        }
+        pos = skip_subtree(toks, pos + 1);
+    }
+    if (!kind_str) return CODEC_ERR_PARSE;
+
+    memset(out_stage, 0, sizeof(*out_stage));
+    if (kind_len == 14 && strncmp(kind_str, "digits_isolate", 14) == 0) {
+        out_stage->kind = CODEC_PRETOK_STAGE_DIGITS_ISOLATE;
+    } else if (kind_len == 21 && strncmp(kind_str, "digit_triples_isolate", 21) == 0) {
+        out_stage->kind = CODEC_PRETOK_STAGE_DIGIT_TRIPLES_ISOLATE;
+    } else if (kind_len == 22 && strncmp(kind_str, "punctuation_contiguous", 22) == 0) {
+        out_stage->kind = CODEC_PRETOK_STAGE_PUNCTUATION_CONTIGUOUS;
+    } else if (kind_len == 11 && strncmp(kind_str, "cjk_isolate", 11) == 0) {
+        out_stage->kind = CODEC_PRETOK_STAGE_CJK_ISOLATE;
+    } else if (kind_len == 11 && strncmp(kind_str, "alternation", 11) == 0) {
+        out_stage->kind = CODEC_PRETOK_STAGE_ALTERNATION;
+    } else {
+        /* Unrecognised stage kind: loud failure, not a guess. See
+         * spec/PRETOKENIZER_PROGRAM.md § Compiler failure is loud;
+         * the same posture applies symmetrically on the consuming
+         * side. */
+        return CODEC_ERR_PARSE;
+    }
+
+    /* Second pass: kind-specific fields. */
+    pos = stage_idx + 1;
+    for (int j = 0; j < obj->size; j++) {
+        const jsmntok_t *key = &toks[pos];
+        const jsmntok_t *val = &toks[pos + 1];
+        size_t next_pos = skip_subtree(toks, pos + 1);
+
+        if (out_stage->kind == CODEC_PRETOK_STAGE_DIGITS_ISOLATE
+            && val->type == JSMN_STRING
+            && tok_str_eq(json, key, "mode")) {
+            out_stage->u.digits_isolate.mode = tok_str_eq(json, val, "grouped")
+                ? CODEC_PRETOK_DIGITS_GROUPED
+                : CODEC_PRETOK_DIGITS_INDIVIDUAL;
+        } else if (out_stage->kind == CODEC_PRETOK_STAGE_DIGITS_ISOLATE
+                   && val->type == JSMN_PRIMITIVE
+                   && tok_str_eq(json, key, "max_run")) {
+            long v;
+            if (parse_int(json + val->start,
+                          (size_t)(val->end - val->start), &v) && v >= 0) {
+                out_stage->u.digits_isolate.max_run = (uint32_t)v;
+            }
+        } else if (out_stage->kind == CODEC_PRETOK_STAGE_ALTERNATION
+                   && val->type == JSMN_ARRAY
+                   && tok_str_eq(json, key, "ops")) {
+            const jsmntok_t *ops = val;
+            out_stage->u.alternation.op_count = (size_t)ops->size;
+            out_stage->u.alternation.ops = (codec_pretok_op_t *)calloc(
+                (size_t)ops->size, sizeof(codec_pretok_op_t));
+            if (!out_stage->u.alternation.ops) return CODEC_ERR_OUT_OF_MEMORY;
+            size_t op_pos = pos + 2;
+            for (int k = 0; k < ops->size; k++) {
+                codec_status_t st = parse_one_pretok_op(
+                    &out_stage->u.alternation.ops[k], json, toks, op_pos);
+                if (st != CODEC_OK) return st;
+                op_pos = skip_subtree(toks, op_pos);
+            }
+        }
+        pos = next_pos;
+    }
+
+    if (out_stage->kind == CODEC_PRETOK_STAGE_ALTERNATION
+        && out_stage->u.alternation.ops == NULL) {
+        return CODEC_ERR_PARSE; /* alternation stage requires "ops" */
     }
     return CODEC_OK;
 }
@@ -461,9 +678,11 @@ static codec_status_t parse_pretok_program(
     const jsmntok_t *obj = &toks[prog_idx];
     if (obj->type != JSMN_OBJECT) return CODEC_ERR_PARSE;
 
-    /* Locate "version" (optional) and "ops" (required). */
+    /* Locate "version" (optional, default 1), "ops" (v1) and "stages"
+     * (v2). */
     int version = 1;
     size_t ops_idx = 0;
+    size_t stages_idx = 0;
     size_t pos = prog_idx + 1;
     for (int j = 0; j < obj->size; j++) {
         const jsmntok_t *key = &toks[pos];
@@ -477,27 +696,57 @@ static codec_status_t parse_pretok_program(
             }
         } else if (tok_str_eq(json, key, "ops") && val->type == JSMN_ARRAY) {
             ops_idx = pos + 1;
+        } else if (tok_str_eq(json, key, "stages") && val->type == JSMN_ARRAY) {
+            stages_idx = pos + 1;
         }
         pos = next_pos;
     }
-    if (ops_idx == 0) return CODEC_ERR_PARSE;
 
-    const jsmntok_t *ops = &toks[ops_idx];
+    /* A version this build doesn't recognise fails loudly here, at load
+     * time, rather than guessing an execution model or silently running
+     * a partial program. See spec/PRETOKENIZER_PROGRAM.md § Versioning
+     * and codec.h's CODEC_ERR_UNSUPPORTED_PRETOK_VERSION doc comment. */
+    if (version != 1 && version != 2) return CODEC_ERR_UNSUPPORTED_PRETOK_VERSION;
+
     codec_pretok_program_t *prog = (codec_pretok_program_t *)calloc(1, sizeof(*prog));
     if (!prog) return CODEC_ERR_OUT_OF_MEMORY;
-    prog->version  = version;
-    prog->op_count = (size_t)ops->size;
-    prog->ops = (codec_pretok_op_t *)calloc(prog->op_count, sizeof(*prog->ops));
-    if (!prog->ops) { free(prog); return CODEC_ERR_OUT_OF_MEMORY; }
+    prog->version = version;
 
-    size_t op_pos = ops_idx + 1;
-    for (int j = 0; j < ops->size; j++) {
-        codec_status_t st = parse_one_pretok_op(&prog->ops[j], json, toks, op_pos);
-        if (st != CODEC_OK) {
-            free_pretok_program(prog);
-            return st;
+    if (version == 1) {
+        if (ops_idx == 0) { free(prog); return CODEC_ERR_PARSE; }
+        const jsmntok_t *ops = &toks[ops_idx];
+        prog->op_count = (size_t)ops->size;
+        prog->ops = (codec_pretok_op_t *)calloc(prog->op_count, sizeof(*prog->ops));
+        if (!prog->ops) { free(prog); return CODEC_ERR_OUT_OF_MEMORY; }
+
+        size_t op_pos = ops_idx + 1;
+        for (int j = 0; j < ops->size; j++) {
+            codec_status_t st = parse_one_pretok_op(&prog->ops[j], json, toks, op_pos);
+            if (st != CODEC_OK) {
+                free_pretok_program(prog);
+                return st;
+            }
+            op_pos = skip_subtree(toks, op_pos);
         }
-        op_pos = skip_subtree(toks, op_pos);
+    } else {
+        /* version == 2 */
+        if (stages_idx == 0) { free(prog); return CODEC_ERR_PARSE; }
+        const jsmntok_t *stages = &toks[stages_idx];
+        prog->stage_count = (size_t)stages->size;
+        prog->stages = (codec_pretok_stage_t *)calloc(
+            prog->stage_count, sizeof(*prog->stages));
+        if (!prog->stages) { free(prog); return CODEC_ERR_OUT_OF_MEMORY; }
+
+        size_t stage_pos = stages_idx + 1;
+        for (int j = 0; j < stages->size; j++) {
+            codec_status_t st = parse_one_pretok_stage(
+                &prog->stages[j], json, toks, stage_pos);
+            if (st != CODEC_OK) {
+                free_pretok_program(prog);
+                return st;
+            }
+            stage_pos = skip_subtree(toks, stage_pos);
+        }
     }
 
     m->pretok_program = prog;
