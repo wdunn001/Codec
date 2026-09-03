@@ -25,7 +25,7 @@ content-encoding:           zstd                             (22 bytes)
 content-type:               application/x-msgpack            (40 bytes)
 transfer-encoding:          chunked                          (28 bytes)
 Codec-Tokenizer-Map:        https://cdn.jsdelivr.net/gh/wdunn001/codec-maps@main/maps/qwen/qwen2.json  (92 bytes)
-Codec-Tokenizer-Map-Hash:   sha256:887311099cdc09e7022001a01fa1da396750d669b7ed2c242a000b9badd09791  (95 bytes)
+Codec-Tokenizer-Map-Hash:   sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad  (95 bytes)
 Codec-Zstd-Dict:            sha256:ecc9410a09b1d3e5c7a8...                                            (75 bytes)
 Codec-Safety-Policy:        acme/strict-v3                                                            (35 bytes)
 Codec-Safety-Policy-Hash:   sha256:ab12cd34ef56...                                                    (95 bytes)
@@ -75,7 +75,7 @@ A sha256 in full hex is 64 chars. At 16 hex (64 bits), collision-resistance for 
 
 The full hash STILL appears in the well-known descriptor body: that's where integrity verification happens. The header is just an index. Headers are not the integrity boundary.
 
-- Old: `Codec-Tokenizer-Map-Hash: sha256:887311099cdc09e7022001a01fa1da396750d669b7ed2c242a000b9badd09791` (95 B)
+- Old: `Codec-Tokenizer-Map-Hash: sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad` (95 B)
 - New: `Codec-Tokenizer-Map-Hash: sha256:887311099cdc0973` (47 B)
 - **Saves ~48 B per hash-bearing header. With 3 hashes (map, dict, safety): ~144 B/response.**
 
