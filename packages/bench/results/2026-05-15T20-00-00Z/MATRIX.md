@@ -1,8 +1,8 @@
-# Cross-stack benchmark matrix — 2026-05-15T20-00-00Z
+# Cross-stack benchmark matrix: 2026-05-15T20-00-00Z
 
 Auto-generated from `packages/bench/results/2026-05-15T20-00-00Z/{engine}/{lang}.json` by `packages/bench/scripts/aggregate.py`. SCHEMA.md is the source of truth on what each cell measures.
 
-## §1. Headline wire reduction — synthetic streams (protocol only)
+## §1. Headline wire reduction: synthetic streams (protocol only)
 
 Pure-library measurement: known token-ID sequences fed through the Codec
 encoder + compression pipeline locally, no inference engine, no model. Same
@@ -20,12 +20,12 @@ Four token-distribution corpora at 2K tokens, msgpack mode:
 
 The honest framing: Codec wire+compression delivers **~4-17× over identity**
 on arbitrary-to-typical streams, and **100-400× on structurally-repetitive**
-ones. The lower bound (uniform-random) is the floor — there's no content
+ones. The lower bound (uniform-random) is the floor: there's no content
 redundancy to exploit, so the wins are from msgpack/protobuf framing alone.
 The upper bound (cyclic) is what dict-zstd can do when the content cooperates.
 
 Live model output sits somewhere in this range, depending on what the model
-happens to generate — see §1b for engine-specific numbers from this run.
+happens to generate: see §1b for engine-specific numbers from this run.
 
 ## §1b. Engine-output wire reduction @ 2K tokens (content-dependent)
 
@@ -34,7 +34,7 @@ the actual model output. Numbers vary by engine because each engine's specific
 sampler/attention path produces slightly different token sequences at T=0, and
 those sequences compress differently. For protocol-only efficiency see §1.
 
-Python row chosen as the canonical client (others agree byte-identically — see §3).
+Python row chosen as the canonical client (others agree byte-identically: see §3).
 
 | Engine | JSON-SSE identity | Codec msgpack + gzip | Codec msgpack + dict-zstd | Codec protobuf + gzip | Codec protobuf + dict-zstd |
 |---|---:|---:|---:|---:|---:|
@@ -46,10 +46,10 @@ Python row chosen as the canonical client (others agree byte-identically — see
 
 For every Codec cell (size × {msgpack,protobuf} × encoding), the aggregator reports two unanimity scores:
 
-- **wire-unanimous** — clients agree byte-for-byte on what came over the wire (bytes received)
-- **decode-unanimous** — clients agree on the decoded token count (bytes received actually parsed back into the same number of token IDs)
+- **wire-unanimous**: clients agree byte-for-byte on what came over the wire (bytes received)
+- **decode-unanimous**: clients agree on the decoded token count (bytes received actually parsed back into the same number of token IDs)
 
-**6/6 wire AND 6/6 decode is the gold standard.** A cell that is wire-unanimous but decode-mismatched means the bytes are the same but some clients can't actually parse them — usually a missing dict (dict-zstd interop) or a parser bug. Wire-unanimity alone is misleading; cells where 3/6 clients hit `Dictionary mismatch` errors used to count as "unanimous" until v0.4.1 — that gap is the reason this section now has two scores.
+**6/6 wire AND 6/6 decode is the gold standard.** A cell that is wire-unanimous but decode-mismatched means the bytes are the same but some clients can't actually parse them: usually a missing dict (dict-zstd interop) or a parser bug. Wire-unanimity alone is misleading; cells where 3/6 clients hit `Dictionary mismatch` errors used to count as "unanimous" until v0.4.1: that gap is the reason this section now has two scores.
 
 ### llama.cpp
 
@@ -68,7 +68,7 @@ For every Codec cell (size × {msgpack,protobuf} × encoding), the aggregator re
 
 ## §3. Wire-byte grid per engine (Python row)
 
-Median bytes across reps. Other 5 client languages agree byte-identically on every Codec cell — see §2.
+Median bytes across reps. Other 5 client languages agree byte-identically on every Codec cell: see §2.
 
 ### llama.cpp
 
@@ -124,9 +124,9 @@ Per the SCHEMA.md TTFB definition split (see §5), clients fall into two cohorts
 - **Body-byte cohort** (Python httpx aiter_raw, TypeScript Node http data event, C libcurl WRITEFUNCTION): TTFB = wall-clock from POST to first body byte
 - **Headers-byte cohort** (.NET ResponseHeadersRead, Rust reqwest send().await, Java HttpClient.send): TTFB = wall-clock from POST to headers received
 
-Bodies and headers tend to arrive in the same TCP segment for non-buffered encodings (identity/gzip/br) — both cohorts agree. They diverge sharply on dict-zstd, where the server's chunker buffers small responses to end-of-stream.
+Bodies and headers tend to arrive in the same TCP segment for non-buffered encodings (identity/gzip/br): both cohorts agree. They diverge sharply on dict-zstd, where the server's chunker buffers small responses to end-of-stream.
 
-### llama.cpp — msgpack TTFB (median ms across reps)
+### llama.cpp: msgpack TTFB (median ms across reps)
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
@@ -143,7 +143,7 @@ Bodies and headers tend to arrive in the same TCP segment for non-buffered encod
 | 2048 | br | 5186 | 43.5 |
 | 2048 | zstd | 5175 | 39.4 |
 
-### sglang — msgpack TTFB (median ms across reps)
+### sglang: msgpack TTFB (median ms across reps)
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
@@ -160,7 +160,7 @@ Bodies and headers tend to arrive in the same TCP segment for non-buffered encod
 | 2048 | br | 3922 | 37.4 |
 | 2048 | zstd | 3923 | 36.0 |
 
-### vllm — msgpack TTFB (median ms across reps)
+### vllm: msgpack TTFB (median ms across reps)
 
 | size | enc | body-byte (median) | headers-byte (median) |
 |---:|---|---:|---:|
@@ -189,4 +189,4 @@ Every row above came from a SCHEMA-v1 result file with a methodology fingerprint
 
 ## §6. Quarantine
 
-None — every row's methodology fingerprint matched its engine's canonical block.
+None: every row's methodology fingerprint matched its engine's canonical block.

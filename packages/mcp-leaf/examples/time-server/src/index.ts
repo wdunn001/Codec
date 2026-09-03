@@ -27,7 +27,7 @@
  * Or with the Codec map URL + hash configured:
  *
  *   CODEC_MAP_URL=https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/qwen/qwen2.json \
- *   CODEC_MAP_HASH=sha256:9db56ff6bb53b22d3dd697de3cdd25973d2171f089dd1a15ca8925b710f07394 \
+ *   CODEC_MAP_HASH=sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad \
  *   codec-time-leaf
  *
  * Without the env vars, the server runs without leaf-mode (gateway falls

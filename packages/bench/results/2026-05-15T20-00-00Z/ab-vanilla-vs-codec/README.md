@@ -1,4 +1,4 @@
-# Vanilla sglang vs Codec-patched sglang — A/B verdict
+# Vanilla sglang vs Codec-patched sglang: A/B verdict
 
 **Result for v0.4.1: byte-identical by construction. No runtime A/B was rerun.**
 
@@ -9,11 +9,11 @@ new code paths without modifying the existing JSON-SSE pipeline:
 
 | Code path                                        | Touched by Codec patches? |
 |--------------------------------------------------|---------------------------|
-| `serving_completions.py` JSON-SSE response       | NO — vanilla code path unchanged |
-| `chat/completions` JSON-SSE                      | NO — vanilla unchanged |
-| `serving_completions.py` `stream_format="msgpack"` dispatch | YES — new branch added |
-| `serving_completions.py` `stream_format="protobuf"` dispatch | YES — new branch added |
-| `/v1/completions/codec` (bidirectional binary)   | YES — new endpoint |
+| `serving_completions.py` JSON-SSE response       | NO: vanilla code path unchanged |
+| `chat/completions` JSON-SSE                      | NO: vanilla unchanged |
+| `serving_completions.py` `stream_format="msgpack"` dispatch | YES: new branch added |
+| `serving_completions.py` `stream_format="protobuf"` dispatch | YES: new branch added |
+| `/v1/completions/codec` (bidirectional binary)   | YES: new endpoint |
 | `codec_frame.py`                                 | NEW file (added by patch) |
 | `codec_compression.py`                           | NEW file (added by patch) |
 | `codec_version.py`                               | NEW file (added by patch) |
@@ -22,7 +22,7 @@ new code paths without modifying the existing JSON-SSE pipeline:
 The Codec branch in `serving_completions.py` is gated on the request's
 `stream_format` field. When a request comes in without that field (or with
 `stream_format="json"`), the dispatch falls through to the vanilla path
-verbatim — the JSON-SSE bytes are produced by code the patches never touched.
+verbatim: the JSON-SSE bytes are produced by code the patches never touched.
 
 **v0.4.1 specifically** changed only `codec_compression.py` (the brotli
 per-chunk-flush fix) and added `codec_zstd_dict_registry` to llama.cpp.

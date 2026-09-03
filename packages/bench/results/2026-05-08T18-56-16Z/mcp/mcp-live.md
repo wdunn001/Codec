@@ -1,4 +1,4 @@
-# MCP wire bench — 2026-05-08T18-56-16Z
+# MCP wire bench: 2026-05-08T18-56-16Z
 
 Target: `http://192.168.1.88:12008/metamcp/openwebui-api/mcp`
 Vocab map: _not configured (msgpack-both+gzip+map will be skipped)_
@@ -21,7 +21,7 @@ Vocab map: _not configured (msgpack-both+gzip+map will be skipped)_
 | msgpack-both      | 200    | 336 B | 18.5 KB     | 1.1×         | 2.29 s  | 2.29 s  |
 | msgpack-both+gzip | 200    | 359 B | 5.7 KB      | 3.6×         | 63.2 ms | 65.6 ms |
 
-## tools/call — `Time__get_current_time`
+## tools/call: `Time__get_current_time`
 
 | variant           | status | req   | resp (wire) | resp vs json | TTFB    | total   |
 |-------------------|--------|-------|-------------|--------------|---------|---------|
@@ -30,7 +30,7 @@ Vocab map: _not configured (msgpack-both+gzip+map will be skipped)_
 | msgpack-both      | 200    | 398 B | 809 B       | 1.1×         | 12.8 ms | 13.0 ms |
 | msgpack-both+gzip | 200    | 421 B | 838 B       | 1.0×         | 14.2 ms | 14.4 ms |
 
-## tools/call — `Time__convert_time`
+## tools/call: `Time__convert_time`
 
 | variant           | status | req   | resp (wire) | resp vs json | TTFB    | total   |
 |-------------------|--------|-------|-------------|--------------|---------|---------|

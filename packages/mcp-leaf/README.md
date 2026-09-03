@@ -21,7 +21,7 @@ import { makeMetaTokenizer, wrapToolCall } from '@codecai/mcp-leaf';
 // Once at server startup.
 const meta = await makeMetaTokenizer({
   mapUrl:  'https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/qwen/qwen2.json',
-  mapHash: 'sha256:0549cbec9d451832f9f8c9dcd2553210fdf4e6f4ff64feebe64d3a09950a5022',
+  mapHash: 'sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad',
 });
 
 // In your tool handler: whatever you used to return:
@@ -43,7 +43,7 @@ That returns:
       "text": "It is currently 14:30 UTC.",
       "_meta": {
         "ai.codec/leaf-tokenization": {
-          "map_id": "sha256:0549cbec9d451832f9f8c9dcd2553210fdf4e6f4ff64feebe64d3a09950a5022",
+          "map_id": "sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad",
           "ids": [2132, 374, 5023, 220, 16, 19, 25, 18, 15, 27269, 13]
         }
       }

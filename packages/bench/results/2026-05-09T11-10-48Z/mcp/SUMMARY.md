@@ -1,7 +1,7 @@
-# SUMMARY — MCP wire bench against codec-metamcp v0.3.1 + validator fix
+# SUMMARY: MCP wire bench against codec-metamcp v0.3.1 + validator fix
 
 **Run**: `2026-05-09T11-10-48Z`
-**Engine**: `wdunn001/codec-metamcp:v0.3.1` (validator-before-bypass fix —
+**Engine**: `wdunn001/codec-metamcp:v0.3.1` (validator-before-bypass fix:
 metamcp@e8c3fca on the supervisor)
 **Lab**: `vinez@192.168.1.88` (2× RTX 3090, Docker 27.5)
 **Endpoint**: `http://192.168.1.88:12008/metamcp/openwebui-api/mcp`
@@ -22,7 +22,7 @@ metamcp@e8c3fca on the supervisor)
 `tools/list` against the augmented 40-tool namespace holds at 3.6×;
 **Codec-aware tool calls (codec-time-leaf) compress 4.2×** end-to-end
 through the gateway. The 4.6 KB JSON baseline includes the `_codec_meta`
-sibling block the leaf-mode tool emits — gzip collapses it and the
+sibling block the leaf-mode tool emits: gzip collapses it and the
 duplicated-text/IDs encoding to 1.1 KB.
 
 ## What this run validates
@@ -38,29 +38,29 @@ unblocked the leaf-mode integration end-to-end:
   validates the envelope shape but uses `.passthrough()` per content block
   so `_codec_meta` (and any future custom content type) survives.
 - All five variants now return `200 OK` on `codec-time-leaf__*` cells with
-  real tool results — the bench measures the actual leaf-mode wire shape,
+  real tool results: the bench measures the actual leaf-mode wire shape,
   not error envelopes.
 
 ✅ `codec-time-leaf` is fully wired into a metamcp namespace via the SSE
-bridge (`mcp-proxy@6.4.6` — supergateway crash-loops on metamcp's concurrent
+bridge (`mcp-proxy@6.4.6`: supergateway crash-loops on metamcp's concurrent
 SSE reconnects). Bench discovered both `codec-time-leaf__get_current_time`
 and `codec-time-leaf__convert_time` and exercised them across all 5 variants.
 
 ## ⚠️ Remaining bug: leaf-mode bypass not firing
 
-Despite the schema fix, the gateway's `[Codec][leaf]` log never fires —
+Despite the schema fix, the gateway's `[Codec][leaf]` log never fires:
 only `[Codec][shim]` does, even on variant 5. That means
 `hasExistingCodecMeta()` (codec-content.ts:169) returns `false` even
 though codec-time-leaf reports `[codec-time-leaf] leaf-mode enabled` at
 startup and `wrapToolCall(result, leafMeta)` is in the time-server's
 tools/call handler (verified in source).
 
-Symptom on the wire: variant 4 (`+gzip`, no map header — pure shim path)
+Symptom on the wire: variant 4 (`+gzip`, no map header: pure shim path)
 and variant 5 (`+gzip+map`, would-be leaf-bypass path) compress to
 **identical 1.1 KB / 4.2× wire bytes**. If leaf-mode were firing,
 variant 5 would either match variant 4 exactly (when gzip dominates)
 or beat it (when the gateway can drop the redundant text). Either way
-the `[Codec][leaf]` log line is the proof we want — and it's not firing.
+the `[Codec][leaf]` log line is the proof we want: and it's not firing.
 
 Likely cause (not yet bisected): the result returned from
 `clientForTool.client.request(...)` in `metamcp-proxy.ts:441` is
@@ -80,7 +80,7 @@ Tracked as the next concrete v0.3.x patch in metamcp.
 
 ## What still ships from this run
 
-The wire numbers above are real — they measure metamcp's behavior on
+The wire numbers above are real: they measure metamcp's behavior on
 Codec-aware MCP traffic with the validator fix in place. The 4.2×
 reduction on a 4.6 KB Codec-aware tool result is the production-shape
 answer for "what does Codec do to MCP wire weight today" *even when the

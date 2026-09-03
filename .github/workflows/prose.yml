@@ -1,0 +1,28 @@
+# House writing rules. Blocks dash glyphs, clauses defined against their
+# opposite, counts announced before a list, and clause joins with ", so",
+# ", which", or ", because". Serial lists of three or more items are the one
+# permitted exception and are reported as advisory.
+#
+# prose-lint.py exits non-zero on findings it explicitly permits, so it cannot
+# gate directly. prose-gate.py classifies first.
+
+name: prose
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  house-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: house writing rules
+        run: python scripts/prose-gate.py $(git ls-files '*.md' | grep -v 'packages/bench/results/')

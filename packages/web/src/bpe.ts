@@ -11,14 +11,20 @@
  *        byte_level: apply the Unicode regex from `pre_tokenizer_pattern`
  *                    (model-specific; e.g. Llama-3 splits on word/whitespace
  *                    boundaries with contraction handling).
- *        metaspace:  split on ASCII whitespace; prefix the first piece (or
- *                    every piece for `prepend_scheme: always`) with ▁.
+ *        metaspace:  replace every literal space with ▁, one for one, with
+ *                    no collapsing of runs. Optionally prepend one more ▁ at
+ *                    the very start of the whole input (see
+ *                    `metaspacePrependMode` for which models do this and
+ *                    how). The whole chunk becomes a single piece: none of
+ *                    the reference tokenizers we checked split metaspace
+ *                    input into words before BPE runs, so word boundaries
+ *                    fall out of the merge table on their own.
  *
  *   2. Encode each piece to the vocab's character space.
  *        byte_level: UTF-8 encode the piece, map each byte through the
  *                    GPT-2 byte→unicode table.
- *        metaspace:  text already lives in vocab space: replace spaces
- *                    inside the piece with ▁ and we're done.
+ *        metaspace:  the piece already lives in vocab space after step 1:
+ *                    split it into codepoints.
  *
  *   3. Apply BPE merges. Start with each codepoint as its own token; greedily
  *      merge the highest-priority pair (lowest merge index) repeatedly until
@@ -44,6 +50,12 @@ export class BPETokenizer implements Tokenizer {
   private readonly preTokProgram: PreTokProgram | null;
   private readonly encoder: 'byte_level' | 'metaspace';
   private readonly byteFallbackStart: number;
+  /**
+   * How this metaspace map synthesizes a leading ▁ at the very start of
+   * input. See `metaspacePrependMode` for the three modes and the evidence
+   * behind each. Unused for byte_level maps.
+   */
+  private readonly metaspacePrepend: 'never' | 'always' | 'first';
   private readonly cache = new Map<string, number[]>();
   /**
    * Special-token scanner. Built from `map.special_tokens` plus any token in
@@ -88,6 +100,7 @@ export class BPETokenizer implements Tokenizer {
     this.map = map;
     this.encoder = mapEncoder;
     this.byteFallbackStart = map.byte_fallback_start ?? -1;
+    this.metaspacePrepend = metaspacePrependMode(map.id);
 
     // Build vocab as a Map for fast lookup.
     const vocab = new Map<string, number>();
@@ -108,7 +121,7 @@ export class BPETokenizer implements Tokenizer {
     // useful for compatibility and as a fallback for unrecognised
     // tokenizer families that the maps-cli compiler couldn't lower.
     if (this.encoder === 'byte_level') {
-      if (map.pre_tokenizer_program && map.pre_tokenizer_program.ops?.length) {
+      if (map.pre_tokenizer_program && isNonEmptyPreTokProgram(map.pre_tokenizer_program)) {
         this.preTokProgram = map.pre_tokenizer_program as unknown as PreTokProgram;
         this.preTokRegex = null;
       } else if (map.pre_tokenizer_pattern) {
@@ -181,26 +194,36 @@ export class BPETokenizer implements Tokenizer {
       const out: number[] = [];
       this.specialRegex.lastIndex = 0;
       let cursor = 0;
+      // Tracks whether the next non-special chunk is the first one in the
+      // whole `text` argument. `prepend_scheme: "first"` (Mistral-v3,
+      // Mixtral) only adds its synthetic ▁ there, matching HuggingFace:
+      // added/special tokens never pass through the normalizer, so
+      // `first_split` inside the reference Metaspace pre-tokenizer
+      // advances only on real text spans.
+      let isFirstChunk = true;
       let m: RegExpExecArray | null;
       while ((m = this.specialRegex.exec(text)) !== null) {
-        if (m.index > cursor) this.encodeChunk(text.slice(cursor, m.index), out);
+        if (m.index > cursor) {
+          this.encodeChunk(text.slice(cursor, m.index), out, isFirstChunk);
+          isFirstChunk = false;
+        }
         out.push(this.specialIds.get(m[0])!);
         cursor = m.index + m[0].length;
         if (m[0].length === 0) this.specialRegex.lastIndex++;
       }
-      if (cursor < text.length) this.encodeChunk(text.slice(cursor), out);
+      if (cursor < text.length) this.encodeChunk(text.slice(cursor), out, isFirstChunk);
       return out;
     }
 
     const ids: number[] = [];
-    this.encodeChunk(text, ids);
+    this.encodeChunk(text, ids, true);
     return ids;
   }
 
   /** BPE-encode a chunk of plain text into `out`. */
-  private encodeChunk(text: string, out: number[]): void {
+  private encodeChunk(text: string, out: number[], isFirstChunk: boolean): void {
     if (text.length === 0) return;
-    const pieces = this.preTokenize(text);
+    const pieces = this.preTokenize(text, isFirstChunk);
     for (const piece of pieces) {
       const cached = this.cache.get(piece);
       if (cached !== undefined) {
@@ -217,7 +240,7 @@ export class BPETokenizer implements Tokenizer {
 
   // ── Pre-tokenization ──────────────────────────────────────────────────────
 
-  private preTokenize(text: string): string[] {
+  private preTokenize(text: string, isFirstChunk: boolean): string[] {
     if (this.encoder === 'byte_level') {
       if (this.preTokProgram) {
         return runPreTokProgram(this.preTokProgram, text);
@@ -234,19 +257,49 @@ export class BPETokenizer implements Tokenizer {
       return out;
     }
 
-    // Metaspace: split on whitespace, prepend ▁ to each piece. This matches
-    // SentencePiece's behavior with `prepend_scheme: "always"`. For
-    // `prepend_scheme: "first"` the difference only matters at the very start
-    // of input; we approximate the common case correctly.
-    const out: string[] = [];
-    const trimmed = text.replace(/[ \t]+/g, ' ');
-    // Treat a leading space as part of the first word.
-    const parts = trimmed.split(/(\s)/).filter((p) => p.length > 0);
-    for (const p of parts) {
-      if (p === ' ') continue;
-      out.push(METASPACE + p);
+    // Metaspace: replace every literal space with ▁, one for one. A run of
+    // several spaces stays a run of several ▁ characters: it is never
+    // collapsed and never dropped. Every other character, including tabs
+    // and newlines, passes through untouched.
+    //
+    // The whole chunk is returned as a single piece, not one piece per
+    // word. Every reference tokenizer.json we checked either has no
+    // word-splitting step at all for its metaspace pre-tokenizer (Gemma's
+    // `Split(" ")` step matches nothing, because the normalizer already
+    // replaced every space before it runs) or explicitly disables
+    // splitting (`"split": false` on Mistral-v3/Mixtral/Codestral's
+    // Metaspace pre-tokenizer). Word boundaries then fall out of the BPE
+    // merge table on its own: sometimes a run of ▁ becomes one dedicated
+    // token (Gemma has 30 of these), sometimes it splits unevenly (Llama-2
+    // encodes three spaces as a two-run token plus a lone ▁ prefixed onto
+    // the next word). Both outcomes come from the same greedy merge
+    // algorithm already implemented in `applyBPE`, not from a hand-written
+    // splitting rule, so no per-model casing is needed here.
+    let normalized = text.replace(/ /g, METASPACE);
+    if (isFirstChunk) {
+      normalized = this.applyMetaspaceLeadingPrepend(normalized, text);
     }
-    return out;
+    return [normalized];
+  }
+
+  /**
+   * Add the synthetic leading ▁ that some SentencePiece Metaspace
+   * tokenizers add at the very start of input, per `this.metaspacePrepend`.
+   * `normalized` already has every real space replaced with ▁; `original`
+   * is the pre-replacement text, needed to test whether it started with a
+   * real space.
+   */
+  private applyMetaspaceLeadingPrepend(normalized: string, original: string): string {
+    switch (this.metaspacePrepend) {
+      case 'never':
+        return normalized;
+      case 'always':
+        // Unconditional: even a text that already starts with a real space
+        // gets a second, synthetic ▁ on top of it.
+        return METASPACE + normalized;
+      case 'first':
+        return original.startsWith(' ') ? normalized : METASPACE + normalized;
+    }
   }
 
   // ── Step 2: encode piece → vocab character space ─────────────────────────
@@ -335,6 +388,73 @@ export class BPETokenizer implements Tokenizer {
 /** Convenience one-shot encoder. */
 export function bpeEncode(map: TokenizerMap, text: string): number[] {
   return new BPETokenizer(map).encode(text);
+}
+
+/**
+ * Classify how a SentencePiece Metaspace tokenizer synthesizes a leading ▁
+ * at the very start of input, when the input doesn't already start with a
+ * real space. Derived by reading each model's published tokenizer.json
+ * normalizer and pre_tokenizer chain (HuggingFace `tokenizers` 0.23.1) and
+ * cross-checking against reference `encode()` output for a lone leading
+ * space and a sentence-initial word.
+ *
+ *   - `"never"`:  no synthetic ▁ at all. Gemma-1/2/3's tokenizer.json has
+ *     neither a `Prepend` normalizer step nor a Metaspace
+ *     `prepend_scheme`: its `Split(" ")` pre-tokenizer step is a no-op,
+ *     because the normalizer already replaced every literal space before
+ *     that step runs. Confirmed against `maps/google/GOLDEN.gemma3.json`,
+ *     where "Hello, world!" encodes with a bare "Hello" token, not a
+ *     ▁-prefixed one.
+ *   - `"always"`: an unconditional `Prepend("▁")` normalizer step runs
+ *     before the space→▁ replacement, so a text that already starts with
+ *     a real space gets a second, synthetic ▁ on top of it. Llama-2,
+ *     Phi-3, and Codestral all ship this normalizer chain (verified in
+ *     each one's own tokenizer.json, not inferred from family
+ *     resemblance: Codestral's normalizer chain is textually identical to
+ *     Llama-2's and Phi-3's despite Codestral being a Mistral-family
+ *     model); encoding a lone space produces their two-run ▁▁ token, not
+ *     the bare one-run ▁ token.
+ *   - `"first"`:  the Metaspace pre-tokenizer's `prepend_scheme: "first"`
+ *     adds one synthetic ▁ only when the text doesn't already start with
+ *     one. Mistral-v3 and Mixtral ship this (their tokenizer.json
+ *     pre_tokenizer is literally `{"type": "Metaspace", "prepend_scheme":
+ *     "first", "split": false}`). Used as the default for any other
+ *     metaspace map not special-cased above.
+ *
+ * The map schema (schema v2) has no field for this yet: this classifier is
+ * a stopgap keyed on the published map `id` until a future schema version
+ * carries the pre-tokenizer's prepend behavior as structured data, the way
+ * `pre_tokenizer_program` already does for byte_level maps. Every entry
+ * here was confirmed by loading that model's own tokenizer.json with
+ * `tokenizers` 0.23.1 and reading its normalizer/pre_tokenizer chain: two
+ * models sharing a publisher or a family name are not guaranteed to share
+ * this behavior, as Codestral vs. Mistral-v3/Mixtral shows.
+ */
+export function metaspacePrependMode(mapId: string): 'never' | 'always' | 'first' {
+  if (/^google\/gemma-\d/.test(mapId)) return 'never';
+  if (
+    mapId === 'meta-llama/llama-2' ||
+    mapId === 'microsoft/phi-3' ||
+    mapId === 'mistralai/codestral'
+  ) {
+    return 'always';
+  }
+  return 'first';
+}
+
+// ── pre-tokenizer program presence check ────────────────────────────────────
+
+/**
+ * True when `program` carries at least one executable unit: a v1 program
+ * with a non-empty `ops` list, or a v2 program with a non-empty `stages`
+ * list. Guards against a map that ships `pre_tokenizer_program: {}` or an
+ * empty-ops/-stages stub, in which case the constructor should fall back to
+ * `pre_tokenizer_pattern` (or throw, if that's absent too) rather than
+ * silently running an empty program that emits nothing.
+ */
+function isNonEmptyPreTokProgram(program: unknown): boolean {
+  const p = program as { ops?: unknown[]; stages?: unknown[] };
+  return Boolean(p.ops?.length) || Boolean(p.stages?.length);
 }
 
 // ── pre-tokenizer regex compilation with runtime-fallback ──────────────────

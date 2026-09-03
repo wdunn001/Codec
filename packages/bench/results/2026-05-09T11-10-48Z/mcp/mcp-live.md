@@ -1,4 +1,4 @@
-# MCP wire bench — 2026-05-09T11-10-48Z
+# MCP wire bench: 2026-05-09T11-10-48Z
 
 Target: `http://192.168.1.88:12008/metamcp/openwebui-api/mcp`
 Vocab map: `https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/qwen/qwen2.json` (sha256 `sha256:9db56…`)
@@ -23,7 +23,7 @@ Vocab map: `https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/qwen/qwen2.json
 | msgpack-both+gzip     | 200    | 360 B | 5.9 KB      | 3.6×         | 2.39 s   | 2.39 s   |
 | msgpack-both+gzip+map | 200    | 522 B | 5.9 KB      | 3.6×         | 109.5 ms | 109.7 ms |
 
-## tools/call — `Time__get_current_time`
+## tools/call: `Time__get_current_time`
 
 | variant               | status | req   | resp (wire) | resp vs json | TTFB    | total   |
 |-----------------------|--------|-------|-------------|--------------|---------|---------|
@@ -33,7 +33,7 @@ Vocab map: `https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/qwen/qwen2.json
 | msgpack-both+gzip     | 200    | 421 B | 838 B       | 1.0×         | 15.9 ms | 17.0 ms |
 | msgpack-both+gzip+map | 200    | 583 B | 997 B       | 1.2× smaller | 19.0 ms | 19.2 ms |
 
-## tools/call — `codec-time-leaf__convert_time`
+## tools/call: `codec-time-leaf__convert_time`
 
 | variant               | status | req   | resp (wire) | resp vs json | TTFB    | total   |
 |-----------------------|--------|-------|-------------|--------------|---------|---------|
@@ -43,7 +43,7 @@ Vocab map: `https://cdn.jsdelivr.net/gh/wdunn001/codec-maps/maps/qwen/qwen2.json
 | msgpack-both+gzip     | 200    | 480 B | 1.1 KB      | 4.2×         | 24.8 ms | 25.0 ms |
 | msgpack-both+gzip+map | 200    | 642 B | 1.1 KB      | 4.2×         | 15.9 ms | 16.1 ms |
 
-## tools/call — `codec-time-leaf__get_current_time`
+## tools/call: `codec-time-leaf__get_current_time`
 
 | variant               | status | req   | resp (wire) | resp vs json | TTFB    | total   |
 |-----------------------|--------|-------|-------------|--------------|---------|---------|
