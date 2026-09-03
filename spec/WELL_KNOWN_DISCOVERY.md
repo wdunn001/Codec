@@ -94,7 +94,7 @@ the heavy map JSON sits behind a CDN's caching headers.
 {
   "id": "qwen/qwen2",
   "url": "https://cdn.jsdelivr.net/gh/qwen/codec-maps/qwen2.json",
-  "hash": "sha256:c73972f7a580936d724ffd8df9df2ce546d255c543e9d09b6d75e5bf69b1a64d",
+  "hash": "sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad",
   "published_at": "2026-05-06T12:00:00Z"
 }
 ```
@@ -410,7 +410,7 @@ qwen.io/
 {
   "id": "qwen/qwen2",
   "url": "https://cdn.example/qwen2.json",
-  "hash": "sha256:c73972f7a580936d724ffd8df9df2ce546d255c543e9d09b6d75e5bf69b1a64d"
+  "hash": "sha256:62c2f94fcbdb9b49d51632314e64aa65894496bc39751cb90866049657a262ad"
 }
 ```
 
