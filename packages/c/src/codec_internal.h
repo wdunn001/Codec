@@ -103,10 +103,21 @@ int32_t                 codec_map_byte_fallback_end(const codec_tokenizer_map_t 
 
 /* Unicode property tables (generated: see scripts/gen-unicode-tables.py).
  * Used by the pre-tokenizer program runtime to query character classes
- * without a regex engine. */
+ * without a regex engine. Mark / Punct / Symbol back the v2 composite
+ * classes (L_M, l_p_s, p_s): see spec/PRETOKENIZER_PROGRAM.md § Class
+ * membership. */
 bool codec_unicode_is_letter(uint32_t cp);
 bool codec_unicode_is_number(uint32_t cp);
 bool codec_unicode_is_ws(uint32_t cp);
+bool codec_unicode_is_mark(uint32_t cp);
+bool codec_unicode_is_punct(uint32_t cp);
+bool codec_unicode_is_symbol(uint32_t cp);
+/* letters_cased "upper cluster" (Lu ∪ Lt ∪ Lm ∪ Lo ∪ M) and "lower
+ * cluster" (Ll ∪ Lm ∪ Lo ∪ M). Lm/Lo/M sit in both clusters; that
+ * overlap is what makes the case-boundary matcher backtrack. See
+ * spec/PRETOKENIZER_PROGRAM.md § letters_cased. */
+bool codec_unicode_is_letter_cased_upper(uint32_t cp);
+bool codec_unicode_is_letter_cased_lower(uint32_t cp);
 
 /* BPE-side accessors (used by bpe.c). */
 int  codec_bpe_vocab_lookup(const codec_tokenizer_map_t *m,

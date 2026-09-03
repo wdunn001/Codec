@@ -51,6 +51,8 @@ target_link_libraries(myapp PRIVATE codec::codec)
 
 The vcpkg port is provided in `packages/c/vcpkg/ports/codec` and is suitable for upstream PR to [microsoft/vcpkg](https://github.com/microsoft/vcpkg).
 
+**Which library `codec::codec` gives you.** `codec::codec` is an alias for the shared target whenever the shared target was built. It falls back to the static target only when the shared target was not built. `find_package(codec CONFIG)` runs before any FetchContent fallback in a downstream consumer's default `AUTO` mode. `vcpkg install codec` builds shared-only on a dynamic-linkage triplet. Vcpkg's default triplet on Windows uses dynamic linkage. A consumer following this exact vcpkg route gets `codec::codec` resolved straight to the shared library. That resolution carries no automatic preference for the static target. The shared library exports its full public API through the `CODEC_API` macro defined in `codec.h`. That macro covers `codec.h`, `codec_safety_policy.h`, `codec_version_signaling.h`, and `codec_compression.h`. A checkout without that macro produces a shared library with an empty dynamic symbol table. On that checkout, this vcpkg route hits undefined-reference errors at link time the instant a consumer calls any `codec_*` function. The static path works fine on that same checkout. If you see undefined references against `libcodec.so` or `codec.dll`, confirm your checkout defines `CODEC_API` in `include/codec/codec.h`. Confirm it also applies that macro to every public declaration in the four headers above.
+
 ### System install via CMake
 
 ```bash

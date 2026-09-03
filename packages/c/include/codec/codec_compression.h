@@ -106,7 +106,7 @@ typedef struct codec_zstd_dict_entry {
  */
 #define CODEC_ZSTD_DICT_HASH_BUF_LEN 72
 
-int codec_hash_zstd_dict(const uint8_t *bytes, size_t len,
+CODEC_API int codec_hash_zstd_dict(const uint8_t *bytes, size_t len,
                          char out_hex[CODEC_ZSTD_DICT_HASH_BUF_LEN]);
 
 /*
@@ -133,7 +133,7 @@ int codec_hash_zstd_dict(const uint8_t *bytes, size_t len,
  * Memory: the dict bytes are borrowed from the matching
  * ``loaded_dicts`` entry: no allocation, no caller-side free.
  */
-codec_zstd_dict_result_t codec_select_zstd_dict_for_response(
+CODEC_API codec_zstd_dict_result_t codec_select_zstd_dict_for_response(
     const codec_header_kv_t       *headers,
     size_t                         n_headers,
     const codec_zstd_dict_entry_t *loaded_dicts,
@@ -183,7 +183,7 @@ codec_zstd_dict_result_t codec_select_zstd_dict_for_response(
  *         CODEC_ERR_INVALID_ARG for NULL pointers / undersized buffer,
  *         CODEC_ERR_VALIDATION when ``hash`` is not the expected shape.
  */
-codec_status_t codec_well_known_dict_url(
+CODEC_API codec_status_t codec_well_known_dict_url(
     const char *origin,
     const char *hash,
     char       *out_url,
@@ -205,7 +205,7 @@ codec_status_t codec_well_known_dict_url(
  *   3. codec_verify_zstd_dict_bytes(...) to confirm the origin served
  *      the right bytes: never feed unverified bytes into a zstd decoder
  */
-codec_status_t codec_verify_zstd_dict_bytes(
+CODEC_API codec_status_t codec_verify_zstd_dict_bytes(
     const uint8_t *bytes,
     size_t         len,
     const char    *expected_hash);
