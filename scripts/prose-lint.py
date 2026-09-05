@@ -60,10 +60,15 @@ RULES = [
     (r'(?<![\w-])(Two|Three|Four|Five|Six)\s+\w+[^.]{0,24}\b(follow|are|apply|remain)\b',
      'count-predicate',
      'Counting things before listing them. Just list them.'),
-    ('—', 'dash-glyph', 'Em-dash. Use a period, comma, colon or parentheses.'),
-    ('–', 'dash-glyph', 'En-dash. Use "to" for ranges.'),
-    ('―', 'dash-glyph', 'Horizontal bar.'),
-    ('−', 'dash-glyph', 'Minus sign glyph. Use a plain hyphen.'),
+    # Written as escapes on purpose. The repo's no-emdash guard scans every
+    # tracked file, and a table that spells these characters out literally
+    # trips the guard on the very file that defines the rule. Excluding this
+    # path from the guard instead would leave a blind spot in the file most
+    # likely to be hand-edited.
+    ('\u2014', 'dash-glyph', 'Em-dash. Use a period, comma, colon or parentheses.'),
+    ('\u2013', 'dash-glyph', 'En-dash. Use "to" for ranges.'),
+    ('\u2015', 'dash-glyph', 'Horizontal bar.'),
+    ('\u2212', 'dash-glyph', 'Minus sign glyph. Use a plain hyphen.'),
     (r'\s-{1,2}\s', 'dash-delimiter',
      'Spaced hyphen used as a dash. Recast the sentence.'),
     (r'(?m)^\s*And\s+', 'and-opener', 'Sentence opening with "And".'),
