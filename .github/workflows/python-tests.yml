@@ -1,0 +1,45 @@
+# Run the Python test suite on every push and pull request.
+#
+# Until now these tests ran only from publish-pypi.yml, which fires on a
+# version tag. A break therefore stayed invisible until release day. The
+# suite takes about six seconds, so there is no reason to gate it behind a
+# tag.
+#
+# pytest-asyncio is the load-bearing dependency here. Without it, pytest
+# reports 27 failures that look like real defects and are not: every async
+# test errors on an unknown asyncio marker. Installing the package's own
+# `test` extra is what keeps that from happening.
+
+name: python-tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: install the package and its test extra
+        working-directory: packages/python
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[test]"
+
+      - name: pytest
+        working-directory: packages/python
+        run: python -m pytest -q
