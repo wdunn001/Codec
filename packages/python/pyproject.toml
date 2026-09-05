@@ -47,6 +47,9 @@ test = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
     "tokenizers>=0.20",
+    # tests/test_latent_frame.py imports numpy at module scope, so a
+    # missing numpy is a collection error rather than a skip.
+    "numpy>=1.24",
 ]
 
 [tool.hatch.build.targets.wheel]
